@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Ripgrep Executor
- * Block-UUID: 2cf4136b-58e5-4d29-8b97-8c7c1eb7fb09
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 125c8f82-2a91-418c-8126-30ca12ddcd1c
+ * Parent-UUID: 2cf4136b-58e5-4d29-8b97-8c7c1eb7fb09
+ * Version: 1.0.1
  * Description: Executes ripgrep as a subprocess and parses its JSON output to extract file matches.
  * Language: Go
- * Created-at: 2026-02-02T18:55:00.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Created-at: 2026-02-02T19:09:26.833Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1)
  */
 
 
@@ -24,6 +24,11 @@ import (
 
 // ExecuteRipgrep runs ripgrep with the specified options and returns the raw matches.
 func ExecuteRipgrep(options RgOptions) ([]RgMatch, error) {
+	// 0. Check if ripgrep is installed
+	if _, err := exec.LookPath("rg"); err != nil {
+		return nil, fmt.Errorf("ripgrep is not installed or not in PATH. Please install ripgrep: https://github.com/BurntSushi/ripgrep")
+	}
+
 	// 1. Build ripgrep command
 	args := buildRipgrepArgs(options)
 	

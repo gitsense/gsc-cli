@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Ripgrep Command
- * Block-UUID: 0a3b1b07-0070-4560-9700-3472dce3b8bc
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: e9fe1903-f470-40cc-aab0-0b0b50d1b3ea
+ * Parent-UUID: 0a3b1b07-0070-4560-9700-3472dce3b8bc
+ * Version: 1.0.1
  * Description: CLI command definition for 'gsc rg', executing ripgrep searches and enriching results with manifest metadata.
  * Language: Go
- * Created-at: 2026-02-02T19:02:00.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Created-at: 2026-02-02T19:08:42.603Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1)
  */
 
 
@@ -42,6 +42,9 @@ contextual information like risk levels, topics, or business impact.`,
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
+		if ctx == nil {
+			ctx = context.Background()
+		}
 		pattern := args[0]
 
 		// 1. Load Config for Defaults

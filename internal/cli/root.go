@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Root CLI Command
- * Block-UUID: 31ee9181-ff62-4922-adb3-9ba8535f7652
- * Parent-UUID: 8c145aab-bdb6-4f7e-b254-ea58d24c29a5
- * Version: 1.5.0
+ * Block-UUID: 7e4bf85f-6839-454e-b45c-45424ad8c221
+ * Parent-UUID: 31ee9181-ff62-4922-adb3-9ba8535f7652
+ * Version: 1.6.0
  * Description: Root command for the gsc CLI, registering the manifest subcommand group and the new top-level query and rg commands.
  * Language: Go
- * Created-at: 2026-02-02T05:30:00.000Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), Claude Haiku 4.5 (v1.3.0), Claude Haiku 4.5 (v1.4.0), GLM-4.7 (v1.5.0)
+ * Created-at: 2026-02-02T19:10:57.816Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), Claude Haiku 4.5 (v1.3.0), Claude Haiku 4.5 (v1.4.0), GLM-4.7 (v1.5.0), Claude Haiku 4.5 (v1.6.0)
  */
 
 
@@ -43,8 +43,8 @@ func init() {
 	rootCmd.AddCommand(manifest.Cmd)
 
 	// Register top-level usage commands
-	RegisterQueryCommand(rootCmd)
-	RegisterRgCommand(rootCmd)
+	rootCmd.AddCommand(queryCmd)
+	rootCmd.AddCommand(rgCmd)
 
 	logger.Debug("Root command initialized with manifest, query, and rg commands")
 }

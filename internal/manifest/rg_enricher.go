@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Ripgrep Metadata Enricher
- * Block-UUID: 776c90a3-adb1-4d81-97c5-fcaa26b71f5c
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 0e4ef9ae-7c6f-40cc-bdda-b900448b9664
+ * Parent-UUID: 776c90a3-adb1-4d81-97c5-fcaa26b71f5c
+ * Version: 1.0.1
  * Description: Enriches raw ripgrep matches with metadata from the manifest database, adding Chat IDs and field values.
  * Language: Go
- * Created-at: 2026-02-02T18:57:00.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Created-at: 2026-02-02T19:07:01.374Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1)
  */
 
 
@@ -49,13 +49,13 @@ func EnrichMatches(ctx context.Context, matches []RgMatch, dbName string) ([]Enr
 	// 4. Enrich each match
 	var enriched []EnrichedMatch
 	for _, match := range matches {
-		enriched, err := enrichSingleMatch(ctx, database, match)
+		enrichedMatch, err := enrichSingleMatch(ctx, database, match)
 		if err != nil {
 			logger.Warning("Failed to enrich match for file %s: %v", match.FilePath, err)
 			// Continue with other matches even if one fails
 			continue
 		}
-		enriched = append(enriched, enriched)
+		enriched = append(enriched, enrichedMatch)
 	}
 
 	logger.Info("Enriched %d matches", len(enriched))

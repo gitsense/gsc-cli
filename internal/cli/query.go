@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Query Command
- * Block-UUID: 4940efee-d95e-40c3-a3e1-fc64e8d9dfc5
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 0396cfbd-f2dc-4fc7-bb4c-2cbe5f11e3f0
+ * Parent-UUID: 4940efee-d95e-40c3-a3e1-fc64e8d9dfc5
+ * Version: 1.0.2
  * Description: CLI command definition for 'gsc query', supporting hierarchical discovery, stateful defaults, and simple value matching.
  * Language: Go
- * Created-at: 2026-02-02T19:00:00.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Created-at: 2026-02-02T19:10:18.880Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), Claude Haiku 4.5 (v1.0.2)
  */
 
 
@@ -81,6 +81,13 @@ func handleSetDefault(input string) error {
 
 	key := strings.TrimSpace(parts[0])
 	value := strings.TrimSpace(parts[1])
+
+	// Validate database exists if setting db default
+	if key == "db" {
+		if err := manifest.ValidateDBExists(value); err != nil {
+			return fmt.Errorf("database '%s' does not exist: %w", value, err)
+		}
+	}
 
 	logger.Info("Setting default", "key", key, "value", value)
 	if err := manifest.SetDefault(key, value); err != nil {
