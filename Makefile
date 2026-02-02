@@ -1,3 +1,13 @@
+# Component: GSC CLI Makefile
+# Block-UUID: 6aea6f9e-a9bb-41da-8825-c8e2404ad596
+# Parent-UUID: N/A
+# Version: 1.0.0
+# Description: Makefile for building, installing, and testing the gsc-cli tool.
+# Language: Makefile
+# Created-at: 2026-02-02T06:50:00.000Z
+# Authors: GLM-4.7 (v1.0.0)
+
+
 # GSC CLI Makefile
 # This makefile provides commands for building, installing, and testing the gsc-cli tool.
 
@@ -7,8 +17,8 @@
 BINARY_NAME=gsc
 # Build directory
 DIST_DIR=dist
-# Main package path
-MAIN_PATH=cmd/gsc
+# Main package path (changed to ./cmd/gsc to avoid stdlib confusion)
+MAIN_PATH=./cmd/gsc
 
 # Go parameters
 GOCMD=go
