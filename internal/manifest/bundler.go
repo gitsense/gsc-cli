@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Manifest Bundler
- * Block-UUID: 171f5bce-ad84-4e6c-9a8e-6c3ce9dac0c0
- * Parent-UUID: ab533514-9416-4ec7-a220-17494139a480
- * Version: 1.1.0
+ * Block-UUID: 6506e1b6-236a-4b99-8db6-2764ef27819c
+ * Parent-UUID: 171f5bce-ad84-4e6c-9a8e-6c3ce9dac0c0
+ * Version: 1.1.1
  * Description: Logic to generate context bundles from SQL queries against a manifest database. Fixed integer conversion to handle SQLite int64 properly.
  * Language: Go
- * Created-at: 2026-02-02T08:15:00.000Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0)
+ * Created-at: 2026-02-02T08:33:07.479Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), Claude Haiku 4.5 (v1.1.1)
  */
 
 
@@ -14,7 +14,6 @@ package manifest
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"strings"

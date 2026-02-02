@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Doctor Logic
- * Block-UUID: 3dba2ac2-c61d-4822-8baf-2d98c047df0e
- * Parent-UUID: 15b0632a-1b37-4a1c-b2e7-ad4080deae66
- * Version: 1.1.0
+ * Block-UUID: 9cd2ccfc-4328-41e0-b33e-6c99dcde32c7
+ * Parent-UUID: 3dba2ac2-c61d-4822-8baf-2d98c047df0e
+ * Version: 1.1.1
  * Description: Logic to perform health checks on the .gitsense environment, including directory, registry, and database validation. Removed unused ValidateRegistryJSON function.
  * Language: Go
- * Created-at: 2026-02-02T07:57:00.000Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0)
+ * Created-at: 2026-02-02T08:32:35.212Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), Claude Haiku 4.5 (v1.1.1)
  */
 
 
@@ -22,8 +22,6 @@ import (
 	"github.com/yourusername/gsc-cli/internal/db"
 	"github.com/yourusername/gsc-cli/internal/git"
 	"github.com/yourusername/gsc-cli/internal/registry"
-	"github.com/yourusername/gsc-cli/pkg/logger"
-	"github.com/yourusername/gsc-cli/pkg/settings"
 )
 
 // DoctorReport represents the result of a health check.

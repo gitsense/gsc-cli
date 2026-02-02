@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Schema Reader
- * Block-UUID: d0b7da07-3274-4d28-8e14-4ae769a867d9
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 065dc3a6-b9ec-402b-acb8-430631e5e7c8
+ * Parent-UUID: d0b7da07-3274-4d28-8e14-4ae769a867d9
+ * Version: 1.0.1
  * Description: Logic to query the database and retrieve analyzer and field definitions for the schema command.
  * Language: Go
- * Created-at: 2026-02-02T07:55:00.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Created-at: 2026-02-02T08:34:20.421Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1)
  */
 
 
@@ -14,7 +14,6 @@ package manifest
 
 import (
 	"context"
-	"database/sql"
 
 	"github.com/yourusername/gsc-cli/internal/db"
 	"github.com/yourusername/gsc-cli/pkg/logger"

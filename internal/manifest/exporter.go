@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Manifest Exporter
- * Block-UUID: 6a4ad865-f0ba-4680-bb5a-753343131f21
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 2f473067-b354-4f9c-a7a8-8ec0825a8e2e
+ * Parent-UUID: 6a4ad865-f0ba-4680-bb5a-753343131f21
+ * Version: 1.0.1
  * Description: Logic to export manifest database content to Markdown or JSON format.
  * Language: Go
- * Created-at: 2026-02-02T08:05:00.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Created-at: 2026-02-02T08:33:44.702Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1)
  */
 
 
@@ -20,7 +20,6 @@ import (
 	"strings"
 
 	"github.com/yourusername/gsc-cli/internal/db"
-	"github.com/yourusername/gsc-cli/pkg/logger"
 )
 
 // ExportDatabase exports the database content to the specified format.
