@@ -1,12 +1,12 @@
 /*
  * Component: Manifest Path Helper
- * Block-UUID: 27c603ce-3c45-4e31-8dce-8d62c97da032
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 23f54385-c17d-472e-b02b-a9967cc5f88e
+ * Parent-UUID: 27c603ce-3c45-4e31-8dce-8d62c97da032
+ * Version: 1.1.0
  * Description: Helper functions to resolve file paths for databases and manifests within the .gitsense directory.
  * Language: Go
  * Created-at: 2026-02-02T05:30:00.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0)
  */
 
 
@@ -42,9 +42,4 @@ func ResolveJSONPath(filename string) (string, error) {
 
 	jsonPath := filepath.Join(root, settings.GitSenseDir, filename)
 	return jsonPath, nil
-}
-
-// ResolveRegistryPath constructs the absolute path to the manifest.json registry file.
-func ResolveRegistryPath() (string, error) {
-	return ResolveJSONPath("manifest.json")
 }

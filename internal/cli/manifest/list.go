@@ -1,12 +1,12 @@
 /*
  * Component: Manifest List Command
- * Block-UUID: 7173b6a2-0108-43d0-a98c-e4ddd2010f32
- * Parent-UUID: 1b572cc8-85e4-41af-9014-4fce10b8daf2
- * Version: 1.1.0
+ * Block-UUID: d55b1259-5474-4b80-9a81-288964e817c2
+ * Parent-UUID: 7173b6a2-0108-43d0-a98c-e4ddd2010f32
+ * Version: 1.2.0
  * Description: CLI command for listing available manifest databases.
  * Language: Go
  * Created-at: 2026-02-02T05:35:00Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), Claude Haiku 4.5 (v1.2.0)
  */
 
 
@@ -14,7 +14,6 @@ package manifest
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/yourusername/gsc-cli/internal/manifest"

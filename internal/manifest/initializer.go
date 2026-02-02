@@ -1,12 +1,12 @@
 /*
  * Component: Manifest Initializer
- * Block-UUID: fa268907-2296-4005-8f59-ca1494f3db1f
- * Parent-UUID: ea6df520-dec1-4616-bd8b-42ea7c75d7b4
- * Version: 1.1.0
+ * Block-UUID: b7473786-f319-4b8f-b8b5-9771bbacb10e
+ * Parent-UUID: fa268907-2296-4005-8f59-ca1494f3db1f
+ * Version: 1.2.0
  * Description: Logic to initialize the .gitsense directory structure and registry file.
  * Language: Go
  * Created-at: 2026-02-02T05:30:00Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), Claude Haiku 4.5 (v1.2.0)
  */
 
 
