@@ -1,12 +1,12 @@
 /**
  * Component: Manifest Root Command
- * Block-UUID: 52a6e21f-bbc1-4fda-b3d4-2241c3737d0c
- * Parent-UUID: 458d0659-00ee-4903-ac2d-9d4572a7db1a
- * Version: 1.3.0
+ * Block-UUID: fc5f36b0-f8c6-469f-8ab4-8c1fa6976287
+ * Parent-UUID: 52a6e21f-bbc1-4fda-b3d4-2241c3737d0c
+ * Version: 1.4.0
  * Description: Defines the root command for the 'manifest' subcommand group, serving as the parent for init, import, and list.
  * Language: Go
- * Created-at: 2026-02-02T08:42:21.341Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), Claude Haiku 4.5 (v1.3.0)
+ * Created-at: 2026-02-02T18:54:43.027Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), Claude Haiku 4.5 (v1.3.0), GLM-4.7 (v1.4.0)
  */
 
 
@@ -20,10 +20,10 @@ import (
 // Cmd represents the manifest command
 var Cmd = &cobra.Command{
 	Use:   "manifest",
-	Short: "Manage metadata manifests and SQLite databases",
-	Long: `The manifest command group provides tools to initialize, import, and query
+	Short: "Manage metadata manifests and SQLite databases (Setup & Maintenance)",
+	Long: `The manifest command group provides tools to initialize, import, and manage
 metadata manifests. These manifests serve as a queryable intelligence layer for
-AI agents, allowing them to efficiently discover and analyze codebase structure.`,
+AI agents. Use 'gsc query' and 'gsc rg' for daily operations.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// If no subcommand is provided, print help
 		cmd.Help()
