@@ -1,12 +1,12 @@
 /*
  * Component: Manifest Initializer
- * Block-UUID: ea6df520-dec1-4616-bd8b-42ea7c75d7b4
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: fa268907-2296-4005-8f59-ca1494f3db1f
+ * Parent-UUID: ea6df520-dec1-4616-bd8b-42ea7c75d7b4
+ * Version: 1.1.0
  * Description: Logic to initialize the .gitsense directory structure and registry file.
  * Language: Go
  * Created-at: 2026-02-02T05:30:00Z
- * Authors: GLM-4. (v1.0.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0)
  */
 
 
@@ -18,7 +18,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/yourusername/gsc-cli/internal/manifest"
+	"github.com/yourusername/gsc-cli/internal/git"
 	"github.com/yourusername/gsc-cli/pkg/logger"
 	"github.com/yourusername/gsc-cli/pkg/settings"
 )
@@ -31,13 +31,19 @@ import (
 // 4. Creates a .gitignore file within .gitsense to exclude database files.
 func InitializeGitSense() error {
 	// 1. Find Project Root
-	projectRoot, err := path_helper.FindProjectRoot()
+	projectRoot, err := git.FindProjectRoot()
 	if err != nil {
-		return fmt.Errorf("failed to find project root: %w", err)
+		// If .gitsense doesn't exist yet, use current working directory
+		cwd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("failed to get current working directory: %w", err)
+		}
+		projectRoot = cwd
+		logger.Info("Using current directory as project root: %s", projectRoot)
 	}
 
 	gitsenseDir := filepath.Join(projectRoot, settings.GitSenseDir)
-	registryPath := filepath.Join(gitsenseDir, "manifest.json")
+	registryPath := filepath.Join(gitsenseDir, settings.RegistryFileName)
 	gitignorePath := filepath.Join(gitsenseDir, ".gitignore")
 
 	// 2. Create .gitsense directory
@@ -47,15 +53,13 @@ func InitializeGitSense() error {
 
 	// 3. Check if registry already exists
 	if _, err := os.Stat(registryPath); err == nil {
-		logger.Info(fmt.Sprintf("GitSense directory already initialized at %s", gitsenseDir))
+		logger.Info("GitSense directory already initialized at %s", gitsenseDir)
 		return nil
 	}
 
 	// 4. Create initial manifest.json registry
-	// We use a map for the initial structure to avoid importing the registry package here,
-	// keeping dependencies minimal.
 	initialRegistry := map[string]interface{}{
-		"version": "1.0",
+		"version":   "1.0",
 		"databases": []map[string]interface{}{},
 	}
 
@@ -69,12 +73,12 @@ func InitializeGitSense() error {
 	}
 
 	// 5. Create .gitignore to ignore .db files
-	gitignoreContent := "*.db\n"
+	gitignoreContent := "*.db\n*.sqlite\n*.sqlite3\n"
 	if err := os.WriteFile(gitignorePath, []byte(gitignoreContent), 0644); err != nil {
-		logger.Error(fmt.Sprintf("Warning: failed to create .gitignore in %s: %v", gitsenseDir, err))
+		logger.Warning("Failed to create .gitignore in %s: %v", gitsenseDir, err)
 		// Non-fatal error, continue
 	}
 
-	logger.Success(fmt.Sprintf("GitSense initialized successfully at %s", gitsenseDir))
+	logger.Success("GitSense initialized successfully at %s", gitsenseDir)
 	return nil
 }

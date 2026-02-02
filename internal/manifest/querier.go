@@ -1,12 +1,12 @@
 /*
  * Component: Manifest Querier
- * Block-UUID: 5a0f9391-feaa-4047-9e69-215d5972c442
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 0217de9f-52e5-44af-83a8-07e9c196de14
+ * Parent-UUID: 5a0f9391-feaa-4047-9e69-215d5972c442
+ * Version: 1.1.0
  * Description: Logic to query the manifest registry and list available databases.
  * Language: Go
  * Created-at: 2026-02-02T05:30:00Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0)
  */
 
 
@@ -16,7 +16,7 @@ import (
 	"context"
 	"path/filepath"
 
-	"github.com/yourusername/gsc-cli/internal/manifest"
+	"github.com/yourusername/gsc-cli/internal/git"
 	"github.com/yourusername/gsc-cli/internal/registry"
 	"github.com/yourusername/gsc-cli/pkg/logger"
 )
@@ -34,14 +34,14 @@ type DatabaseInfo struct {
 // and returns a summary list.
 func ListDatabases(ctx context.Context) ([]DatabaseInfo, error) {
 	// 1. Find the project root to locate the .gitsense directory
-	root, err := path_helper.FindProjectRoot()
+	root, err := git.FindProjectRoot()
 	if err != nil {
 		logger.Error("Failed to find project root: %v", err)
 		return nil, err
 	}
 
 	// 2. Load the registry file
-	reg, err := registry.LoadRegistry(root)
+	reg, err := registry.LoadRegistry()
 	if err != nil {
 		logger.Error("Failed to load registry: %v", err)
 		return nil, err
@@ -49,15 +49,15 @@ func ListDatabases(ctx context.Context) ([]DatabaseInfo, error) {
 
 	// 3. Convert registry entries to DatabaseInfo structs
 	var databases []DatabaseInfo
-	for _, entry := range reg.Entries {
-		dbPath := filepath.Join(root, entry.DatabaseName+".db")
-		
+	for _, entry := range reg.Databases {
+		dbPath := filepath.Join(root, ".gitsense", entry.Name+".db")
+
 		databases = append(databases, DatabaseInfo{
-			Name:        entry.DatabaseName,
+			Name:        entry.Name,
 			Description: entry.Description,
 			Tags:        entry.Tags,
 			DBPath:      dbPath,
-			EntryCount:  len(entry.Files), // Assuming registry tracks file count
+			EntryCount:  0, // TODO: Query the database to get actual entry count
 		})
 	}
 

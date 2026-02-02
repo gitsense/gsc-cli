@@ -1,12 +1,12 @@
 /*
  * Component: Manifest Root Command
- * Block-UUID: 79ae243d-d0d9-4881-8de6-5af8755c33c8
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 783977f9-ee5f-466f-9cdf-bef6b69f5791
+ * Parent-UUID: 79ae243d-d0d9-4881-8de6-5af8755c33c8
+ * Version: 1.1.0
  * Description: Defines the root command for the 'manifest' subcommand group, serving as the parent for init, import, and list.
  * Language: Go
  * Created-at: 2026-02-02T05:30:01.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0)
  */
 
 
@@ -33,8 +33,11 @@ AI agents, allowing them to efficiently discover and analyze codebase structure.
 func init() {
 	// Add shared flags to the manifest root command
 	AddManifestFlags(Cmd)
-	
-	// Note: Subcommands (init, import, list) will register themselves 
-	// in their respective files to avoid circular dependencies.
+
+	// Register subcommands
+	Cmd.AddCommand(initCmd)
+	Cmd.AddCommand(importCmd)
+	Cmd.AddCommand(listCmd)
+
 	logger.Debug("Manifest root command initialized")
 }

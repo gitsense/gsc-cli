@@ -1,12 +1,12 @@
 /*
  * Component: Database Schema Definition
- * Block-UUID: 8e0becf6-a27b-492a-b50d-8309946458e4
- * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: Defines the SQL schema for the GitSense manifest SQLite database, including tables for manifest info, files, analyzers, fields, and metadata.
+ * Block-UUID: 89a91dce-b124-404e-aa17-148d944381f1
+ * Parent-UUID: 8e0becf6-a27b-492a-b50d-8309946458e4
+ * Version: 1.1.0
+ * Description: Defines the SQL schema for the GitSense manifest SQLite database, including tables for manifest info, repositories, branches, files, analyzers, fields, and metadata.
  * Language: Go
  * Created-at: 2026-02-02T05:30:00.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0)
  */
 
 
@@ -36,7 +36,23 @@ func CreateSchema(db *sql.DB) error {
 		source_file TEXT
 	);`
 
-	// Table 2: Core File Information
+	// Table 2: Repositories
+	// Tracks source repositories referenced in the manifest
+	repositoriesSQL := `
+	CREATE TABLE IF NOT EXISTS repositories (
+		ref TEXT PRIMARY KEY,
+		name TEXT NOT NULL
+	);`
+
+	// Table 3: Branches
+	// Tracks git branches referenced in the manifest
+	branchesSQL := `
+	CREATE TABLE IF NOT EXISTS branches (
+		ref TEXT PRIMARY KEY,
+		name TEXT NOT NULL
+	);`
+
+	// Table 4: Core File Information
 	filesSQL := `
 	CREATE TABLE IF NOT EXISTS files (
 		file_path TEXT PRIMARY KEY,
@@ -49,7 +65,7 @@ func CreateSchema(db *sql.DB) error {
 		is_stale BOOLEAN DEFAULT 0
 	);`
 
-	// Table 3: Analyzer Definitions
+	// Table 5: Analyzer Definitions
 	analyzersSQL := `
 	CREATE TABLE IF NOT EXISTS analyzers (
 		analyzer_id TEXT PRIMARY KEY,
@@ -61,7 +77,7 @@ func CreateSchema(db *sql.DB) error {
 		created_at TIMESTAMP
 	);`
 
-	// Table 4: Metadata Field Definitions
+	// Table 6: Metadata Field Definitions
 	metadataFieldsSQL := `
 	CREATE TABLE IF NOT EXISTS metadata_fields (
 		field_id TEXT PRIMARY KEY,
@@ -75,7 +91,7 @@ func CreateSchema(db *sql.DB) error {
 		FOREIGN KEY (analyzer_id) REFERENCES analyzers(analyzer_id)
 	);`
 
-	// Table 5: Analysis Results
+	// Table 7: Analysis Results
 	fileMetadataSQL := `
 	CREATE TABLE IF NOT EXISTS file_metadata (
 		file_path TEXT NOT NULL,
@@ -88,7 +104,7 @@ func CreateSchema(db *sql.DB) error {
 	);`
 
 	// Execute table creation
-	tables := []string{manifestInfoSQL, filesSQL, analyzersSQL, metadataFieldsSQL, fileMetadataSQL}
+	tables := []string{manifestInfoSQL, repositoriesSQL, branchesSQL, filesSQL, analyzersSQL, metadataFieldsSQL, fileMetadataSQL}
 	for _, tableSQL := range tables {
 		if _, err := db.Exec(tableSQL); err != nil {
 			logger.Error("Failed to create table", "error", err)
@@ -102,6 +118,8 @@ func CreateSchema(db *sql.DB) error {
 		"CREATE INDEX IF NOT EXISTS idx_metadata_field ON file_metadata(field_id);",
 		"CREATE INDEX IF NOT EXISTS idx_analyzer_ref ON analyzers(analyzer_ref_id);",
 		"CREATE INDEX IF NOT EXISTS idx_field_ref ON metadata_fields(field_ref_id);",
+		"CREATE INDEX IF NOT EXISTS idx_files_language ON files(language);",
+		"CREATE INDEX IF NOT EXISTS idx_files_chat_id ON files(chat_id);",
 	}
 
 	for _, indexSQL := range indexes {

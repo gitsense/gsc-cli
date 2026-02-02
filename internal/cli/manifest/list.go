@@ -1,12 +1,12 @@
 /*
  * Component: Manifest List Command
- * Block-UUID: 1b572cc8-85e4-41af-9014-4fce10b8daf2
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 7173b6a2-0108-43d0-a98c-e4ddd2010f32
+ * Parent-UUID: 1b572cc8-85e4-41af-9014-4fce10b8daf2
+ * Version: 1.1.0
  * Description: CLI command for listing available manifest databases.
  * Language: Go
  * Created-at: 2026-02-02T05:35:00Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0)
  */
 
 
@@ -31,39 +31,40 @@ var listCmd = &cobra.Command{
 	Long: `List all available manifest databases in the current project.
 This command reads the .gitsense/manifest.json registry and displays
 information about each database, including its name, description, and tags.`,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		// Call the logic layer to get the list
 		databases, err := manifest.ListDatabases(cmd.Context())
 		if err != nil {
 			logger.Error("Failed to list databases: %v", err)
-			os.Exit(1)
+			return err
 		}
 
 		// Format and output the results
 		if len(databases) == 0 {
 			fmt.Println("No manifest databases found.")
-			return
+			return nil
 		}
 
-		switch listFormat {
-		case "json":
-			output.FormatJSON(databases)
-		case "csv":
-			output.FormatCSV(databases)
-		case "table":
-			output.FormatTable(databases)
-		default:
-			logger.Error("Unsupported format: %s", listFormat)
-			os.Exit(1)
+		// Convert DatabaseInfo to generic interface slice for formatter
+		var dbInterfaces []interface{}
+		for _, db := range databases {
+			dbMap := map[string]interface{}{
+				"name":        db.Name,
+				"description": db.Description,
+				"tags":        db.Tags,
+				"db_path":     db.DBPath,
+				"entry_count": db.EntryCount,
+			}
+			dbInterfaces = append(dbInterfaces, dbMap)
 		}
+
+		// Format and output
+		output.FormatDatabaseTable(dbInterfaces, listFormat)
+		return nil
 	},
 }
 
 func init() {
-	// Add this command to the parent manifest command
-	// Note: This assumes 'Cmd' is exported from root.go in the same package
-	// We will wire this up in the root.go file generation step.
-	
 	// Add flags
 	listCmd.Flags().StringVarP(&listFormat, "format", "f", "table", "Output format (json, table, csv)")
 }
