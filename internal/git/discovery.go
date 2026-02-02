@@ -1,12 +1,12 @@
 /**
  * Component: Git Discovery
- * Block-UUID: 2f939aab-f305-4d58-93a1-e1a247b13b65
- * Parent-UUID: f5137746-965d-4909-9d6c-c2d69a4f4d25
- * Version: 1.3.0
- * Description: Provides functionality to discover the project root by locating the .git directory first, then verifying .gitsense exists or can be created. Fixed to support manifest init in Git repos without existing .gitsense.
+ * Block-UUID: 6b39f1a4-918d-47c4-bfdd-0d36cce6aa53
+ * Parent-UUID: 5dec3486-fe35-43e9-9e5d-ee673382f1dd
+ * Version: 1.5.0
+ * Description: Provides functionality to discover the project root by locating the .git directory. Fixed to prioritize .git over .gitsense to prevent home directory collisions. Removed unused variable to fix compilation error.
  * Language: Go
- * Created-at: 2026-02-02T07:11:41.130Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), Claude Haiku 4.5 (v1.3.0)
+ * Created-at: 2026-02-02T05:30:00.000Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), Claude Haiku 4.5 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
  */
 
 
@@ -23,40 +23,12 @@ const (
 )
 
 // FindProjectRoot walks up the directory tree from the current working directory
-// until it finds a directory containing the .gitsense folder.
+// until it finds a directory containing the .git folder.
 // It returns the absolute path to the project root or an error if not found.
+// This function now prioritizes finding the .git directory to avoid collisions
+// with a global .gitsense directory in the user's home folder.
 func FindProjectRoot() (string, error) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-
-	return findRootFromPath(cwd)
-}
-
-// findRootFromPath is a helper that starts the search from a specific path.
-// It searches for a directory containing .gitsense. If .gitsense doesn't exist,
-// it falls back to finding the Git root (.git directory).
-// This allows manifest init to work in a Git repo without an existing .gitsense directory.
-func findRootFromPath(startPath string) (string, error) {
-	path := startPath
-	for {
-		// Check if .gitsense exists in the current directory
-		gitsensePath := filepath.Join(path, GitSenseDirName)
-		if _, err := os.Stat(gitsensePath); err == nil {
-			// Found .gitsense, return this as the project root
-			return path, nil
-		}
-
-		// Move to parent directory
-		parent := filepath.Dir(path)
-		if parent == path {
-			// Reached the root of the filesystem without finding .gitsense
-			// Fall back to finding the Git root instead
-			return FindGitRoot()
-		}
-		path = parent
-	}
+	return FindGitRoot()
 }
 
 // FindGitRoot walks up the directory tree from the current working directory

@@ -1,12 +1,12 @@
 /*
  * Component: Manifest Importer
- * Block-UUID: 8f00e226-bc54-4646-9416-8adec3b7554f
- * Parent-UUID: da2e9e09-a2b3-4009-aa5a-135f0df5b73e
- * Version: 1.1.0
+ * Block-UUID: 83aa4b6d-2fda-4e12-8cc9-93fe09674604
+ * Parent-UUID: 8f00e226-bc54-4646-9416-8adec3b7554f
+ * Version: 1.1.1
  * Description: Logic to parse a JSON manifest file and import its data into a SQLite database.
  * Language: Go
  * Created-at: 2026-02-02T05:30:00Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.1.1)
  */
 
 
@@ -168,6 +168,12 @@ func insertReferenceData(tx *sql.Tx, manifestFile *ManifestFile) error {
 		}
 	}
 
+	// Build a map from analyzer ref to analyzer ID to resolve foreign keys
+	refToID := make(map[string]string)
+	for _, analyzer := range manifestFile.Analyzers {
+		refToID[analyzer.Ref] = analyzer.ID
+	}
+
 	// Insert Metadata Fields
 	for _, field := range manifestFile.Fields {
 		// Use field.Ref as the field_id for simplicity and consistency
@@ -178,7 +184,7 @@ func insertReferenceData(tx *sql.Tx, manifestFile *ManifestFile) error {
 		if _, err := tx.Exec(query,
 			field.Ref,
 			field.Ref,
-			field.AnalyzerRef,
+			refToID[field.AnalyzerRef],
 			field.Name,
 			field.DisplayName,
 			field.Type,
