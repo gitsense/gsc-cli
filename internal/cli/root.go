@@ -1,12 +1,12 @@
 /*
  * Component: Root CLI Command
- * Block-UUID: 1e3f1e6d-c0e3-4725-90a7-3fbf20101b02
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 35188e09-96a9-4648-829b-4812d26019e2
+ * Parent-UUID: 1e3f1e6d-c0e3-4725-90a7-3fbf20101b02
+ * Version: 1.1.0
  * Description: Defines the root 'gsc' command, sets up global flags, and registers top-level subcommands.
  * Language: Go
  * Created-at: 2026-02-02T05:30:02.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0)
  */
 
 
