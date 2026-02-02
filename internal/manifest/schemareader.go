@@ -1,12 +1,12 @@
 /**
  * Component: Schema Reader
- * Block-UUID: 065dc3a6-b9ec-402b-acb8-430631e5e7c8
- * Parent-UUID: d0b7da07-3274-4d28-8e14-4ae769a867d9
- * Version: 1.0.1
- * Description: Logic to query the database and retrieve analyzer and field definitions for the schema command.
+ * Block-UUID: e7617b43-e4b3-4a9d-aa71-fc9f6aef7f38
+ * Parent-UUID: 065dc3a6-b9ec-402b-acb8-430631e5e7c8
+ * Version: 1.1.0
+ * Description: Logic to query the database and retrieve analyzer and field definitions for the schema command. Added validation to check if the database file exists before connecting to prevent creating empty artifacts.
  * Language: Go
  * Created-at: 2026-02-02T08:34:20.421Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), GLM-4.7 (v1.1.0)
  */
 
 
@@ -47,20 +47,25 @@ type FieldInfo struct {
 // GetSchema retrieves the schema information for the specified database.
 // It queries the analyzers and metadata_fields tables and groups fields by their analyzer.
 func GetSchema(ctx context.Context, dbName string) (*SchemaInfo, error) {
-	// 1. Resolve Database Path
+	// 1. Validate Database Exists (Prevents creating empty artifacts)
+	if err := ValidateDBExists(dbName); err != nil {
+		return nil, err
+	}
+
+	// 2. Resolve Database Path
 	dbPath, err := ResolveDBPath(dbName)
 	if err != nil {
 		return nil, err
 	}
 
-	// 2. Open Database Connection
+	// 3. Open Database Connection
 	database, err := db.OpenDB(dbPath)
 	if err != nil {
 		return nil, err
 	}
 	defer db.CloseDB(database)
 
-	// 3. Query Analyzers
+	// 4. Query Analyzers
 	analyzerQuery := `
 		SELECT analyzer_ref_id, analyzer_id, analyzer_name, analyzer_description, analyzer_version
 		FROM analyzers
@@ -89,7 +94,7 @@ func GetSchema(ctx context.Context, dbName string) (*SchemaInfo, error) {
 		return nil, err
 	}
 
-	// 4. Query Fields and Group by Analyzer
+	// 5. Query Fields and Group by Analyzer
 	fieldQuery := `
 		SELECT field_ref_id, field_name, field_display_name, field_type, field_description
 		FROM metadata_fields

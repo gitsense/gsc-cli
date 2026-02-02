@@ -1,12 +1,12 @@
 /**
  * Component: Manifest Exporter
- * Block-UUID: 2f473067-b354-4f9c-a7a8-8ec0825a8e2e
- * Parent-UUID: 6a4ad865-f0ba-4680-bb5a-753343131f21
- * Version: 1.0.1
- * Description: Logic to export manifest database content to Markdown or JSON format.
+ * Block-UUID: 1485e780-f70f-4394-8d78-5547128e15e4
+ * Parent-UUID: 2f473067-b354-4f9c-a7a8-8ec0825a8e2e
+ * Version: 1.0.2
+ * Description: Logic to export manifest database content to Markdown or JSON format. Added validation to check if the database file exists before connecting to prevent creating empty artifacts.
  * Language: Go
  * Created-at: 2026-02-02T08:33:44.702Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), GLM-4.7 (v1.0.2)
  */
 
 
@@ -24,26 +24,31 @@ import (
 
 // ExportDatabase exports the database content to the specified format.
 func ExportDatabase(ctx context.Context, dbName string, format string) (string, error) {
-	// 1. Resolve DB Path
+	// 1. Validate Database Exists (Prevents creating empty artifacts)
+	if err := ValidateDBExists(dbName); err != nil {
+		return "", err
+	}
+
+	// 2. Resolve DB Path
 	dbPath, err := ResolveDBPath(dbName)
 	if err != nil {
 		return "", err
 	}
 
-	// 2. Open Database
+	// 3. Open Database
 	database, err := db.OpenDB(dbPath)
 	if err != nil {
 		return "", err
 	}
 	defer db.CloseDB(database)
 
-	// 3. Fetch Data
+	// 4. Fetch Data
 	data, err := fetchExportData(ctx, database)
 	if err != nil {
 		return "", err
 	}
 
-	// 4. Format Output
+	// 5. Format Output
 	switch strings.ToLower(format) {
 	case "markdown", "md":
 		return formatMarkdown(data), nil
