@@ -1,12 +1,12 @@
 /*
  * Component: Schema Command
- * Block-UUID: 8f639204-4518-4bd1-bb58-dc6576a2b181
- * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: CLI command for inspecting the schema of a manifest database, listing analyzers and their fields.
+ * Block-UUID: 0953e11d-eb18-413e-b102-b986243f1e6e
+ * Parent-UUID: 8f639204-4518-4bd1-bb58-dc6576a2b181
+ * Version: 1.1.0
+ * Description: CLI command for inspecting the schema of a manifest database, listing analyzers and their fields. Removed unused getter function.
  * Language: Go
  * Created-at: 2026-02-02T07:56:00.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0)
  */
 
 
@@ -122,9 +122,4 @@ func printSchemaCSV(schema *manifest.SchemaInfo) {
 	}
 
 	output.FormatCSV(headers, rows)
-}
-
-// GetSchemaCommand returns the schema command for registration
-func GetSchemaCommand() *cobra.Command {
-	return schemaCmd
 }

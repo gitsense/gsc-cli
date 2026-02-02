@@ -1,12 +1,12 @@
 /*
  * Component: Doctor Command
- * Block-UUID: ccd42669-9980-4b46-b923-59e27102570b
- * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: CLI command for running health checks on the .gitsense environment and databases.
+ * Block-UUID: c8efe193-47fa-450e-953c-d44b57b5185f
+ * Parent-UUID: ccd42669-9980-4b46-b923-59e27102570b
+ * Version: 1.1.0
+ * Description: CLI command for running health checks on the .gitsense environment and databases. Removed unused getter function.
  * Language: Go
  * Created-at: 2026-02-02T07:58:00.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0)
  */
 
 
@@ -95,9 +95,4 @@ func printDoctorReport(report *manifest.DoctorReport, verbose bool) {
 
 		fmt.Printf("%s%s %s\033[0m %s\n", statusColor, statusIcon, check.Name, check.Message)
 	}
-}
-
-// GetDoctorCommand returns the doctor command for registration
-func GetDoctorCommand() *cobra.Command {
-	return doctorCmd
 }

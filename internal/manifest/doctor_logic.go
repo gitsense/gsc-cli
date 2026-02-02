@@ -1,12 +1,12 @@
 /*
  * Component: Doctor Logic
- * Block-UUID: 15b0632a-1b37-4a1c-b2e7-ad4080deae66
- * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: Logic to perform health checks on the .gitsense environment, including directory, registry, and database validation.
+ * Block-UUID: 3dba2ac2-c61d-4822-8baf-2d98c047df0e
+ * Parent-UUID: 15b0632a-1b37-4a1c-b2e7-ad4080deae66
+ * Version: 1.1.0
+ * Description: Logic to perform health checks on the .gitsense environment, including directory, registry, and database validation. Removed unused ValidateRegistryJSON function.
  * Language: Go
  * Created-at: 2026-02-02T07:57:00.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0)
  */
 
 
@@ -14,7 +14,6 @@ package manifest
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -29,8 +28,8 @@ import (
 
 // DoctorReport represents the result of a health check.
 type DoctorReport struct {
-	IsHealthy bool         `json:"is_healthy"`
-	Checks    []CheckResult `json:"checks"`
+	IsHealthy bool           `json:"is_healthy"`
+	Checks    []CheckResult  `json:"checks"`
 }
 
 // CheckResult represents the result of a single health check.
@@ -196,19 +195,4 @@ func RunDoctor(ctx context.Context, fix bool) (*DoctorReport, error) {
 	}
 
 	return report, nil
-}
-
-// ValidateRegistryJSON checks if the registry file contains valid JSON.
-func ValidateRegistryJSON(path string) error {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return err
-	}
-
-	var raw map[string]interface{}
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return err
-	}
-
-	return nil
 }

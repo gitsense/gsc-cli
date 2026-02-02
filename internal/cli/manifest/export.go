@@ -1,12 +1,12 @@
 /*
  * Component: Manifest Export Command
- * Block-UUID: 93fdc4fe-7a6d-4555-925f-70a4b9c1d87d
- * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: CLI command definition for exporting a manifest database to a human-readable format (Markdown or JSON).
+ * Block-UUID: d119be58-653b-43da-b1dc-acc6a78cf45e
+ * Parent-UUID: 93fdc4fe-7a6d-4555-925f-70a4b9c1d87d
+ * Version: 1.1.0
+ * Description: CLI command definition for exporting a manifest database to a human-readable format (Markdown or JSON). Removed unused getter function.
  * Language: Go
  * Created-at: 2026-02-02T08:00:00.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0)
  */
 
 
@@ -66,9 +66,4 @@ func init() {
 	// Add flags
 	exportCmd.Flags().StringVarP(&exportFormat, "format", "f", "markdown", "Output format (markdown, json)")
 	exportCmd.Flags().StringVarP(&exportOutput, "output", "o", "", "Output file path (default: stdout)")
-}
-
-// GetExportCommand returns the export command for registration
-func GetExportCommand() *cobra.Command {
-	return exportCmd
 }

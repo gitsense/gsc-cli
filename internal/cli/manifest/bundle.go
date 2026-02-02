@@ -1,12 +1,12 @@
 /*
  * Component: Manifest Bundle Command
- * Block-UUID: 612e37d9-20da-4ccb-8ad1-6ffc95312246
- * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: CLI command definition for generating context bundles from a manifest database using SQL queries.
+ * Block-UUID: 535bc371-99a6-4b3b-8d58-fcb8cbb9f210
+ * Parent-UUID: 612e37d9-20da-4ccb-8ad1-6ffc95312246
+ * Version: 1.1.0
+ * Description: CLI command definition for generating context bundles from a manifest database using SQL queries. Removed unused getter function.
  * Language: Go
  * Created-at: 2026-02-02T08:10:00.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0)
  */
 
 
@@ -22,7 +22,7 @@ import (
 )
 
 var (
-	bundleQuery string
+	bundleQuery  string
 	bundleFormat string
 )
 
@@ -59,9 +59,4 @@ func init() {
 	
 	// Mark query as required
 	bundleCmd.MarkFlagRequired("query")
-}
-
-// GetBundleCommand returns the bundle command for registration
-func GetBundleCommand() *cobra.Command {
-	return bundleCmd
 }
