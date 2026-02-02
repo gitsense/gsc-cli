@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Manifest Initializer
- * Block-UUID: b7473786-f319-4b8f-b8b5-9771bbacb10e
- * Parent-UUID: fa268907-2296-4005-8f59-ca1494f3db1f
- * Version: 1.2.0
+ * Block-UUID: 5db9b412-9a44-4ec7-9e51-1b32dc1caae1
+ * Parent-UUID: b7473786-f319-4b8f-b8b5-9771bbacb10e
+ * Version: 1.3.0
  * Description: Logic to initialize the .gitsense directory structure and registry file.
  * Language: Go
- * Created-at: 2026-02-02T05:30:00Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), Claude Haiku 4.5 (v1.2.0)
+ * Created-at: 2026-02-02T07:12:37.835Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), Claude Haiku 4.5 (v1.2.0), GLM-4.7 (v1.3.0)
  */
 
 
@@ -33,13 +33,7 @@ func InitializeGitSense() error {
 	// 1. Find Project Root
 	projectRoot, err := git.FindProjectRoot()
 	if err != nil {
-		// If .gitsense doesn't exist yet, use current working directory
-		cwd, err := os.Getwd()
-		if err != nil {
-			return fmt.Errorf("failed to get current working directory: %w", err)
-		}
-		projectRoot = cwd
-		logger.Info("Using current directory as project root: %s", projectRoot)
+		return fmt.Errorf("GitSense can only be initialized within a Git repository. Error: %w", err)
 	}
 
 	gitsenseDir := filepath.Join(projectRoot, settings.GitSenseDir)
