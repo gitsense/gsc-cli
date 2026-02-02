@@ -17,7 +17,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/yourusername/gsc-cli/internal/manifest"
-	"github.com/yourusername/gsc-cli/internal/output"
 	"github.com/yourusername/gsc-cli/pkg/logger"
 )
 

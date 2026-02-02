@@ -1,12 +1,12 @@
 /*
  * Component: Manifest Importer
- * Block-UUID: 83aa4b6d-2fda-4e12-8cc9-93fe09674604
- * Parent-UUID: 8f00e226-bc54-4646-9416-8adec3b7554f
- * Version: 1.1.1
- * Description: Logic to parse a JSON manifest file and import its data into a SQLite database.
+ * Block-UUID: 73821386-dc86-460a-a72d-0fc60a2dd3d1
+ * Parent-UUID: 83aa4b6d-2fda-4e12-8cc9-93fe09674604
+ * Version: 1.2.0
+ * Description: Logic to parse a JSON manifest file and import its data into a SQLite database. Updated to prioritize the database_name field from the manifest JSON over the filename.
  * Language: Go
  * Created-at: 2026-02-02T05:30:00Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.1.1)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.2.0)
  */
 
 
@@ -18,6 +18,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/yourusername/gsc-cli/internal/db"
 	"github.com/yourusername/gsc-cli/internal/registry"
@@ -26,7 +28,7 @@ import (
 
 // ImportManifest reads a JSON manifest file and imports it into the specified SQLite database.
 func ImportManifest(ctx context.Context, jsonPath string, dbName string) error {
-	logger.Info("Starting import from %s to database %s...", jsonPath, dbName)
+	logger.Info("Starting import from %s...", jsonPath)
 
 	// 1. Read and Parse JSON
 	data, err := os.ReadFile(jsonPath)
@@ -44,25 +46,39 @@ func ImportManifest(ctx context.Context, jsonPath string, dbName string) error {
 		return fmt.Errorf("manifest validation failed: %w", err)
 	}
 
-	// 3. Resolve Database Path
+	// 3. Resolve Database Name
+	// Priority: CLI arg > JSON field > Filename
+	if dbName == "" {
+		if manifestFile.Manifest.DatabaseName != "" {
+			dbName = manifestFile.Manifest.DatabaseName
+			logger.Info("Using database name from manifest: %s", dbName)
+		} else {
+			// Fallback to filename derivation
+			base := filepath.Base(jsonPath)
+			dbName = strings.TrimSuffix(base, filepath.Ext(base))
+			logger.Info("Using database name derived from filename: %s", dbName)
+		}
+	}
+
+	// 4. Resolve Database Path
 	dbPath, err := ResolveDBPath(dbName)
 	if err != nil {
 		return fmt.Errorf("failed to resolve database path: %w", err)
 	}
 
-	// 4. Open Database Connection
+	// 5. Open Database Connection
 	database, err := db.OpenDB(dbPath)
 	if err != nil {
 		return fmt.Errorf("failed to open database: %w", err)
 	}
 	defer db.CloseDB(database)
 
-	// 5. Create Schema (if not exists)
+	// 6. Create Schema (if not exists)
 	if err := db.CreateSchema(database); err != nil {
 		return fmt.Errorf("failed to create database schema: %w", err)
 	}
 
-	// 6. Begin Transaction
+	// 7. Begin Transaction
 	tx, err := database.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
@@ -73,27 +89,27 @@ func ImportManifest(ctx context.Context, jsonPath string, dbName string) error {
 		}
 	}()
 
-	// 7. Insert Manifest Info
+	// 8. Insert Manifest Info
 	if err := insertManifestInfo(tx, &manifestFile, dbPath); err != nil {
 		return err
 	}
 
-	// 8. Insert Reference Data (Repositories, Branches, Analyzers, Fields)
+	// 9. Insert Reference Data (Repositories, Branches, Analyzers, Fields)
 	if err := insertReferenceData(tx, &manifestFile); err != nil {
 		return err
 	}
 
-	// 9. Insert File Data and Metadata
+	// 10. Insert File Data and Metadata
 	if err := insertFileData(ctx, tx, &manifestFile); err != nil {
 		return err
 	}
 
-	// 10. Commit Transaction
+	// 11. Commit Transaction
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	// 11. Update Registry
+	// 12. Update Registry
 	entry := registry.RegistryEntry{
 		Name:        manifestFile.Manifest.Name,
 		Description: manifestFile.Manifest.Description,

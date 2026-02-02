@@ -1,12 +1,12 @@
 /**
  * Component: Manifest Root Command
- * Block-UUID: 458d0659-00ee-4903-ac2d-9d4572a7db1a
- * Parent-UUID: 783977f9-ee5f-466f-9cdf-bef6b69f5791
- * Version: 1.2.0
+ * Block-UUID: 52a6e21f-bbc1-4fda-b3d4-2241c3737d0c
+ * Parent-UUID: 458d0659-00ee-4903-ac2d-9d4572a7db1a
+ * Version: 1.3.0
  * Description: Defines the root command for the 'manifest' subcommand group, serving as the parent for init, import, and list.
  * Language: Go
- * Created-at: 2026-02-02T08:12:02.953Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0)
+ * Created-at: 2026-02-02T08:42:21.341Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), Claude Haiku 4.5 (v1.3.0)
  */
 
 
@@ -40,7 +40,8 @@ func init() {
 	Cmd.AddCommand(listCmd)
 	Cmd.AddCommand(exportCmd)
 	Cmd.AddCommand(bundleCmd)
+	Cmd.AddCommand(schemaCmd)
+	Cmd.AddCommand(doctorCmd)
 
 	logger.Debug("Manifest root command initialized")
 }
-

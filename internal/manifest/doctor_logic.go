@@ -1,12 +1,12 @@
 /**
  * Component: Doctor Logic
- * Block-UUID: 9cd2ccfc-4328-41e0-b33e-6c99dcde32c7
- * Parent-UUID: 3dba2ac2-c61d-4822-8baf-2d98c047df0e
- * Version: 1.1.1
+ * Block-UUID: 2f5bd155-1923-4143-81f7-7d709bf69b54
+ * Parent-UUID: 9cd2ccfc-4328-41e0-b33e-6c99dcde32c7
+ * Version: 1.1.2
  * Description: Logic to perform health checks on the .gitsense environment, including directory, registry, and database validation. Removed unused ValidateRegistryJSON function.
  * Language: Go
- * Created-at: 2026-02-02T08:32:35.212Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), Claude Haiku 4.5 (v1.1.1)
+ * Created-at: 2026-02-02T08:37:58.918Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), Claude Haiku 4.5 (v1.1.1), GLM-4.7 (v1.1.2)
  */
 
 
@@ -22,6 +22,7 @@ import (
 	"github.com/yourusername/gsc-cli/internal/db"
 	"github.com/yourusername/gsc-cli/internal/git"
 	"github.com/yourusername/gsc-cli/internal/registry"
+	"github.com/yourusername/gsc-cli/pkg/settings"
 )
 
 // DoctorReport represents the result of a health check.
@@ -161,7 +162,7 @@ func RunDoctor(ctx context.Context, fix bool) (*DoctorReport, error) {
 			// Check if it's a .db file
 			if strings.HasSuffix(name, ".db") {
 				dbName := strings.TrimSuffix(name, ".db")
-				
+
 				// Check if it's in the registry
 				found := false
 				for _, regEntry := range reg.Databases {
