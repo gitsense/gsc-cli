@@ -1,12 +1,12 @@
 /**
  * Component: Query Command
- * Block-UUID: 21624492-9b61-4105-a996-8fd41b201ac0
- * Parent-UUID: 0396cfbd-f2dc-4fc7-bb4c-2cbe5f11e3f0
- * Version: 1.0.3
+ * Block-UUID: c5da899d-3bf3-4ce3-8f0d-eed7d6951fe8
+ * Parent-UUID: 21624492-9b61-4105-a996-8fd41b201ac0
+ * Version: 1.0.4
  * Description: CLI command definition for 'gsc query', supporting hierarchical discovery, stateful defaults, and simple value matching.
  * Language: Go
- * Created-at: 2026-02-02T19:14:52.597Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), Claude Haiku 4.5 (v1.0.2), GLM-4.7 (v1.0.3)
+ * Created-at: 2026-02-02T19:22:44.919Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), Claude Haiku 4.5 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4)
  */
 
 
@@ -39,6 +39,33 @@ var queryCmd = &cobra.Command{
 	Long: `Find files in a focused database by matching a metadata field value.
 Supports hierarchical discovery (--list), stateful defaults (--set-default),
 and simple value matching with OR logic (comma-separated values).`,
+	Example: `  # 1. Discover what databases are available
+  gsc query --list
+
+  # 2. Explore fields in a specific database
+  gsc query --db payments --list
+
+  # 3. See what values exist for a field
+  gsc query --db payments --field risk_level --list
+
+  # 4. Set your workspace context
+  gsc query --set-default db=payments
+  gsc query --set-default field=risk_level
+
+  # 5. Check your current context
+  gsc query
+
+  # 6. Query using defaults (efficient!)
+  gsc query --value critical
+
+  # 7. Advanced: Multiple values (OR logic)
+  gsc query --value critical,high
+
+  # 8. Advanced: JSON output for agents
+  gsc query --value critical --format json
+
+  # 9. Override defaults for a one-off query
+  gsc query --db auth --field parent_topics --value authentication`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
 

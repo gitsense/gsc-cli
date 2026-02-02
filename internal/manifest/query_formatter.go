@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Query Output Formatter
- * Block-UUID: 61b38b90-d5e3-420d-b937-cbd8414afd21
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 2fbad423-a793-469f-9d3e-9ff30b47bcab
+ * Parent-UUID: 61b38b90-d5e3-420d-b937-cbd8414afd21
+ * Version: 1.0.1
  * Description: Formats query results, list results, and status views for the query command into JSON or table format.
  * Language: Go
- * Created-at: 2026-02-02T18:52:00.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Created-at: 2026-02-02T19:30:24.356Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1)
  */
 
 
@@ -132,8 +132,11 @@ func FormatStatusView(config *QueryConfig) string {
 	sb.WriteString(fmt.Sprintf("  Field:    %s\n", getStatusValue(config.Query.DefaultField)))
 	sb.WriteString(fmt.Sprintf("  Format:   %s\n", getStatusValue(config.Query.DefaultFormat)))
 	sb.WriteString("\n")
+	sb.WriteString("Need help? Run 'gsc query --help' for detailed documentation.\n")
+	sb.WriteString("\n")
 	sb.WriteString("Quick Actions:\n")
 	sb.WriteString("  - Run 'gsc query --list' to see all databases.\n")
+	sb.WriteString("  - Run 'gsc query --set-default db=<name>' to set a default database.\n")
 	sb.WriteString("  - Run 'gsc query --value <val>' to search using defaults.\n")
 	sb.WriteString("  - Run 'gsc query --clear-default <key>' to reset.\n")
 
