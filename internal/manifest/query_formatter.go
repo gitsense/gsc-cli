@@ -1,12 +1,12 @@
 /**
  * Component: Query Output Formatter
- * Block-UUID: 2fbad423-a793-469f-9d3e-9ff30b47bcab
- * Parent-UUID: 61b38b90-d5e3-420d-b937-cbd8414afd21
- * Version: 1.0.1
- * Description: Formats query results, list results, and status views for the query command into JSON or table format.
+ * Block-UUID: b86ffdeb-2ea9-4d6e-92f7-ace17f641cf3
+ * Parent-UUID: 2fbad423-a793-469f-9d3e-9ff30b47bcab
+ * Version: 1.0.2
+ * Description: Formats query results, list results, and status views. Updated to include footer hints for hierarchical navigation.
  * Language: Go
- * Created-at: 2026-02-02T19:30:24.356Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1)
+ * Created-at: 2026-02-02T19:55:00.000Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2)
  */
 
 
@@ -32,7 +32,6 @@ func FormatQueryResults(results []QueryResult, format string) string {
 	}
 }
 
-// formatQueryResultsJSON formats query results as a JSON array.
 func formatQueryResultsJSON(results []QueryResult) string {
 	bytes, err := json.MarshalIndent(results, "", "  ")
 	if err != nil {
@@ -41,7 +40,6 @@ func formatQueryResultsJSON(results []QueryResult) string {
 	return string(bytes)
 }
 
-// formatQueryResultsTable formats query results as a text table.
 func formatQueryResultsTable(results []QueryResult) string {
 	if len(results) == 0 {
 		return "No results found."
@@ -58,7 +56,6 @@ func formatQueryResultsTable(results []QueryResult) string {
 }
 
 // FormatListResult formats a ListResult into the specified format.
-// It handles the three levels: database, field, and value.
 func FormatListResult(listResult *ListResult, format string) string {
 	switch strings.ToLower(format) {
 	case "json":
@@ -70,7 +67,6 @@ func FormatListResult(listResult *ListResult, format string) string {
 	}
 }
 
-// formatListResultJSON formats a list result as JSON.
 func formatListResultJSON(listResult *ListResult) string {
 	bytes, err := json.MarshalIndent(listResult, "", "  ")
 	if err != nil {
@@ -79,7 +75,6 @@ func formatListResultJSON(listResult *ListResult) string {
 	return string(bytes)
 }
 
-// formatListResultTable formats a list result as a text table.
 func formatListResultTable(listResult *ListResult) string {
 	if len(listResult.Items) == 0 {
 		return "No items found."
@@ -87,6 +82,7 @@ func formatListResultTable(listResult *ListResult) string {
 
 	var headers []string
 	var rows [][]string
+	var footer string
 
 	switch listResult.Level {
 	case "database":
@@ -98,6 +94,7 @@ func formatListResultTable(listResult *ListResult) string {
 				fmt.Sprintf("%d", item.Count),
 			})
 		}
+		footer = "Hint: Use 'gsc query --db <name> --list' to see fields in a database."
 	case "field":
 		headers = []string{"Field Name", "Type", "Description"}
 		for _, item := range listResult.Items {
@@ -107,6 +104,7 @@ func formatListResultTable(listResult *ListResult) string {
 				item.Description,
 			})
 		}
+		footer = "Hint: Use 'gsc query --field <name> --list' to see values for a field.\nHint: Use 'gsc query --list-db' to see all databases."
 	case "value":
 		headers = []string{"Value", "Count"}
 		for _, item := range listResult.Items {
@@ -115,15 +113,16 @@ func formatListResultTable(listResult *ListResult) string {
 				fmt.Sprintf("%d", item.Count),
 			})
 		}
+		footer = "Hint: Use 'gsc query --value <val>' to find files.\nHint: Use 'gsc query --list' to go back to fields."
 	default:
 		return fmt.Sprintf("Unknown list level: %s", listResult.Level)
 	}
 
-	return output.FormatTable(headers, rows)
+	table := output.FormatTable(headers, rows)
+	return fmt.Sprintf("%s\n%s\n", table, footer)
 }
 
 // FormatStatusView formats the current query context as a status view.
-// This is displayed when the user runs `gsc query` with no arguments.
 func FormatStatusView(config *QueryConfig) string {
 	var sb strings.Builder
 
@@ -135,7 +134,8 @@ func FormatStatusView(config *QueryConfig) string {
 	sb.WriteString("Need help? Run 'gsc query --help' for detailed documentation.\n")
 	sb.WriteString("\n")
 	sb.WriteString("Quick Actions:\n")
-	sb.WriteString("  - Run 'gsc query --list' to see all databases.\n")
+	sb.WriteString("  - Run 'gsc query --list' to see fields in the default database (or list all DBs).\n")
+	sb.WriteString("  - Run 'gsc query --list-db' to explicitly list all databases.\n")
 	sb.WriteString("  - Run 'gsc query --set-default db=<name>' to set a default database.\n")
 	sb.WriteString("  - Run 'gsc query --value <val>' to search using defaults.\n")
 	sb.WriteString("  - Run 'gsc query --clear-default <key>' to reset.\n")
@@ -143,7 +143,6 @@ func FormatStatusView(config *QueryConfig) string {
 	return sb.String()
 }
 
-// getStatusValue returns a placeholder string if the value is empty.
 func getStatusValue(value string) string {
 	if value == "" {
 		return "(none)"
