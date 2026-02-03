@@ -1,12 +1,12 @@
 /*
  * Component: Ripgrep Models
- * Block-UUID: bae19798-1185-46d5-86be-82b4fe5afcdf
- * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: Defines the Go structs for ripgrep operations, including raw matches and enriched results with metadata.
+ * Block-UUID: b808c94b-3dd8-48ae-b895-dd927251fc7a
+ * Parent-UUID: bae19798-1185-46d5-86be-82b4fe5afcdf
+ * Version: 1.1.0
+ * Description: Defines the Go structs for ripgrep operations, including raw matches, enriched results, and the new FileMetadataResult struct for the YAML/JSON appendix.
  * Language: Go
  * Created-at: 2026-02-02T18:46:00.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0)
  */
 
 
@@ -40,4 +40,13 @@ type RgOptions struct {
 	ContextLines  int    `json:"context_lines"`  // Number of context lines to show
 	CaseSensitive bool   `json:"case_sensitive"` // Whether the search is case-sensitive
 	FileType      string `json:"file_type"`      // Optional file type filter (e.g., "js", "py")
+}
+
+// FileMetadataResult represents the metadata for a single file found in the search.
+// It is used to generate the YAML/JSON appendix.
+type FileMetadataResult struct {
+	FilePath string                 `yaml:"file_path" json:"file_path"`
+	ChatID   int                    `yaml:"chat_id,omitempty" json:"chat_id,omitempty"`
+	Status   string                 `yaml:"status,omitempty" json:"status,omitempty"` // "found" or "not_found"
+	Fields   map[string]interface{} `yaml:"fields,omitempty" json:"fields,omitempty"`
 }

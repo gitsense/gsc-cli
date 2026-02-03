@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Output Formatter
- * Block-UUID: bfb52c34-495b-4680-8ba5-1571715364b5
- * Parent-UUID: 22b52dbd-bb89-49f6-bab3-1d9d6173cb13
- * Version: 1.2.0
- * Description: Provides utility functions to format data into JSON, Table, or CSV strings for CLI output. Added IsTerminal helper for TTY detection.
+ * Block-UUID: f24a8400-1ac9-4d41-b062-d477874ea5dd
+ * Parent-UUID: a571e35e-d1dd-4335-b6aa-96d39b4980e0
+ * Version: 1.4.0
+ * Description: Provides utility functions to format data into JSON, Table, or CSV strings. Added FormatMetadataYAML and FormatMetadataJSON to support the ripgrep metadata appendix.
  * Language: Go
- * Created-at: 2026-02-02T05:30:00.000Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0)
+ * Created-at: 2026-02-03T07:53:59.293Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
  */
 
 

@@ -1,12 +1,12 @@
 /**
  * Component: Ripgrep Executor
- * Block-UUID: 125c8f82-2a91-418c-8126-30ca12ddcd1c
- * Parent-UUID: 2cf4136b-58e5-4d29-8b97-8c7c1eb7fb09
- * Version: 1.0.1
- * Description: Executes ripgrep as a subprocess and parses its JSON output to extract file matches.
+ * Block-UUID: cc5c385a-d23c-4761-80ee-637657bd9c27
+ * Parent-UUID: 125c8f82-2a91-418c-8126-30ca12ddcd1c
+ * Version: 1.1.0
+ * Description: Executes ripgrep as a subprocess. Added ExecuteRipgrepRaw to support the dual-pass workflow, preserving terminal colors and standard formatting for the display pass.
  * Language: Go
  * Created-at: 2026-02-02T19:09:26.833Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), GLM-4.7 (v1.1.0)
  */
 
 
@@ -23,6 +23,7 @@ import (
 )
 
 // ExecuteRipgrep runs ripgrep with the specified options and returns the raw matches.
+// This is used for the "Discovery" pass (JSON mode).
 func ExecuteRipgrep(options RgOptions) ([]RgMatch, error) {
 	// 0. Check if ripgrep is installed
 	if _, err := exec.LookPath("rg"); err != nil {
@@ -32,7 +33,7 @@ func ExecuteRipgrep(options RgOptions) ([]RgMatch, error) {
 	// 1. Build ripgrep command
 	args := buildRipgrepArgs(options)
 	
-	logger.Info("Executing ripgrep", "pattern", options.Pattern, "args", strings.Join(args, " "))
+	logger.Info("Executing ripgrep (Discovery Pass)", "pattern", options.Pattern, "args", strings.Join(args, " "))
 
 	// 2. Create command
 	cmd := exec.Command("rg", args...)
@@ -92,7 +93,37 @@ func ExecuteRipgrep(options RgOptions) ([]RgMatch, error) {
 	return matches, nil
 }
 
-// buildRipgrepArgs constructs the argument list for the ripgrep command.
+// ExecuteRipgrepRaw runs ripgrep with color output enabled and returns the raw stdout string.
+// This is used for the "Display" pass to preserve terminal formatting.
+func ExecuteRipgrepRaw(pattern string, contextLines int, caseSensitive bool, fileType string) (string, error) {
+	// 0. Check if ripgrep is installed
+	if _, err := exec.LookPath("rg"); err != nil {
+		return "", fmt.Errorf("ripgrep is not installed or not in PATH. Please install ripgrep: https://github.com/BurntSushi/ripgrep")
+	}
+
+	// 1. Build ripgrep command for raw output
+	args := buildRawRipgrepArgs(pattern, contextLines, caseSensitive, fileType)
+	
+	logger.Info("Executing ripgrep (Display Pass)", "pattern", pattern, "args", strings.Join(args, " "))
+
+	// 2. Create command
+	cmd := exec.Command("rg", args...)
+
+	// 3. Run and capture output
+	output, err := cmd.Output()
+	if err != nil {
+		// Ripgrep returns exit code 1 if no matches found, which is not an error for us
+		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
+			logger.Info("Ripgrep found no matches")
+			return "", nil
+		}
+		return "", fmt.Errorf("ripgrep execution failed: %w", err)
+	}
+
+	return string(output), nil
+}
+
+// buildRipgrepArgs constructs the argument list for the ripgrep command (JSON mode).
 func buildRipgrepArgs(options RgOptions) []string {
 	args := []string{
 		"--json",           // Output in JSON format
@@ -117,6 +148,33 @@ func buildRipgrepArgs(options RgOptions) []string {
 
 	// Add the pattern
 	args = append(args, options.Pattern)
+
+	return args
+}
+
+// buildRawRipgrepArgs constructs the argument list for the ripgrep command (Raw/Color mode).
+func buildRawRipgrepArgs(pattern string, contextLines int, caseSensitive bool, fileType string) []string {
+	args := []string{
+		"--color=always", // Force color output even when piped
+	}
+
+	// Add context lines if specified
+	if contextLines > 0 {
+		args = append(args, fmt.Sprintf("-C%d", contextLines))
+	}
+
+	// Add case sensitivity
+	if !caseSensitive {
+		args = append(args, "--smart-case")
+	}
+
+	// Add file type filter if specified
+	if fileType != "" {
+		args = append(args, fmt.Sprintf("--type=%s", fileType))
+	}
+
+	// Add the pattern
+	args = append(args, pattern)
 
 	return args
 }
