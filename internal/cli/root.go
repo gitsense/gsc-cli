@@ -1,12 +1,12 @@
 /**
  * Component: Root CLI Command
- * Block-UUID: dbc4b049-4f39-479a-bc33-234bbd38b913
- * Parent-UUID: 7e4bf85f-6839-454e-b45c-45424ad8c221
- * Version: 1.7.0
- * Description: Root command for the gsc CLI, registering the manifest subcommand group, top-level usage commands, and the new config command.
+ * Block-UUID: f7845bb7-f012-4b51-b60a-4d67539b497e
+ * Parent-UUID: dbc4b049-4f39-479a-bc33-234bbd38b913
+ * Version: 1.8.0
+ * Description: Root command for the gsc CLI, registering the manifest subcommand group, top-level usage commands, config command, and the new info command.
  * Language: Go
  * Created-at: 2026-02-02T19:10:57.816Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), Claude Haiku 4.5 (v1.3.0), Claude Haiku 4.5 (v1.4.0), GLM-4.7 (v1.5.0), Claude Haiku 4.5 (v1.6.0), GLM-4.7 (v1.7.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), Claude Haiku 4.5 (v1.3.0), Claude Haiku 4.5 (v1.4.0), GLM-4.7 (v1.5.0), Claude Haiku 4.5 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0)
  */
 
 
@@ -27,6 +27,7 @@ var rootCmd = &cobra.Command{
 It enables AI agents and developers to interact with structured metadata extracted from code repositories.
 
 Top-Level Commands:
+  info        Show current workspace context and status
   query       Find files by metadata value
   rg          Search code with metadata enrichment
   config      Manage context profiles and workspace settings
@@ -50,7 +51,10 @@ func init() {
 	// Register the config command
 	RegisterConfigCommand(rootCmd)
 
-	logger.Debug("Root command initialized with manifest, query, rg, and config commands")
+	// Register the info command
+	RegisterInfoCommand(rootCmd)
+
+	logger.Debug("Root command initialized with manifest, query, rg, config, and info commands")
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
