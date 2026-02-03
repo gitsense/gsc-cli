@@ -1,12 +1,12 @@
 /**
  * Component: Query Command
- * Block-UUID: 30371661-c28d-499b-b6e7-6eeb9e11f25c
+ * Block-UUID: e3bb7aff-b8b9-4586-99b7-a6af38bd4943
  * Parent-UUID: 1c10b1a0-b640-4dd3-b170-b6c6947510e8
- * Version: 2.1.1
- * Description: CLI command definition for 'gsc query'. Removed --set-default flags, added --quiet flag, and updated to use effective configuration (profiles). Updated to pass config to formatter for workspace headers.
+ * Version: 2.2.0
+ * Description: CLI command definition for 'gsc query'. Removed --set-default flags, added --quiet flag, and updated to use effective configuration (profiles). Updated to pass config to formatter for workspace headers. Updated list handlers to pass config for workspace headers.
  * Language: Go
- * Created-at: 2026-02-03T04:51:37.086Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), Claude Haiku 4.5 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), Gemini 3 Flash (v1.0.5), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.1.1)
+ * Created-at: 2026-02-02T19:55:00.000Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), Claude Haiku 4.5 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), Gemini 3 Flash (v1.0.5), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0)
  */
 
 
@@ -60,7 +60,11 @@ Supports hierarchical discovery (--list), context profiles, and simple value mat
 
 		// Priority 1: Explicit Database List
 		if queryListDB {
-			return handleList(ctx, "", "", queryFormat, queryQuiet)
+			config, err := manifest.GetEffectiveConfig()
+			if err != nil {
+				return fmt.Errorf("failed to load config: %w", err)
+			}
+			return handleList(ctx, "", "", queryFormat, queryQuiet, config)
 		}
 
 		// Priority 2: Hierarchical Discovery
@@ -77,7 +81,7 @@ func init() {
 	// Add flags
 	queryCmd.Flags().StringVarP(&queryDB, "db", "d", "", "Database name (or use default)")
 	queryCmd.Flags().StringVarP(&queryField, "field", "f", "", "Field name (or use default)")
-	queryCmd.Flags().StringVar(&queryValue, "value", "", "Value to match (comma-separated for OR)")
+	queryCmd.Flags().StringVarP(&queryValue, "value", "v", "", "Value to match (comma-separated for OR)")
 	queryCmd.Flags().BoolVarP(&queryList, "list", "l", false, "List fields or values (respects default DB)")
 	queryCmd.Flags().BoolVar(&queryListDB, "list-db", false, "Explicitly list all available databases")
 	queryCmd.Flags().StringVarP(&queryFormat, "format", "o", "table", "Output format (json, table)")
@@ -101,11 +105,11 @@ func handleHierarchicalList(ctx context.Context, dbName string, fieldName string
 		resolvedField = config.Query.DefaultField
 	}
 
-	return handleList(ctx, resolvedDB, resolvedField, format, quiet)
+	return handleList(ctx, resolvedDB, resolvedField, format, quiet, config)
 }
 
 // handleList performs the actual discovery call.
-func handleList(ctx context.Context, dbName string, fieldName string, format string, quiet bool) error {
+func handleList(ctx context.Context, dbName string, fieldName string, format string, quiet bool, config *manifest.QueryConfig) error {
 	logger.Info("Listing items", "database", dbName, "field", fieldName)
 
 	result, err := manifest.GetListResult(ctx, dbName, fieldName)
@@ -113,7 +117,7 @@ func handleList(ctx context.Context, dbName string, fieldName string, format str
 		return err
 	}
 
-	output := manifest.FormatListResult(result, format, quiet)
+	output := manifest.FormatListResult(result, format, quiet, config)
 	fmt.Println(output)
 	return nil
 }

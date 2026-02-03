@@ -68,7 +68,7 @@ func init() {
 
 	// Add global verbose flag
 	// -v for Info level, -vv for Debug level
-	rootCmd.PersistentFlags().CountP("verbose", "v", "Increase verbosity (-v for info, -vv for debug)")
+	rootCmd.PersistentFlags().CountP("verbose", "c", "Increase verbosity (-c for info, -cc for debug)")
 
 	logger.Debug("Root command initialized with manifest, query, rg, config, and info commands")
 }

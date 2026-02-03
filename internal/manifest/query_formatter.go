@@ -1,12 +1,12 @@
 /**
  * Component: Query Output Formatter
- * Block-UUID: 95d7ab0b-b3bf-4e9f-a088-61ba8a1b1f41
- * Parent-UUID: b986d05e-e7e9-4aec-ac5a-fc4b81e86142
- * Version: 2.1.0
- * Description: Formats query results, list results, and status views. Updated to support active profiles, quiet mode, TTY-aware decoration stripping, and prominent workspace headers.
+ * Block-UUID: ef906400-fec6-4308-b218-b0d28de7c6b9
+ * Parent-UUID: 95d7ab0b-b3bf-4e9f-a088-61ba8a1b1f41
+ * Version: 2.2.0
+ * Description: Formats query results, list results, and status views. Updated to support active profiles, quiet mode, TTY-aware decoration stripping, prominent workspace headers, and workspace headers for list results.
  * Language: Go
  * Created-at: 2026-02-02T19:55:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0)
  */
 
 
@@ -73,12 +73,13 @@ func formatQueryResultsTable(results []QueryResult, quiet bool, config *QueryCon
 }
 
 // FormatListResult formats a ListResult into the specified format.
-func FormatListResult(listResult *ListResult, format string, quiet bool) string {
+// Updated to accept config for workspace header generation in table format.
+func FormatListResult(listResult *ListResult, format string, quiet bool, config *QueryConfig) string {
 	switch strings.ToLower(format) {
 	case "json":
 		return formatListResultJSON(listResult)
 	case "table":
-		return formatListResultTable(listResult, quiet)
+		return formatListResultTable(listResult, quiet, config)
 	default:
 		return fmt.Sprintf("Unsupported format: %s", format)
 	}
@@ -92,9 +93,16 @@ func formatListResultJSON(listResult *ListResult) string {
 	return string(bytes)
 }
 
-func formatListResultTable(listResult *ListResult, quiet bool) string {
+func formatListResultTable(listResult *ListResult, quiet bool, config *QueryConfig) string {
 	if len(listResult.Items) == 0 {
 		return "No items found."
+	}
+
+	var sb strings.Builder
+
+	// Add Workspace Header if TTY and not quiet
+	if !quiet && output.IsTerminal() {
+		sb.WriteString(FormatWorkspaceHeader(config))
 	}
 
 	var headers []string
@@ -136,12 +144,14 @@ func formatListResultTable(listResult *ListResult, quiet bool) string {
 	}
 
 	table := output.FormatTable(headers, rows)
+	sb.WriteString(table)
 	
-	if quiet {
-		return table
+	if !quiet {
+		sb.WriteString("\n")
+		sb.WriteString(footer)
 	}
 
-	return fmt.Sprintf("%s\n%s\n", table, footer)
+	return sb.String()
 }
 
 // FormatStatusView formats the current query context as a status view.
