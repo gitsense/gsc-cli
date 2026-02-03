@@ -1,12 +1,12 @@
 /**
  * Component: Query Command
- * Block-UUID: 1c10b1a0-b640-4dd3-b170-b6c6947510e8
- * Parent-UUID: f1ab7561-c8d9-40b7-8d19-af9d71f875fd
- * Version: 2.1.0
+ * Block-UUID: 30371661-c28d-499b-b6e7-6eeb9e11f25c
+ * Parent-UUID: 1c10b1a0-b640-4dd3-b170-b6c6947510e8
+ * Version: 2.1.1
  * Description: CLI command definition for 'gsc query'. Removed --set-default flags, added --quiet flag, and updated to use effective configuration (profiles). Updated to pass config to formatter for workspace headers.
  * Language: Go
- * Created-at: 2026-02-02T19:55:00.000Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), Claude Haiku 4.5 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), Gemini 3 Flash (v1.0.5), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0)
+ * Created-at: 2026-02-03T04:51:37.086Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), Claude Haiku 4.5 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), Gemini 3 Flash (v1.0.5), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.1.1)
  */
 
 
@@ -77,7 +77,7 @@ func init() {
 	// Add flags
 	queryCmd.Flags().StringVarP(&queryDB, "db", "d", "", "Database name (or use default)")
 	queryCmd.Flags().StringVarP(&queryField, "field", "f", "", "Field name (or use default)")
-	queryCmd.Flags().StringVarP(&queryValue, "value", "v", "", "Value to match (comma-separated for OR)")
+	queryCmd.Flags().StringVar(&queryValue, "value", "", "Value to match (comma-separated for OR)")
 	queryCmd.Flags().BoolVarP(&queryList, "list", "l", false, "List fields or values (respects default DB)")
 	queryCmd.Flags().BoolVar(&queryListDB, "list-db", false, "Explicitly list all available databases")
 	queryCmd.Flags().StringVarP(&queryFormat, "format", "o", "table", "Output format (json, table)")
