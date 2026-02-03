@@ -1,12 +1,12 @@
 /**
  * Component: Root CLI Command
- * Block-UUID: 6f330be1-7265-4c75-9eb5-e06f827ec863
- * Parent-UUID: 937898dd-aecf-4e52-8ad8-0f56312763a5
- * Version: 1.10.0
- * Description: Root command for the gsc CLI, registering the manifest subcommand group, top-level usage commands, config command, and the new info command. Added global --verbose flag support and PersistentPreRun hook to manage log levels. Disabled the default 'completion' command to reduce test scope.
+ * Block-UUID: 38d34349-2913-43f2-b4c4-be7d5b8b7bc2
+ * Parent-UUID: 6f330be1-7265-4c75-9eb5-e06f827ec863
+ * Version: 1.11.0
+ * Description: Root command for the gsc CLI, registering the manifest subcommand group, top-level usage commands, config command, and the new info command. Replaced 'rg' with 'grep' command.
  * Language: Go
  * Created-at: 2026-02-02T19:10:57.816Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), Claude Haiku 4.5 (v1.3.0), Claude Haiku 4.5 (v1.4.0), GLM-4.7 (v1.5.0), Claude Haiku 4.5 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), Claude Haiku 4.5 (v1.3.0), Claude Haiku 4.5 (v1.4.0), GLM-4.7 (v1.5.0), Claude Haiku 4.5 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0)
  */
 
 
@@ -29,7 +29,7 @@ It enables AI agents and developers to interact with structured metadata extract
 Top-Level Commands:
   info        Show current workspace context and status
   query       Find files by metadata value
-  rg          Search code with metadata enrichment
+  grep        Search code with metadata enrichment
   config      Manage context profiles and workspace settings
 
 Management Commands:
@@ -61,7 +61,8 @@ func init() {
 
 	// Register top-level usage commands
 	rootCmd.AddCommand(queryCmd)
-	rootCmd.AddCommand(rgCmd)
+	// Replaced rgCmd with grepCmd
+	RegisterGrepCommand(rootCmd)
 
 	// Register the config command
 	RegisterConfigCommand(rootCmd)
@@ -73,7 +74,7 @@ func init() {
 	// -v for Info level, -vv for Debug level
 	rootCmd.PersistentFlags().CountP("verbose", "c", "Increase verbosity (-c for info, -cc for debug)")
 
-	logger.Debug("Root command initialized with manifest, query, rg, config, and info commands")
+	logger.Debug("Root command initialized with manifest, query, grep, config, and info commands")
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
