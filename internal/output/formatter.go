@@ -1,12 +1,12 @@
 /*
  * Component: Output Formatter
- * Block-UUID: 22b52dbd-bb89-49f6-bab3-1d9d6173cb13
- * Parent-UUID: 38043fb1-7c08-45fb-9c68-f0f648c5a060
- * Version: 1.1.0
- * Description: Provides utility functions to format data into JSON, Table, or CSV strings for CLI output.
+ * Block-UUID: bfb52c34-495b-4680-8ba5-1571715364b5
+ * Parent-UUID: 22b52dbd-bb89-49f6-bab3-1d9d6173cb13
+ * Version: 1.2.0
+ * Description: Provides utility functions to format data into JSON, Table, or CSV strings for CLI output. Added IsTerminal helper for TTY detection.
  * Language: Go
  * Created-at: 2026-02-02T05:30:00.000Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -16,7 +16,10 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
+
+	"github.com/mattn/go-isatty"
 )
 
 // FormatJSON marshals the provided data interface into a formatted JSON string and prints it.
@@ -163,4 +166,10 @@ func FormatDatabaseTable(databases []interface{}, format string) {
 	default:
 		fmt.Printf("Unsupported format: %s\n", format)
 	}
+}
+
+// IsTerminal checks if the output is being written to a terminal (TTY).
+// This is used to determine whether to show decorative headers/footers.
+func IsTerminal() bool {
+	return isatty.IsTerminal(os.Stdout.Fd())
 }

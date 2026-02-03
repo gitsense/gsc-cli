@@ -1,12 +1,12 @@
 /*
  * Component: Workspace Info Logic
- * Block-UUID: 3e691f33-8796-4c65-a4c7-b6d03a6e8c49
- * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: Logic to gather and format workspace information for the 'gsc info' command, including active profiles and available databases.
+ * Block-UUID: 28e72ae6-82bc-4c4e-ac50-eeeb50a9d543
+ * Parent-UUID: 3e691f33-8796-4c65-a4c7-b6d03a6e8c49
+ * Version: 1.1.0
+ * Description: Logic to gather and format workspace information for the 'gsc info' command, including active profiles and available databases. Extracted FormatWorkspaceHeader for reuse in query/rg commands.
  * Language: Go
  * Created-at: 2026-02-03T03:10:00.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0)
  */
 
 
@@ -95,23 +95,19 @@ func formatInfoJSON(info *WorkspaceInfo) string {
 func formatInfoTable(info *WorkspaceInfo, verbose bool) string {
 	var sb strings.Builder
 
-	// Header
-	sb.WriteString("╔════════════════════════════════════════════════════════════════╗\n")
-	sb.WriteString("║                    GitSense Workspace Info                     ║\n")
-	sb.WriteString("╚════════════════════════════════════════════════════════════════╝\n")
-	sb.WriteString("\n")
-
-	// Active Profile Section
-	if info.ActiveProfile != nil {
-		sb.WriteString(fmt.Sprintf("Active Profile:  %s\n", info.ActiveProfile.Name))
-		sb.WriteString(fmt.Sprintf("├─ Database:    %s\n", info.ActiveProfile.Settings.Global.DefaultDatabase))
-		sb.WriteString(fmt.Sprintf("├─ Field:       %s\n", info.ActiveProfile.Settings.Query.DefaultField))
-		sb.WriteString(fmt.Sprintf("└─ Format:      %s\n", info.ActiveProfile.Settings.Query.DefaultFormat))
+	// Use the extracted header function
+	// We need a QueryConfig to pass to it, so we construct a minimal one or load it
+	config, err := LoadConfig()
+	if err != nil {
+		// Fallback if config fails to load
+		sb.WriteString("╔════════════════════════════════════════════════════════════════╗\n")
+		sb.WriteString("║                    GitSense Workspace Info                     ║\n")
+		sb.WriteString("╚════════════════════════════════════════════════════════════════╝\n")
+		sb.WriteString("\n")
+		sb.WriteString("Active Profile:  (unknown)\n")
 	} else {
-		sb.WriteString("Active Profile:  (none)\n")
-		sb.WriteString("  Run 'gsc config use <name>' to activate a profile.\n")
+		sb.WriteString(FormatWorkspaceHeader(config))
 	}
-	sb.WriteString("\n")
 
 	// Available Databases Section
 	sb.WriteString("Available Databases:\n")
@@ -151,6 +147,30 @@ func formatInfoTable(info *WorkspaceInfo, verbose bool) string {
 		sb.WriteString(fmt.Sprintf("  GitSense Dir:      %s\n", info.GitSenseDir))
 		sb.WriteString(fmt.Sprintf("  Registry:          %s\n", info.RegistryPath))
 	}
+
+	return sb.String()
+}
+
+// FormatWorkspaceHeader returns the prominent workspace header box.
+// This is reused by query and rg commands to show context.
+func FormatWorkspaceHeader(config *QueryConfig) string {
+	var sb strings.Builder
+
+	sb.WriteString("╔════════════════════════════════════════════════════════════════╗\n")
+	sb.WriteString("║                    GitSense Workspace Info                     ║\n")
+	sb.WriteString("╚════════════════════════════════════════════════════════════════╝\n")
+	sb.WriteString("\n")
+
+	if config.ActiveProfile != "" {
+		sb.WriteString(fmt.Sprintf("Active Profile:  %s\n", config.ActiveProfile))
+		sb.WriteString(fmt.Sprintf("├─ Database:    %s\n", config.Global.DefaultDatabase))
+		sb.WriteString(fmt.Sprintf("├─ Field:       %s\n", config.Query.DefaultField))
+		sb.WriteString(fmt.Sprintf("└─ Format:      %s\n", config.Query.DefaultFormat))
+	} else {
+		sb.WriteString("Active Profile:  (none)\n")
+		sb.WriteString("  Run 'gsc config use <name>' to activate a profile.\n")
+	}
+	sb.WriteString("\n")
 
 	return sb.String()
 }

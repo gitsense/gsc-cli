@@ -1,12 +1,12 @@
 /**
  * Component: Query Output Formatter
- * Block-UUID: b986d05e-e7e9-4aec-ac5a-fc4b81e86142
- * Parent-UUID: b86ffdeb-2ea9-4d6e-92f7-ace17f641cf3
- * Version: 2.0.0
- * Description: Formats query results, list results, and status views. Updated to support active profiles, quiet mode, and TTY-aware decoration stripping.
+ * Block-UUID: 95d7ab0b-b3bf-4e9f-a088-61ba8a1b1f41
+ * Parent-UUID: b986d05e-e7e9-4aec-ac5a-fc4b81e86142
+ * Version: 2.1.0
+ * Description: Formats query results, list results, and status views. Updated to support active profiles, quiet mode, TTY-aware decoration stripping, and prominent workspace headers.
  * Language: Go
  * Created-at: 2026-02-02T19:55:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v2.0.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0)
  */
 
 
@@ -21,12 +21,13 @@ import (
 )
 
 // FormatQueryResults formats a slice of QueryResult into the specified format.
-func FormatQueryResults(results []QueryResult, format string, quiet bool) string {
+// Updated to accept config for workspace header generation.
+func FormatQueryResults(results []QueryResult, format string, quiet bool, config *QueryConfig) string {
 	switch strings.ToLower(format) {
 	case "json":
 		return formatQueryResultsJSON(results)
 	case "table":
-		return formatQueryResultsTable(results, quiet)
+		return formatQueryResultsTable(results, quiet, config)
 	default:
 		return fmt.Sprintf("Unsupported format: %s", format)
 	}
@@ -40,7 +41,7 @@ func formatQueryResultsJSON(results []QueryResult) string {
 	return string(bytes)
 }
 
-func formatQueryResultsTable(results []QueryResult, quiet bool) string {
+func formatQueryResultsTable(results []QueryResult, quiet bool, config *QueryConfig) string {
 	if len(results) == 0 {
 		return "No results found."
 	}
@@ -58,7 +59,15 @@ func formatQueryResultsTable(results []QueryResult, quiet bool) string {
 		return table
 	}
 
-	// Add context header/footer if not quiet
+	// Check if we are in a terminal
+	if output.IsTerminal() {
+		// Prepend the prominent header
+		header := FormatWorkspaceHeader(config)
+		return fmt.Sprintf("%s%s\n[Context: %s] | Switch: gsc config use <name>", 
+			header, table, getActiveProfileName())
+	}
+
+	// Fallback to simple header if piping
 	return fmt.Sprintf("[Context: %s]\n%s\n[Context: %s] | Switch: gsc config use <name>", 
 		getActiveProfileName(), table, getActiveProfileName())
 }

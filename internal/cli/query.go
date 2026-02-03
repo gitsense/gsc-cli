@@ -1,12 +1,12 @@
 /**
  * Component: Query Command
- * Block-UUID: f1ab7561-c8d9-40b7-8d19-af9d71f875fd
- * Parent-UUID: 47ef4276-947b-4db7-9de0-fea6d97569dc
- * Version: 2.0.0
- * Description: CLI command definition for 'gsc query'. Removed --set-default flags, added --quiet flag, and updated to use effective configuration (profiles).
+ * Block-UUID: 1c10b1a0-b640-4dd3-b170-b6c6947510e8
+ * Parent-UUID: f1ab7561-c8d9-40b7-8d19-af9d71f875fd
+ * Version: 2.1.0
+ * Description: CLI command definition for 'gsc query'. Removed --set-default flags, added --quiet flag, and updated to use effective configuration (profiles). Updated to pass config to formatter for workspace headers.
  * Language: Go
  * Created-at: 2026-02-02T19:55:00.000Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), Claude Haiku 4.5 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), Gemini 3 Flash (v1.0.5), GLM-4.7 (v2.0.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), Claude Haiku 4.5 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), Gemini 3 Flash (v1.0.5), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0)
  */
 
 
@@ -159,7 +159,8 @@ func handleQueryOrStatus(ctx context.Context, dbName string, fieldName string, v
 		return err
 	}
 
-	output := manifest.FormatQueryResults(results, resolvedFormat, quiet)
+	// Pass config to formatter to enable workspace headers
+	output := manifest.FormatQueryResults(results, resolvedFormat, quiet, config)
 	fmt.Println(output)
 	return nil
 }

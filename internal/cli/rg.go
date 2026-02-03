@@ -1,12 +1,12 @@
 /**
  * Component: Ripgrep Command
- * Block-UUID: 75329ea5-b5a0-435e-97e7-5c798d72526c
- * Parent-UUID: 239b91fb-0089-4f4e-ae3c-3f7601afd3c1
- * Version: 2.0.1
- * Description: CLI command definition for 'gsc rg', executing ripgrep searches and enriching results with manifest metadata. Updated to use effective configuration (profiles) and support quiet mode.
+ * Block-UUID: 13db18c2-83fe-40ef-8421-908ef3129174
+ * Parent-UUID: 75329ea5-b5a0-435e-97e7-5c798d72526c
+ * Version: 2.1.0
+ * Description: CLI command definition for 'gsc rg', executing ripgrep searches and enriching results with manifest metadata. Updated to use effective configuration (profiles), support quiet mode, and display prominent workspace headers in TTY.
  * Language: Go
  * Created-at: 2026-02-03T02:48:26.532Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), GLM-4.7 (v2.0.0), GLM-4.7 (v2.0.1)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), GLM-4.7 (v2.0.0), GLM-4.7 (v2.0.1), GLM-4.7 (v2.1.0)
  */
 
 
@@ -114,7 +114,8 @@ contextual information like risk levels, topics, or business impact.`,
 			if profileName == "" {
 				profileName = "default"
 			}
-			formatRgTable(enriched, rgQuiet, profileName)
+			// Pass config to formatter for workspace headers
+			formatRgTable(enriched, rgQuiet, profileName, config)
 		default:
 			return fmt.Errorf("unsupported format: %s", format)
 		}
@@ -145,7 +146,8 @@ func formatRgJSON(matches []manifest.EnrichedMatch) {
 
 // formatRgTable formats enriched matches as a text table.
 // It attempts to display common metadata fields if available.
-func formatRgTable(matches []manifest.EnrichedMatch, quiet bool, profileName string) {
+// Updated to accept config for workspace header generation.
+func formatRgTable(matches []manifest.EnrichedMatch, quiet bool, profileName string, config *manifest.QueryConfig) {
 	if len(matches) == 0 {
 		return
 	}
@@ -186,6 +188,15 @@ func formatRgTable(matches []manifest.EnrichedMatch, quiet bool, profileName str
 		return
 	}
 
+	// Check if we are in a terminal
+	if output.IsTerminal() {
+		// Prepend the prominent header
+		header := manifest.FormatWorkspaceHeader(config)
+		fmt.Printf("%s%s\n[Context: %s] | Switch: gsc config use <name>", header, table, profileName)
+		return
+	}
+
+	// Fallback to simple header if piping
 	fmt.Printf("[Context: %s]\n%s\n[Context: %s] | Switch: gsc config use <name>", profileName, table, profileName)
 }
 
