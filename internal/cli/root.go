@@ -1,12 +1,12 @@
 /**
  * Component: Root CLI Command
- * Block-UUID: 7e4bf85f-6839-454e-b45c-45424ad8c221
- * Parent-UUID: 31ee9181-ff62-4922-adb3-9ba8535f7652
- * Version: 1.6.0
- * Description: Root command for the gsc CLI, registering the manifest subcommand group and the new top-level query and rg commands.
+ * Block-UUID: dbc4b049-4f39-479a-bc33-234bbd38b913
+ * Parent-UUID: 7e4bf85f-6839-454e-b45c-45424ad8c221
+ * Version: 1.7.0
+ * Description: Root command for the gsc CLI, registering the manifest subcommand group, top-level usage commands, and the new config command.
  * Language: Go
  * Created-at: 2026-02-02T19:10:57.816Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), Claude Haiku 4.5 (v1.3.0), Claude Haiku 4.5 (v1.4.0), GLM-4.7 (v1.5.0), Claude Haiku 4.5 (v1.6.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), Claude Haiku 4.5 (v1.3.0), Claude Haiku 4.5 (v1.4.0), GLM-4.7 (v1.5.0), Claude Haiku 4.5 (v1.6.0), GLM-4.7 (v1.7.0)
  */
 
 
@@ -29,6 +29,7 @@ It enables AI agents and developers to interact with structured metadata extract
 Top-Level Commands:
   query       Find files by metadata value
   rg          Search code with metadata enrichment
+  config      Manage context profiles and workspace settings
 
 Management Commands:
   manifest     Initialize, import, and query metadata manifests`,
@@ -46,7 +47,10 @@ func init() {
 	rootCmd.AddCommand(queryCmd)
 	rootCmd.AddCommand(rgCmd)
 
-	logger.Debug("Root command initialized with manifest, query, and rg commands")
+	// Register the config command
+	RegisterConfigCommand(rootCmd)
+
+	logger.Debug("Root command initialized with manifest, query, rg, and config commands")
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Query Configuration Manager
- * Block-UUID: 50037455-9f00-423d-ad19-9ebc374cad70
- * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: Manages the .gitsense/config.json file, handling loading, saving, and updating of query and ripgrep defaults.
+ * Block-UUID: 08db1596-03dd-4709-9e85-1a7db0bbfa84
+ * Parent-UUID: 50037455-9f00-423d-ad19-9ebc374cad70
+ * Version: 2.0.0
+ * Description: Manages the .gitsense/config.json file and profile loading. Updated to support active profiles and configuration merging.
  * Language: Go
  * Created-at: 2026-02-02T18:48:00.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0)
  */
 
 
@@ -26,7 +26,20 @@ import (
 const (
 	// ConfigFileName is the name of the configuration file
 	ConfigFileName = "config.json"
+	// ProfilesDirName is the name of the directory containing profile definitions
+	ProfilesDirName = "profiles"
 )
+
+// QueryConfig represents the configuration stored in .gitsense/config.json.
+// Updated to include the active profile and global settings.
+type QueryConfig struct {
+	ActiveProfile string                 `json:"active_profile"` // The name of the currently active profile
+	Global        GlobalSettings          `json:"global"`         // Global settings (fallback if no profile is active)
+	Query         QuerySettings           `json:"query"`          // Query command settings
+	RG            RGSettings              `json:"rg"`             // Ripgrep command settings
+	Aliases       map[string]QueryAlias   `json:"aliases"`        // Saved query aliases (Phase 5)
+	History       []string                `json:"history"`        // Recent query history (Phase 5)
+}
 
 // LoadConfig loads the query configuration from .gitsense/config.json.
 // If the file does not exist, it returns a new, empty configuration.
@@ -91,36 +104,128 @@ func SaveConfig(config *QueryConfig) error {
 	return nil
 }
 
+// GetEffectiveConfig loads the configuration and merges the active profile if one is set.
+// This is the primary function that commands should use to get their settings.
+// Precedence: Profile Settings > Global Settings.
+func GetEffectiveConfig() (*QueryConfig, error) {
+	config, err := LoadConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	// If no active profile, return the base config as-is
+	if config.ActiveProfile == "" {
+		return config, nil
+	}
+
+	// Load the active profile
+	profile, err := LoadProfile(config.ActiveProfile)
+	if err != nil {
+		logger.Warning("Failed to load active profile '%s', using base config: %v", config.ActiveProfile, err)
+		return config, nil
+	}
+
+	// Merge profile settings into the config
+	return mergeConfig(config, profile), nil
+}
+
+// LoadProfile loads a specific profile JSON file from the .gitsense/profiles directory.
+func LoadProfile(name string) (*Profile, error) {
+	profilePath, err := resolveProfilePath(name)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := os.ReadFile(profilePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read profile file: %w", err)
+	}
+
+	var profile Profile
+	if err := json.Unmarshal(data, &profile); err != nil {
+		return nil, fmt.Errorf("failed to parse profile JSON: %w", err)
+	}
+
+	return &profile, nil
+}
+
+// SaveProfile saves a profile to the .gitsense/profiles directory.
+func SaveProfile(profile *Profile) error {
+	profilePath, err := resolveProfilePath(profile.Name)
+	if err != nil {
+		return err
+	}
+
+	// Ensure directory exists
+	dir := filepath.Dir(profilePath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+
+	data, err := json.MarshalIndent(profile, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	if err := os.WriteFile(profilePath, data, 0644); err != nil {
+		return err
+	}
+
+	logger.Success("Profile saved successfully", "name", profile.Name)
+	return nil
+}
+
+// mergeConfig merges profile settings into the base configuration.
+// Profile settings take precedence over global settings.
+func mergeConfig(base *QueryConfig, profile *Profile) *QueryConfig {
+	merged := *base // Copy base
+
+	// Merge Global Settings
+	if profile.Settings.Global.DefaultDatabase != "" {
+		merged.Global.DefaultDatabase = profile.Settings.Global.DefaultDatabase
+	}
+
+	// Merge Query Settings
+	if profile.Settings.Query.DefaultField != "" {
+		merged.Query.DefaultField = profile.Settings.Query.DefaultField
+	}
+	if profile.Settings.Query.DefaultFormat != "" {
+		merged.Query.DefaultFormat = profile.Settings.Query.DefaultFormat
+	}
+
+	// Merge RG Settings
+	if profile.Settings.RG.DefaultFormat != "" {
+		merged.RG.DefaultFormat = profile.Settings.RG.DefaultFormat
+	}
+	if profile.Settings.RG.DefaultContext != 0 {
+		merged.RG.DefaultContext = profile.Settings.RG.DefaultContext
+	}
+
+	return &merged
+}
+
 // NewQueryConfig creates a new, empty QueryConfig with default values.
 func NewQueryConfig() *QueryConfig {
 	return &QueryConfig{
-		Query: struct {
-			DefaultDatabase string                 `json:"default_database"`
-			DefaultField    string                 `json:"default_field"`
-			DefaultFormat   string                 `json:"default_format"`
-			Aliases         map[string]QueryAlias  `json:"aliases"`
-			History         []string               `json:"history"`
-		}{
+		ActiveProfile: "",
+		Global: GlobalSettings{
 			DefaultDatabase: "",
-			DefaultField:    "",
-			DefaultFormat:   "table",
-			Aliases:         make(map[string]QueryAlias),
-			History:         []string{},
 		},
-		RG: struct {
-			DefaultDatabase string `json:"default_database"`
-			DefaultFormat   string `json:"default_format"`
-			DefaultContext  int    `json:"default_context"`
-		}{
-			DefaultDatabase: "",
-			DefaultFormat:   "table",
-			DefaultContext:  0,
+		Query: QuerySettings{
+			DefaultField:  "",
+			DefaultFormat: "table",
 		},
+		RG: RGSettings{
+			DefaultFormat:  "table",
+			DefaultContext: 0,
+		},
+		Aliases: make(map[string]QueryAlias),
+		History: []string{},
 	}
 }
 
 // SetDefault sets a default value for a specific key in the configuration.
-// Supported keys: "db", "field", "format".
+// NOTE: This function is deprecated in favor of profiles but kept for compatibility.
 func SetDefault(key string, value string) error {
 	config, err := LoadConfig()
 	if err != nil {
@@ -129,8 +234,7 @@ func SetDefault(key string, value string) error {
 
 	switch key {
 	case "db":
-		config.Query.DefaultDatabase = value
-		config.RG.DefaultDatabase = value // Sync with RG
+		config.Global.DefaultDatabase = value
 	case "field":
 		config.Query.DefaultField = value
 	case "format":
@@ -143,6 +247,7 @@ func SetDefault(key string, value string) error {
 }
 
 // ClearDefault clears a default value for a specific key.
+// NOTE: This function is deprecated in favor of profiles but kept for compatibility.
 func ClearDefault(key string) error {
 	config, err := LoadConfig()
 	if err != nil {
@@ -151,12 +256,11 @@ func ClearDefault(key string) error {
 
 	switch key {
 	case "db":
-		config.Query.DefaultDatabase = ""
-		config.RG.DefaultDatabase = "" // Sync with RG
+		config.Global.DefaultDatabase = ""
 	case "field":
 		config.Query.DefaultField = ""
 	case "format":
-		config.Query.DefaultFormat = "table" // Reset to default
+		config.Query.DefaultFormat = "table"
 	default:
 		return fmt.Errorf("unknown default key: %s", key)
 	}
@@ -173,4 +277,15 @@ func resolveConfigPath() (string, error) {
 
 	configPath := filepath.Join(root, settings.GitSenseDir, ConfigFileName)
 	return configPath, nil
+}
+
+// resolveProfilePath constructs the absolute path to a profile JSON file.
+func resolveProfilePath(name string) (string, error) {
+	root, err := git.FindProjectRoot()
+	if err != nil {
+		return "", fmt.Errorf("failed to find project root: %w", err)
+	}
+
+	profilePath := filepath.Join(root, settings.GitSenseDir, ProfilesDirName, name+".json")
+	return profilePath, nil
 }

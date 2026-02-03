@@ -1,12 +1,12 @@
 /**
  * Component: Ripgrep Command
- * Block-UUID: e9fe1903-f470-40cc-aab0-0b0b50d1b3ea
- * Parent-UUID: 0a3b1b07-0070-4560-9700-3472dce3b8bc
- * Version: 1.0.1
- * Description: CLI command definition for 'gsc rg', executing ripgrep searches and enriching results with manifest metadata.
+ * Block-UUID: 75329ea5-b5a0-435e-97e7-5c798d72526c
+ * Parent-UUID: 239b91fb-0089-4f4e-ae3c-3f7601afd3c1
+ * Version: 2.0.1
+ * Description: CLI command definition for 'gsc rg', executing ripgrep searches and enriching results with manifest metadata. Updated to use effective configuration (profiles) and support quiet mode.
  * Language: Go
- * Created-at: 2026-02-02T19:08:42.603Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1)
+ * Created-at: 2026-02-03T02:48:26.532Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), GLM-4.7 (v2.0.0), GLM-4.7 (v2.0.1)
  */
 
 
@@ -30,6 +30,7 @@ var (
 	rgContext      int
 	rgCaseSensitive bool
 	rgFileType     string
+	rgQuiet        bool
 )
 
 // rgCmd represents the rg command
@@ -47,33 +48,45 @@ contextual information like risk levels, topics, or business impact.`,
 		}
 		pattern := args[0]
 
-		// 1. Load Config for Defaults
-		config, err := manifest.LoadConfig()
+		// 1. Load Effective Config (Merges active profile)
+		config, err := manifest.GetEffectiveConfig()
 		if err != nil {
 			return fmt.Errorf("failed to load config: %w", err)
 		}
 
-		// 2. Resolve Database Name (flag > default)
+		// 2. Resolve Database Name (flag > profile default > global default)
 		dbName := rgDB
 		if dbName == "" {
-			dbName = config.RG.DefaultDatabase
+			dbName = config.Global.DefaultDatabase
 		}
 
 		// 3. Validate Database
 		if dbName == "" {
-			return fmt.Errorf("database is required. Use --db flag or set default with 'gsc query --set-default db=<name>'")
+			return fmt.Errorf("database is required. Use --db flag or set a profile with 'gsc config use <name>'")
 		}
 
-		// 4. Construct Options
+		// 4. Resolve Format (flag > profile default)
+		format := rgFormat
+		if format == "" {
+			format = config.RG.DefaultFormat
+		}
+
+		// 5. Resolve Context (flag > profile default)
+		contextLines := rgContext
+		if contextLines == 0 {
+			contextLines = config.RG.DefaultContext
+		}
+
+		// 6. Construct Options
 		options := manifest.RgOptions{
 			Pattern:       pattern,
 			Database:      dbName,
-			ContextLines:  rgContext,
+			ContextLines:  contextLines,
 			CaseSensitive: rgCaseSensitive,
 			FileType:      rgFileType,
 		}
 
-		// 5. Execute Ripgrep
+		// 7. Execute Ripgrep
 		logger.Info("Searching for pattern", "pattern", pattern, "database", dbName)
 		matches, err := manifest.ExecuteRipgrep(options)
 		if err != nil {
@@ -85,20 +98,25 @@ contextual information like risk levels, topics, or business impact.`,
 			return nil
 		}
 
-		// 6. Enrich Matches
+		// 8. Enrich Matches
 		enriched, err := manifest.EnrichMatches(ctx, matches, dbName)
 		if err != nil {
 			return err
 		}
 
-		// 7. Format Output
-		switch strings.ToLower(rgFormat) {
+		// 9. Format Output
+		switch strings.ToLower(format) {
 		case "json":
 			formatRgJSON(enriched)
 		case "table":
-			formatRgTable(enriched)
+			// Resolve profile name for context headers
+			profileName := config.ActiveProfile
+			if profileName == "" {
+				profileName = "default"
+			}
+			formatRgTable(enriched, rgQuiet, profileName)
 		default:
-			return fmt.Errorf("unsupported format: %s", rgFormat)
+			return fmt.Errorf("unsupported format: %s", format)
 		}
 
 		return nil
@@ -107,11 +125,12 @@ contextual information like risk levels, topics, or business impact.`,
 
 func init() {
 	// Add flags
-	rgCmd.Flags().StringVarP(&rgDB, "db", "d", "", "Database name for enrichment (inherits from query default)")
+	rgCmd.Flags().StringVarP(&rgDB, "db", "d", "", "Database name for enrichment (inherits from profile)")
 	rgCmd.Flags().StringVarP(&rgFormat, "format", "f", "table", "Output format (json, table)")
 	rgCmd.Flags().IntVarP(&rgContext, "context", "C", 0, "Show N lines of context around matches")
 	rgCmd.Flags().BoolVar(&rgCaseSensitive, "case-sensitive", false, "Case-sensitive search")
 	rgCmd.Flags().StringVarP(&rgFileType, "type", "t", "", "Filter by file type (e.g., js, py)")
+	rgCmd.Flags().BoolVar(&rgQuiet, "quiet", false, "Suppress headers, footers, and hints (clean output)")
 }
 
 // formatRgJSON formats enriched matches as JSON.
@@ -126,7 +145,7 @@ func formatRgJSON(matches []manifest.EnrichedMatch) {
 
 // formatRgTable formats enriched matches as a text table.
 // It attempts to display common metadata fields if available.
-func formatRgTable(matches []manifest.EnrichedMatch) {
+func formatRgTable(matches []manifest.EnrichedMatch, quiet bool, profileName string) {
 	if len(matches) == 0 {
 		return
 	}
@@ -160,7 +179,14 @@ func formatRgTable(matches []manifest.EnrichedMatch) {
 		rows = append(rows, row)
 	}
 
-	fmt.Print(output.FormatTable(headers, rows))
+	table := output.FormatTable(headers, rows)
+	
+	if quiet {
+		fmt.Println(table)
+		return
+	}
+
+	fmt.Printf("[Context: %s]\n%s\n[Context: %s] | Switch: gsc config use <name>", profileName, table, profileName)
 }
 
 // getCommonMetadataFields finds metadata fields that appear in at least 50% of matches.

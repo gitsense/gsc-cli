@@ -1,12 +1,12 @@
 /**
  * Component: Query Output Formatter
- * Block-UUID: b86ffdeb-2ea9-4d6e-92f7-ace17f641cf3
- * Parent-UUID: 2fbad423-a793-469f-9d3e-9ff30b47bcab
- * Version: 1.0.2
- * Description: Formats query results, list results, and status views. Updated to include footer hints for hierarchical navigation.
+ * Block-UUID: b986d05e-e7e9-4aec-ac5a-fc4b81e86142
+ * Parent-UUID: b86ffdeb-2ea9-4d6e-92f7-ace17f641cf3
+ * Version: 2.0.0
+ * Description: Formats query results, list results, and status views. Updated to support active profiles, quiet mode, and TTY-aware decoration stripping.
  * Language: Go
  * Created-at: 2026-02-02T19:55:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v2.0.0)
  */
 
 
@@ -21,12 +21,12 @@ import (
 )
 
 // FormatQueryResults formats a slice of QueryResult into the specified format.
-func FormatQueryResults(results []QueryResult, format string) string {
+func FormatQueryResults(results []QueryResult, format string, quiet bool) string {
 	switch strings.ToLower(format) {
 	case "json":
 		return formatQueryResultsJSON(results)
 	case "table":
-		return formatQueryResultsTable(results)
+		return formatQueryResultsTable(results, quiet)
 	default:
 		return fmt.Sprintf("Unsupported format: %s", format)
 	}
@@ -40,7 +40,7 @@ func formatQueryResultsJSON(results []QueryResult) string {
 	return string(bytes)
 }
 
-func formatQueryResultsTable(results []QueryResult) string {
+func formatQueryResultsTable(results []QueryResult, quiet bool) string {
 	if len(results) == 0 {
 		return "No results found."
 	}
@@ -52,16 +52,24 @@ func formatQueryResultsTable(results []QueryResult) string {
 		rows = append(rows, []string{r.FilePath, fmt.Sprintf("%d", r.ChatID)})
 	}
 
-	return output.FormatTable(headers, rows)
+	table := output.FormatTable(headers, rows)
+	
+	if quiet {
+		return table
+	}
+
+	// Add context header/footer if not quiet
+	return fmt.Sprintf("[Context: %s]\n%s\n[Context: %s] | Switch: gsc config use <name>", 
+		getActiveProfileName(), table, getActiveProfileName())
 }
 
 // FormatListResult formats a ListResult into the specified format.
-func FormatListResult(listResult *ListResult, format string) string {
+func FormatListResult(listResult *ListResult, format string, quiet bool) string {
 	switch strings.ToLower(format) {
 	case "json":
 		return formatListResultJSON(listResult)
 	case "table":
-		return formatListResultTable(listResult)
+		return formatListResultTable(listResult, quiet)
 	default:
 		return fmt.Sprintf("Unsupported format: %s", format)
 	}
@@ -75,7 +83,7 @@ func formatListResultJSON(listResult *ListResult) string {
 	return string(bytes)
 }
 
-func formatListResultTable(listResult *ListResult) string {
+func formatListResultTable(listResult *ListResult, quiet bool) string {
 	if len(listResult.Items) == 0 {
 		return "No items found."
 	}
@@ -119,26 +127,40 @@ func formatListResultTable(listResult *ListResult) string {
 	}
 
 	table := output.FormatTable(headers, rows)
+	
+	if quiet {
+		return table
+	}
+
 	return fmt.Sprintf("%s\n%s\n", table, footer)
 }
 
 // FormatStatusView formats the current query context as a status view.
-func FormatStatusView(config *QueryConfig) string {
+func FormatStatusView(config *QueryConfig, quiet bool) string {
+	if quiet {
+		// In quiet mode, just output the active profile name or "none"
+		if config.ActiveProfile == "" {
+			return "none"
+		}
+		return config.ActiveProfile
+	}
+
 	var sb strings.Builder
 
-	sb.WriteString("Current Query Context (from .gitsense/config.json):\n")
-	sb.WriteString(fmt.Sprintf("  Database: %s\n", getStatusValue(config.Query.DefaultDatabase)))
-	sb.WriteString(fmt.Sprintf("  Field:    %s\n", getStatusValue(config.Query.DefaultField)))
-	sb.WriteString(fmt.Sprintf("  Format:   %s\n", getStatusValue(config.Query.DefaultFormat)))
+	sb.WriteString("Current Workspace:\n")
+	sb.WriteString(fmt.Sprintf("  Active Profile: %s\n", getStatusValue(config.ActiveProfile)))
+	sb.WriteString(fmt.Sprintf("  Database:       %s\n", getStatusValue(config.Global.DefaultDatabase)))
+	sb.WriteString(fmt.Sprintf("  Field:          %s\n", getStatusValue(config.Query.DefaultField)))
+	sb.WriteString(fmt.Sprintf("  Format:         %s\n", getStatusValue(config.Query.DefaultFormat)))
 	sb.WriteString("\n")
 	sb.WriteString("Need help? Run 'gsc query --help' for detailed documentation.\n")
 	sb.WriteString("\n")
 	sb.WriteString("Quick Actions:\n")
 	sb.WriteString("  - Run 'gsc query --list' to see fields in the default database (or list all DBs).\n")
 	sb.WriteString("  - Run 'gsc query --list-db' to explicitly list all databases.\n")
-	sb.WriteString("  - Run 'gsc query --set-default db=<name>' to set a default database.\n")
+	sb.WriteString("  - Run 'gsc config context list' to see available profiles.\n")
+	sb.WriteString("  - Run 'gsc config use <name>' to switch context.\n")
 	sb.WriteString("  - Run 'gsc query --value <val>' to search using defaults.\n")
-	sb.WriteString("  - Run 'gsc query --clear-default <key>' to reset.\n")
 
 	return sb.String()
 }
@@ -148,4 +170,17 @@ func getStatusValue(value string) string {
 		return "(none)"
 	}
 	return value
+}
+
+// getActiveProfileName is a helper to get the profile name from the current config.
+// It attempts to load the config to find the active profile name.
+func getActiveProfileName() string {
+	config, err := LoadConfig()
+	if err != nil {
+		return "unknown"
+	}
+	if config.ActiveProfile == "" {
+		return "default"
+	}
+	return config.ActiveProfile
 }

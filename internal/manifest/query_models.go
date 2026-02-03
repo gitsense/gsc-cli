@@ -40,23 +40,6 @@ type ListItem struct {
 	Count       int    `json:"count,omitempty"`       // Optional count (for values)
 }
 
-// QueryConfig represents the configuration stored in .gitsense/config.json.
-// This file manages shared defaults and aliases for the query and rg commands.
-type QueryConfig struct {
-	Query struct {
-		DefaultDatabase string                 `json:"default_database"` // Default database for queries
-		DefaultField    string                 `json:"default_field"`    // Default field for queries
-		DefaultFormat   string                 `json:"default_format"`   // Default output format
-		Aliases         map[string]QueryAlias  `json:"aliases"`         // Saved query aliases
-		History         []string               `json:"history"`         // Recent query history
-	} `json:"query"`
-	RG struct {
-		DefaultDatabase string `json:"default_database"` // Default database for ripgrep enrichment
-		DefaultFormat   string `json:"default_format"`   // Default output format for ripgrep
-		DefaultContext  int    `json:"default_context"`  // Default lines of context
-	} `json:"rg"`
-}
-
 // QueryAlias represents a saved query alias.
 type QueryAlias struct {
 	Database string `json:"database"` // The database to query
