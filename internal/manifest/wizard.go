@@ -1,12 +1,12 @@
 /*
  * Component: Interactive Profile Wizard
- * Block-UUID: 227e2c90-fa4b-4d93-ab35-095e912b513c
- * Parent-UUID: 32a3a2d9-f843-4885-b7ae-681aca198f98
- * Version: 1.1.0
- * Description: Interactive wizards for creating, updating, and selecting context profiles using the survey library. Handles user prompts, validation, and confirmation steps. Updated to make Description and Aliases optional in the interactive prompts.
+ * Block-UUID: 83298544-6ca6-4e03-b184-ef5b93cb5399
+ * Parent-UUID: 227e2c90-fa4b-4d93-ab35-095e912b513c
+ * Version: 1.2.0
+ * Description: Interactive wizards for creating, updating, and selecting context profiles using the survey library. Handles user prompts, validation, and confirmation steps. Updated to allow skipping Database and Field selection, enabling partial profile configurations (e.g., format-only profiles).
  * Language: Go
  * Created-at: 2026-02-03T05:45:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -49,6 +49,7 @@ func CreateProfileInteractive(ctx context.Context, name string) error {
 	}
 
 	var dbOptions []string
+	dbOptions = append(dbOptions, "(Skip - No Default Database)") // NEW: Allow skipping
 	for _, db := range reg.Databases {
 		dbOptions = append(dbOptions, db.Name)
 	}
@@ -62,23 +63,45 @@ func CreateProfileInteractive(ctx context.Context, name string) error {
 		return err
 	}
 
+	// Handle Skip option
+	if selectedDB == "(Skip - No Default Database)" {
+		selectedDB = ""
+	}
+
 	// 3. Select Field
-	fieldNames, err := ListFieldNames(ctx, selectedDB)
-	if err != nil {
-		return fmt.Errorf("failed to list fields for database '%s': %w", selectedDB, err)
-	}
-
-	if len(fieldNames) == 0 {
-		return fmt.Errorf("no fields found in database '%s'", selectedDB)
-	}
-
+	// Only ask for field if a database was selected, otherwise we can't list fields
 	var selectedField string
-	promptField := &survey.Select{
-		Message: "Choose a Default Query Field:",
-		Options: fieldNames,
-	}
-	if err := survey.AskOne(promptField, &selectedField); err != nil {
-		return err
+	if selectedDB != "" {
+		fieldNames, err := ListFieldNames(ctx, selectedDB)
+		if err != nil {
+			return fmt.Errorf("failed to list fields for database '%s': %w", selectedDB, err)
+		}
+
+		if len(fieldNames) == 0 {
+			return fmt.Errorf("no fields found in database '%s'", selectedDB)
+		}
+
+		var fieldOptions []string
+		fieldOptions = append(fieldOptions, "(Skip - No Default Field)") // NEW: Allow skipping
+		for _, field := range fieldNames {
+			fieldOptions = append(fieldOptions, field)
+		}
+
+		promptField := &survey.Select{
+			Message: "Choose a Default Query Field:",
+			Options: fieldOptions,
+		}
+		if err := survey.AskOne(promptField, &selectedField); err != nil {
+			return err
+		}
+
+		// Handle Skip option
+		if selectedField == "(Skip - No Default Field)" {
+			selectedField = ""
+		}
+	} else {
+		// If DB was skipped, Field must also be skipped
+		selectedField = ""
 	}
 
 	// 4. Aliases (Optional)
@@ -104,8 +127,19 @@ func CreateProfileInteractive(ctx context.Context, name string) error {
 	fmt.Printf("Profile Summary:\n")
 	fmt.Printf("  Name:        %s\n", name)
 	fmt.Printf("  Description: %s\n", description)
-	fmt.Printf("  Database:    %s\n", selectedDB)
-	fmt.Printf("  Field:       %s\n", selectedField)
+	
+	dbDisplay := selectedDB
+	if dbDisplay == "" {
+		dbDisplay = "(none)"
+	}
+	fmt.Printf("  Database:    %s\n", dbDisplay)
+
+	fieldDisplay := selectedField
+	if fieldDisplay == "" {
+		fieldDisplay = "(none)"
+	}
+	fmt.Printf("  Field:       %s\n", fieldDisplay)
+	
 	fmt.Printf("  Aliases:     %s\n", strings.Join(aliases, ", "))
 	fmt.Println("────────────────────────────────────────")
 
@@ -158,6 +192,7 @@ func UpdateProfileInteractive(ctx context.Context, name string) error {
 	}
 
 	var dbOptions []string
+	dbOptions = append(dbOptions, "(Skip - No Default Database)") // NEW: Allow skipping
 	for _, db := range reg.Databases {
 		dbOptions = append(dbOptions, db.Name)
 	}
@@ -172,20 +207,42 @@ func UpdateProfileInteractive(ctx context.Context, name string) error {
 		return err
 	}
 
-	// 4. Select Field
-	fieldNames, err := ListFieldNames(ctx, selectedDB)
-	if err != nil {
-		return fmt.Errorf("failed to list fields for database '%s': %w", selectedDB, err)
+	// Handle Skip option
+	if selectedDB == "(Skip - No Default Database)" {
+		selectedDB = ""
 	}
 
+	// 4. Select Field
+	// Only ask for field if a database was selected, otherwise we can't list fields
 	var selectedField string
-	promptField := &survey.Select{
-		Message: "Choose a Default Query Field:",
-		Options: fieldNames,
-		Default: profile.Settings.Query.DefaultField,
-	}
-	if err := survey.AskOne(promptField, &selectedField); err != nil {
-		return err
+	if selectedDB != "" {
+		fieldNames, err := ListFieldNames(ctx, selectedDB)
+		if err != nil {
+			return fmt.Errorf("failed to list fields for database '%s': %w", selectedDB, err)
+		}
+
+		var fieldOptions []string
+		fieldOptions = append(fieldOptions, "(Skip - No Default Field)") // NEW: Allow skipping
+		for _, field := range fieldNames {
+			fieldOptions = append(fieldOptions, field)
+		}
+
+		promptField := &survey.Select{
+			Message: "Choose a Default Query Field:",
+			Options: fieldOptions,
+			Default: profile.Settings.Query.DefaultField,
+		}
+		if err := survey.AskOne(promptField, &selectedField); err != nil {
+			return err
+		}
+
+		// Handle Skip option
+		if selectedField == "(Skip - No Default Field)" {
+			selectedField = ""
+		}
+	} else {
+		// If DB was skipped, Field must also be skipped
+		selectedField = ""
 	}
 
 	// 5. Manage Aliases (Optional)

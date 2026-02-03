@@ -1,12 +1,12 @@
 /**
  * Component: Root CLI Command
- * Block-UUID: 937898dd-aecf-4e52-8ad8-0f56312763a5
- * Parent-UUID: f7845bb7-f012-4b51-b60a-4d67539b497e
- * Version: 1.9.0
- * Description: Root command for the gsc CLI, registering the manifest subcommand group, top-level usage commands, config command, and the new info command. Added global --verbose flag support and PersistentPreRun hook to manage log levels.
+ * Block-UUID: 6f330be1-7265-4c75-9eb5-e06f827ec863
+ * Parent-UUID: 937898dd-aecf-4e52-8ad8-0f56312763a5
+ * Version: 1.10.0
+ * Description: Root command for the gsc CLI, registering the manifest subcommand group, top-level usage commands, config command, and the new info command. Added global --verbose flag support and PersistentPreRun hook to manage log levels. Disabled the default 'completion' command to reduce test scope.
  * Language: Go
  * Created-at: 2026-02-02T19:10:57.816Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), Claude Haiku 4.5 (v1.3.0), Claude Haiku 4.5 (v1.4.0), GLM-4.7 (v1.5.0), Claude Haiku 4.5 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), Claude Haiku 4.5 (v1.3.0), Claude Haiku 4.5 (v1.4.0), GLM-4.7 (v1.5.0), Claude Haiku 4.5 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0)
  */
 
 
@@ -34,6 +34,9 @@ Top-Level Commands:
 
 Management Commands:
   manifest     Initialize, import, and query metadata manifests`,
+	// Disable the default 'completion' command to reduce test scope.
+	// Shell completion functionality exists in Cobra but is hidden for now.
+	CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		// Check verbosity count to set log level
 		verbose, _ := cmd.Flags().GetCount("verbose")
