@@ -3,6 +3,7 @@ module github.com/yourusername/gsc-cli
 go 1.21
 
 require (
+	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/spf13/cobra v1.8.0
 	modernc.org/sqlite v1.28.0
 )
@@ -25,7 +26,7 @@ require (
 	modernc.org/libc v1.29.0 // indirect
 	modernc.org/mathutil v1.6.0 // indirect
 	modernc.org/memory v1.7.2 // indirect
-	modernc.org/opt v0.1.3 // indirect
+	modernc.org/opt v1.1.3 // indirect
 	modernc.org/strutil v1.1.3 // indirect
 	modernc.org/token v1.0.1 // indirect
 )

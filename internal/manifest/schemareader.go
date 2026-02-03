@@ -1,12 +1,12 @@
 /**
  * Component: Schema Reader
- * Block-UUID: e7617b43-e4b3-4a9d-aa71-fc9f6aef7f38
- * Parent-UUID: 065dc3a6-b9ec-402b-acb8-430631e5e7c8
- * Version: 1.1.0
- * Description: Logic to query the database and retrieve analyzer and field definitions for the schema command. Added validation to check if the database file exists before connecting to prevent creating empty artifacts.
+ * Block-UUID: 35cb922d-b613-45ac-bbc1-2a99268b7a77
+ * Parent-UUID: e7617b43-e4b3-4a9d-aa71-fc9f6aef7f38
+ * Version: 1.2.0
+ * Description: Logic to query the database and retrieve analyzer and field definitions for the schema command. Added validation to check if the database file exists before connecting to prevent creating empty artifacts. Added ListFieldNames helper for interactive wizards.
  * Language: Go
  * Created-at: 2026-02-02T08:34:20.421Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), GLM-4.7 (v1.1.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -159,4 +159,54 @@ func GetSchema(ctx context.Context, dbName string) (*SchemaInfo, error) {
 		DatabaseName: dbName,
 		Analyzers:    analyzers,
 	}, nil
+}
+
+// ListFieldNames retrieves a simple list of field names for the specified database.
+// This is a helper function for interactive wizards to populate dropdown menus.
+func ListFieldNames(ctx context.Context, dbName string) ([]string, error) {
+	// 1. Validate Database Exists
+	if err := ValidateDBExists(dbName); err != nil {
+		return nil, err
+	}
+
+	// 2. Resolve Database Path
+	dbPath, err := ResolveDBPath(dbName)
+	if err != nil {
+		return nil, err
+	}
+
+	// 3. Open Database Connection
+	database, err := db.OpenDB(dbPath)
+	if err != nil {
+		return nil, err
+	}
+	defer db.CloseDB(database)
+
+	// 4. Query Field Names
+	query := `
+		SELECT DISTINCT field_name
+		FROM metadata_fields
+		ORDER BY field_name
+	`
+
+	rows, err := database.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var fieldNames []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		fieldNames = append(fieldNames, name)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return fieldNames, nil
 }
