@@ -1,18 +1,19 @@
-/*
+/**
  * Component: Info Command
- * Block-UUID: 2984e482-61c2-4204-9300-8dac9ff40905
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: dc290983-4de3-4ea1-8f35-9d60518bf9c9
+ * Parent-UUID: 2984e482-61c2-4204-9300-8dac9ff40905
+ * Version: 1.0.1
  * Description: CLI command definition for 'gsc info', displaying the current workspace context, active profile, and available databases.
  * Language: Go
- * Created-at: 2026-02-03T03:15:00.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Created-at: 2026-02-03T03:16:25.331Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1)
  */
 
 
 package cli
 
 import (
+	"fmt"
 	"github.com/spf13/cobra"
 	"github.com/yourusername/gsc-cli/internal/manifest"
 	"github.com/yourusername/gsc-cli/pkg/logger"
@@ -67,7 +68,7 @@ func init() {
 func print(s string) {
 	// For now, just print to stdout
 	// In the future, we might support --output flag
-	print(s)
+	fmt.Print(s)
 }
 
 // RegisterInfoCommand registers the info command with the root command.
