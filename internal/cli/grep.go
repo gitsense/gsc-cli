@@ -75,7 +75,7 @@ Modes:
 		// 4. Get Repository Info
 		repoInfo, err := git.GetRepositoryInfo()
 		if err != nil {
-			logger.Warning("Failed to get repository info: %v", err)
+			logger.Debug("Failed to get repository info: %v", err)
 			// Continue without repo info if it fails
 			repoInfo = &git.RepositoryInfo{Name: "unknown", URL: "", Remote: ""}
 		}
