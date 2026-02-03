@@ -1,12 +1,12 @@
 /*
  * Component: Config Command
- * Block-UUID: a9f275db-f202-4052-a43f-44b85f1bb25d
- * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: CLI command definition for 'gsc config', managing context profiles and workspace settings.
+ * Block-UUID: 9f046149-e0e6-4ca6-aa73-a9cb6325cfbe
+ * Parent-UUID: a9f275db-f202-4052-a43f-44b85f1bb25d
+ * Version: 1.1.0
+ * Description: CLI command definition for 'gsc config', managing context profiles and workspace settings. Added deactivate command.
  * Language: Go
  * Created-at: 2026-02-03T02:10:00.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0)
  */
 
 
@@ -43,6 +43,19 @@ var useCmd = &cobra.Command{
 			return err
 		}
 		fmt.Printf("Switched to profile '%s'.\n", name)
+		return nil
+	},
+}
+
+// deactivateCmd represents the 'config deactivate' command
+var deactivateCmd = &cobra.Command{
+	Use:   "deactivate",
+	Short: "Deactivate the current profile (revert to global defaults)",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := manifest.DeactivateProfile(); err != nil {
+			return err
+		}
+		fmt.Println("Profile deactivated. Using global defaults.")
 		return nil
 	},
 }
@@ -223,6 +236,7 @@ func init() {
 
 	// Register config subcommands
 	configCmd.AddCommand(useCmd)
+	configCmd.AddCommand(deactivateCmd)
 	configCmd.AddCommand(contextCmd)
 	configCmd.AddCommand(currentContextCmd)
 

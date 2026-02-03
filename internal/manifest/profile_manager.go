@@ -1,12 +1,12 @@
 /*
  * Component: Profile Manager
- * Block-UUID: 939abc56-3b4f-4812-80bd-d3fedfca04b9
- * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: Logic to manage Context Profiles, including listing, creating, deleting, and activating profiles.
+ * Block-UUID: 35e82d14-d1f4-4422-b6f3-334aa72dd4dd
+ * Parent-UUID: 939abc56-3b4f-4812-80bd-d3fedfca04b9
+ * Version: 1.1.0
+ * Description: Logic to manage Context Profiles, including listing, creating, deleting, activating, and deactivating profiles.
  * Language: Go
  * Created-at: 2026-02-03T02:05:00.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0)
  */
 
 
@@ -162,6 +162,32 @@ func SetActiveProfile(name string) error {
 	}
 
 	logger.Success("Active profile set to '%s'", name)
+	return nil
+}
+
+// DeactivateProfile clears the active profile in the configuration.
+func DeactivateProfile() error {
+	// Load config
+	config, err := LoadConfig()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	// Check if there is even an active profile
+	if config.ActiveProfile == "" {
+		logger.Info("No active profile to deactivate.")
+		return nil
+	}
+
+	// Clear active profile
+	config.ActiveProfile = ""
+
+	// Save config
+	if err := SaveConfig(config); err != nil {
+		return fmt.Errorf("failed to save config: %w", err)
+	}
+
+	logger.Success("Active profile deactivated")
 	return nil
 }
 
