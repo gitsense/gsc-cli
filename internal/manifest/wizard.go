@@ -1,12 +1,12 @@
 /*
  * Component: Interactive Profile Wizard
- * Block-UUID: 32a3a2d9-f843-4885-b7ae-681aca198f98
- * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: Interactive wizards for creating, updating, and selecting context profiles using the survey library. Handles user prompts, validation, and confirmation steps.
+ * Block-UUID: 227e2c90-fa4b-4d93-ab35-095e912b513c
+ * Parent-UUID: 32a3a2d9-f843-4885-b7ae-681aca198f98
+ * Version: 1.1.0
+ * Description: Interactive wizards for creating, updating, and selecting context profiles using the survey library. Handles user prompts, validation, and confirmation steps. Updated to make Description and Aliases optional in the interactive prompts.
  * Language: Go
  * Created-at: 2026-02-03T05:45:00.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0)
  */
 
 
@@ -23,14 +23,19 @@ import (
 
 // CreateProfileInteractive guides the user through creating a profile using survey prompts.
 func CreateProfileInteractive(ctx context.Context, name string) error {
-	// 1. Description
+	// 1. Description (Optional)
 	var description string
 	promptDesc := &survey.Input{
-		Message: "Description:",
+		Message: "Description (Optional - Press Enter to skip):",
 		Help:    "A brief description of this profile's purpose.",
 	}
 	if err := survey.AskOne(promptDesc, &description); err != nil {
 		return err
+	}
+
+	// Auto-generate description if left blank for better UX in list views
+	if description == "" {
+		description = fmt.Sprintf("Context profile for %s", name)
 	}
 
 	// 2. Select Database
@@ -76,10 +81,10 @@ func CreateProfileInteractive(ctx context.Context, name string) error {
 		return err
 	}
 
-	// 4. Aliases
+	// 4. Aliases (Optional)
 	var aliasesStr string
 	promptAliases := &survey.Input{
-		Message: "Aliases (comma-separated):",
+		Message: "Aliases (Optional - Press Enter to skip):",
 		Help:    "Short names to quickly switch to this profile (e.g., sec, audit).",
 	}
 	if err := survey.AskOne(promptAliases, &aliasesStr); err != nil {
@@ -135,11 +140,12 @@ func UpdateProfileInteractive(ctx context.Context, name string) error {
 		return err
 	}
 
-	// 2. Description
+	// 2. Description (Optional)
 	var description string
 	promptDesc := &survey.Input{
-		Message: "Description:",
+		Message: "Description (Optional - Press Enter to keep current):",
 		Default: profile.Description,
+		Help:    "A brief description of this profile's purpose.",
 	}
 	if err := survey.AskOne(promptDesc, &description); err != nil {
 		return err
@@ -182,11 +188,12 @@ func UpdateProfileInteractive(ctx context.Context, name string) error {
 		return err
 	}
 
-	// 5. Manage Aliases
+	// 5. Manage Aliases (Optional)
 	var aliasesStr string
 	promptAliases := &survey.Input{
-		Message: "Aliases (comma-separated):",
+		Message: "Aliases (Optional - Press Enter to keep current):",
 		Default: strings.Join(profile.Aliases, ", "),
+		Help:    "Short names to quickly switch to this profile (e.g., sec, audit).",
 	}
 	if err := survey.AskOne(promptAliases, &aliasesStr); err != nil {
 		return err

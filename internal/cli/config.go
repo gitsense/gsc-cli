@@ -1,12 +1,12 @@
 /*
  * Component: Config Command
- * Block-UUID: d227868b-0c31-4421-abec-93abef96c98d
- * Parent-UUID: 9f046149-e0e6-4ca6-aa73-a9cb6325cfbe
- * Version: 1.2.0
- * Description: CLI command definition for 'gsc config', managing context profiles and workspace settings. Added interactive modes for create, update, and use commands. Added alias support and confirmation prompts for deletion.
+ * Block-UUID: 5b36519b-1ceb-4625-bdc2-d57feb2f350e
+ * Parent-UUID: d227868b-0c31-4421-abec-93abef96c98d
+ * Version: 1.3.0
+ * Description: CLI command definition for 'gsc config', managing context profiles and workspace settings. Added interactive modes for create, update, and use commands. Added alias support and confirmation prompts for deletion. Updated help text to clarify that --description and --alias are optional flags.
  * Language: Go
  * Created-at: 2026-02-03T02:10:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
  */
 
 
@@ -149,8 +149,17 @@ var contextCreateCmd = &cobra.Command{
 	Short: "Create a new context profile",
 	Long: `Create a new context profile.
 
-If you provide all required flags (--db, --field), the profile is created immediately.
-Otherwise, you'll be guided through an interactive setup wizard.`,
+If you provide the required flags (--db, --field), the profile is created immediately.
+The --description and --alias flags are optional.
+If required flags are missing, you'll be guided through an interactive setup wizard.`,
+	Example: `  # Interactive mode (recommended for new users)
+  gsc config context create my-profile
+
+  # Non-interactive mode (for scripts)
+  gsc config context create sec --db security --field risk_level
+
+  # Non-interactive mode with optional fields
+  gsc config context create sec --db security --field risk_level --description "Security Audit" --alias sec`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name := args[0]
@@ -210,7 +219,13 @@ var contextUpdateCmd = &cobra.Command{
 	Long: `Update an existing context profile.
 
 If you provide update flags, the profile is updated immediately.
-Otherwise, you'll be guided through an interactive update wizard.`,
+All flags (--description, --db, --field, --alias) are optional.
+If no flags are provided, you'll be guided through an interactive update wizard.`,
+	Example: `  # Interactive mode
+  gsc config context update my-profile
+
+  # Non-interactive mode (update specific fields)
+  gsc config context update my-profile --db payments --field severity`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name := args[0]
@@ -364,18 +379,18 @@ func init() {
 	configCmd.AddCommand(currentContextCmd)
 
 	// Add flags for context create
-	contextCreateCmd.Flags().StringVar(&createDesc, "description", "", "Description of the profile")
-	contextCreateCmd.Flags().StringVar(&createDB, "db", "", "Default database for this profile")
-	contextCreateCmd.Flags().StringVar(&createField, "field", "", "Default query field for this profile")
+	contextCreateCmd.Flags().StringVar(&createDesc, "description", "", "Description of the profile (optional)")
+	contextCreateCmd.Flags().StringVar(&createDB, "db", "", "Default database for this profile (required for non-interactive mode)")
+	contextCreateCmd.Flags().StringVar(&createField, "field", "", "Default query field for this profile (required for non-interactive mode)")
 	contextCreateCmd.Flags().StringVar(&createFormat, "format", "table", "Default output format for this profile")
 	contextCreateCmd.Flags().IntVar(&createRGContext, "rg-context", 0, "Default ripgrep context lines for this profile")
-	contextCreateCmd.Flags().StringVar(&createAliases, "alias", "", "Aliases for this profile (comma-separated)")
+	contextCreateCmd.Flags().StringVar(&createAliases, "alias", "", "Aliases for this profile (comma-separated, optional)")
 
 	// Add flags for context update
-	contextUpdateCmd.Flags().StringVar(&updateDesc, "description", "", "Update description")
-	contextUpdateCmd.Flags().StringVar(&updateDB, "db", "", "Update default database")
-	contextUpdateCmd.Flags().StringVar(&updateField, "field", "", "Update default query field")
-	contextUpdateCmd.Flags().StringVar(&updateAliases, "alias", "", "Update aliases (comma-separated)")
+	contextUpdateCmd.Flags().StringVar(&updateDesc, "description", "", "Update description (optional)")
+	contextUpdateCmd.Flags().StringVar(&updateDB, "db", "", "Update default database (optional)")
+	contextUpdateCmd.Flags().StringVar(&updateField, "field", "", "Update default query field (optional)")
+	contextUpdateCmd.Flags().StringVar(&updateAliases, "alias", "", "Update aliases (comma-separated, optional)")
 
 	// Add flags for current-context
 	currentContextCmd.Flags().BoolVar(&currentContextShort, "short", false, "Output only the profile name (for shell prompts)")
