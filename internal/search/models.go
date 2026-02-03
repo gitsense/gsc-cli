@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Search Intelligence Models
- * Block-UUID: 102094eb-8950-4bde-a2c1-415ef2b208f8
- * Parent-UUID: 18fa7a4e-db31-41ae-b43c-01b79e5351cc
- * Version: 2.0.0
+ * Block-UUID: 37e27d9f-c464-4d09-8668-7d6318c6cd65
+ * Parent-UUID: 102094eb-8950-4bde-a2c1-415ef2b208f8
+ * Version: 2.0.1
  * Description: Defines the structured JSON response for gsc grep. Updated to support grouped file results, tool metadata, system info, and truncation signals.
  * Language: Go
- * Created-at: 2026-02-03T18:06:35.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0)
+ * Created-at: 2026-02-03T19:44:11.581Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.0.1)
  */
 
 
@@ -95,4 +95,16 @@ type MatchDetail struct {
 	LineText      string   `json:"line_text"`
 	ContextBefore []string `json:"context_before"`
 	ContextAfter  []string `json:"context_after"`
+}
+
+// MatchResult represents an intermediate enriched match before grouping by file.
+// It is used internally by the enricher and aggregator.
+type MatchResult struct {
+	FilePath      string                 `json:"file_path"`
+	LineNumber    int                    `json:"line_number"`
+	LineText      string                 `json:"line_text"`
+	ContextBefore []string               `json:"context_before"`
+	ContextAfter  []string               `json:"context_after"`
+	ChatID        int                    `json:"chat_id"`
+	Metadata      map[string]interface{} `json:"metadata"`
 }
