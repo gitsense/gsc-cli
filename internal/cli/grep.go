@@ -1,12 +1,12 @@
 /*
  * Component: Grep Command
- * Block-UUID: 8ac98d11-e90a-483b-a406-5c34eac7786b
- * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: CLI command definition for 'gsc grep'. Orchestrates search, enrichment, aggregation, and formatting.
+ * Block-UUID: 9f758655-5c6f-4690-8c69-e61534151307
+ * Parent-UUID: 8ac98d11-e90a-483b-a406-5c34eac7786b
+ * Version: 2.0.0
+ * Description: CLI command definition for 'gsc grep'. Updated to support new JSON structure, system info, tool metadata, and truncation limits.
  * Language: Go
  * Created-at: 2026-02-03T18:06:35.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0)
  */
 
 
@@ -30,6 +30,7 @@ var (
 	grepContext      int
 	grepCaseSensitive bool
 	grepFileType     string
+	grepLimit        int
 )
 
 // grepCmd represents the grep command
@@ -80,17 +81,12 @@ Modes:
 			repoInfo = &git.RepositoryInfo{Name: "unknown", URL: "", Remote: ""}
 		}
 
-		// 5. Build Query Context
-		queryContext := search.QueryContext{
-			Pattern:    pattern,
-			Database:   dbName,
-			Profile:    grepProfile, // Use the flag value or empty string
-			Repository: search.RepositoryInfo{
-				Name:   repoInfo.Name,
-				URL:    repoInfo.URL,
-				Remote: repoInfo.Remote,
-			},
-			Timestamp: time.Now(),
+		// 5. Get System Info
+		sysInfo, err := git.GetSystemInfo()
+		if err != nil {
+			logger.Debug("Failed to get system info: %v", err)
+			// Continue with minimal info if it fails
+			sysInfo = &git.SystemInfo{OS: "unknown", ProjectRoot: ""}
 		}
 
 		// 6. Execute Search
@@ -102,22 +98,55 @@ Modes:
 			FileType:      grepFileType,
 		}
 
-		rawMatches, err := engine.Search(cmd.Context(), options)
+		searchResult, err := engine.Search(cmd.Context(), options)
 		if err != nil {
 			return err
 		}
 
 		// 7. Enrich Matches
-		enrichedMatches, err := search.EnrichMatches(cmd.Context(), rawMatches, dbName)
+		enrichedMatches, err := search.EnrichMatches(cmd.Context(), searchResult.Matches, dbName)
 		if err != nil {
 			return err
 		}
 
 		// 8. Aggregate Summary
-		summary := search.AggregateMatches(enrichedMatches)
+		summary := search.AggregateMatches(enrichedMatches, grepLimit)
 
-		// 9. Format and Output
-		return search.FormatResponse(queryContext, &summary, enrichedMatches, grepSummary)
+		// 9. Build Query Context
+		mode := "full"
+		if grepSummary {
+			mode = "summary"
+		}
+
+		queryContext := search.QueryContext{
+			Pattern:    pattern,
+			Database:   dbName,
+			Mode:       mode,
+			Tool: search.ToolInfo{
+				Name:      searchResult.ToolName,
+				Version:   searchResult.ToolVersion,
+				Arguments: optionsToArgs(options),
+				TotalMs:   searchResult.DurationMs,
+			},
+			SearchScope: search.SearchScope{
+				FileType:      grepFileType,
+				ContextLines:  contextLines,
+				CaseSensitive: grepCaseSensitive,
+			},
+			System: search.SystemInfo{
+				OS:          sysInfo.OS,
+				ProjectRoot: sysInfo.ProjectRoot,
+			},
+			Repository: search.RepositoryInfo{
+				Name:   repoInfo.Name,
+				URL:    repoInfo.URL,
+				Remote: repoInfo.Remote,
+			},
+			Timestamp: time.Now(),
+		}
+
+		// 10. Format and Output
+		return search.FormatResponse(queryContext, summary, enrichedMatches, grepSummary)
 	},
 }
 
@@ -129,6 +158,27 @@ func init() {
 	grepCmd.Flags().IntVarP(&grepContext, "context", "C", 0, "Show N lines of context around matches")
 	grepCmd.Flags().BoolVar(&grepCaseSensitive, "case-sensitive", false, "Case-sensitive search")
 	grepCmd.Flags().StringVarP(&grepFileType, "type", "t", "", "Filter by file type (e.g., js, py)")
+	grepCmd.Flags().IntVar(&grepLimit, "limit", 50, "Limit the number of files in the summary (0 for no limit)")
+}
+
+// optionsToArgs converts SearchOptions to a slice of arguments for display.
+func optionsToArgs(options search.SearchOptions) []string {
+	args := []string{"--json", "--no-heading"}
+	
+	if options.ContextLines > 0 {
+		args = append(args, fmt.Sprintf("-C%d", options.ContextLines))
+	}
+	
+	if !options.CaseSensitive {
+		args = append(args, "--smart-case")
+	}
+	
+	if options.FileType != "" {
+		args = append(args, fmt.Sprintf("--type=%s", options.FileType))
+	}
+	
+	args = append(args, options.Pattern)
+	return args
 }
 
 // RegisterGrepCommand registers the grep command with the root command.

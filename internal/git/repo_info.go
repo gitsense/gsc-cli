@@ -1,12 +1,12 @@
 /*
  * Component: Git Repository Info
- * Block-UUID: 11c91bf9-d2d6-4b44-b913-544c871d5000
- * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: Extracts repository information from .git/config to provide context for search results.
+ * Block-UUID: b9d39a71-38d6-4fd0-9d3f-523f846f904a
+ * Parent-UUID: 11c91bf9-d2d6-4b44-b913-544c871d5000
+ * Version: 2.0.0
+ * Description: Extracts repository information from .git/config and system information. Added GetSystemInfo to provide OS and project root details.
  * Language: Go
  * Created-at: 2026-02-03T18:06:35.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0)
  */
 
 
@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -25,6 +26,12 @@ type RepositoryInfo struct {
 	Name   string `json:"name"`
 	URL    string `json:"url"`
 	Remote string `json:"remote"`
+}
+
+// SystemInfo holds details about the execution environment.
+type SystemInfo struct {
+	OS          string `json:"os"`
+	ProjectRoot string `json:"project_root"`
 }
 
 // GetRepositoryInfo reads .git/config and extracts repository metadata.
@@ -76,5 +83,23 @@ func GetRepositoryInfo() (*RepositoryInfo, error) {
 		Name:   name,
 		URL:    url,
 		Remote: remote,
+	}, nil
+}
+
+// GetSystemInfo returns operating system and project root information.
+func GetSystemInfo() (*SystemInfo, error) {
+	root, err := FindProjectRoot()
+	if err != nil {
+		// If not in a git repo, return current working directory or empty string
+		// For now, we'll return empty string if root not found
+		return &SystemInfo{
+			OS:          runtime.GOOS,
+			ProjectRoot: "",
+		}, nil
+	}
+
+	return &SystemInfo{
+		OS:          runtime.GOOS,
+		ProjectRoot: root,
 	}, nil
 }
