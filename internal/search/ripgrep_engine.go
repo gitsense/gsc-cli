@@ -1,12 +1,12 @@
 /*
  * Component: Ripgrep Search Engine
- * Block-UUID: cd944dd6-3a8a-44da-a5d2-72a0c65b591f
- * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: Implements the SearchEngine interface using ripgrep. Parses JSON output to extract matches and context lines.
+ * Block-UUID: 100d0cb3-dbdc-4f07-ab4c-72cb4b55129c
+ * Parent-UUID: cd944dd6-3a8a-44da-a5d2-72a0c65b591f
+ * Version: 1.0.1
+ * Description: Implements the SearchEngine interface using ripgrep. Parses JSON output to extract matches and context lines. Fixed JSON parsing to correctly access the 'data' object.
  * Language: Go
  * Created-at: 2026-02-03T18:06:35.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1)
  */
 
 
@@ -135,9 +135,11 @@ func (e *RipgrepEngine) parseJSONOutput(stdout interface{}) ([]RawMatch, error) 
 
 		case "context":
 			// Context line
-			if lines, ok := message["lines"].(map[string]interface{}); ok {
-				if text, ok := lines["text"].(string); ok {
-					currentContext = append(currentContext, text)
+			if data, ok := message["data"].(map[string]interface{}); ok {
+				if lines, ok := data["lines"].(map[string]interface{}); ok {
+					if text, ok := lines["text"].(string); ok {
+						currentContext = append(currentContext, text)
+					}
 				}
 			}
 
@@ -149,18 +151,20 @@ func (e *RipgrepEngine) parseJSONOutput(stdout interface{}) ([]RawMatch, error) 
 
 			// Extract match details
 			var match RawMatch
-			if path, ok := message["path"].(map[string]interface{}); ok {
-				if text, ok := path["text"].(string); ok {
-					match.FilePath = text
+			if data, ok := message["data"].(map[string]interface{}); ok {
+				if path, ok := data["path"].(map[string]interface{}); ok {
+					if text, ok := path["text"].(string); ok {
+						match.FilePath = text
+					}
 				}
-			}
-			
-			if lines, ok := message["lines"].(map[string]interface{}); ok {
-				if text, ok := lines["text"].(string); ok {
-					match.LineText = text
-				}
-				if num, ok := lines["line_number"].(float64); ok {
-					match.LineNumber = int(num)
+				
+				if lines, ok := data["lines"].(map[string]interface{}); ok {
+					if text, ok := lines["text"].(string); ok {
+						match.LineText = text
+					}
+					if num, ok := lines["line_number"].(float64); ok {
+						match.LineNumber = int(num)
+					}
 				}
 			}
 
