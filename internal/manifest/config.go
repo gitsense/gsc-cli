@@ -1,12 +1,12 @@
 /**
  * Component: Query Configuration Manager
- * Block-UUID: 08db1596-03dd-4709-9e85-1a7db0bbfa84
- * Parent-UUID: 50037455-9f00-423d-ad19-9ebc374cad70
- * Version: 2.0.0
- * Description: Manages the .gitsense/config.json file and profile loading. Updated to support active profiles and configuration merging.
+ * Block-UUID: 82312263-6c3d-4ece-bc7b-02fb3ece321d
+ * Parent-UUID: 08db1596-03dd-4709-9e85-1a7db0bbfa84
+ * Version: 2.1.0
+ * Description: Manages the .gitsense/config.json file and profile loading. Updated to support active profiles and configuration merging. Reclassified internal state logs to Debug level to support quiet mode by default.
  * Language: Go
  * Created-at: 2026-02-02T18:48:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0)
  */
 
 
@@ -51,7 +51,7 @@ func LoadConfig() (*QueryConfig, error) {
 
 	// Check if file exists
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		logger.Info("Config file not found, creating new config", "path", configPath)
+		logger.Debug("Config file not found, creating new config", "path", configPath)
 		return NewQueryConfig(), nil
 	}
 
@@ -69,7 +69,7 @@ func LoadConfig() (*QueryConfig, error) {
 		return nil, err
 	}
 
-	logger.Info("Config loaded successfully", "path", configPath)
+	logger.Debug("Config loaded successfully", "path", configPath)
 	return &config, nil
 }
 

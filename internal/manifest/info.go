@@ -1,12 +1,12 @@
 /*
  * Component: Workspace Info Logic
- * Block-UUID: 28e72ae6-82bc-4c4e-ac50-eeeb50a9d543
- * Parent-UUID: 3e691f33-8796-4c65-a4c7-b6d03a6e8c49
- * Version: 1.1.0
- * Description: Logic to gather and format workspace information for the 'gsc info' command, including active profiles and available databases. Extracted FormatWorkspaceHeader for reuse in query/rg commands.
+ * Block-UUID: 69c066ad-2649-4c1d-8f22-84317d22a200
+ * Parent-UUID: 28e72ae6-82bc-4c4e-ac50-eeeb50a9d543
+ * Version: 1.2.0
+ * Description: Logic to gather and format workspace information for the 'gsc info' command, including active profiles and available databases. Extracted FormatWorkspaceHeader for reuse in query/rg commands. Reclassified internal state logs to Debug level.
  * Language: Go
  * Created-at: 2026-02-03T03:10:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 

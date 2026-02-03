@@ -1,12 +1,12 @@
 /**
  * Component: Root CLI Command
- * Block-UUID: f7845bb7-f012-4b51-b60a-4d67539b497e
- * Parent-UUID: dbc4b049-4f39-479a-bc33-234bbd38b913
- * Version: 1.8.0
- * Description: Root command for the gsc CLI, registering the manifest subcommand group, top-level usage commands, config command, and the new info command.
+ * Block-UUID: 937898dd-aecf-4e52-8ad8-0f56312763a5
+ * Parent-UUID: f7845bb7-f012-4b51-b60a-4d67539b497e
+ * Version: 1.9.0
+ * Description: Root command for the gsc CLI, registering the manifest subcommand group, top-level usage commands, config command, and the new info command. Added global --verbose flag support and PersistentPreRun hook to manage log levels.
  * Language: Go
  * Created-at: 2026-02-02T19:10:57.816Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), Claude Haiku 4.5 (v1.3.0), Claude Haiku 4.5 (v1.4.0), GLM-4.7 (v1.5.0), Claude Haiku 4.5 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), Claude Haiku 4.5 (v1.3.0), Claude Haiku 4.5 (v1.4.0), GLM-4.7 (v1.5.0), Claude Haiku 4.5 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0)
  */
 
 
@@ -34,6 +34,18 @@ Top-Level Commands:
 
 Management Commands:
   manifest     Initialize, import, and query metadata manifests`,
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		// Check verbosity count to set log level
+		verbose, _ := cmd.Flags().GetCount("verbose")
+		switch verbose {
+		case 0:
+			logger.SetLogLevel(logger.LevelWarning)
+		case 1:
+			logger.SetLogLevel(logger.LevelInfo)
+		default:
+			logger.SetLogLevel(logger.LevelDebug)
+		}
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		// If no subcommand is provided, print help
 		cmd.Help()
@@ -53,6 +65,10 @@ func init() {
 
 	// Register the info command
 	RegisterInfoCommand(rootCmd)
+
+	// Add global verbose flag
+	// -v for Info level, -vv for Debug level
+	rootCmd.PersistentFlags().CountP("verbose", "v", "Increase verbosity (-v for info, -vv for debug)")
 
 	logger.Debug("Root command initialized with manifest, query, rg, config, and info commands")
 }

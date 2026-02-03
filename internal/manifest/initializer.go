@@ -1,12 +1,12 @@
 /**
  * Component: Manifest Initializer
- * Block-UUID: 5db9b412-9a44-4ec7-9e51-1b32dc1caae1
- * Parent-UUID: b7473786-f319-4b8f-b8b5-9771bbacb10e
- * Version: 1.3.0
- * Description: Logic to initialize the .gitsense directory structure and registry file.
+ * Block-UUID: 284a690b-979e-4495-bcdc-3b27a4ca67bc
+ * Parent-UUID: 5db9b412-9a44-4ec7-9e51-1b32dc1caae1
+ * Version: 1.4.0
+ * Description: Logic to initialize the .gitsense directory structure and registry file. Reclassified internal state logs to Debug level to support quiet mode by default.
  * Language: Go
  * Created-at: 2026-02-02T07:12:37.835Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), Claude Haiku 4.5 (v1.2.0), GLM-4.7 (v1.3.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), Claude Haiku 4.5 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
  */
 
 
@@ -47,7 +47,7 @@ func InitializeGitSense() error {
 
 	// 3. Check if registry already exists
 	if _, err := os.Stat(registryPath); err == nil {
-		logger.Info("GitSense directory already initialized at %s", gitsenseDir)
+		logger.Debug("GitSense directory already initialized at %s", gitsenseDir)
 		return nil
 	}
 
