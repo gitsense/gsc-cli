@@ -1,12 +1,12 @@
 /*
  * Component: Schema Command
- * Block-UUID: 0953e11d-eb18-413e-b102-b986243f1e6e
- * Parent-UUID: 8f639204-4518-4bd1-bb58-dc6576a2b181
- * Version: 1.1.0
- * Description: CLI command for inspecting the schema of a manifest database, listing analyzers and their fields. Removed unused getter function.
+ * Block-UUID: 6e345abd-4a0c-4509-a93b-875835c33c97
+ * Parent-UUID: 0953e11d-eb18-413e-b102-b986243f1e6e
+ * Version: 1.2.0
+ * Description: CLI command for inspecting the schema of a manifest database, listing analyzers and their fields. Removed unused getter function. Updated to resolve database names from user input to physical names.
  * Language: Go
  * Created-at: 2026-02-02T07:56:00.000Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -18,6 +18,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/yourusername/gsc-cli/internal/manifest"
 	"github.com/yourusername/gsc-cli/internal/output"
+	"github.com/yourusername/gsc-cli/internal/registry"
 	"github.com/yourusername/gsc-cli/pkg/logger"
 )
 
@@ -34,10 +35,16 @@ for querying.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		dbName := args[0]
 
-		logger.Info("Retrieving schema for database '%s'...", dbName)
+		// Resolve database name to physical name
+		resolvedDB, err := registry.ResolveDatabase(dbName)
+		if err != nil {
+			return fmt.Errorf("failed to resolve database '%s': %w", dbName, err)
+		}
+
+		logger.Info("Retrieving schema for database '%s'...", resolvedDB)
 
 		// Call the logic layer to get schema
-		schema, err := manifest.GetSchema(cmd.Context(), dbName)
+		schema, err := manifest.GetSchema(cmd.Context(), resolvedDB)
 		if err != nil {
 			logger.Error("Failed to retrieve schema: %v", err)
 			return err

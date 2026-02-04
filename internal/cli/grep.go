@@ -1,12 +1,12 @@
 /*
  * Component: Grep Command
- * Block-UUID: e5805c52-bd82-4068-84f0-38b6c2315c29
- * Parent-UUID: 9f758655-5c6f-4690-8c69-e61534151307
- * Version: 3.0.0
- * Description: CLI command definition for 'gsc grep'. Updated to support metadata filtering, stats recording, and case-sensitive defaults.
+ * Block-UUID: 598adf53-8cea-4e33-90b2-40f82020a13c
+ * Parent-UUID: e5805c52-bd82-4068-84f0-38b6c2315c29
+ * Version: 3.1.0
+ * Description: CLI command definition for 'gsc grep'. Updated to support metadata filtering, stats recording, and case-sensitive defaults. Updated to resolve database names from user input or config to physical names.
  * Language: Go
  * Created-at: 2026-02-03T18:06:35.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v3.0.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v3.0.0), GLM-4.7 (v3.1.0)
  */
 
 
@@ -20,6 +20,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/yourusername/gsc-cli/internal/git"
 	"github.com/yourusername/gsc-cli/internal/manifest"
+	"github.com/yourusername/gsc-cli/internal/registry"
 	"github.com/yourusername/gsc-cli/internal/search"
 	"github.com/yourusername/gsc-cli/pkg/logger"
 )
@@ -71,6 +72,14 @@ Filtering:
 		dbName := grepDB
 		if dbName == "" {
 			dbName = config.Global.DefaultDatabase
+		}
+
+		// Resolve database name to physical name
+		if dbName != "" {
+			dbName, err = registry.ResolveDatabase(dbName)
+			if err != nil {
+				return err
+			}
 		}
 
 		if dbName == "" {

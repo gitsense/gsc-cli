@@ -1,12 +1,12 @@
 /**
  * Component: Query Command
- * Block-UUID: e3bb7aff-b8b9-4586-99b7-a6af38bd4943
- * Parent-UUID: 1c10b1a0-b640-4dd3-b170-b6c6947510e8
- * Version: 2.2.0
- * Description: CLI command definition for 'gsc query'. Removed --set-default flags, added --quiet flag, and updated to use effective configuration (profiles). Updated to pass config to formatter for workspace headers. Updated list handlers to pass config for workspace headers.
+ * Block-UUID: decf0dad-833c-4cb1-a86c-3c5e995609c9
+ * Parent-UUID: e3bb7aff-b8b9-4586-99b7-a6af38bd4943
+ * Version: 2.3.0
+ * Description: CLI command definition for 'gsc query'. Removed --set-default flags, added --quiet flag, and updated to use effective configuration (profiles). Updated to pass config to formatter for workspace headers. Updated list handlers to pass config for workspace headers. Updated to resolve database names from user input or config to physical names.
  * Language: Go
  * Created-at: 2026-02-02T19:55:00.000Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), Claude Haiku 4.5 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), Gemini 3 Flash (v1.0.5), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), Claude Haiku 4.5 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), Gemini 3 Flash (v1.0.5), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0)
  */
 
 
@@ -18,6 +18,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/yourusername/gsc-cli/internal/manifest"
+	"github.com/yourusername/gsc-cli/internal/registry"
 	"github.com/yourusername/gsc-cli/pkg/logger"
 )
 
@@ -100,6 +101,14 @@ func handleHierarchicalList(ctx context.Context, dbName string, fieldName string
 		resolvedDB = config.Global.DefaultDatabase
 	}
 
+	// Resolve database name to physical name
+	if resolvedDB != "" {
+		resolvedDB, err = registry.ResolveDatabase(resolvedDB)
+		if err != nil {
+			return err
+		}
+	}
+
 	resolvedField := fieldName
 	if resolvedField == "" {
 		resolvedField = config.Query.DefaultField
@@ -110,6 +119,15 @@ func handleHierarchicalList(ctx context.Context, dbName string, fieldName string
 
 // handleList performs the actual discovery call.
 func handleList(ctx context.Context, dbName string, fieldName string, format string, quiet bool, config *manifest.QueryConfig) error {
+	// Resolve database name if provided (might be a display name)
+	if dbName != "" {
+		var err error
+		dbName, err = registry.ResolveDatabase(dbName)
+		if err != nil {
+			return err
+		}
+	}
+
 	logger.Info("Listing items", "database", dbName, "field", fieldName)
 
 	result, err := manifest.GetListResult(ctx, dbName, fieldName)
@@ -138,6 +156,14 @@ func handleQueryOrStatus(ctx context.Context, dbName string, fieldName string, v
 	resolvedDB := dbName
 	if resolvedDB == "" {
 		resolvedDB = config.Global.DefaultDatabase
+	}
+
+	// Resolve database name to physical name
+	if resolvedDB != "" {
+		resolvedDB, err = registry.ResolveDatabase(resolvedDB)
+		if err != nil {
+			return err
+		}
 	}
 
 	resolvedField := fieldName

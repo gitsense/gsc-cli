@@ -1,12 +1,12 @@
 /*
  * Component: Interactive Profile Wizard
- * Block-UUID: 83298544-6ca6-4e03-b184-ef5b93cb5399
- * Parent-UUID: 227e2c90-fa4b-4d93-ab35-095e912b513c
- * Version: 1.2.0
- * Description: Interactive wizards for creating, updating, and selecting context profiles using the survey library. Handles user prompts, validation, and confirmation steps. Updated to allow skipping Database and Field selection, enabling partial profile configurations (e.g., format-only profiles).
+ * Block-UUID: e8fa0910-ca7b-4764-9d00-6d43078d474d
+ * Parent-UUID: 83298544-6ca6-4e03-b184-ef5b93cb5399
+ * Version: 1.3.0
+ * Description: Interactive wizards for creating, updating, and selecting context profiles using the survey library. Handles user prompts, validation, and confirmation steps. Updated to resolve database display names to physical names before saving to configuration.
  * Language: Go
  * Created-at: 2026-02-03T05:45:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
  */
 
 
@@ -66,6 +66,13 @@ func CreateProfileInteractive(ctx context.Context, name string) error {
 	// Handle Skip option
 	if selectedDB == "(Skip - No Default Database)" {
 		selectedDB = ""
+	} else {
+		// Resolve the display name to the physical database name
+		resolvedDB, err := registry.ResolveDatabase(selectedDB)
+		if err != nil {
+			return fmt.Errorf("failed to resolve database '%s': %w", selectedDB, err)
+		}
+		selectedDB = resolvedDB
 	}
 
 	// 3. Select Field
@@ -210,6 +217,13 @@ func UpdateProfileInteractive(ctx context.Context, name string) error {
 	// Handle Skip option
 	if selectedDB == "(Skip - No Default Database)" {
 		selectedDB = ""
+	} else {
+		// Resolve the display name to the physical database name
+		resolvedDB, err := registry.ResolveDatabase(selectedDB)
+		if err != nil {
+			return fmt.Errorf("failed to resolve database '%s': %w", selectedDB, err)
+		}
+		selectedDB = resolvedDB
 	}
 
 	// 4. Select Field
