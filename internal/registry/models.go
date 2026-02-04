@@ -1,12 +1,12 @@
 /*
  * Component: Registry Models
- * Block-UUID: 1c5e5a14-8423-4383-ba2f-d926d2637a70
- * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: Defines the data structures for the GitSense registry file (.gitsense/manifest.json), which tracks all available manifest databases.
+ * Block-UUID: e416d612-0822-41bb-a3eb-d4f6e98cd2f2
+ * Parent-UUID: 1c5e5a14-8423-4383-ba2f-d926d2637a70
+ * Version: 1.1.0
+ * Description: Defines the data structures for the GitSense registry file (.gitsense/manifest.json), which tracks all available manifest databases. Updated to include DatabaseName to link registry entries to physical database files.
  * Language: Go
  * Created-at: 2026-02-02T05:30:00.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0)
  */
 
 
@@ -24,12 +24,13 @@ type Registry struct {
 // RegistryEntry represents a single manifest database entry in the registry.
 // It provides metadata about the database so agents and users can discover and select the right one.
 type RegistryEntry struct {
-	Name        string    `json:"name"`        // The database name (e.g., "security", "performance")
-	Description string    `json:"description"` // Human-readable description of the database's purpose
-	Tags        []string  `json:"tags"`        // Keywords for categorization (e.g., ["security", "javascript"])
-	Version     string    `json:"version"`     // Version of the manifest data
-	CreatedAt   time.Time `json:"created_at"`  // Timestamp when the database was created
-	SourceFile  string    `json:"source_file"` // The original JSON file used to import this database
+	Name         string    `json:"name"`          // The human-readable display name for the database, typically 2-3 capitalized words (e.g., "Secure Payments Architecture").
+	DatabaseName string    `json:"database_name"` // The physical filename of the database (e.g., "secure-payments")
+	Description  string    `json:"description"`   // Human-readable description of the database's purpose
+	Tags         []string  `json:"tags"`          // Keywords for categorization (e.g., ["security", "javascript"])
+	Version      string    `json:"version"`       // Version of the manifest data
+	CreatedAt    time.Time `json:"created_at"`    // Timestamp when the database was created
+	SourceFile   string    `json:"source_file"`   // The original JSON file used to import this database
 }
 
 // NewRegistry creates a new, empty Registry with the current schema version.

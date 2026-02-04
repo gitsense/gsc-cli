@@ -1,12 +1,12 @@
 /*
  * Component: Manifest Importer
- * Block-UUID: 73821386-dc86-460a-a72d-0fc60a2dd3d1
- * Parent-UUID: 83aa4b6d-2fda-4e12-8cc9-93fe09674604
- * Version: 1.2.0
- * Description: Logic to parse a JSON manifest file and import its data into a SQLite database. Updated to prioritize the database_name field from the manifest JSON over the filename.
+ * Block-UUID: fd015645-c244-4e75-802b-25aabbbd0606
+ * Parent-UUID: dd92c2cf-6a4a-4fa2-838a-2c992c4fa1a2
+ * Version: 1.3.1
+ * Description: Logic to parse a JSON manifest file and import its data into a SQLite database. Updated to populate the DatabaseName field in the registry entry to ensure correct file resolution. Added comment explaining the use of the resolved dbName for CLI override support.
  * Language: Go
  * Created-at: 2026-02-02T05:30:00Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.2.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1)
  */
 
 
@@ -110,13 +110,16 @@ func ImportManifest(ctx context.Context, jsonPath string, dbName string) error {
 	}
 
 	// 12. Update Registry
+	// Use the resolved dbName to support CLI overrides (--name flag). 
+	// If we used the manifest value directly, overrides would be ignored.
 	entry := registry.RegistryEntry{
-		Name:        manifestFile.Manifest.Name,
-		Description: manifestFile.Manifest.Description,
-		Tags:        manifestFile.Manifest.Tags,
-		Version:     manifestFile.SchemaVersion,
-		CreatedAt:   manifestFile.GeneratedAt,
-		SourceFile:  jsonPath,
+		Name:         manifestFile.Manifest.Name,
+		DatabaseName: dbName,
+		Description:  manifestFile.Manifest.Description,
+		Tags:         manifestFile.Manifest.Tags,
+		Version:      manifestFile.SchemaVersion,
+		CreatedAt:    manifestFile.GeneratedAt,
+		SourceFile:   jsonPath,
 	}
 
 	if err := registry.AddEntry(entry); err != nil {
