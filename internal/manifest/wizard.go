@@ -1,12 +1,12 @@
 /*
  * Component: Interactive Profile Wizard
- * Block-UUID: e8fa0910-ca7b-4764-9d00-6d43078d474d
- * Parent-UUID: 83298544-6ca6-4e03-b184-ef5b93cb5399
- * Version: 1.3.0
- * Description: Interactive wizards for creating, updating, and selecting context profiles using the survey library. Handles user prompts, validation, and confirmation steps. Updated to resolve database display names to physical names before saving to configuration.
+ * Block-UUID: eea72eed-99c5-4b58-81ea-fd50121f020d
+ * Parent-UUID: e8fa0910-ca7b-4764-9d00-6d43078d474d
+ * Version: 1.4.0
+ * Description: Interactive wizards for creating, updating, and selecting context profiles using the survey library. Handles user prompts, validation, and confirmation steps. Added prompts for Focus Scope configuration (include/exclude patterns) in create and update workflows.
  * Language: Go
  * Created-at: 2026-02-03T05:45:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
  */
 
 
@@ -111,7 +111,53 @@ func CreateProfileInteractive(ctx context.Context, name string) error {
 		selectedField = ""
 	}
 
-	// 4. Aliases (Optional)
+	// 4. Configure Focus Scope (Optional)
+	var configureScope bool
+	promptScope := &survey.Confirm{
+		Message: "Do you want to define a Focus Scope (include/exclude patterns) for this profile?",
+		Default: false,
+		Help:    "Focus Scope filters the repository to a specific territory of interest (e.g., 'src/**' only).",
+	}
+	if err := survey.AskOne(promptScope, &configureScope); err != nil {
+		return err
+	}
+
+	var scope *ScopeConfig
+	if configureScope {
+		var includeStr, excludeStr string
+
+		promptInc := &survey.Input{
+			Message: "Include patterns (comma-separated, e.g., src/**,lib/**):",
+			Help:    "Files matching these patterns will be included. Leave empty to include all tracked files.",
+		}
+		if err := survey.AskOne(promptInc, &includeStr); err != nil {
+			return err
+		}
+
+		promptExc := &survey.Input{
+			Message: "Exclude patterns (comma-separated, e.g., test/**,vendor/**):",
+			Help:    "Files matching these patterns will be excluded from the included set.",
+		}
+		if err := survey.AskOne(promptExc, &excludeStr); err != nil {
+			return err
+		}
+
+		scope = &ScopeConfig{}
+		if includeStr != "" {
+			scope.Include = strings.Split(includeStr, ",")
+			for i := range scope.Include {
+				scope.Include[i] = strings.TrimSpace(scope.Include[i])
+			}
+		}
+		if excludeStr != "" {
+			scope.Exclude = strings.Split(excludeStr, ",")
+			for i := range scope.Exclude {
+				scope.Exclude[i] = strings.TrimSpace(scope.Exclude[i])
+			}
+		}
+	}
+
+	// 5. Aliases (Optional)
 	var aliasesStr string
 	promptAliases := &survey.Input{
 		Message: "Aliases (Optional - Press Enter to skip):",
@@ -129,7 +175,7 @@ func CreateProfileInteractive(ctx context.Context, name string) error {
 		}
 	}
 
-	// 5. Preview & Confirm
+	// 6. Preview & Confirm
 	fmt.Println("\n────────────────────────────────────────")
 	fmt.Printf("Profile Summary:\n")
 	fmt.Printf("  Name:        %s\n", name)
@@ -147,6 +193,13 @@ func CreateProfileInteractive(ctx context.Context, name string) error {
 	}
 	fmt.Printf("  Field:       %s\n", fieldDisplay)
 	
+	if scope != nil {
+		fmt.Printf("  Scope Include: %s\n", strings.Join(scope.Include, ", "))
+		fmt.Printf("  Scope Exclude: %s\n", strings.Join(scope.Exclude, ", "))
+	} else {
+		fmt.Printf("  Scope:       (default - all tracked files)\n")
+	}
+	
 	fmt.Printf("  Aliases:     %s\n", strings.Join(aliases, ", "))
 	fmt.Println("────────────────────────────────────────")
 
@@ -163,9 +216,12 @@ func CreateProfileInteractive(ctx context.Context, name string) error {
 		return fmt.Errorf("profile creation cancelled")
 	}
 
-	// 6. Create Profile
+	// 7. Create Profile
 	settings := ProfileSettings{
-		Global: GlobalSettings{DefaultDatabase: selectedDB},
+		Global: GlobalSettings{
+			DefaultDatabase: selectedDB,
+			Scope:           scope,
+		},
 		Query:  QuerySettings{DefaultField: selectedField, DefaultFormat: "table"},
 		RG:     RGSettings{DefaultFormat: "table", DefaultContext: 0},
 	}
@@ -259,7 +315,65 @@ func UpdateProfileInteractive(ctx context.Context, name string) error {
 		selectedField = ""
 	}
 
-	// 5. Manage Aliases (Optional)
+	// 5. Update Focus Scope (Optional)
+	var updateScope bool
+	promptScope := &survey.Confirm{
+		Message: "Do you want to update the Focus Scope configuration?",
+		Default: false,
+	}
+	if err := survey.AskOne(promptScope, &updateScope); err != nil {
+		return err
+	}
+
+	var scope *ScopeConfig
+	if updateScope {
+		var includeStr, excludeStr string
+		
+		// Pre-fill with existing values if available
+		defaultInc := ""
+		defaultExc := ""
+		if profile.Settings.Global.Scope != nil {
+			defaultInc = strings.Join(profile.Settings.Global.Scope.Include, ",")
+			defaultExc = strings.Join(profile.Settings.Global.Scope.Exclude, ",")
+		}
+
+		promptInc := &survey.Input{
+			Message: "Include patterns (comma-separated):",
+			Default: defaultInc,
+			Help:    "Files matching these patterns will be included.",
+		}
+		if err := survey.AskOne(promptInc, &includeStr); err != nil {
+			return err
+		}
+
+		promptExc := &survey.Input{
+			Message: "Exclude patterns (comma-separated):",
+			Default: defaultExc,
+			Help:    "Files matching these patterns will be excluded.",
+		}
+		if err := survey.AskOne(promptExc, &excludeStr); err != nil {
+			return err
+		}
+
+		scope = &ScopeConfig{}
+		if includeStr != "" {
+			scope.Include = strings.Split(includeStr, ",")
+			for i := range scope.Include {
+				scope.Include[i] = strings.TrimSpace(scope.Include[i])
+			}
+		}
+		if excludeStr != "" {
+			scope.Exclude = strings.Split(excludeStr, ",")
+			for i := range scope.Exclude {
+				scope.Exclude[i] = strings.TrimSpace(scope.Exclude[i])
+			}
+		}
+	} else {
+		// Keep existing scope
+		scope = profile.Settings.Global.Scope
+	}
+
+	// 6. Manage Aliases (Optional)
 	var aliasesStr string
 	promptAliases := &survey.Input{
 		Message: "Aliases (Optional - Press Enter to keep current):",
@@ -278,7 +392,7 @@ func UpdateProfileInteractive(ctx context.Context, name string) error {
 		}
 	}
 
-	// 6. Preview & Confirm
+	// 7. Preview & Confirm
 	fmt.Println("\n────────────────────────────────────────")
 	fmt.Printf("Changes for '%s':\n", name)
 	if description != profile.Description {
@@ -299,6 +413,14 @@ func UpdateProfileInteractive(ctx context.Context, name string) error {
 		fmt.Printf("  Field:       %s (unchanged)\n", profile.Settings.Query.DefaultField)
 	}
 
+	if updateScope {
+		fmt.Printf("  Scope:       Updated\n")
+		fmt.Printf("    Include:   %s\n", strings.Join(scope.Include, ", "))
+		fmt.Printf("    Exclude:   %s\n", strings.Join(scope.Exclude, ", "))
+	} else {
+		fmt.Printf("  Scope:       (unchanged)\n")
+	}
+
 	fmt.Printf("  Aliases:     %s -> %s\n", strings.Join(profile.Aliases, ", "), strings.Join(aliases, ", "))
 	fmt.Println("────────────────────────────────────────")
 
@@ -315,10 +437,11 @@ func UpdateProfileInteractive(ctx context.Context, name string) error {
 		return fmt.Errorf("profile update cancelled")
 	}
 
-	// 7. Update Profile
+	// 8. Update Profile
 	profile.Description = description
 	profile.Settings.Global.DefaultDatabase = selectedDB
 	profile.Settings.Query.DefaultField = selectedField
+	profile.Settings.Global.Scope = scope
 	profile.Aliases = aliases
 
 	return SaveProfile(profile)

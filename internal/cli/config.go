@@ -1,23 +1,25 @@
 /*
  * Component: Config Command
- * Block-UUID: 4f84de89-eb45-477f-aed6-3a7481853b6b
- * Parent-UUID: f9213afc-bbc2-40df-97c7-d383744aefaa
- * Version: 1.5.0
- * Description: CLI command definition for 'gsc config', managing context profiles and workspace settings. Renamed 'current-context' subcommand to 'active' with 'current-context' as an alias for brevity and ergonomics.
+ * Block-UUID: 0e15ca7f-6e71-4736-8787-f4ee6dc75cab
+ * Parent-UUID: 4f84de89-eb45-477f-aed6-3a7481853b6b
+ * Version: 1.6.0
+ * Description: CLI command definition for 'gsc config', managing context profiles and workspace settings. Added --scope-include and --scope-exclude flags to create/update commands. Implemented 'gsc config scope validate' command to check scope patterns against tracked files.
  * Language: Go
  * Created-at: 2026-02-03T02:10:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0)
  */
 
 
 package cli
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/spf13/cobra"
+	"github.com/yourusername/gsc-cli/internal/git"
 	"github.com/yourusername/gsc-cli/internal/manifest"
 	"github.com/yourusername/gsc-cli/internal/output"
 )
@@ -139,12 +141,14 @@ var contextListCmd = &cobra.Command{
 
 // contextCreateCmd represents the 'config context create' command
 var (
-	createDesc       string
-	createDB         string
-	createField      string
-	createFormat     string
-	createRGContext  int
-	createAliases    string
+	createDesc        string
+	createDB          string
+	createField       string
+	createFormat      string
+	createRGContext   int
+	createAliases     string
+	createScopeInc    string
+	createScopeExc    string
 )
 
 var contextCreateCmd = &cobra.Command{
@@ -161,8 +165,8 @@ If required flags are missing, you'll be guided through an interactive setup wiz
   # Non-interactive mode (for scripts)
   gsc config context create sec --db security --field risk_level
 
-  # Non-interactive mode with optional fields
-  gsc config context create sec --db security --field risk_level --description "Security Audit" --alias sec`,
+  # Non-interactive mode with scope
+  gsc config context create sec --db security --field risk_level --scope-include "src/**" --scope-exclude "test/**"`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name := args[0]
@@ -188,6 +192,24 @@ If required flags are missing, you'll be guided through an interactive setup wiz
 				},
 			}
 
+			// Handle Scope
+			if cmd.Flags().Changed("scope-include") || cmd.Flags().Changed("scope-exclude") {
+				scope := &manifest.ScopeConfig{}
+				if createScopeInc != "" {
+					scope.Include = strings.Split(createScopeInc, ",")
+					for i := range scope.Include {
+						scope.Include[i] = strings.TrimSpace(scope.Include[i])
+					}
+				}
+				if createScopeExc != "" {
+					scope.Exclude = strings.Split(createScopeExc, ",")
+					for i := range scope.Exclude {
+						scope.Exclude[i] = strings.TrimSpace(scope.Exclude[i])
+					}
+				}
+				settings.Global.Scope = scope
+			}
+
 			var aliases []string
 			if createAliases != "" {
 				aliases = strings.Split(createAliases, ",")
@@ -210,10 +232,12 @@ If required flags are missing, you'll be guided through an interactive setup wiz
 
 // contextUpdateCmd represents the 'config context update' command
 var (
-	updateDesc    string
-	updateDB      string
-	updateField   string
-	updateAliases string
+	updateDesc     string
+	updateDB       string
+	updateField    string
+	updateAliases  string
+	updateScopeInc string
+	updateScopeExc string
 )
 
 var contextUpdateCmd = &cobra.Command{
@@ -222,13 +246,16 @@ var contextUpdateCmd = &cobra.Command{
 	Long: `Update an existing context profile.
 
 If you provide update flags, the profile is updated immediately.
-All flags (--description, --db, --field, --alias) are optional.
+All flags (--description, --db, --field, --alias, --scope-include, --scope-exclude) are optional.
 If no flags are provided, you'll be guided through an interactive update wizard.`,
 	Example: `  # Interactive mode
   gsc config context update my-profile
 
   # Non-interactive mode (update specific fields)
-  gsc config context update my-profile --db payments --field severity`,
+  gsc config context update my-profile --db payments --field severity
+
+  # Update scope
+  gsc config context update my-profile --scope-include "backend/**"`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name := args[0]
@@ -238,7 +265,9 @@ If no flags are provided, you'll be guided through an interactive update wizard.
 		hasUpdates := cmd.Flags().Changed("description") ||
 			cmd.Flags().Changed("db") ||
 			cmd.Flags().Changed("field") ||
-			cmd.Flags().Changed("alias")
+			cmd.Flags().Changed("alias") ||
+			cmd.Flags().Changed("scope-include") ||
+			cmd.Flags().Changed("scope-exclude")
 
 		if hasUpdates {
 			// Non-interactive mode
@@ -262,6 +291,25 @@ If no flags are provided, you'll be guided through an interactive update wizard.
 					aliases[i] = strings.TrimSpace(aliases[i])
 				}
 				profile.Aliases = aliases
+			}
+
+			// Handle Scope
+			if cmd.Flags().Changed("scope-include") || cmd.Flags().Changed("scope-exclude") {
+				if profile.Settings.Global.Scope == nil {
+					profile.Settings.Global.Scope = &manifest.ScopeConfig{}
+				}
+				if createScopeInc != "" {
+					profile.Settings.Global.Scope.Include = strings.Split(createScopeInc, ",")
+					for i := range profile.Settings.Global.Scope.Include {
+						profile.Settings.Global.Scope.Include[i] = strings.TrimSpace(profile.Settings.Global.Scope.Include[i])
+					}
+				}
+				if createScopeExc != "" {
+					profile.Settings.Global.Scope.Exclude = strings.Split(createScopeExc, ",")
+					for i := range profile.Settings.Global.Scope.Exclude {
+						profile.Settings.Global.Scope.Exclude[i] = strings.TrimSpace(profile.Settings.Global.Scope.Exclude[i])
+					}
+				}
 			}
 
 			if err := manifest.SaveProfile(profile); err != nil {
@@ -299,6 +347,11 @@ var contextShowCmd = &cobra.Command{
 		fmt.Printf("  Query Format:   %s\n", profile.Settings.Query.DefaultFormat)
 		fmt.Printf("  RG Format:      %s\n", profile.Settings.RG.DefaultFormat)
 		fmt.Printf("  RG Context:     %d\n", profile.Settings.RG.DefaultContext)
+		
+		if profile.Settings.Global.Scope != nil {
+			fmt.Printf("  Scope Include:  %s\n", strings.Join(profile.Settings.Global.Scope.Include, ", "))
+			fmt.Printf("  Scope Exclude:  %s\n", strings.Join(profile.Settings.Global.Scope.Exclude, ", "))
+		}
 
 		return nil
 	},
@@ -368,6 +421,113 @@ var activeCmd = &cobra.Command{
 	},
 }
 
+// scopeCmd represents the 'config scope' command group
+var scopeCmd = &cobra.Command{
+	Use:   "scope",
+	Short: "Manage and validate Focus Scope configuration",
+}
+
+// validateCmd represents the 'config scope validate' command
+var validateProfile string
+
+var validateCmd = &cobra.Command{
+	Use:   "validate",
+	Short: "Validate Focus Scope patterns against tracked files",
+	Long: `Validates the include/exclude patterns for a profile or the project map.
+It checks if patterns match files and provides suggestions for typos.`,
+	Example: `  # Validate active profile's scope
+  gsc config scope validate
+
+  # Validate a specific profile
+  gsc config scope validate --profile security-profile`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		ctx := context.Background()
+		
+		// Determine which scope to validate
+		var scope *manifest.ScopeConfig
+		var targetName string
+
+		if validateProfile != "" {
+			// Validate specific profile
+			profile, err := manifest.LoadProfile(validateProfile)
+			if err != nil {
+				return fmt.Errorf("failed to load profile '%s': %w", validateProfile, err)
+			}
+			scope = profile.Settings.Global.Scope
+			targetName = fmt.Sprintf("profile '%s'", validateProfile)
+		} else {
+			// Validate active profile or project map
+			activeName, err := manifest.GetActiveProfileName()
+			if err != nil {
+				return err
+			}
+
+			if activeName != "" {
+				profile, err := manifest.LoadProfile(activeName)
+				if err != nil {
+					return err
+				}
+				scope = profile.Settings.Global.Scope
+				targetName = fmt.Sprintf("active profile '%s'", activeName)
+			} else {
+				// Fallback to project map
+				projectMap, err := manifest.LoadGitSenseMap()
+				if err != nil {
+					return fmt.Errorf("failed to load .gitsense-map: %w", err)
+				}
+				if projectMap == nil {
+					return fmt.Errorf("no active profile and no .gitsense-map found to validate")
+				}
+				scope = projectMap
+				targetName = ".gitsense-map"
+			}
+		}
+
+		if scope == nil {
+			fmt.Printf("No scope defined for %s. Defaulting to all tracked files.\n", targetName)
+			return nil
+		}
+
+		// Get repo root
+		repoRoot, err := git.FindProjectRoot()
+		if err != nil {
+			return fmt.Errorf("failed to find project root: %w", err)
+		}
+
+		// Perform validation
+		result, err := manifest.ValidateScope(ctx, scope, repoRoot)
+		if err != nil {
+			return fmt.Errorf("validation failed: %w", err)
+		}
+
+		// Print results
+		fmt.Printf("Validation Results for %s:\n", targetName)
+		fmt.Printf("  Total Tracked Files: %d\n", result.TotalTrackedFiles)
+		fmt.Printf("  In-Scope Files:      %d\n", result.InScopeFiles)
+		fmt.Printf("  Excluded Files:      %d\n", result.ExcludedFiles)
+
+		if len(result.Warnings) > 0 {
+			fmt.Println("\nWarnings:")
+			for _, w := range result.Warnings {
+				fmt.Printf("  - %s\n", w)
+			}
+		}
+
+		if len(result.Suggestions) > 0 {
+			fmt.Println("\nSuggestions:")
+			for _, s := range result.Suggestions {
+				fmt.Printf("  - %s\n", s)
+			}
+		}
+
+		if len(result.Warnings) == 0 && len(result.Suggestions) == 0 {
+			fmt.Println("\n✓ Scope configuration is valid.")
+		}
+
+		return nil
+	},
+}
+
 func init() {
 	// Register context subcommands
 	contextCmd.AddCommand(contextListCmd)
@@ -381,6 +541,10 @@ func init() {
 	configCmd.AddCommand(clearCmd)
 	configCmd.AddCommand(contextCmd)
 	configCmd.AddCommand(activeCmd)
+	
+	// Register scope subcommands
+	configCmd.AddCommand(scopeCmd)
+	scopeCmd.AddCommand(validateCmd)
 
 	// Add flags for context create
 	contextCreateCmd.Flags().StringVar(&createDesc, "description", "", "Description of the profile (optional)")
@@ -389,15 +553,22 @@ func init() {
 	contextCreateCmd.Flags().StringVar(&createFormat, "format", "table", "Default output format for this profile")
 	contextCreateCmd.Flags().IntVar(&createRGContext, "rg-context", 0, "Default ripgrep context lines for this profile")
 	contextCreateCmd.Flags().StringVar(&createAliases, "alias", "", "Aliases for this profile (comma-separated, optional)")
+	contextCreateCmd.Flags().StringVar(&createScopeInc, "scope-include", "", "Include patterns for Focus Scope (comma-separated, optional)")
+	contextCreateCmd.Flags().StringVar(&createScopeExc, "scope-exclude", "", "Exclude patterns for Focus Scope (comma-separated, optional)")
 
 	// Add flags for context update
 	contextUpdateCmd.Flags().StringVar(&updateDesc, "description", "", "Update description (optional)")
 	contextUpdateCmd.Flags().StringVar(&updateDB, "db", "", "Update default database (optional)")
 	contextUpdateCmd.Flags().StringVar(&updateField, "field", "", "Update default query field (optional)")
 	contextUpdateCmd.Flags().StringVar(&updateAliases, "alias", "", "Update aliases (comma-separated, optional)")
+	contextUpdateCmd.Flags().StringVar(&updateScopeInc, "scope-include", "", "Update include patterns for Focus Scope (comma-separated, optional)")
+	contextUpdateCmd.Flags().StringVar(&updateScopeExc, "scope-exclude", "", "Update exclude patterns for Focus Scope (comma-separated, optional)")
 
 	// Add flags for active
 	activeCmd.Flags().BoolVar(&activeShort, "short", false, "Output only the profile name (for shell prompts)")
+
+	// Add flags for validate
+	validateCmd.Flags().StringVar(&validateProfile, "profile", "", "Profile name to validate (defaults to active profile or .gitsense-map)")
 }
 
 // RegisterConfigCommand registers the config command with the root command.

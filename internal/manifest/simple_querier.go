@@ -1,12 +1,12 @@
 /*
  * Component: Simple Query Executor
- * Block-UUID: f918b0c7-4112-4598-863f-f8a7b7b3a3af
- * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: Executes simple value-matching queries against the manifest database and handles hierarchical list operations.
+ * Block-UUID: 13bdeb15-93f7-40e7-9b30-0dee06e728b1
+ * Parent-UUID: f918b0c7-4112-4598-863f-f8a7b7b3a3af
+ * Version: 1.1.0
+ * Description: Executes simple value-matching queries against the manifest database and handles hierarchical list operations. Added PrepareTargetSet to create and populate a temporary table with files matching the active Focus Scope, enabling scalable SQL joins for Phase 2 aggregations.
  * Language: Go
  * Created-at: 2026-02-02T18:50:00.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0)
  */
 
 
@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/yourusername/gsc-cli/internal/db"
+	"github.com/yourusername/gsc-cli/internal/git"
 	"github.com/yourusername/gsc-cli/internal/registry"
 	"github.com/yourusername/gsc-cli/pkg/logger"
 )
@@ -272,4 +273,48 @@ func listValuesForField(ctx context.Context, dbName string, fieldName string) (*
 		Level: "value",
 		Items: items,
 	}, nil
+}
+
+// PrepareTargetSet creates and populates a temporary table with files matching the active Focus Scope.
+// This function is critical for Phase 2 performance, allowing efficient joins against the 'files' table.
+// It drops any existing 'target_set' table to ensure a clean state for the current query context.
+func PrepareTargetSet(ctx context.Context, db *sql.DB, scope *ScopeConfig, repoRoot string) error {
+	// 1. Clean up existing temporary table (if any)
+	// We ignore errors here as the table might not exist
+	_, _ = db.ExecContext(ctx, "DROP TABLE IF EXISTS target_set")
+
+	// 2. Create the temporary table
+	// Using a temporary table ensures it is session-specific and cleaned up automatically
+	_, err := db.ExecContext(ctx, "CREATE TEMPORARY TABLE target_set (file_path TEXT PRIMARY KEY)")
+	if err != nil {
+		return fmt.Errorf("failed to create temporary table target_set: %w", err)
+	}
+
+	// 3. Get all tracked files from Git
+	trackedFiles, err := git.GetTrackedFiles(ctx, repoRoot)
+	if err != nil {
+		return fmt.Errorf("failed to get tracked files for target set: %w", err)
+	}
+
+	// 4. Filter files by scope and insert into temporary table
+	// Using a prepared statement for batch insertion efficiency
+	stmt, err := db.PrepareContext(ctx, "INSERT INTO target_set (file_path) VALUES (?)")
+	if err != nil {
+		return fmt.Errorf("failed to prepare insert statement for target_set: %w", err)
+	}
+	defer stmt.Close()
+
+	insertedCount := 0
+	for _, filePath := range trackedFiles {
+		// Check if file matches the scope
+		if MatchScope(filePath, scope) {
+			if _, err := stmt.ExecContext(ctx, filePath); err != nil {
+				return fmt.Errorf("failed to insert file into target_set: %w", err)
+			}
+			insertedCount++
+		}
+	}
+
+	logger.Debug("Target set prepared", "total_tracked", len(trackedFiles), "in_scope", insertedCount)
+	return nil
 }

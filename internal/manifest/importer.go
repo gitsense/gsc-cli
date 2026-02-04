@@ -1,12 +1,12 @@
 /*
  * Component: Manifest Importer
- * Block-UUID: fd015645-c244-4e75-802b-25aabbbd0606
- * Parent-UUID: dd92c2cf-6a4a-4fa2-838a-2c992c4fa1a2
- * Version: 1.3.1
- * Description: Logic to parse a JSON manifest file and import its data into a SQLite database. Updated to populate the DatabaseName field in the registry entry to ensure correct file resolution. Added comment explaining the use of the resolved dbName for CLI override support.
+ * Block-UUID: 0e312c0b-9447-4c10-bbe4-f5797c5a1669
+ * Parent-UUID: fd015645-c244-4e75-802b-25aabbbd0606
+ * Version: 1.4.0
+ * Description: Logic to parse a JSON manifest file and import its data into a SQLite database. Updated to implement "Trust Upstream" language logic. If the manifest provides a language, it is used. Otherwise, enry is used to detect the language from the file content during import.
  * Language: Go
  * Created-at: 2026-02-02T05:30:00Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.4.0)
  */
 
 
@@ -21,7 +21,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/src-d/enry/v2"
 	"github.com/yourusername/gsc-cli/internal/db"
+	"github.com/yourusername/gsc-cli/internal/git"
 	"github.com/yourusername/gsc-cli/internal/registry"
 	"github.com/yourusername/gsc-cli/pkg/logger"
 )
@@ -238,12 +240,31 @@ func insertFileData(ctx context.Context, tx *sql.Tx, manifestFile *ManifestFile)
 	}
 	defer metaStmt.Close()
 
+	// Get project root for resolving file paths during language detection
+	root, err := git.FindProjectRoot()
+	if err != nil {
+		logger.Warning("Failed to find project root for language detection: %v", err)
+		// Continue without root, language detection will fail for missing languages
+	}
+
 	for _, dataRow := range manifestFile.Data {
+		// Determine Language: Trust Upstream -> Detect with enry
+		language := dataRow.Language
+		if language == "" && root != "" {
+			// Fallback detection
+			fullPath := filepath.Join(root, dataRow.FilePath)
+			detectedLang := detectLanguage(fullPath)
+			if detectedLang != "" {
+				language = detectedLang
+				logger.Debug("Detected language for %s: %s", dataRow.FilePath, language)
+			}
+		}
+
 		// Insert File
 		if _, err := fileStmt.ExecContext(ctx,
 			dataRow.FilePath,
 			dataRow.ChatID,
-			dataRow.Language,
+			language,
 			manifestFile.GeneratedAt,
 		); err != nil {
 			return fmt.Errorf("failed to insert file %s: %w", dataRow.FilePath, err)
@@ -261,4 +282,27 @@ func insertFileData(ctx context.Context, tx *sql.Tx, manifestFile *ManifestFile)
 	}
 
 	return nil
+}
+
+// detectLanguage uses enry to detect the language of a file.
+// It reads the file content to perform accurate detection.
+func detectLanguage(filePath string) string {
+	// Read file content
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		logger.Debug("Failed to read file for language detection: %s", filePath)
+		return ""
+	}
+
+	// Use enry to detect language
+	// enry.GetLanguage returns the language name or empty string if unknown
+	lang := enry.GetLanguage(filePath, content)
+	
+	// enry returns "Text" for unknown text files, we might want to treat that as empty or keep it
+	// depending on requirements. For now, we keep what enry returns.
+	if lang == "" {
+		return ""
+	}
+	
+	return lang
 }

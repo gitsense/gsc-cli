@@ -1,12 +1,12 @@
 /**
  * Component: Query Configuration Manager
- * Block-UUID: 82312263-6c3d-4ece-bc7b-02fb3ece321d
- * Parent-UUID: 08db1596-03dd-4709-9e85-1a7db0bbfa84
- * Version: 2.1.0
- * Description: Manages the .gitsense/config.json file and profile loading. Updated to support active profiles and configuration merging. Reclassified internal state logs to Debug level to support quiet mode by default.
+ * Block-UUID: dfa64e2a-d8d8-422b-9686-35825e259acb
+ * Parent-UUID: 82312263-6c3d-4ece-bc7b-02fb3ece321d
+ * Version: 2.2.0
+ * Description: Manages the .gitsense/config.json file and profile loading. Updated GlobalSettings to include Scope, updated mergeConfig to handle scope merging, and integrated .gitsense-map loading into GetEffectiveConfig to ensure project-level scope is considered.
  * Language: Go
  * Created-at: 2026-02-02T18:48:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0)
  */
 
 
@@ -105,16 +105,25 @@ func SaveConfig(config *QueryConfig) error {
 }
 
 // GetEffectiveConfig loads the configuration and merges the active profile if one is set.
+// It also integrates project-level scope from .gitsense-map if no profile scope is defined.
 // This is the primary function that commands should use to get their settings.
-// Precedence: Profile Settings > Global Settings.
+// Precedence: Profile Settings > Global Settings > .gitsense-map.
 func GetEffectiveConfig() (*QueryConfig, error) {
 	config, err := LoadConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	// If no active profile, return the base config as-is
+	// If no active profile, check for .gitsense-map and return
 	if config.ActiveProfile == "" {
+		// If no profile scope, try to load project map
+		if config.Global.Scope == nil {
+			projectMap, err := LoadGitSenseMap()
+			if err == nil && projectMap != nil {
+				config.Global.Scope = projectMap
+				logger.Debug("Applied .gitsense-map to global config")
+			}
+		}
 		return config, nil
 	}
 
@@ -122,11 +131,29 @@ func GetEffectiveConfig() (*QueryConfig, error) {
 	profile, err := LoadProfile(config.ActiveProfile)
 	if err != nil {
 		logger.Warning("Failed to load active profile '%s', using base config: %v", config.ActiveProfile, err)
+		// Fallback to checking .gitsense-map if profile loading fails
+		if config.Global.Scope == nil {
+			projectMap, err := LoadGitSenseMap()
+			if err == nil && projectMap != nil {
+				config.Global.Scope = projectMap
+			}
+		}
 		return config, nil
 	}
 
 	// Merge profile settings into the config
-	return mergeConfig(config, profile), nil
+	merged := mergeConfig(config, profile)
+
+	// If merged config has no scope, check .gitsense-map
+	if merged.Global.Scope == nil {
+		projectMap, err := LoadGitSenseMap()
+		if err == nil && projectMap != nil {
+			merged.Global.Scope = projectMap
+			logger.Debug("Applied .gitsense-map to merged config")
+		}
+	}
+
+	return merged, nil
 }
 
 // LoadProfile loads a specific profile JSON file from the .gitsense/profiles directory.
@@ -184,6 +211,10 @@ func mergeConfig(base *QueryConfig, profile *Profile) *QueryConfig {
 	if profile.Settings.Global.DefaultDatabase != "" {
 		merged.Global.DefaultDatabase = profile.Settings.Global.DefaultDatabase
 	}
+	// Merge Scope: Profile scope overrides Base scope
+	if profile.Settings.Global.Scope != nil {
+		merged.Global.Scope = profile.Settings.Global.Scope
+	}
 
 	// Merge Query Settings
 	if profile.Settings.Query.DefaultField != "" {
@@ -210,6 +241,7 @@ func NewQueryConfig() *QueryConfig {
 		ActiveProfile: "",
 		Global: GlobalSettings{
 			DefaultDatabase: "",
+			Scope:           nil, // No default scope
 		},
 		Query: QuerySettings{
 			DefaultField:  "",

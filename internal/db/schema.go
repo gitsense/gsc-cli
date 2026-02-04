@@ -1,12 +1,12 @@
 /*
  * Component: Database Schema Definition
- * Block-UUID: 8e98a2a9-c39f-4656-b728-ca077c347fb4
- * Parent-UUID: 89a91dce-b124-404e-aa17-148d944381f1
- * Version: 1.2.0
- * Description: Defines the SQL schema for the GitSense manifest SQLite database and the search history stats database.
+ * Block-UUID: 6b9211b5-42d5-40f6-a098-2c669894415d
+ * Parent-UUID: 8e98a2a9-c39f-4656-b728-ca077c347fb4
+ * Version: 1.3.0
+ * Description: Defines the SQL schema for the GitSense manifest SQLite database and the search history stats database. Added logic to ensure the 'language' column exists in the 'files' table for backwards compatibility. Explicitly avoids adding 'in_scope' column per specification.
  * Language: Go
  * Created-at: 2026-02-02T05:30:00.000Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
  */
 
 
@@ -14,6 +14,7 @@ package db
 
 import (
 	"database/sql"
+	"strings"
 
 	"github.com/yourusername/gsc-cli/pkg/logger"
 )
@@ -53,6 +54,8 @@ func CreateSchema(db *sql.DB) error {
 	);`
 
 	// Table 4: Core File Information
+	// Note: 'language' column is included here for new databases.
+	// An ALTER TABLE statement below ensures it exists for older databases.
 	filesSQL := `
 	CREATE TABLE IF NOT EXISTS files (
 		file_path TEXT PRIMARY KEY,
@@ -109,6 +112,16 @@ func CreateSchema(db *sql.DB) error {
 		if _, err := db.Exec(tableSQL); err != nil {
 			logger.Error("Failed to create table", "error", err)
 			return err
+		}
+	}
+
+	// Backwards Compatibility: Ensure 'language' column exists
+	// This handles databases created before this version.
+	// We ignore "duplicate column name" errors as they indicate the column already exists.
+	alterLanguageSQL := `ALTER TABLE files ADD COLUMN language TEXT`
+	if _, err := db.Exec(alterLanguageSQL); err != nil {
+		if !strings.Contains(err.Error(), "duplicate column name") {
+			logger.Warning("Failed to add language column (may already exist)", "error", err)
 		}
 	}
 

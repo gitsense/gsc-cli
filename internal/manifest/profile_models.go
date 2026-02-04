@@ -1,12 +1,12 @@
 /*
  * Component: Profile Models
- * Block-UUID: f0b6dfdc-3c3a-433a-bb20-32c1b40b3160
- * Parent-UUID: be2507ae-bb5c-4b4f-91bf-b6ec5c4fa5ba
- * Version: 1.1.0
- * Description: Defines the Go structs for Context Profiles, which represent named workspaces containing pre-defined configuration values. Added Aliases field to support ergonomic profile switching.
+ * Block-UUID: ab61e972-aba6-43ef-b54e-41d68273e26c
+ * Parent-UUID: f0b6dfdc-3c3a-433a-bb20-32c1b40b3160
+ * Version: 1.2.0
+ * Description: Defines the Go structs for Context Profiles, which represent named workspaces containing pre-defined configuration values. Added Scope field to GlobalSettings to support Focus Scope configuration within profiles.
  * Language: Go
  * Created-at: 2026-02-03T01:55:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -25,14 +25,15 @@ type Profile struct {
 // ProfileSettings contains the configuration values for a specific profile.
 // It is divided into global settings and command-specific settings.
 type ProfileSettings struct {
-	Global GlobalSettings `json:"global"` // Settings that apply globally (e.g., default database)
+	Global GlobalSettings `json:"global"` // Settings that apply globally (e.g., default database, scope)
 	Query  QuerySettings  `json:"query"`  // Settings specific to the 'gsc query' command
 	RG     RGSettings     `json:"rg"`     // Settings specific to the 'gsc rg' command
 }
 
 // GlobalSettings contains configuration that applies across multiple commands.
 type GlobalSettings struct {
-	DefaultDatabase string `json:"default_database"` // The default database to use for all commands
+	DefaultDatabase string       `json:"default_database"` // The default database to use for all commands
+	Scope           *ScopeConfig `json:"scope"`            // The Focus Scope configuration for this profile
 }
 
 // QuerySettings contains configuration specific to the 'gsc query' command.
