@@ -1,12 +1,12 @@
 /*
  * Component: Config Command
- * Block-UUID: 5b36519b-1ceb-4625-bdc2-d57feb2f350e
- * Parent-UUID: d227868b-0c31-4421-abec-93abef96c98d
- * Version: 1.3.0
- * Description: CLI command definition for 'gsc config', managing context profiles and workspace settings. Added interactive modes for create, update, and use commands. Added alias support and confirmation prompts for deletion. Updated help text to clarify that --description and --alias are optional flags.
+ * Block-UUID: f9213afc-bbc2-40df-97c7-d383744aefaa
+ * Parent-UUID: 5b36519b-1ceb-4625-bdc2-d57feb2f350e
+ * Version: 1.4.0
+ * Description: CLI command definition for 'gsc config', managing context profiles and workspace settings. Renamed 'deactivate' subcommand to 'clear' with 'deactivate' as an alias for brevity and ergonomics.
  * Language: Go
  * Created-at: 2026-02-03T02:10:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
  */
 
 
@@ -61,10 +61,13 @@ If no argument is provided, an interactive selection menu will appear.`,
 	},
 }
 
-// deactivateCmd represents the 'config deactivate' command
-var deactivateCmd = &cobra.Command{
-	Use:   "deactivate",
-	Short: "Deactivate the current profile (revert to global defaults)",
+// clearCmd represents the 'config clear' command
+var clearCmd = &cobra.Command{
+	Use:     "clear",
+	Aliases: []string{"deactivate"},
+	Short:   "Deactivate the current profile (revert to global defaults)",
+	Long: `Clear the active profile and revert to global default settings.
+This does not delete the profile; it simply stops using it.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := manifest.DeactivateProfile(); err != nil {
 			return err
@@ -374,7 +377,7 @@ func init() {
 
 	// Register config subcommands
 	configCmd.AddCommand(useCmd)
-	configCmd.AddCommand(deactivateCmd)
+	configCmd.AddCommand(clearCmd)
 	configCmd.AddCommand(contextCmd)
 	configCmd.AddCommand(currentContextCmd)
 

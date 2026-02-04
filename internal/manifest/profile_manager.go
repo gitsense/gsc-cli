@@ -1,12 +1,12 @@
 /*
  * Component: Profile Manager
- * Block-UUID: d68f22a9-deda-4640-afec-88221de7579f
- * Parent-UUID: 35e82d14-d1f4-4422-b6f3-334aa72dd4dd
- * Version: 1.2.0
- * Description: Logic to manage Context Profiles, including listing, creating, deleting, activating, and deactivating profiles. Added ValidateAliasUniqueness and ResolveProfile functions to support aliases and ergonomic profile switching. Updated CreateProfile to accept aliases.
+ * Block-UUID: 1ea81347-2c64-48eb-99a1-040d5eaba503
+ * Parent-UUID: d68f22a9-deda-4640-afec-88221de7579f
+ * Version: 1.3.0
+ * Description: Logic to manage Context Profiles, including listing, creating, deleting, activating, and deactivating profiles. Updated log messages in DeactivateProfile to use 'clear' terminology for consistency with the new CLI command.
  * Language: Go
  * Created-at: 2026-02-03T02:05:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
  */
 
 
@@ -184,7 +184,7 @@ func DeactivateProfile() error {
 
 	// Check if there is even an active profile
 	if config.ActiveProfile == "" {
-		logger.Info("No active profile to deactivate.")
+		logger.Info("No active profile to clear.")
 		return nil
 	}
 
@@ -196,7 +196,7 @@ func DeactivateProfile() error {
 		return fmt.Errorf("failed to save config: %w", err)
 	}
 
-	logger.Success("Active profile deactivated")
+	logger.Success("Active profile cleared")
 	return nil
 }
 
