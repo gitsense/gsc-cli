@@ -1,12 +1,12 @@
 /*
  * Component: Database Schema Definition
- * Block-UUID: 89a91dce-b124-404e-aa17-148d944381f1
- * Parent-UUID: 8e0becf6-a27b-492a-b50d-8309946458e4
- * Version: 1.1.0
- * Description: Defines the SQL schema for the GitSense manifest SQLite database, including tables for manifest info, repositories, branches, files, analyzers, fields, and metadata.
+ * Block-UUID: 8e98a2a9-c39f-4656-b728-ca077c347fb4
+ * Parent-UUID: 89a91dce-b124-404e-aa17-148d944381f1
+ * Version: 1.2.0
+ * Description: Defines the SQL schema for the GitSense manifest SQLite database and the search history stats database.
  * Language: Go
  * Created-at: 2026-02-02T05:30:00.000Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -130,5 +130,50 @@ func CreateSchema(db *sql.DB) error {
 	}
 
 	logger.Success("Database schema created successfully")
+	return nil
+}
+
+// CreateStatsSchema creates the search_history table and indexes for the stats database.
+// This is separate from the manifest schema to avoid bloating the manifest DB.
+func CreateStatsSchema(db *sql.DB) error {
+	logger.Info("Creating stats database schema...")
+
+	// Create Table
+	createTableSQL := `
+	CREATE TABLE IF NOT EXISTS search_history (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		timestamp TIMESTAMP,
+		pattern TEXT,
+		tool_name TEXT,
+		tool_version TEXT,
+		duration_ms INTEGER,
+		total_matches INTEGER,
+		total_files INTEGER,
+		analyzed_files INTEGER,
+		filters_used TEXT,
+		database_name TEXT,
+		case_sensitive BOOLEAN,
+		file_filters TEXT,
+		analyzed_filter TEXT
+	);`
+
+	if _, err := db.Exec(createTableSQL); err != nil {
+		return err
+	}
+
+	// Create Indexes
+	indexes := []string{
+		"CREATE INDEX IF NOT EXISTS idx_search_history_timestamp ON search_history(timestamp);",
+		"CREATE INDEX IF NOT EXISTS idx_search_history_pattern ON search_history(pattern);",
+		"CREATE INDEX IF NOT EXISTS idx_search_history_tool ON search_history(tool_name);",
+	}
+
+	for _, indexSQL := range indexes {
+		if _, err := db.Exec(indexSQL); err != nil {
+			return err
+		}
+	}
+
+	logger.Success("Stats database schema created successfully")
 	return nil
 }

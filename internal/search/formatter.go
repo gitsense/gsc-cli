@@ -1,12 +1,12 @@
 /*
  * Component: Search Response Formatter
- * Block-UUID: c3e82257-f44e-4fb0-8126-fe2826661f19
- * Parent-UUID: ba32a464-227a-46ec-a660-643f1f80087f
- * Version: 2.0.0
- * Description: Formats search results into the final JSON response structure. Updated to handle grouped file results and new context structure.
+ * Block-UUID: de1c4a8d-cdb9-46fb-a99b-b58e7a23021b
+ * Parent-UUID: c3e82257-f44e-4fb0-8126-fe2826661f19
+ * Version: 2.1.0
+ * Description: Formats search results into the final JSON response structure. Updated to accept and include filter strings in the QueryContext.
  * Language: Go
  * Created-at: 2026-02-03T18:06:35.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0)
  */
 
 
@@ -18,7 +18,10 @@ import (
 )
 
 // FormatResponse constructs the final JSON response and prints it to stdout.
-func FormatResponse(context QueryContext, summary GrepSummary, matches []MatchResult, summaryOnly bool) error {
+func FormatResponse(context QueryContext, summary GrepSummary, matches []MatchResult, summaryOnly bool, filters []string) error {
+	// Populate filters in the context to ensure they appear in the JSON output
+	context.Filters = filters
+
 	response := GrepResponse{
 		Context: context,
 		Summary: summary,

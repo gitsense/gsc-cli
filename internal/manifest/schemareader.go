@@ -1,12 +1,12 @@
 /**
  * Component: Schema Reader
- * Block-UUID: 35cb922d-b613-45ac-bbc1-2a99268b7a77
- * Parent-UUID: e7617b43-e4b3-4a9d-aa71-fc9f6aef7f38
- * Version: 1.2.0
- * Description: Logic to query the database and retrieve analyzer and field definitions for the schema command. Added validation to check if the database file exists before connecting to prevent creating empty artifacts. Added ListFieldNames helper for interactive wizards.
+ * Block-UUID: 8c147009-1739-4170-bebd-70efa18c9128
+ * Parent-UUID: 35cb922d-b613-45ac-bbc1-2a99268b7a77
+ * Version: 1.3.0
+ * Description: Logic to query the database and retrieve analyzer and field definitions. Added GetFieldTypes helper for filter parser to determine field types.
  * Language: Go
  * Created-at: 2026-02-02T08:34:20.421Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
  */
 
 
@@ -209,4 +209,54 @@ func ListFieldNames(ctx context.Context, dbName string) ([]string, error) {
 	}
 
 	return fieldNames, nil
+}
+
+// GetFieldTypes retrieves a map of field names to their types for the specified database.
+// This is used by the filter parser to determine how to handle operators (e.g., "=" for lists vs scalars).
+func GetFieldTypes(ctx context.Context, dbName string) (map[string]string, error) {
+	// 1. Validate Database Exists
+	if err := ValidateDBExists(dbName); err != nil {
+		return nil, err
+	}
+
+	// 2. Resolve Database Path
+	dbPath, err := ResolveDBPath(dbName)
+	if err != nil {
+		return nil, err
+	}
+
+	// 3. Open Database Connection
+	database, err := db.OpenDB(dbPath)
+	if err != nil {
+		return nil, err
+	}
+	defer db.CloseDB(database)
+
+	// 4. Query Field Names and Types
+	query := `
+		SELECT field_name, field_type
+		FROM metadata_fields
+		ORDER BY field_name
+	`
+
+	rows, err := database.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	fieldTypes := make(map[string]string)
+	for rows.Next() {
+		var name, fieldType string
+		if err := rows.Scan(&name, &fieldType); err != nil {
+			return nil, err
+		}
+		fieldTypes[name] = fieldType
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return fieldTypes, nil
 }

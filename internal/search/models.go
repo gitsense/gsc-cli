@@ -1,12 +1,12 @@
 /**
  * Component: Search Intelligence Models
- * Block-UUID: 37e27d9f-c464-4d09-8668-7d6318c6cd65
- * Parent-UUID: 102094eb-8950-4bde-a2c1-415ef2b208f8
- * Version: 2.0.1
- * Description: Defines the structured JSON response for gsc grep. Updated to support grouped file results, tool metadata, system info, and truncation signals.
+ * Block-UUID: 3e1cbfe0-bd9c-4265-a7e8-83894cb9dcfa
+ * Parent-UUID: 37e27d9f-c464-4d09-8668-7d6318c6cd65
+ * Version: 2.1.0
+ * Description: Defines the structured JSON response for gsc grep. Updated to support grouped file results, tool metadata, system info, truncation signals, and filter structures.
  * Language: Go
  * Created-at: 2026-02-03T19:44:11.581Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.0.1)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.0.1), GLM-4.7 (v2.1.0)
  */
 
 
@@ -31,6 +31,7 @@ type QueryContext struct {
 	System      SystemInfo   `json:"system"`
 	Repository  RepositoryInfo `json:"repository"`
 	Timestamp   time.Time    `json:"timestamp"`
+	Filters     []string     `json:"filters,omitempty"` // List of filter strings applied
 }
 
 // ToolInfo holds details about the search tool used.
@@ -107,4 +108,29 @@ type MatchResult struct {
 	ContextAfter  []string               `json:"context_after"`
 	ChatID        int                    `json:"chat_id"`
 	Metadata      map[string]interface{} `json:"metadata"`
+}
+
+// FilterCondition represents a single parsed filter condition.
+// Example: Field="topic", Operator="=", Value="security"
+type FilterCondition struct {
+	Field    string
+	Operator string
+	Value    string
+}
+
+// SearchRecord represents the data stored in the search history database.
+type SearchRecord struct {
+	Timestamp      time.Time
+	Pattern        string
+	ToolName       string
+	ToolVersion    string
+	DurationMs     int
+	TotalMatches   int
+	TotalFiles     int
+	AnalyzedFiles  int
+	FiltersUsed    string // JSON string of filters applied
+	DatabaseName   string
+	CaseSensitive  bool
+	FileFilters    string // JSON string of file path patterns
+	AnalyzedFilter string // "true", "false", or "all"
 }

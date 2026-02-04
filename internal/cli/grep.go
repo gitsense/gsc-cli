@@ -1,18 +1,19 @@
 /*
  * Component: Grep Command
- * Block-UUID: 9f758655-5c6f-4690-8c69-e61534151307
- * Parent-UUID: 8ac98d11-e90a-483b-a406-5c34eac7786b
- * Version: 2.0.0
- * Description: CLI command definition for 'gsc grep'. Updated to support new JSON structure, system info, tool metadata, and truncation limits.
+ * Block-UUID: e5805c52-bd82-4068-84f0-38b6c2315c29
+ * Parent-UUID: 9f758655-5c6f-4690-8c69-e61534151307
+ * Version: 3.0.0
+ * Description: CLI command definition for 'gsc grep'. Updated to support metadata filtering, stats recording, and case-sensitive defaults.
  * Language: Go
  * Created-at: 2026-02-03T18:06:35.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v3.0.0)
  */
 
 
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -31,6 +32,10 @@ var (
 	grepCaseSensitive bool
 	grepFileType     string
 	grepLimit        int
+	grepFilters      []string
+	grepAnalyzed     string
+	grepFiles        []string
+	grepNoStats      bool
 )
 
 // grepCmd represents the grep command
@@ -45,10 +50,16 @@ The output is JSON formatted for AI agent consumption.
 
 Modes:
   --summary    Returns only aggregated metadata (cheap, fast)
-  (default)    Returns matches with context and metadata (expensive, detailed)`,
+  (default)    Returns matches with context and metadata (expensive, detailed)
+
+Filtering:
+  --filter "field=value"    Filter by metadata fields (e.g., topic=security)
+  --analyzed [true|false]   Show only analyzed or unanalyzed files
+  --file "pattern"          Filter by file path (supports wildcards)`,
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		pattern := args[0]
+		startTime := time.Now()
 
 		// 1. Load Effective Config (Merges active profile)
 		config, err := manifest.GetEffectiveConfig()
@@ -89,7 +100,13 @@ Modes:
 			sysInfo = &git.SystemInfo{OS: "unknown", ProjectRoot: ""}
 		}
 
-		// 6. Execute Search
+		// 6. Parse Filters
+		filters, err := search.ParseFilters(cmd.Context(), grepFilters, dbName)
+		if err != nil {
+			return fmt.Errorf("failed to parse filters: %w", err)
+		}
+
+		// 7. Execute Search
 		engine := &search.RipgrepEngine{}
 		options := search.SearchOptions{
 			Pattern:       pattern,
@@ -103,16 +120,16 @@ Modes:
 			return err
 		}
 
-		// 7. Enrich Matches
-		enrichedMatches, err := search.EnrichMatches(cmd.Context(), searchResult.Matches, dbName)
+		// 8. Enrich Matches (with filters)
+		enrichedMatches, err := search.EnrichMatches(cmd.Context(), searchResult.Matches, dbName, filters, grepAnalyzed, grepFiles)
 		if err != nil {
 			return err
 		}
 
-		// 8. Aggregate Summary
+		// 9. Aggregate Summary
 		summary := search.AggregateMatches(enrichedMatches, grepLimit)
 
-		// 9. Build Query Context
+		// 10. Build Query Context
 		mode := "full"
 		if grepSummary {
 			mode = "summary"
@@ -145,8 +162,44 @@ Modes:
 			Timestamp: time.Now(),
 		}
 
-		// 10. Format and Output
-		return search.FormatResponse(queryContext, summary, enrichedMatches, grepSummary)
+		// 11. Format and Output
+		if err := search.FormatResponse(queryContext, summary, enrichedMatches, grepSummary, grepFilters); err != nil {
+			return err
+		}
+
+		// 12. Record Stats (Async/Fire-and-Forget)
+		if !grepNoStats {
+			duration := time.Since(startTime)
+			
+			// Serialize filters and file patterns for storage
+			filtersJSON, _ := json.Marshal(grepFilters)
+			filesJSON, _ := json.Marshal(grepFiles)
+
+			searchRecord := search.SearchRecord{
+				Timestamp:      time.Now(),
+				Pattern:        pattern,
+				ToolName:       searchResult.ToolName,
+				ToolVersion:    searchResult.ToolVersion,
+				DurationMs:     int(duration.Milliseconds()),
+				TotalMatches:   summary.TotalMatches,
+				TotalFiles:     summary.TotalFiles,
+				AnalyzedFiles:  summary.AnalyzedFiles,
+				FiltersUsed:    string(filtersJSON),
+				DatabaseName:   dbName,
+				CaseSensitive:  grepCaseSensitive,
+				FileFilters:    string(filesJSON),
+				AnalyzedFilter: grepAnalyzed,
+			}
+
+			// Record in background, don't block output
+			go func() {
+				if err := search.RecordSearch(cmd.Context(), searchRecord); err != nil {
+					logger.Debug("Failed to record search stats: %v", err)
+				}
+			}()
+		}
+
+		return nil
 	},
 }
 
@@ -156,9 +209,15 @@ func init() {
 	grepCmd.Flags().StringVarP(&grepProfile, "profile", "p", "", "Profile name to use (overrides active profile)")
 	grepCmd.Flags().BoolVar(&grepSummary, "summary", false, "Return only the summary (no matches)")
 	grepCmd.Flags().IntVarP(&grepContext, "context", "C", 0, "Show N lines of context around matches")
-	grepCmd.Flags().BoolVar(&grepCaseSensitive, "case-sensitive", false, "Case-sensitive search")
+	grepCmd.Flags().BoolVar(&grepCaseSensitive, "case-sensitive", true, "Case-sensitive search (default: true)")
 	grepCmd.Flags().StringVarP(&grepFileType, "type", "t", "", "Filter by file type (e.g., js, py)")
 	grepCmd.Flags().IntVar(&grepLimit, "limit", 50, "Limit the number of files in the summary (0 for no limit)")
+	
+	// New Filter Flags
+	grepCmd.Flags().StringArrayVar(&grepFilters, "filter", []string{}, "Filter by metadata field (e.g., 'topic=security')")
+	grepCmd.Flags().StringVar(&grepAnalyzed, "analyzed", "all", "Filter by analysis status: true, false, or all (default: all)")
+	grepCmd.Flags().StringArrayVar(&grepFiles, "file", []string{}, "Filter by file path pattern (supports wildcards)")
+	grepCmd.Flags().BoolVar(&grepNoStats, "no-stats", false, "Disable recording of search statistics")
 }
 
 // optionsToArgs converts SearchOptions to a slice of arguments for display.
