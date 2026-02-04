@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Filter Parser
- * Block-UUID: f02ca708-454c-4cdf-a326-d83410ca08ac
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 96639906-6185-42ec-b43d-fb59b5aa3958
+ * Parent-UUID: f02ca708-454c-4cdf-a326-d83410ca08ac
+ * Version: 1.0.1
  * Description: Parses filter strings and generates SQL WHERE clauses for metadata filtering. Supports operators, ranges, and field type detection.
  * Language: Go
- * Created-at: 2026-02-04T03:38:39.219Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Created-at: 2026-02-04T03:55:26.960Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1)
  */
 
 
@@ -181,7 +181,7 @@ func validateOperator(field, op, value string, fieldTypes map[string]string) err
 
 	// Numeric fields
 	if fieldType == "number" {
-		if op == "in" || op == "not in" || op == "~" || op == "!~" {
+		if op == "in" || op == "not in" || op == "~" || op != "!~" {
 			return fmt.Errorf("string operators not supported for numeric field '%s'. Use =, !=, >, <, >=, <=", field)
 		}
 	}
@@ -300,10 +300,10 @@ func buildConditionSQL(cond FilterCondition) (string, []interface{}, error) {
 		return fmt.Sprintf("CAST(fm.field_value AS REAL) %s ?", cond.Operator), []interface{}{cond.Value}, nil
 
 	case "exists":
-		return "fm.field_value IS NOT NULL", nil
+		return "fm.field_value IS NOT NULL", []interface{}{}, nil
 
 	case "!exists":
-		return "fm.field_value IS NULL", nil
+		return "fm.field_value IS NULL", []interface{}{}, nil
 
 	case "range":
 		parts := strings.Split(cond.Value, "..")
