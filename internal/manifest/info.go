@@ -1,12 +1,12 @@
 /*
  * Component: Workspace Info Logic
- * Block-UUID: 69c066ad-2649-4c1d-8f22-84317d22a200
- * Parent-UUID: 28e72ae6-82bc-4c4e-ac50-eeeb50a9d543
- * Version: 1.2.0
- * Description: Logic to gather and format workspace information for the 'gsc info' command, including active profiles and available databases. Extracted FormatWorkspaceHeader for reuse in query/rg commands. Reclassified internal state logs to Debug level.
+ * Block-UUID: d3c4b2b7-19c5-49c4-be2e-8b94a9792f72
+ * Parent-UUID: 69c066ad-2649-4c1d-8f22-84317d22a200
+ * Version: 1.3.0
+ * Description: Logic to gather and format workspace information for the 'gsc info' command, including active profiles and available databases. Added 'gsc config active' to Quick Actions for consistency with the new command name.
  * Language: Go
  * Created-at: 2026-02-03T03:10:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
  */
 
 
@@ -136,6 +136,7 @@ func formatInfoTable(info *WorkspaceInfo, verbose bool) string {
 	// Quick Actions
 	sb.WriteString("Quick Actions:\n")
 	sb.WriteString("  • Switch context:  gsc config use <name>\n")
+	sb.WriteString("  • Show active:     gsc config active\n")
 	sb.WriteString("  • List all:        gsc config context list\n")
 	sb.WriteString("  • Query:           gsc query --value <val>\n")
 

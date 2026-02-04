@@ -1,12 +1,12 @@
 /*
  * Component: Config Command
- * Block-UUID: f9213afc-bbc2-40df-97c7-d383744aefaa
- * Parent-UUID: 5b36519b-1ceb-4625-bdc2-d57feb2f350e
- * Version: 1.4.0
- * Description: CLI command definition for 'gsc config', managing context profiles and workspace settings. Renamed 'deactivate' subcommand to 'clear' with 'deactivate' as an alias for brevity and ergonomics.
+ * Block-UUID: 4f84de89-eb45-477f-aed6-3a7481853b6b
+ * Parent-UUID: f9213afc-bbc2-40df-97c7-d383744aefaa
+ * Version: 1.5.0
+ * Description: CLI command definition for 'gsc config', managing context profiles and workspace settings. Renamed 'current-context' subcommand to 'active' with 'current-context' as an alias for brevity and ergonomics.
  * Language: Go
  * Created-at: 2026-02-03T02:10:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
  */
 
 
@@ -72,7 +72,7 @@ This does not delete the profile; it simply stops using it.`,
 		if err := manifest.DeactivateProfile(); err != nil {
 			return err
 		}
-		fmt.Println("Profile deactivated. Using global defaults.")
+		fmt.Println("Profile cleared. Using global defaults.")
 		return nil
 	},
 }
@@ -335,19 +335,20 @@ var contextDeleteCmd = &cobra.Command{
 	},
 }
 
-// currentContextCmd represents the 'config current-context' command
-var currentContextShort bool
+// activeCmd represents the 'config active' command
+var activeShort bool
 
-var currentContextCmd = &cobra.Command{
-	Use:   "current-context",
-	Short: "Show the currently active profile",
+var activeCmd = &cobra.Command{
+	Use:     "active",
+	Aliases: []string{"current-context"},
+	Short:   "Show the currently active profile",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name, err := manifest.GetActiveProfileName()
 		if err != nil {
 			return err
 		}
 
-		if currentContextShort {
+		if activeShort {
 			// Output only the name for shell prompts
 			if name == "" {
 				fmt.Println("none")
@@ -379,7 +380,7 @@ func init() {
 	configCmd.AddCommand(useCmd)
 	configCmd.AddCommand(clearCmd)
 	configCmd.AddCommand(contextCmd)
-	configCmd.AddCommand(currentContextCmd)
+	configCmd.AddCommand(activeCmd)
 
 	// Add flags for context create
 	contextCreateCmd.Flags().StringVar(&createDesc, "description", "", "Description of the profile (optional)")
@@ -395,8 +396,8 @@ func init() {
 	contextUpdateCmd.Flags().StringVar(&updateField, "field", "", "Update default query field (optional)")
 	contextUpdateCmd.Flags().StringVar(&updateAliases, "alias", "", "Update aliases (comma-separated, optional)")
 
-	// Add flags for current-context
-	currentContextCmd.Flags().BoolVar(&currentContextShort, "short", false, "Output only the profile name (for shell prompts)")
+	// Add flags for active
+	activeCmd.Flags().BoolVar(&activeShort, "short", false, "Output only the profile name (for shell prompts)")
 }
 
 // RegisterConfigCommand registers the config command with the root command.

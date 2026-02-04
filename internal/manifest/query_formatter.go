@@ -1,12 +1,12 @@
 /**
  * Component: Query Output Formatter
- * Block-UUID: ef906400-fec6-4308-b218-b0d28de7c6b9
- * Parent-UUID: 95d7ab0b-b3bf-4e9f-a088-61ba8a1b1f41
- * Version: 2.2.0
- * Description: Formats query results, list results, and status views. Updated to support active profiles, quiet mode, TTY-aware decoration stripping, prominent workspace headers, and workspace headers for list results.
+ * Block-UUID: 8a5644d7-afd6-49dd-b679-1e8af1931c70
+ * Parent-UUID: ef906400-fec6-4308-b218-b0d28de7c6b9
+ * Version: 2.3.0
+ * Description: Formats query results, list results, and status views. Added hint for 'gsc config active' in status view to support the new command name.
  * Language: Go
  * Created-at: 2026-02-02T19:55:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0)
  */
 
 
@@ -179,6 +179,7 @@ func FormatStatusView(config *QueryConfig, quiet bool) string {
 	sb.WriteString("  - Run 'gsc query --list-db' to explicitly list all databases.\n")
 	sb.WriteString("  - Run 'gsc config context list' to see available profiles.\n")
 	sb.WriteString("  - Run 'gsc config use <name>' to switch context.\n")
+	sb.WriteString("  - Run 'gsc config active' to see the current profile.\n")
 	sb.WriteString("  - Run 'gsc query --value <val>' to search using defaults.\n")
 
 	return sb.String()
