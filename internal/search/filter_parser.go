@@ -1,12 +1,12 @@
 /**
  * Component: Filter Parser
- * Block-UUID: 96639906-6185-42ec-b43d-fb59b5aa3958
- * Parent-UUID: f02ca708-454c-4cdf-a326-d83410ca08ac
- * Version: 1.0.1
- * Description: Parses filter strings and generates SQL WHERE clauses for metadata filtering. Supports operators, ranges, and field type detection.
+ * Block-UUID: bc4691bb-9e58-4ea0-8301-5455aa34e49c
+ * Parent-UUID: 96639906-6185-42ec-b43d-fb59b5aa3958
+ * Version: 1.0.2
+ * Description: Parses filter strings and generates SQL WHERE clauses for metadata filtering. Supports operators, ranges, and field type detection. Fixed logic error in validateOperator for numeric fields.
  * Language: Go
  * Created-at: 2026-02-04T03:55:26.960Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2)
  */
 
 
@@ -181,7 +181,7 @@ func validateOperator(field, op, value string, fieldTypes map[string]string) err
 
 	// Numeric fields
 	if fieldType == "number" {
-		if op == "in" || op == "not in" || op == "~" || op != "!~" {
+		if op == "in" || op == "not in" || op == "~" || op == "!~" {
 			return fmt.Errorf("string operators not supported for numeric field '%s'. Use =, !=, >, <, >=, <=", field)
 		}
 	}

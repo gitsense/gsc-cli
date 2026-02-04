@@ -1,12 +1,12 @@
 /*
  * Component: Search Result Enricher
- * Block-UUID: 571a8435-b2b3-423e-9104-48c75dce5812
- * Parent-UUID: 87706059-d2d6-45aa-9044-8e6480814dfe
- * Version: 2.0.0
- * Description: Enriches raw search matches with metadata from the manifest database. Supports filtering by analyzed status, file patterns, and metadata conditions.
+ * Block-UUID: 4675b8ff-922d-4ad3-8346-22e7134d95b5
+ * Parent-UUID: 571a8435-b2b3-423e-9104-48c75dce5812
+ * Version: 2.1.0
+ * Description: Enriches raw search matches with metadata from the manifest database. Supports filtering by analyzed status, file patterns, and metadata conditions. Refactored SQL query construction in fetchMetadataMap for clarity and correctness.
  * Language: Go
  * Created-at: 2026-02-03T18:06:35.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0)
  */
 
 
@@ -130,17 +130,34 @@ func fetchMetadataMap(ctx context.Context, database *sql.DB, filePaths []string,
 		args[i] = path
 	}
 
-	// Build WHERE clause for system filters
-	// We pass empty FilterCondition slice because metadata filters are handled in-memory
-	whereClause, filterArgs, err := BuildSQLWhereClause([]FilterCondition{}, analyzedFilter, filePatterns)
-	if err != nil {
-		return nil, err
+	// Build WHERE clause for file paths
+	whereClause := fmt.Sprintf("f.file_path IN (%s)", strings.Join(placeholders, ","))
+	
+	// Add Analyzed Filter (System Filter)
+	if analyzedFilter == "true" {
+		whereClause += " AND f.chat_id IS NOT NULL"
+	} else if analyzedFilter == "false" {
+		whereClause += " AND f.chat_id IS NULL"
 	}
 
-	// Combine file path IN clause with system filters
-	// If whereClause starts with "WHERE", we append " AND file_path IN (...)"
-	// If whereClause is empty, we just use "WHERE file_path IN (...)"
-	
+	// Add File Path Filters (System Filter - OR logic)
+	if len(filePatterns) > 0 {
+		var fileParts []string
+		for _, pattern := range filePatterns {
+			// Convert glob pattern to SQL LIKE
+			// "internal/*" -> "internal/%"
+			// "pkg/auth/*" -> "pkg/auth/%"
+			sqlPattern := strings.ReplaceAll(pattern, "*", "%")
+			fileParts = append(fileParts, "f.file_path LIKE ?")
+			args = append(args, sqlPattern)
+		}
+		if len(fileParts) > 0 {
+			whereClause += " AND (" + strings.Join(fileParts, " OR ") + ")"
+		}
+	}
+
+	// Construct the final query
+	// We join files, file_metadata, and metadata_fields to get all field values
 	baseQuery := `
 		SELECT 
 			f.file_path,
@@ -150,22 +167,9 @@ func fetchMetadataMap(ctx context.Context, database *sql.DB, filePaths []string,
 		FROM files f
 		LEFT JOIN file_metadata fm ON f.file_path = fm.file_path
 		LEFT JOIN metadata_fields mf ON fm.field_id = mf.field_id
-	`
-	
-	finalQuery := baseQuery
-	if len(whereClause) > 0 {
-		// Replace "WHERE" with "AND" to combine with the IN clause we're about to add
-		// Actually, simpler to construct the full WHERE clause here.
-		finalQuery += " WHERE f.file_path IN (" + strings.Join(placeholders, ",") + ")"
-		finalQuery += " AND " + strings.TrimPrefix(whereClause, "WHERE ")
-	} else {
-		finalQuery += " WHERE f.file_path IN (" + strings.Join(placeholders, ",") + ")"
-	}
+		WHERE ` + whereClause
 
-	// Append filter args to file path args
-	args = append(args, filterArgs...)
-
-	rows, err := database.QueryContext(ctx, finalQuery, args...)
+	rows, err := database.QueryContext(ctx, baseQuery, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query file metadata: %w", err)
 	}
