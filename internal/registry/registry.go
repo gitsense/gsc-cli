@@ -1,12 +1,12 @@
 /*
  * Component: Registry File I/O
- * Block-UUID: 94fcd642-200c-4161-8863-e5b580d8654a
- * Parent-UUID: de00f9fb-fe45-4faf-9f8c-899fbf90f3d6
- * Version: 1.3.0
- * Description: Handles loading and saving the registry file (.gitsense/manifest.json), which tracks all manifest databases in the project. Refactored all logger calls to use structured Key-Value pairs instead of format strings.
+ * Block-UUID: 13c3751e-ec29-4169-8515-8628f699c736
+ * Parent-UUID: 94fcd642-200c-4161-8863-e5b580d8654a
+ * Version: 1.4.0
+ * Description: Handles loading and saving the registry file (.gitsense/manifest.json). Updated AddEntry to use UpsertEntry logic to prevent duplicate registry entries and ensure the manifest acts as the source of truth.
  * Language: Go
  * Created-at: 2026-02-02T05:30:00.000Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), Claude Haiku 4.5 (v1.2.0), GLM-4.7 (v1.3.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), Claude Haiku 4.5 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
  */
 
 
@@ -101,14 +101,16 @@ func SaveRegistry(registry *Registry) error {
 	return nil
 }
 
-// AddEntry adds a new database entry to the registry and saves it.
+// AddEntry adds a new database entry to the registry or updates an existing one.
+// It uses UpsertEntry logic to prevent duplicate entries based on DatabaseName.
 func AddEntry(entry RegistryEntry) error {
 	registry, err := LoadRegistry()
 	if err != nil {
 		return fmt.Errorf("failed to load registry: %w", err)
 	}
 
-	registry.AddEntry(entry)
+	// Use UpsertEntry to update existing or append new
+	registry.UpsertEntry(entry)
 
 	if err := SaveRegistry(registry); err != nil {
 		return fmt.Errorf("failed to save registry: %w", err)

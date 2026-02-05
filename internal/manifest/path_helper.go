@@ -1,12 +1,12 @@
 /*
  * Component: Manifest Path Helper
- * Block-UUID: e47b972f-549c-4f0f-a93f-6317b066be88
- * Parent-UUID: 23f54385-c17d-472e-b02b-a9967cc5f88e
- * Version: 1.2.0
- * Description: Helper functions to resolve file paths for databases and manifests within the .gitsense directory. Added ValidateDBExists to prevent creating empty database artifacts.
+ * Block-UUID: 59c7d1db-e10b-4cfc-87b9-a71ad8acd1e6
+ * Parent-UUID: e47b972f-549c-4f0f-a93f-6317b066be88
+ * Version: 1.3.0
+ * Description: Helper functions to resolve file paths for databases and manifests. Added ResolveTempDBPath for atomic imports and ResolveBackupDir for backup management.
  * Language: Go
  * Created-at: 2026-02-02T05:30:00.000Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
  */
 
 
@@ -18,6 +18,7 @@ import (
 	"path/filepath"
 
 	"github.com/yourusername/gsc-cli/internal/git"
+	"github.com/yourusername/gsc-cli/pkg/logger"
 	"github.com/yourusername/gsc-cli/pkg/settings"
 )
 
@@ -31,6 +32,37 @@ func ResolveDBPath(dbName string) (string, error) {
 
 	dbPath := filepath.Join(root, settings.GitSenseDir, dbName+".db")
 	return dbPath, nil
+}
+
+// ResolveTempDBPath constructs the absolute path to a temporary database file.
+// This is used during atomic imports to build the database before swapping it into place.
+func ResolveTempDBPath(dbName string) (string, error) {
+	root, err := git.FindProjectRoot()
+	if err != nil {
+		return "", fmt.Errorf("failed to find project root: %w", err)
+	}
+
+	tempPath := filepath.Join(root, settings.GitSenseDir, dbName+settings.TempDBSuffix)
+	return tempPath, nil
+}
+
+// ResolveBackupDir constructs the absolute path to the backups directory.
+// It ensures the directory exists before returning the path.
+func ResolveBackupDir() (string, error) {
+	root, err := git.FindProjectRoot()
+	if err != nil {
+		return "", fmt.Errorf("failed to find project root: %w", err)
+	}
+
+	backupDir := filepath.Join(root, settings.GitSenseDir, settings.BackupsDir)
+	
+	// Ensure the directory exists
+	if err := os.MkdirAll(backupDir, 0755); err != nil {
+		logger.Error("Failed to create backup directory", "dir", backupDir, "error", err)
+		return "", fmt.Errorf("failed to create backup directory: %w", err)
+	}
+
+	return backupDir, nil
 }
 
 // ResolveJSONPath constructs the absolute path to a JSON manifest file within the .gitsense directory.

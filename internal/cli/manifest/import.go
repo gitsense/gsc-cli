@@ -1,12 +1,12 @@
 /*
  * Component: Manifest Import Command
- * Block-UUID: 508dc480-a13d-4fca-bad1-aff81c21198e
- * Parent-UUID: 62258b44-af06-4fad-ad26-b0146861c663
- * Version: 1.1.0
- * Description: CLI command definition for importing a manifest JSON file into a SQLite database. Removed filename derivation logic to defer to the importer logic which checks the JSON content.
+ * Block-UUID: 17f6fbf9-b729-4268-b4da-683cd9c815e3
+ * Parent-UUID: 508dc480-a13d-4fca-bad1-aff81c21198e
+ * Version: 1.2.0
+ * Description: CLI command definition for importing a manifest JSON file. Added --force flag to allow overwriting existing databases and --no-backup flag to skip backup creation.
  * Language: Go
  * Created-at: 2026-02-02T05:35:00Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -29,13 +29,20 @@ This command creates a new database file in the .gitsense directory and populate
 The database name is determined by the following priority:
 1. The --name flag (if provided)
 2. The 'database_name' field inside the JSON manifest
-3. The filename of the JSON file (fallback)`,
+3. The filename of the JSON file (fallback)
+
+By default, this command will fail if a database with the same name already exists.
+Use the --force flag to overwrite an existing database. When using --force, a backup of the
+existing database is automatically created in .gitsense/backups/ unless --no-backup is specified.`,
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		jsonPath := args[0]
 
 		// Parse flags
 		dbName, _ := cmd.Flags().GetString("name")
+		force, _ := cmd.Flags().GetBool("force")
+		noBackup, _ := cmd.Flags().GetBool("no-backup")
+		
 		// Note: description and tags flags are parsed here but currently require 
 		// updates to the importer logic to be fully applied as overrides.
 		_, _ = cmd.Flags().GetString("description")
@@ -44,7 +51,7 @@ The database name is determined by the following priority:
 		logger.Info(fmt.Sprintf("Importing manifest from '%s'...", jsonPath))
 
 		ctx := context.Background()
-		if err := manifest.ImportManifest(ctx, jsonPath, dbName); err != nil {
+		if err := manifest.ImportManifest(ctx, jsonPath, dbName, force, noBackup); err != nil {
 			logger.Error(fmt.Sprintf("Import failed: %v", err))
 			return err
 		}
@@ -59,4 +66,6 @@ func init() {
 	importCmd.Flags().String("name", "", "Override the database name (defaults to manifest.database_name or filename)")
 	importCmd.Flags().String("description", "", "Override the manifest description")
 	importCmd.Flags().String("tags", "", "Override the manifest tags (comma-separated)")
+	importCmd.Flags().Bool("force", false, "Overwrite existing database if it exists")
+	importCmd.Flags().Bool("no-backup", false, "Skip creating a backup of the existing database (use with caution)")
 }

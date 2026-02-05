@@ -1,35 +1,42 @@
 /*
  * Component: Manifest Importer
- * Block-UUID: 8c2351a6-6687-4174-8e76-0069bef06d46
- * Parent-UUID: 0e312c0b-9447-4c10-bbe4-f5797c5a1669
- * Version: 1.5.0
- * Description: Logic to parse a JSON manifest file and import its data into a SQLite database. Updated to implement "Trust Upstream" language logic. If the manifest provides a language, it is used. Otherwise, enry is used to detect the language from the file content during import. Refactored all logger calls to use structured Key-Value pairs instead of format strings.
+ * Block-UUID: 7545d036-870d-4e73-acd1-6f03bd990dee
+ * Parent-UUID: 8c2351a6-6687-4174-8e76-0069bef06d46
+ * Version: 1.6.0
+ * Description: Logic to parse a JSON manifest file and import its data into a SQLite database. Implemented atomic import workflow: temp file creation, backup rotation, atomic swap, and registry upsert. Added --force and --no-backup support.
  * Language: Go
  * Created-at: 2026-02-02T05:30:00Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0)
  */
 
 
 package manifest
 
 import (
+	"compress/gzip"
 	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
+	"time"
 
 	"github.com/src-d/enry/v2"
 	"github.com/yourusername/gsc-cli/internal/db"
 	"github.com/yourusername/gsc-cli/internal/git"
 	"github.com/yourusername/gsc-cli/internal/registry"
 	"github.com/yourusername/gsc-cli/pkg/logger"
+	"github.com/yourusername/gsc-cli/pkg/settings"
 )
 
 // ImportManifest reads a JSON manifest file and imports it into the specified SQLite database.
-func ImportManifest(ctx context.Context, jsonPath string, dbName string) error {
+// It implements an atomic swap strategy: imports to a temp file, backs up the existing DB (if any),
+// and then renames the temp file to the final name.
+func ImportManifest(ctx context.Context, jsonPath string, dbName string, force bool, noBackup bool) error {
 	logger.Info("Starting import", "path", jsonPath)
 
 	// 1. Read and Parse JSON
@@ -62,25 +69,45 @@ func ImportManifest(ctx context.Context, jsonPath string, dbName string) error {
 		}
 	}
 
-	// 4. Resolve Database Path
-	dbPath, err := ResolveDBPath(dbName)
-	if err != nil {
-		return fmt.Errorf("failed to resolve database path: %w", err)
+	// 4. Pre-flight Check (Registry)
+	// Check if database exists in registry to prevent accidental overwrites
+	if !force {
+		reg, err := registry.LoadRegistry()
+		if err != nil {
+			return fmt.Errorf("failed to load registry for pre-flight check: %w", err)
+		}
+		if _, exists := reg.FindEntryByDBName(dbName); exists {
+			return fmt.Errorf("database '%s' already exists. Use --force to overwrite", dbName)
+		}
 	}
 
-	// 5. Open Database Connection
-	database, err := db.OpenDB(dbPath)
+	// 5. Resolve Temp Database Path
+	tempPath, err := ResolveTempDBPath(dbName)
 	if err != nil {
-		return fmt.Errorf("failed to open database: %w", err)
+		return fmt.Errorf("failed to resolve temp database path: %w", err)
+	}
+
+	// Cleanup temp file on error
+	defer func() {
+		if err != nil {
+			logger.Info("Cleaning up temp file due to error", "path", tempPath)
+			os.Remove(tempPath)
+		}
+	}()
+
+	// 6. Open Database Connection (Temp)
+	database, err := db.OpenDB(tempPath)
+	if err != nil {
+		return fmt.Errorf("failed to open temp database: %w", err)
 	}
 	defer db.CloseDB(database)
 
-	// 6. Create Schema (if not exists)
+	// 7. Create Schema (if not exists)
 	if err := db.CreateSchema(database); err != nil {
 		return fmt.Errorf("failed to create database schema: %w", err)
 	}
 
-	// 7. Begin Transaction
+	// 8. Begin Transaction
 	tx, err := database.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
@@ -91,29 +118,55 @@ func ImportManifest(ctx context.Context, jsonPath string, dbName string) error {
 		}
 	}()
 
-	// 8. Insert Manifest Info
-	if err := insertManifestInfo(tx, &manifestFile, dbPath); err != nil {
+	// 9. Insert Manifest Info
+	// Use current time for updated_at
+	if err := insertManifestInfo(tx, &manifestFile, jsonPath, time.Now()); err != nil {
 		return err
 	}
 
-	// 9. Insert Reference Data (Repositories, Branches, Analyzers, Fields)
+	// 10. Insert Reference Data (Repositories, Branches, Analyzers, Fields)
 	if err := insertReferenceData(tx, &manifestFile); err != nil {
 		return err
 	}
 
-	// 10. Insert File Data and Metadata
+	// 11. Insert File Data and Metadata
 	if err := insertFileData(ctx, tx, &manifestFile); err != nil {
 		return err
 	}
 
-	// 11. Commit Transaction
+	// 12. Commit Transaction
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	// 12. Update Registry
-	// Use the resolved dbName to support CLI overrides (--name flag). 
-	// If we used the manifest value directly, overrides would be ignored.
+	// 13. Close DB explicitly before rename
+	db.CloseDB(database)
+
+	// 14. Backup Existing Database (if applicable)
+	finalPath, err := ResolveDBPath(dbName)
+	if err != nil {
+		return fmt.Errorf("failed to resolve final database path: %w", err)
+	}
+
+	if !noBackup {
+		if _, err := os.Stat(finalPath); err == nil {
+			// File exists, perform backup
+			logger.Info("Backing up existing database", "db", dbName)
+			if err := backupDatabase(dbName, finalPath); err != nil {
+				logger.Warning("Failed to backup database", "error", err)
+				// We continue despite backup failure, but log it
+			}
+		}
+	}
+
+	// 15. Atomic Swap
+	logger.Info("Performing atomic swap", "from", tempPath, "to", finalPath)
+	if err := os.Rename(tempPath, finalPath); err != nil {
+		return fmt.Errorf("failed to swap database: %w", err)
+	}
+
+	// 16. Update Registry
+	// Use the resolved dbName to support CLI overrides (--name flag).
 	entry := registry.RegistryEntry{
 		Name:         manifestFile.Manifest.Name,
 		DatabaseName: dbName,
@@ -121,6 +174,7 @@ func ImportManifest(ctx context.Context, jsonPath string, dbName string) error {
 		Tags:         manifestFile.Manifest.Tags,
 		Version:      manifestFile.SchemaVersion,
 		CreatedAt:    manifestFile.GeneratedAt,
+		UpdatedAt:    time.Now(),
 		SourceFile:   jsonPath,
 	}
 
@@ -134,10 +188,10 @@ func ImportManifest(ctx context.Context, jsonPath string, dbName string) error {
 }
 
 // insertManifestInfo inserts the top-level manifest metadata
-func insertManifestInfo(tx *sql.Tx, manifestFile *ManifestFile, sourceFile string) error {
+func insertManifestInfo(tx *sql.Tx, manifestFile *ManifestFile, sourceFile string, updatedAt time.Time) error {
 	query := `
-		INSERT INTO manifest_info (name, description, tags, version, created_at, source_file)
-		VALUES (?, ?, ?, ?, ?, ?)
+		INSERT INTO manifest_info (name, description, tags, version, created_at, updated_at, source_file)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
 	`
 
 	tagsJSON, _ := json.Marshal(manifestFile.Manifest.Tags)
@@ -148,6 +202,7 @@ func insertManifestInfo(tx *sql.Tx, manifestFile *ManifestFile, sourceFile strin
 		string(tagsJSON),
 		manifestFile.SchemaVersion,
 		manifestFile.GeneratedAt,
+		updatedAt,
 		sourceFile,
 	)
 	return err
@@ -305,4 +360,132 @@ func detectLanguage(filePath string) string {
 	}
 	
 	return lang
+}
+
+// backupDatabase creates a compressed backup of the database and its registry metadata.
+func backupDatabase(dbName string, dbPath string) error {
+	backupDir, err := ResolveBackupDir()
+	if err != nil {
+		return err
+	}
+
+	timestamp := time.Now().Format("20060102-150405")
+	
+	// 1. Backup Database File
+	dbBackupName := fmt.Sprintf("%s.%s.db.gz", dbName, timestamp)
+	dbBackupPath := filepath.Join(backupDir, dbBackupName)
+	
+	if err := compressFile(dbPath, dbBackupPath); err != nil {
+		return fmt.Errorf("failed to compress database: %w", err)
+	}
+	logger.Info("Database backed up", "path", dbBackupPath)
+
+	// 2. Backup Registry Metadata
+	reg, err := registry.LoadRegistry()
+	if err != nil {
+		return fmt.Errorf("failed to load registry for metadata backup: %w", err)
+	}
+
+	entry, exists := reg.FindEntryByDBName(dbName)
+	if !exists {
+		// This shouldn't happen if we are backing up an existing DB, but handle gracefully
+		logger.Warning("Could not find registry entry for backup", "db", dbName)
+	} else {
+		regBackupName := fmt.Sprintf("%s.%s.registry.json", dbName, timestamp)
+		regBackupPath := filepath.Join(backupDir, regBackupName)
+		
+		data, err := json.MarshalIndent(entry, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal registry entry: %w", err)
+		}
+		
+		if err := os.WriteFile(regBackupPath, data, 0644); err != nil {
+			return fmt.Errorf("failed to write registry backup: %w", err)
+		}
+		logger.Info("Registry metadata backed up", "path", regBackupPath)
+	}
+
+	// 3. Rotate Backups
+	if err := rotateBackups(backupDir, dbName); err != nil {
+		logger.Warning("Failed to rotate backups", "error", err)
+	}
+
+	return nil
+}
+
+// compressFile compresses a source file to a destination gzip file.
+func compressFile(srcPath, destPath string) error {
+	src, err := os.Open(srcPath)
+	if err != nil {
+		return err
+	}
+	defer src.Close()
+
+	dest, err := os.Create(destPath)
+	if err != nil {
+		return err
+	}
+	defer dest.Close()
+
+	gz := gzip.NewWriter(dest)
+	defer gz.Close()
+
+	if _, err := io.Copy(gz, src); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// rotateBackups ensures only the most recent MaxBackups are kept.
+func rotateBackups(backupDir, dbName string) error {
+	entries, err := os.ReadDir(backupDir)
+	if err != nil {
+		return err
+	}
+
+	// Filter files belonging to this database
+	var files []os.FileInfo
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		// Match pattern: dbname.timestamp.db.gz or dbname.timestamp.registry.json
+		// We only care about the DB files for rotation count, or we can count pairs.
+		// Simplest is to count DB files.
+		if strings.HasPrefix(entry.Name(), dbName+".") && strings.HasSuffix(entry.Name(), ".db.gz") {
+			files = append(files, entry)
+		}
+	}
+
+	// If we have more than MaxBackups, delete the oldest
+	if len(files) > settings.MaxBackups {
+		// Sort by modification time (oldest first)
+		sort.Slice(files, func(i, j int) bool {
+			return files[i].ModTime().Before(files[j].ModTime())
+		})
+
+		// Delete oldest files (and their corresponding registry json)
+		toDelete := len(files) - settings.MaxBackups
+		for i := 0; i < toDelete; i++ {
+			oldFile := files[i]
+			oldPath := filepath.Join(backupDir, oldFile.Name())
+			
+			// Delete DB backup
+			if err := os.Remove(oldPath); err != nil {
+				logger.Warning("Failed to delete old backup", "path", oldPath, "error", err)
+			}
+
+			// Delete corresponding registry backup
+			regName := strings.TrimSuffix(oldFile.Name(), ".db.gz") + ".registry.json"
+			regPath := filepath.Join(backupDir, regName)
+			if _, err := os.Stat(regPath); err == nil {
+				if err := os.Remove(regPath); err != nil {
+					logger.Warning("Failed to delete old registry backup", "path", regPath, "error", err)
+				}
+			}
+		}
+	}
+
+	return nil
 }

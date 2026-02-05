@@ -1,12 +1,12 @@
 /*
  * Component: Database Schema Definition
- * Block-UUID: 6b9211b5-42d5-40f6-a098-2c669894415d
- * Parent-UUID: 8e98a2a9-c39f-4656-b728-ca077c347fb4
- * Version: 1.3.0
- * Description: Defines the SQL schema for the GitSense manifest SQLite database and the search history stats database. Added logic to ensure the 'language' column exists in the 'files' table for backwards compatibility. Explicitly avoids adding 'in_scope' column per specification.
+ * Block-UUID: b34c3488-b9fb-4406-bc16-8070293399b3
+ * Parent-UUID: 6b9211b5-42d5-40f6-a098-2c669894415d
+ * Version: 1.4.0
+ * Description: Defines the SQL schema for the GitSense manifest SQLite database. Added updated_at column to manifest_info table and backwards compatibility logic to ensure it exists in older databases.
  * Language: Go
  * Created-at: 2026-02-02T05:30:00.000Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
  */
 
 
@@ -34,6 +34,7 @@ func CreateSchema(db *sql.DB) error {
 		tags TEXT,
 		version TEXT,
 		created_at TIMESTAMP,
+		updated_at TIMESTAMP,
 		source_file TEXT
 	);`
 
@@ -122,6 +123,14 @@ func CreateSchema(db *sql.DB) error {
 	if _, err := db.Exec(alterLanguageSQL); err != nil {
 		if !strings.Contains(err.Error(), "duplicate column name") {
 			logger.Warning("Failed to add language column (may already exist)", "error", err)
+		}
+	}
+
+	// Backwards Compatibility: Ensure 'updated_at' column exists in manifest_info
+	alterUpdatedSQL := `ALTER TABLE manifest_info ADD COLUMN updated_at TIMESTAMP`
+	if _, err := db.Exec(alterUpdatedSQL); err != nil {
+		if !strings.Contains(err.Error(), "duplicate column name") {
+			logger.Warning("Failed to add updated_at column (may already exist)", "error", err)
 		}
 	}
 
