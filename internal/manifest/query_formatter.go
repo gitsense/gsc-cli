@@ -1,12 +1,12 @@
 /**
  * Component: Query Output Formatter
- * Block-UUID: c2a9d1ba-f7b4-4f8f-a265-ddbc4e0f6f15
- * Parent-UUID: d1eba7aa-4ef1-4279-84ce-a50e69386e54
- * Version: 2.5.1
+ * Block-UUID: 7b39e9d6-8b0a-4535-89d7-88ab244795a2
+ * Parent-UUID: d48baf27-0599-4ca2-91dd-d2853b3269d0
+ * Version: 2.9.1
  * Description: Formats query results, list results, and status views. Added FormatCoverageReport to support Phase 3 Scout Layer coverage analysis, including ASCII progress bars and detailed language/directory breakdowns. Added FormatInsightsReport and FormatReport to support Phase 2 Scout Layer features, providing JSON metadata aggregation and ASCII dashboard visualization. Fixed unused variable 'withoutMeta' in formatReportTable.
  * Language: Go
- * Created-at: 2026-02-05T07:14:42.511Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), Gemini 3 Flash (v2.4.0), GLM-4.7 (v2.5.0), GLM-4.7 (v2.5.1)
+ * Created-at: 2026-02-05T19:35:01.175Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), Gemini 3 Flash (v2.3.0), GLM-4.7 (v2.4.0), GLM-4.7 (v2.5.0), GLM-4.7 (v2.5.1), Gemini 3 Flash (v2.6.0), Gemini 3 Flash (v2.7.0), GLM-4.7 (v2.7.1), Claude Haiku 4.5 (v2.8.0), Gemini 3 Flash (v2.9.0), Gemini 3 Flash (v2.9.1)
  */
 
 
@@ -24,34 +24,34 @@ import (
 
 // FormatQueryResults formats a slice of QueryResult into the specified format.
 // Updated to accept config for workspace header generation.
-func FormatQueryResults(results []QueryResult, format string, quiet bool, config *QueryConfig) string {
+func FormatQueryResults(response *QueryResponse, format string, quiet bool, config *QueryConfig) string {
 	switch strings.ToLower(format) {
 	case "json":
-		return formatQueryResultsJSON(results)
+		return formatQueryResultsJSON(response)
 	case "table":
-		return formatQueryResultsTable(results, quiet, config)
+		return formatQueryResultsTable(response, quiet, config)
 	default:
 		return fmt.Sprintf("Unsupported format: %s", format)
 	}
 }
 
-func formatQueryResultsJSON(results []QueryResult) string {
-	bytes, err := json.MarshalIndent(results, "", "  ")
+func formatQueryResultsJSON(response *QueryResponse) string {
+	bytes, err := json.MarshalIndent(response, "", "  ")
 	if err != nil {
 		return fmt.Sprintf("Error formatting JSON: %v", err)
 	}
 	return string(bytes)
 }
 
-func formatQueryResultsTable(results []QueryResult, quiet bool, config *QueryConfig) string {
-	if len(results) == 0 {
+func formatQueryResultsTable(response *QueryResponse, quiet bool, config *QueryConfig) string {
+	if response == nil || len(response.Results) == 0 {
 		return "No results found."
 	}
 
 	headers := []string{"File Path", "Chat ID"}
 	var rows [][]string
 
-	for _, r := range results {
+	for _, r := range response.Results {
 		rows = append(rows, []string{r.FilePath, fmt.Sprintf("%d", r.ChatID)})
 	}
 
@@ -61,17 +61,32 @@ func formatQueryResultsTable(results []QueryResult, quiet bool, config *QueryCon
 		return table
 	}
 
+	var sb strings.Builder
+
 	// Check if we are in a terminal
 	if output.IsTerminal() {
-		// Prepend the prominent header
-		header := FormatWorkspaceHeader(config)
-		return fmt.Sprintf("%s%s\n[Context: %s] | Switch: gsc config use <name>", 
-			header, table, getActiveProfileName())
+		sb.WriteString(FormatWorkspaceHeader(config))
+		sb.WriteString(fmt.Sprintf("Database: %s\n", response.Summary.Database))
+		sb.WriteString(fmt.Sprintf("   Query: %s = %s\n\n", response.Query.MatchField, response.Query.MatchValue))
+	} else {
+		sb.WriteString(fmt.Sprintf("[Context: %s]\n", getActiveProfileName()))
 	}
 
-	// Fallback to simple header if piping
-	return fmt.Sprintf("[Context: %s]\n%s\n[Context: %s] | Switch: gsc config use <name>", 
-		getActiveProfileName(), table, getActiveProfileName())
+	sb.WriteString(table)
+
+	if !quiet {
+		sb.WriteString("\n")
+		sb.WriteString(fmt.Sprintf("Coverage Analysis (Confidence: %s)\n", response.Summary.Confidence))
+		sb.WriteString("----------------------------------------------------------\n")
+		sb.WriteString(fmt.Sprintf("Focus Coverage:    %s %.1f%% (%d results)\n\n", 
+			renderProgressBar(response.Summary.CoveragePercent), 
+			response.Summary.CoveragePercent, 
+			response.Summary.TotalResults))
+		sb.WriteString("Hint: Run 'gsc query --coverage' for a detailed breakdown of blind spots.\n\n")
+		sb.WriteString(fmt.Sprintf("[Context: %s] | Switch: gsc config use <name>", getActiveProfileName()))
+	}
+
+	return sb.String()
 }
 
 // FormatListResult formats a ListResult into the specified format.
@@ -113,22 +128,28 @@ func formatListResultTable(listResult *ListResult, quiet bool, config *QueryConf
 
 	switch listResult.Level {
 	case "database":
-		headers = []string{"Name", "Description", "Files"}
+		headers = []string{"DB Name", "Summary", "DB File", "File Count"}
 		for _, item := range listResult.Items {
+			// Truncate description to 60 chars
+			summary := item.Description
+			if len(summary) > 60 {
+				summary = summary[:57] + "..."
+			}
 			rows = append(rows, []string{
 				item.Name,
-				item.Description,
+				summary,
+				item.Source,
 				fmt.Sprintf("%d", item.Count),
 			})
 		}
-		footer = "Hint: Use 'gsc query --db <name> --list' to see fields in a database."
+		footer = "Hint: Use 'gsc query --db <name|file> --list' to see fields in a database."
 	case "field":
 		headers = []string{"Field Name", "Type", "Description"}
 		for _, item := range listResult.Items {
 			rows = append(rows, []string{
 				item.Name,
 				item.Type,
-				item.Description,
+				truncate(item.Description, 80),
 			})
 		}
 		footer = "Hint: Use 'gsc query --field <name> --list' to see values for a field.\nHint: Use 'gsc query --list-db' to see all databases."
@@ -159,7 +180,6 @@ func formatListResultTable(listResult *ListResult, quiet bool, config *QueryConf
 // FormatStatusView formats the current query context as a status view.
 func FormatStatusView(config *QueryConfig, quiet bool) string {
 	if quiet {
-		// In quiet mode, just output the active profile name or "none"
 		if config.ActiveProfile == "" {
 			return "none"
 		}
@@ -168,21 +188,24 @@ func FormatStatusView(config *QueryConfig, quiet bool) string {
 
 	var sb strings.Builder
 
-	sb.WriteString("Current Workspace:\n")
-	sb.WriteString(fmt.Sprintf("  Active Profile: %s\n", getStatusValue(config.ActiveProfile)))
-	sb.WriteString(fmt.Sprintf("  Database:       %s\n", getStatusValue(config.Global.DefaultDatabase)))
-	sb.WriteString(fmt.Sprintf("  Field:          %s\n", getStatusValue(config.Query.DefaultField)))
-	sb.WriteString(fmt.Sprintf("  Format:         %s\n", getStatusValue(config.Query.DefaultFormat)))
-	sb.WriteString("\n")
-	sb.WriteString("Need help? Run 'gsc query --help' for detailed documentation.\n")
-	sb.WriteString("\n")
+	sb.WriteString("Find files by metadata value or analyze codebase coverage and insights.\n\n")
+	sb.WriteString(FormatWorkspaceHeader(config))
+
+	sb.WriteString("Primary Flags:\n")
+	sb.WriteString("  -v, --value <val>  Match metadata value (comma-separated for OR)\n")
+	sb.WriteString("  -l, --list         Discover fields or values (hierarchical)\n")
+	sb.WriteString("  --insights         Analyze metadata distribution (Phase 2)\n")
+	sb.WriteString("  --coverage         Analyze analysis blind spots (Phase 3)\n")
+	sb.WriteString("  -d, --db <name|file> Override default database\n")
+	sb.WriteString("  -f, --field <name> Override default field\n\n")
+
 	sb.WriteString("Quick Actions:\n")
-	sb.WriteString("  - Run 'gsc query --list' to see fields in the default database (or list all DBs).\n")
-	sb.WriteString("  - Run 'gsc query --list-db' to explicitly list all databases.\n")
-	sb.WriteString("  - Run 'gsc config context list' to see available profiles.\n")
-	sb.WriteString("  - Run 'gsc config use <name>' to switch context.\n")
-	sb.WriteString("  - Run 'gsc config active' to see the current profile.\n")
-	sb.WriteString("  - Run 'gsc query --value <val>' to search using defaults.\n")
+	sb.WriteString("  • List fields:     gsc query --list\n")
+	sb.WriteString("  • View insights:   gsc query --insights --field <field>\n")
+	sb.WriteString("  • Check coverage:  gsc query --coverage\n")
+	sb.WriteString("  • Switch context:  gsc config use <name>\n\n")
+
+	sb.WriteString("Need more help? Run 'gsc query --help' for the full manual.\n")
 
 	return sb.String()
 }
@@ -390,6 +413,22 @@ func formatReportTable(report *InsightsReport, quiet bool, config *QueryConfig) 
 	for _, fieldName := range fieldNames {
 		insights := report.Insights[fieldName]
 		
+		// Calculate the maximum width of field values (truncated to 100 chars)
+		maxValWidth := 0
+		for _, insight := range insights {
+			displayValue := insight.Value
+			if displayValue == "" {
+				displayValue = "(unrated)"
+			}
+			// Truncate to 100 characters max
+			if len(displayValue) > 100 {
+				displayValue = displayValue[:97] + "..."
+			}
+			if len(displayValue) > maxValWidth {
+				maxValWidth = len(displayValue)
+			}
+		}
+		
 		sb.WriteString(fmt.Sprintf("Field: %s (Top %d)\n", fieldName, report.Context.Limit))
 		sb.WriteString("----------------------------------------------------------\n")
 		
@@ -398,7 +437,12 @@ func formatReportTable(report *InsightsReport, quiet bool, config *QueryConfig) 
 			if displayValue == "" {
 				displayValue = "(unrated)"
 			}
-			sb.WriteString(fmt.Sprintf("%-15s %s %5.1f%% (%d files)\n", 
+			// Truncate to 100 characters max
+			if len(displayValue) > 100 {
+				displayValue = displayValue[:97] + "..."
+			}
+			sb.WriteString(fmt.Sprintf("%-*s %s %5.1f%% (%d files)\n", 
+				maxValWidth,
 				displayValue, 
 				renderProgressBar(insight.Percentage), 
 				insight.Percentage, 
@@ -437,6 +481,18 @@ func renderProgressBar(percent float64) string {
 	}
 	bar := strings.Repeat("#", filled) + strings.Repeat(" ", width-filled)
 	return "[" + bar + "]"
+}
+
+// truncate shortens a string to a maximum length, appending "..." if truncated.
+func truncate(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	runes := []rune(s)
+	if len(runes) <= maxLen {
+		return s
+	}
+	return string(runes[:maxLen-3]) + "..."
 }
 
 func getStatusValue(value string) string {

@@ -178,6 +178,7 @@ func FormatWorkspaceHeader(config *QueryConfig) string {
 	} else {
 		sb.WriteString("Active Profile:  (none)\n")
 		sb.WriteString("  Run 'gsc config use <name>' to activate a profile.\n")
+		sb.WriteString("  Run 'gsc config context list' to list available profiles.\n")
 	}
 	sb.WriteString("\n")
 

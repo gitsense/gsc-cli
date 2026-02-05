@@ -1,12 +1,12 @@
 /**
  * Component: Config Command
- * Block-UUID: ce1f228c-4676-4861-9e8b-5469cc28d27f
- * Parent-UUID: caaab71a-1541-4a44-addb-778247de842f
- * Version: 1.7.0
+ * Block-UUID: 9ff66498-5b1f-460a-a663-a8da3de2ee79
+ * Parent-UUID: ce1f228c-4676-4861-9e8b-5469cc28d27f
+ * Version: 1.8.0
  * Description: CLI command definition for 'gsc config', managing context profiles and workspace settings. Added --scope-include and --scope-exclude flags to create/update commands. Implemented 'gsc config scope validate' command to check scope patterns against tracked files. Updated to support professional CLI output: set SilenceUsage to true on all subcommands to prevent usage spam on logic errors.
  * Language: Go
- * Created-at: 2026-02-05T00:06:49.501Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), Gemini 3 Flash (v1.6.1), GLM-4.7 (v1.7.0)
+ * Created-at: 2026-02-05T18:25:13.283Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), Gemini 3 Flash (v1.6.1), GLM-4.7 (v1.7.0), Gemini 3 Flash (v1.8.0)
  */
 
 
@@ -31,6 +31,24 @@ var configCmd = &cobra.Command{
 	Long: `Manage context profiles and workspace settings.
 Profiles allow you to switch between different workspaces (e.g., security, payments)
 with a single command.`,
+	Example: `  # 1. Create a new profile using the interactive wizard
+  gsc config context create security
+
+  # 2. Create a profile for scripts (non-interactive)
+  gsc config context create payments --db payments-db --field severity --alias pay
+  
+  # 3. Switch to a profile by name or alias
+  gsc config use security
+  gsc config use pay
+  
+  # 4. Check which profile is currently active
+  gsc config active
+  
+  # 5. Validate your Focus Scope (include/exclude patterns) against tracked files
+  gsc config scope validate
+  
+  # 6. Clear the active profile to return to global defaults
+  gsc config clear`,
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Help()
 	},

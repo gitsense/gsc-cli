@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Simple Query Executor
- * Block-UUID: 054cb13f-7fbc-418c-b7a0-84f5b6565e8c
- * Parent-UUID: 69190bcf-2594-441d-a028-d4e331da3955
- * Version: 1.4.1
+ * Block-UUID: 04687c2a-5156-4a15-8daf-e1ce8430fd2d
+ * Parent-UUID: 054cb13f-7fbc-418c-b7a0-84f5b6565e8c
+ * Version: 1.5.0
  * Description: Executes simple value-matching queries and hierarchical list operations. Added ExecuteCoverageAnalysis to implement Phase 3 Scout Layer coverage reporting, utilizing temporary tables for efficient Git-to-DB comparison. Added ExecuteInsightsAnalysis to implement Phase 2 Scout Layer insights and reporting features, utilizing temporary tables and type-aware SQL aggregation. Fixed SQL array aggregation to use explicit alias for clarity and compatibility. Fixed null value counting logic to use NOT EXISTS to accurately identify files with no metadata entry.
  * Language: Go
- * Created-at: 2026-02-05T07:13:46.193Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.4.1)
+ * Created-at: 2026-02-05T18:11:17.686Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.4.1), Gemini 3 Flash (v1.5.0)
  */
 
 
@@ -23,7 +23,6 @@ import (
 
 	"github.com/yourusername/gsc-cli/internal/db"
 	"github.com/yourusername/gsc-cli/internal/git"
-	"github.com/yourusername/gsc-cli/internal/registry"
 	"github.com/yourusername/gsc-cli/pkg/logger"
 )
 
@@ -150,17 +149,18 @@ func GetListResult(ctx context.Context, dbName string, fieldName string) (*ListR
 
 // listAllDatabases returns a list of all registered databases.
 func listAllDatabases(ctx context.Context) (*ListResult, error) {
-	reg, err := registry.LoadRegistry()
+	dbs, err := ListDatabases(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	var items []ListItem
-	for _, entry := range reg.Databases {
+	for _, dbInfo := range dbs {
 		items = append(items, ListItem{
-			Name:        entry.Name,
-			Description: entry.Description,
-			Count:       0, // TODO: Query DB for actual file count
+			Name:        dbInfo.Name,
+			Description: dbInfo.Description,
+			Source:      filepath.Base(dbInfo.DBPath),
+			Count:       dbInfo.EntryCount,
 		})
 	}
 
@@ -565,9 +565,9 @@ func ExecuteInsightsAnalysis(ctx context.Context, dbName string, fields []string
 				JOIN metadata_fields mf ON fm.field_id = mf.field_id
 				JOIN files f ON fm.file_path = f.file_path
 				JOIN target_set ts ON f.file_path = ts.file_path
-				JOIN json_each(fm.field_value) AS je
+				JOIN json_each(fm.field_value)
 				WHERE mf.field_name = ?
-				GROUP BY je.value
+				GROUP BY json_each.value
 				ORDER BY count DESC
 				LIMIT ?
 			`

@@ -1,12 +1,12 @@
 /**
  * Component: Query Command
- * Block-UUID: d95a7a03-9399-4e5a-8f81-d39bbb4ce616
- * Parent-UUID: 08207ae5-f591-4d34-a342-e48e6e5d6f10
- * Version: 2.6.0
+ * Block-UUID: 8a4d235b-a9d3-44b8-9c08-47b3678ba1b8
+ * Parent-UUID: d95a7a03-9399-4e5a-8f81-d39bbb4ce616
+ * Version: 2.7.0
  * Description: CLI command definition for 'gsc query'. Added --coverage and --scope-override flags to support Phase 3 Scout Layer features. Implemented handleCoverage to orchestrate coverage analysis and reporting. Added --insights and --report flags to support Phase 2 Scout Layer features, including metadata aggregation and ASCII reporting.
  * Language: Go
- * Created-at: 2026-02-02T19:55:00.000Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), Claude Haiku 4.5 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), Gemini 3 Flash (v1.0.5), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), Gemini 3 Flash (v2.5.0), GLM-4.7 (v2.6.0)
+ * Created-at: 2026-02-05T19:30:15.160Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), Claude Haiku 4.5 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), Gemini 3 Flash (v1.0.5), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), Gemini 3 Flash (v2.5.0), GLM-4.7 (v2.6.0), Gemini 3 Flash (v2.7.0)
  */
 
 
@@ -328,8 +328,40 @@ func handleQueryOrStatus(ctx context.Context, dbName string, fieldName string, v
 		return err
 	}
 
+	// Perform Coverage Analysis for the enriched response
+	repoRoot, err := git.FindGitRoot()
+	if err != nil {
+		return fmt.Errorf("failed to find git root for coverage analysis: %w", err)
+	}
+
+	coverageReport, err := manifest.ExecuteCoverageAnalysis(ctx, resolvedDB, "", repoRoot, config.ActiveProfile)
+	if err != nil {
+		logger.Warning("Failed to execute coverage analysis", "error", err)
+		// Create a dummy report to avoid nil pointer issues
+		coverageReport = &manifest.CoverageReport{
+			Percentages:    manifest.CoveragePercentages{FocusCoverage: 0},
+			AnalysisStatus: "Unknown",
+		}
+	}
+
+	// Construct the enriched response
+	response := &manifest.QueryResponse{
+		Query: manifest.SimpleQuery{
+			Database:   resolvedDB,
+			MatchField: resolvedField,
+			MatchValue: value,
+		},
+		Results: results,
+		Summary: manifest.QuerySummary{
+			TotalResults:    len(results),
+			CoveragePercent: coverageReport.Percentages.FocusCoverage,
+			Confidence:      coverageReport.AnalysisStatus,
+			Database:        resolvedDB,
+		},
+	}
+
 	// Pass config to formatter to enable workspace headers
-	output := manifest.FormatQueryResults(results, resolvedFormat, quiet, config)
+	output := manifest.FormatQueryResults(response, resolvedFormat, quiet, config)
 	fmt.Println(output)
 	return nil
 }
