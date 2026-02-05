@@ -1,12 +1,12 @@
 /*
  * Component: Manifest Path Helper
- * Block-UUID: 59c7d1db-e10b-4cfc-87b9-a71ad8acd1e6
- * Parent-UUID: e47b972f-549c-4f0f-a93f-6317b066be88
- * Version: 1.3.0
- * Description: Helper functions to resolve file paths for databases and manifests. Added ResolveTempDBPath for atomic imports and ResolveBackupDir for backup management.
+ * Block-UUID: 497c60a5-854b-483c-b619-2aa807e762ed
+ * Parent-UUID: 59c7d1db-e10b-4cfc-87b9-a71ad8acd1e6
+ * Version: 1.4.0
+ * Description: Helper functions to resolve file paths for databases and manifests. Added ResolveLockPath to support file-based locking for concurrent import prevention.
  * Language: Go
  * Created-at: 2026-02-02T05:30:00.000Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
  */
 
 
@@ -63,6 +63,18 @@ func ResolveBackupDir() (string, error) {
 	}
 
 	return backupDir, nil
+}
+
+// ResolveLockPath constructs the absolute path to the import lock file.
+// This file is used to prevent concurrent import operations.
+func ResolveLockPath() (string, error) {
+	root, err := git.FindProjectRoot()
+	if err != nil {
+		return "", fmt.Errorf("failed to find project root: %w", err)
+	}
+
+	lockPath := filepath.Join(root, settings.GitSenseDir, ".import.lock")
+	return lockPath, nil
 }
 
 // ResolveJSONPath constructs the absolute path to a JSON manifest file within the .gitsense directory.
