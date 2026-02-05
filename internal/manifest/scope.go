@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Scope Logic
- * Block-UUID: 708f0868-3429-49a3-9119-a9b81ae4fe58
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: b5d5495d-7ccc-49d9-9eeb-4586b29ce5ab
+ * Parent-UUID: 708f0868-3429-49a3-9119-a9b81ae4fe58
+ * Version: 1.0.1
  * Description: Core logic for Focus Scope handling, including parsing, matching, validation, and resolution. Implements lenient parsing, doublestar glob matching, Levenshtein distance suggestions, and the full precedence chain for scope resolution.
  * Language: Go
- * Created-at: 2026-02-04T22:47:52.476Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Created-at: 2026-02-05T00:00:33.939Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1)
  */
 
 
@@ -15,7 +15,6 @@ package manifest
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -24,7 +23,6 @@ import (
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/yourusername/gsc-cli/internal/git"
 	"github.com/yourusername/gsc-cli/pkg/logger"
-	"github.com/yourusername/gsc-cli/pkg/settings"
 )
 
 // ScopeConfig defines the include and exclude patterns for a Focus Scope.
@@ -259,31 +257,5 @@ func ResolveScopeForQuery(ctx context.Context, profileName string, scopeOverride
 
 	// Priority 4: Default (All files)
 	logger.Debug("Using default scope (all tracked files)")
-	return nil, nil
-}
-
-// LoadGitSenseMap is a placeholder for the function defined in gitsense_map.go.
-// It is included here to allow ResolveScopeForQuery to compile if gitsense_map.go
-// is not yet present, though in the final build it will be linked.
-// This implementation provides a fallback to read the file directly if the package function isn't linked.
-func LoadGitSenseMap() (*ScopeConfig, error) {
-	root, err := git.FindProjectRoot()
-	if err != nil {
-		return nil, err
-	}
-
-	mapPath := filepath.Join(root, settings.GitSenseDir, ".gitsense-map")
-	if _, err := os.Stat(mapPath); os.IsNotExist(err) {
-		return nil, nil // Not an error, just no map
-	}
-
-	// Simple JSON read for now. The full implementation in gitsense_map.go will handle validation.
-	// This is a temporary bridge to allow scope.go to be somewhat self-contained for this step.
-	// In the actual implementation, this function will be replaced by the one in gitsense_map.go.
-	
-	// For the purpose of this file generation, I will assume the existence of the struct 
-	// and basic reading logic, but defer the robust implementation to the specific file.
-	
-	// Returning nil here implies the file doesn't exist or isn't valid yet.
 	return nil, nil
 }
