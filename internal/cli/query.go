@@ -1,12 +1,12 @@
 /**
  * Component: Query Command
- * Block-UUID: 2afd0a1d-b135-40e9-9a7a-9c391b7eb412
- * Parent-UUID: decf0dad-833c-4cb1-a86c-3c5e995609c9
- * Version: 2.4.0
- * Description: CLI command definition for 'gsc query'. Removed --set-default flags, added --quiet flag, and updated to use effective configuration (profiles). Updated to pass config to formatter for workspace headers. Updated list handlers to pass config for workspace headers. Updated to resolve database names from user input or config to physical names. Updated to support professional CLI output: demoted Info logs to Debug and set SilenceUsage to true.
+ * Block-UUID: 08207ae5-f591-4d34-a342-e48e6e5d6f10
+ * Parent-UUID: 2afd0a1d-b135-40e9-9a7a-9c391b7eb412
+ * Version: 2.5.0
+ * Description: CLI command definition for 'gsc query'. Added --coverage and --scope-override flags to support Phase 3 Scout Layer features. Implemented handleCoverage to orchestrate coverage analysis and reporting.
  * Language: Go
  * Created-at: 2026-02-02T19:55:00.000Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), Claude Haiku 4.5 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), Gemini 3 Flash (v1.0.5), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), Claude Haiku 4.5 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), Gemini 3 Flash (v1.0.5), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), Gemini 3 Flash (v2.5.0)
  */
 
 
@@ -17,19 +17,22 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"github.com/yourusername/gsc-cli/internal/git"
 	"github.com/yourusername/gsc-cli/internal/manifest"
 	"github.com/yourusername/gsc-cli/internal/registry"
 	"github.com/yourusername/gsc-cli/pkg/logger"
 )
 
 var (
-	queryDB     string
-	queryField  string
-	queryValue  string
-	queryList   bool
-	queryListDB bool
-	queryFormat string
-	queryQuiet  bool
+	queryDB            string
+	queryField         string
+	queryValue         string
+	queryList          bool
+	queryListDB        bool
+	queryFormat        string
+	queryQuiet         bool
+	queryCoverage      bool
+	queryScopeOverride string
 )
 
 // queryCmd represents the query command
@@ -55,7 +58,10 @@ Supports hierarchical discovery (--list), context profiles, and simple value mat
   gsc query
 
   # 6. Query using defaults (efficient!)
-  gsc query --value critical`,
+  gsc query --value critical
+
+  # 7. Run coverage analysis
+  gsc query --coverage`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
 
@@ -68,12 +74,17 @@ Supports hierarchical discovery (--list), context profiles, and simple value mat
 			return handleList(ctx, "", "", queryFormat, queryQuiet, config)
 		}
 
-		// Priority 2: Hierarchical Discovery
+		// Priority 2: Coverage Analysis
+		if queryCoverage {
+			return handleCoverage(ctx, queryDB, queryScopeOverride, queryFormat, queryQuiet)
+		}
+
+		// Priority 3: Hierarchical Discovery
 		if queryList {
 			return handleHierarchicalList(ctx, queryDB, queryField, queryFormat, queryQuiet)
 		}
 
-		// Priority 3: Query Execution or Status View
+		// Priority 4: Query Execution or Status View
 		return handleQueryOrStatus(ctx, queryDB, queryField, queryValue, queryFormat, queryQuiet)
 	},
 	SilenceUsage: true, // Silence usage output on logic errors
@@ -88,6 +99,47 @@ func init() {
 	queryCmd.Flags().BoolVar(&queryListDB, "list-db", false, "Explicitly list all available databases")
 	queryCmd.Flags().StringVarP(&queryFormat, "format", "o", "table", "Output format (json, table)")
 	queryCmd.Flags().BoolVar(&queryQuiet, "quiet", false, "Suppress headers, footers, and hints (clean output)")
+	queryCmd.Flags().BoolVar(&queryCoverage, "coverage", false, "Enable coverage analysis mode")
+	queryCmd.Flags().StringVar(&queryScopeOverride, "scope-override", "", "Temporary scope override (e.g., include=src/**;exclude=tests/**)")
+}
+
+// handleCoverage orchestrates the coverage analysis process.
+func handleCoverage(ctx context.Context, dbName string, scopeOverride string, format string, quiet bool) error {
+	config, err := manifest.GetEffectiveConfig()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	resolvedDB := dbName
+	if resolvedDB == "" {
+		resolvedDB = config.Global.DefaultDatabase
+	}
+
+	if resolvedDB == "" {
+		return fmt.Errorf("database is required for coverage analysis. Use --db flag or set a profile with 'gsc config use <name>'")
+	}
+
+	// Resolve database name to physical name
+	resolvedDB, err = registry.ResolveDatabase(resolvedDB)
+	if err != nil {
+		return err
+	}
+
+	repoRoot, err := git.FindGitRoot()
+	if err != nil {
+		return fmt.Errorf("failed to find git root: %w", err)
+	}
+
+	logger.Debug("Executing coverage analysis", "database", resolvedDB, "scope_override", scopeOverride)
+	report, err := manifest.ExecuteCoverageAnalysis(ctx, resolvedDB, scopeOverride, repoRoot, config.ActiveProfile)
+	if err != nil {
+		return err
+	}
+
+	// Pass config to formatter to enable workspace headers
+	output := manifest.FormatCoverageReport(report, format, quiet, config)
+	fmt.Println(output)
+	return nil
 }
 
 // handleHierarchicalList resolves the database from defaults if not provided.

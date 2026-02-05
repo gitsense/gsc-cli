@@ -1,12 +1,12 @@
 /*
  * Component: Simple Query Executor
- * Block-UUID: fcb4dd65-2763-4bbb-acb1-83a6253fa67d
- * Parent-UUID: 13bdeb15-93f7-40e7-9b30-0dee06e728b1
- * Version: 1.2.0
- * Description: Executes simple value-matching queries against the manifest database and handles hierarchical list operations. Added PrepareTargetSet to create and populate a temporary table with files matching the active Focus Scope, enabling scalable SQL joins for Phase 2 aggregations. Updated ExecuteSimpleQuery to support querying array fields stored as JSON using SQLite's json_each function.
+ * Block-UUID: 38f0fdbb-0a0b-4fc0-b4ca-0104172f138f
+ * Parent-UUID: fcb4dd65-2763-4bbb-acb1-83a6253fa67d
+ * Version: 1.3.0
+ * Description: Executes simple value-matching queries and hierarchical list operations. Added ExecuteCoverageAnalysis to implement Phase 3 Scout Layer coverage reporting, utilizing temporary tables for efficient Git-to-DB comparison.
  * Language: Go
- * Created-at: 2026-02-02T18:50:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
+ * Created-at: 2026-02-05T07:13:46.193Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0)
  */
 
 
@@ -16,7 +16,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"path/filepath"
+	"sort"
 	"strings"
+	"time"
 
 	"github.com/yourusername/gsc-cli/internal/db"
 	"github.com/yourusername/gsc-cli/internal/git"
@@ -334,4 +337,153 @@ func PrepareTargetSet(ctx context.Context, db *sql.DB, scope *ScopeConfig, repoR
 
 	logger.Debug("Target set prepared", "total_tracked", len(trackedFiles), "in_scope", insertedCount)
 	return nil
+}
+
+// ExecuteCoverageAnalysis calculates analysis coverage within the active Focus Scope.
+// It compares Git tracked files against the manifest database to identify blind spots.
+func ExecuteCoverageAnalysis(ctx context.Context, dbName string, scopeOverride string, repoRoot string, profileName string) (*CoverageReport, error) {
+	// 1. Resolve Scope
+	scope, err := ResolveScopeForQuery(ctx, profileName, scopeOverride)
+	if err != nil {
+		return nil, err
+	}
+
+	// 2. Open Database
+	dbPath, err := ResolveDBPath(dbName)
+	if err != nil {
+		return nil, err
+	}
+	database, err := db.OpenDB(dbPath)
+	if err != nil {
+		return nil, err
+	}
+	defer db.CloseDB(database)
+
+	// 3. Prepare Target Set (Temporary Table)
+	if err := PrepareTargetSet(ctx, database, scope, repoRoot); err != nil {
+		return nil, err
+	}
+
+	// 4. Initialize Report
+	report := &CoverageReport{
+		Timestamp:       time.Now(),
+		ActiveProfile:   profileName,
+		ScopeDefinition: scope,
+		ByLanguage:      make(map[string]LanguageCoverage),
+		Recommendations: []string{},
+	}
+
+	// 5. Calculate Overall Totals
+	// We use the target_set temp table to count in-scope files and join with files table for analyzed count
+	totalQuery := `
+		SELECT 
+			(SELECT COUNT(*) FROM target_set) as in_scope,
+			(SELECT COUNT(*) FROM files f JOIN target_set ts ON f.file_path = ts.file_path WHERE f.chat_id IS NOT NULL) as analyzed
+	`
+	err = database.QueryRowContext(ctx, totalQuery).Scan(&report.Totals.InScopeFiles, &report.Totals.AnalyzedFiles)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query coverage totals: %w", err)
+	}
+
+	trackedFiles, _ := git.GetTrackedFiles(ctx, repoRoot)
+	report.Totals.TrackedFiles = len(trackedFiles)
+	report.Totals.OutOfScopeFiles = report.Totals.TrackedFiles - report.Totals.InScopeFiles
+
+	if report.Totals.InScopeFiles > 0 {
+		report.Percentages.FocusCoverage = (float64(report.Totals.AnalyzedFiles) / float64(report.Totals.InScopeFiles)) * 100
+	}
+	if report.Totals.TrackedFiles > 0 {
+		report.Percentages.TotalCoverage = (float64(report.Totals.AnalyzedFiles) / float64(report.Totals.TrackedFiles)) * 100
+	}
+
+	// 6. Calculate Language Breakdown
+	langQuery := `
+		SELECT 
+			COALESCE(f.language, 'Unknown') as lang,
+			COUNT(*) as total,
+			COUNT(f.chat_id) as analyzed
+		FROM target_set ts
+		LEFT JOIN files f ON ts.file_path = f.file_path
+		GROUP BY lang
+		ORDER BY total DESC
+	`
+	rows, err := database.QueryContext(ctx, langQuery)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query language coverage: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var lang string
+		var stats LanguageCoverage
+		if err := rows.Scan(&lang, &stats.Total, &stats.Analyzed); err != nil {
+			return nil, err
+		}
+		if stats.Total > 0 {
+			stats.Percent = (float64(stats.Analyzed) / float64(stats.Total)) * 100
+		}
+		report.ByLanguage[lang] = stats
+	}
+
+	// 7. Identify Blind Spots (Directories)
+	// We find files in target_set that are NOT in the files table or have NULL chat_id
+	blindSpotQuery := `
+		SELECT ts.file_path
+		FROM target_set ts
+		LEFT JOIN files f ON ts.file_path = f.file_path
+		WHERE f.chat_id IS NULL
+	`
+	bsRows, err := database.QueryContext(ctx, blindSpotQuery)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query blind spots: %w", err)
+	}
+	defer bsRows.Close()
+
+	dirMap := make(map[string]*DirectoryBlindSpot)
+	for bsRows.Next() {
+		var path string
+		if err := bsRows.Scan(&path); err != nil {
+			return nil, err
+		}
+
+		// Group by first two segments
+		segments := strings.Split(filepath.ToSlash(path), "/")
+		dir := ""
+		if len(segments) > 1 {
+			dir = segments[0] + "/" + segments[1] + "/"
+		} else if len(segments) == 1 {
+			dir = segments[0]
+		}
+
+		if _, ok := dirMap[dir]; !ok {
+			dirMap[dir] = &DirectoryBlindSpot{Path: dir}
+		}
+		dirMap[dir].TotalFiles++
+	}
+
+	for _, ds := range dirMap {
+		report.BlindSpots.Directories = append(report.BlindSpots.Directories, *ds)
+	}
+
+	sort.Slice(report.BlindSpots.Directories, func(i, j int) bool {
+		return report.BlindSpots.Directories[i].TotalFiles > report.BlindSpots.Directories[j].TotalFiles
+	})
+
+	if len(report.BlindSpots.Directories) > 5 {
+		report.BlindSpots.Directories = report.BlindSpots.Directories[:5]
+	}
+
+	// 8. Set Status and Recommendations
+	if report.Percentages.FocusCoverage >= 90 {
+		report.AnalysisStatus = "High Confidence"
+		report.Recommendations = append(report.Recommendations, fmt.Sprintf("%.1f%% of in-scope files analyzed. High confidence for scoped queries.", report.Percentages.FocusCoverage))
+	} else if report.Percentages.FocusCoverage > 0 {
+		report.AnalysisStatus = "Partial"
+		report.Recommendations = append(report.Recommendations, "Coverage is partial. Consider importing more manifests to fill blind spots.")
+	} else {
+		report.AnalysisStatus = "No Coverage"
+		report.Recommendations = append(report.Recommendations, "No files in scope have been analyzed. Run 'gsc manifest import' to add intelligence.")
+	}
+
+	return report, nil
 }

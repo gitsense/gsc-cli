@@ -1,12 +1,12 @@
 /**
  * Component: Query Output Formatter
- * Block-UUID: 8a5644d7-afd6-49dd-b679-1e8af1931c70
- * Parent-UUID: ef906400-fec6-4308-b218-b0d28de7c6b9
- * Version: 2.3.0
- * Description: Formats query results, list results, and status views. Added hint for 'gsc config active' in status view to support the new command name.
+ * Block-UUID: 6e51147d-9071-4a32-bae2-3d14c580ceea
+ * Parent-UUID: 8a5644d7-afd6-49dd-b679-1e8af1931c70
+ * Version: 2.4.0
+ * Description: Formats query results, list results, and status views. Added FormatCoverageReport to support Phase 3 Scout Layer coverage analysis, including ASCII progress bars and detailed language/directory breakdowns.
  * Language: Go
- * Created-at: 2026-02-02T19:55:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0)
+ * Created-at: 2026-02-05T07:14:42.511Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), Gemini 3 Flash (v2.4.0)
  */
 
 
@@ -15,7 +15,9 @@ package manifest
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
+	"time"
 
 	"github.com/yourusername/gsc-cli/internal/output"
 )
@@ -183,6 +185,132 @@ func FormatStatusView(config *QueryConfig, quiet bool) string {
 	sb.WriteString("  - Run 'gsc query --value <val>' to search using defaults.\n")
 
 	return sb.String()
+}
+
+// FormatCoverageReport formats a CoverageReport into the specified format.
+func FormatCoverageReport(report *CoverageReport, format string, quiet bool, config *QueryConfig) string {
+	switch strings.ToLower(format) {
+	case "json":
+		return formatCoverageJSON(report)
+	case "table":
+		return formatCoverageTable(report, quiet, config)
+	default:
+		return fmt.Sprintf("Unsupported format: %s", format)
+	}
+}
+
+func formatCoverageJSON(report *CoverageReport) string {
+	bytes, err := json.MarshalIndent(report, "", "  ")
+	if err != nil {
+		return fmt.Sprintf("Error formatting JSON: %v", err)
+	}
+	return string(bytes)
+}
+
+func formatCoverageTable(report *CoverageReport, quiet bool, config *QueryConfig) string {
+	var sb strings.Builder
+
+	dbName := config.Global.DefaultDatabase
+	if dbName == "" {
+		dbName = "unknown"
+	}
+
+	// Header
+	sb.WriteString(fmt.Sprintf("GitSense Coverage Report: %s\n", dbName))
+	sb.WriteString(strings.Repeat("=", 41+len(dbName)) + "\n")
+	sb.WriteString(fmt.Sprintf("Active Profile: %s\n", getStatusValue(report.ActiveProfile)))
+	
+	scopeStr := "All tracked files"
+	if report.ScopeDefinition != nil {
+		scopeStr = fmt.Sprintf("Include %v | Exclude %v", report.ScopeDefinition.Include, report.ScopeDefinition.Exclude)
+	}
+	sb.WriteString(fmt.Sprintf("Focus Scope: %s\n", scopeStr))
+	sb.WriteString(fmt.Sprintf("Report Generated: %s\n\n", report.Timestamp.Format(time.RFC3339)))
+
+	// Overall Coverage
+	sb.WriteString("Overall Coverage\n")
+	sb.WriteString("----------------------------------------------------------\n")
+	sb.WriteString(fmt.Sprintf("Total Tracked Files: %8d\n", report.Totals.TrackedFiles))
+	sb.WriteString(fmt.Sprintf("In-Scope Files:      %8d\n", report.Totals.InScopeFiles))
+	sb.WriteString(fmt.Sprintf("Analyzed Files:      %8d\n", report.Totals.AnalyzedFiles))
+	sb.WriteString(fmt.Sprintf("Out-of-Scope Files:  %8d\n\n", report.Totals.OutOfScopeFiles))
+
+	// Percentages
+	sb.WriteString("Coverage Percentages\n")
+	sb.WriteString("----------------------------------------------------------\n")
+	sb.WriteString(fmt.Sprintf("Focus Coverage:    %s %.1f%% (%d/%d in-scope)\n", 
+		renderProgressBar(report.Percentages.FocusCoverage), 
+		report.Percentages.FocusCoverage, 
+		report.Totals.AnalyzedFiles, 
+		report.Totals.InScopeFiles))
+	sb.WriteString(fmt.Sprintf("Total Coverage:    %s %.1f%% (%d/%d total)\n\n", 
+		renderProgressBar(report.Percentages.TotalCoverage), 
+		report.Percentages.TotalCoverage, 
+		report.Totals.AnalyzedFiles, 
+		report.Totals.TrackedFiles))
+
+	// Language Breakdown
+	sb.WriteString("Coverage by Language\n")
+	sb.WriteString("----------------------------------------------------------\n")
+	
+	// Sort languages by total count descending
+	var langs []string
+	for l := range report.ByLanguage {
+		langs = append(langs, l)
+	}
+	sort.Slice(langs, func(i, j int) bool {
+		return report.ByLanguage[langs[i]].Total > report.ByLanguage[langs[j]].Total
+	})
+
+	for _, l := range langs {
+		stats := report.ByLanguage[l]
+		sb.WriteString(fmt.Sprintf("%-11s %s %5.1f%% (%d/%d)\n", 
+			l+":", 
+			renderProgressBar(stats.Percent), 
+			stats.Percent, 
+			stats.Analyzed, 
+			stats.Total))
+	}
+	sb.WriteString("\n")
+
+	// Blind Spots
+	sb.WriteString("Top Unanalyzed Directories\n")
+	sb.WriteString("----------------------------------------------------------\n")
+	if len(report.BlindSpots.Directories) == 0 {
+		sb.WriteString("No blind spots detected in scope.\n")
+	} else {
+		for _, ds := range report.BlindSpots.Directories {
+			sb.WriteString(fmt.Sprintf("%-25s (%2d files, %3.0f%% analyzed)\n", 
+				ds.Path, ds.TotalFiles, ds.Percent))
+		}
+	}
+	sb.WriteString("\n")
+
+	// Status and Recommendations
+	sb.WriteString(fmt.Sprintf("Analysis Status: %s\n", strings.ToUpper(report.AnalysisStatus)))
+	sb.WriteString("----------------------------------------------------------\n")
+	for _, rec := range report.Recommendations {
+		if strings.Contains(rec, "High confidence") {
+			sb.WriteString("✓ " + rec + "\n")
+		} else if strings.Contains(rec, "partial") {
+			sb.WriteString("⚠ " + rec + "\n")
+		} else {
+			sb.WriteString("→ " + rec + "\n")
+		}
+	}
+	sb.WriteString("\nHint: Use 'gsc query --insights' to see metadata distribution.\n")
+
+	return sb.String()
+}
+
+func renderProgressBar(percent float64) string {
+	width := 20
+	filled := int(percent / 100 * float64(width))
+	if filled > width {
+		filled = width
+	}
+	bar := strings.Repeat("#", filled) + strings.Repeat(" ", width-filled)
+	return "[" + bar + "]"
 }
 
 func getStatusValue(value string) string {
