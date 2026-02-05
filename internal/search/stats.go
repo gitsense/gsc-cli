@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Search Statistics Recorder
- * Block-UUID: f8a38d2b-ab4c-47de-9849-92fd4a27fd47
- * Parent-UUID: 9a4d235b-a9d3-44b8-9c08-47b3678ba1b8
- * Version: 1.1.0
+ * Block-UUID: 7dfc80eb-66b8-43b3-b93c-b39aa4b017d0
+ * Parent-UUID: f8a38d2b-ab4c-47de-9849-92fd4a27fd47
+ * Version: 1.2.0
  * Description: Records search execution details to a local SQLite database for analytics and Scout intelligence. Refactored all logger calls to use structured Key-Value pairs instead of format strings.
  * Language: Go
- * Created-at: 2026-02-04T03:44:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0)
+ * Created-at: 2026-02-05T20:12:15.422Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0)
  */
 
 
@@ -53,8 +53,8 @@ func RecordSearch(ctx context.Context, searchInfo SearchRecord) error {
 		INSERT INTO search_history (
 			timestamp, pattern, tool_name, tool_version, duration_ms,
 			total_matches, total_files, analyzed_files, filters_used,
-			database_name, case_sensitive, file_filters, analyzed_filter
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			database_name, case_sensitive, file_filters, analyzed_filter, requested_fields
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	_, err = database.ExecContext(ctx, query,
@@ -71,6 +71,7 @@ func RecordSearch(ctx context.Context, searchInfo SearchRecord) error {
 		searchInfo.CaseSensitive,
 		searchInfo.FileFilters,
 		searchInfo.AnalyzedFilter,
+		searchInfo.RequestedFields,
 	)
 
 	if err != nil {
@@ -117,7 +118,8 @@ func ensureStatsSchema(database *sql.DB) error {
 		database_name TEXT,
 		case_sensitive BOOLEAN,
 		file_filters TEXT,
-		analyzed_filter TEXT
+		analyzed_filter TEXT,
+		requested_fields TEXT
 	);`
 
 	if _, err := database.Exec(createTableSQL); err != nil {

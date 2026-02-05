@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Search Engine Interface
- * Block-UUID: bb516625-6e07-4cca-a07b-3c221eaccb56
- * Parent-UUID: 35ddc0ad-d190-41cd-a4a7-b45d30d16956
- * Version: 2.0.0
+ * Block-UUID: 32d253b4-b9f2-48bd-9cea-277419cfea67
+ * Parent-UUID: bb516625-6e07-4cca-a07b-3c221eaccb56
+ * Version: 2.1.0
  * Description: Defines the abstraction for search engines (ripgrep, git grep) and the shared data structures. Updated to return SearchResult with metadata.
  * Language: Go
- * Created-at: 2026-02-03T18:06:35.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0)
+ * Created-at: 2026-02-05T20:05:34.734Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), Gemini 3 Flash (v2.1.0)
  */
 
 
@@ -26,6 +26,7 @@ type SearchOptions struct {
 	ContextLines  int    // Number of context lines before and after matches (-C)
 	CaseSensitive bool   // Whether the search is case-sensitive
 	FileType      string // Optional file type filter (e.g., "go", "js")
+	RequestedFields []string // Metadata fields to include in enrichment
 }
 
 // RawMatch represents a single match result from a search engine.

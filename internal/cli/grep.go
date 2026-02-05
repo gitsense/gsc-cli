@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Grep Command
- * Block-UUID: 2d5a73d8-f430-4d64-a8f3-c0ef7f96b78a
- * Parent-UUID: 4f6c369b-0cf0-405f-8893-eae869a53152
- * Version: 3.3.0
+ * Block-UUID: cd39782a-41b0-4ab9-8978-42b777d53be1
+ * Parent-UUID: 53ad3c18-fcfd-4e40-97f6-6a700d1bd004
+ * Version: 3.5.0
  * Description: CLI command definition for 'gsc grep'. Updated to support metadata filtering, stats recording, and case-sensitive defaults. Updated to resolve database names from user input or config to physical names. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted Info logs to Debug and set SilenceUsage to true.
  * Language: Go
- * Created-at: 2026-02-03T18:06:35.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v3.0.0), GLM-4.7 (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.7 (v3.3.0)
+ * Created-at: 2026-02-05T20:10:11.172Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v3.0.0), GLM-4.7 (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.7 (v3.3.0), Gemini 3 Flash (v3.4.0), Gemini 3 Flash (v3.5.0)
  */
 
 
@@ -34,6 +34,7 @@ var (
 	grepFileType     string
 	grepLimit        int
 	grepFilters      []string
+	grepFields       []string
 	grepAnalyzed     string
 	grepFiles        []string
 	grepNoStats      bool
@@ -93,6 +94,12 @@ Filtering:
 			contextLines = config.RG.DefaultContext
 		}
 
+		// Resolve Fields (flag > profile default)
+		requestedFields := grepFields
+		if len(requestedFields) == 0 {
+			requestedFields = config.RG.DefaultFields
+		}
+
 		// 4. Get Repository Info
 		repoInfo, err := git.GetRepositoryInfo()
 		if err != nil {
@@ -122,6 +129,7 @@ Filtering:
 			ContextLines:  contextLines,
 			CaseSensitive: grepCaseSensitive,
 			FileType:      grepFileType,
+			RequestedFields: requestedFields,
 		}
 
 		searchResult, err := engine.Search(cmd.Context(), options)
@@ -130,7 +138,7 @@ Filtering:
 		}
 
 		// 8. Enrich Matches (with filters)
-		enrichedMatches, err := search.EnrichMatches(cmd.Context(), searchResult.Matches, dbName, filters, grepAnalyzed, grepFiles)
+		enrichedMatches, availableFields, err := search.EnrichMatches(cmd.Context(), searchResult.Matches, dbName, filters, grepAnalyzed, grepFiles, requestedFields)
 		if err != nil {
 			return err
 		}
@@ -169,10 +177,11 @@ Filtering:
 				Remote: repoInfo.Remote,
 			},
 			Timestamp: time.Now(),
+			RequestedFields: requestedFields,
 		}
 
 		// 11. Format and Output
-		if err := search.FormatResponse(queryContext, summary, enrichedMatches, grepSummary, grepFilters); err != nil {
+		if err := search.FormatResponse(queryContext, summary, enrichedMatches, grepSummary, grepFilters, requestedFields, availableFields); err != nil {
 			return err
 		}
 
@@ -183,6 +192,7 @@ Filtering:
 			// Serialize filters and file patterns for storage
 			filtersJSON, _ := json.Marshal(grepFilters)
 			filesJSON, _ := json.Marshal(grepFiles)
+			fieldsJSON, _ := json.Marshal(requestedFields)
 
 			searchRecord := search.SearchRecord{
 				Timestamp:      time.Now(),
@@ -198,6 +208,7 @@ Filtering:
 				CaseSensitive:  grepCaseSensitive,
 				FileFilters:    string(filesJSON),
 				AnalyzedFilter: grepAnalyzed,
+				RequestedFields: string(fieldsJSON),
 			}
 
 			// Record in background, don't block output
@@ -225,6 +236,7 @@ func init() {
 	
 	// New Filter Flags
 	grepCmd.Flags().StringArrayVar(&grepFilters, "filter", []string{}, "Filter by metadata field (e.g., 'topic=security')")
+	grepCmd.Flags().StringSliceVar(&grepFields, "fields", []string{}, "Metadata fields to include in results (comma-separated)")
 	grepCmd.Flags().StringVar(&grepAnalyzed, "analyzed", "all", "Filter by analysis status: true, false, or all (default: all)")
 	grepCmd.Flags().StringArrayVar(&grepFiles, "file", []string{}, "Filter by file path pattern (supports wildcards)")
 	grepCmd.Flags().BoolVar(&grepNoStats, "no-stats", false, "Disable recording of search statistics")

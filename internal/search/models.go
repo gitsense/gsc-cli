@@ -1,12 +1,12 @@
 /**
  * Component: Search Intelligence Models
- * Block-UUID: 3e1cbfe0-bd9c-4265-a7e8-83894cb9dcfa
- * Parent-UUID: 37e27d9f-c464-4d09-8668-7d6318c6cd65
- * Version: 2.1.0
+ * Block-UUID: b6fb7155-da6f-41db-947a-e705c78bd39c
+ * Parent-UUID: 3e1cbfe0-bd9c-4265-a7e8-83894cb9dcfa
+ * Version: 2.2.0
  * Description: Defines the structured JSON response for gsc grep. Updated to support grouped file results, tool metadata, system info, truncation signals, and filter structures.
  * Language: Go
- * Created-at: 2026-02-03T19:44:11.581Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.0.1), GLM-4.7 (v2.1.0)
+ * Created-at: 2026-02-05T20:14:39.365Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.0.1), GLM-4.7 (v2.1.0), Gemini 3 Flash (v2.2.0)
  */
 
 
@@ -32,6 +32,8 @@ type QueryContext struct {
 	Repository  RepositoryInfo `json:"repository"`
 	Timestamp   time.Time    `json:"timestamp"`
 	Filters     []string     `json:"filters,omitempty"` // List of filter strings applied
+	RequestedFields []string     `json:"requested_fields,omitempty"` // Fields explicitly requested
+	AvailableFields []string     `json:"available_fields,omitempty"` // All fields available in the database
 }
 
 // ToolInfo holds details about the search tool used.
@@ -133,4 +135,5 @@ type SearchRecord struct {
 	CaseSensitive  bool
 	FileFilters    string // JSON string of file path patterns
 	AnalyzedFilter string // "true", "false", or "all"
+	RequestedFields string // JSON string of fields requested
 }

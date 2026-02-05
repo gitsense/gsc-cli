@@ -1,12 +1,12 @@
 /**
  * Component: Config Command
- * Block-UUID: 9ff66498-5b1f-460a-a663-a8da3de2ee79
- * Parent-UUID: ce1f228c-4676-4861-9e8b-5469cc28d27f
- * Version: 1.8.0
+ * Block-UUID: 1960669a-4b74-4db3-8c8a-99ff1d178675
+ * Parent-UUID: 9ff66498-5b1f-460a-a663-a8da3de2ee79
+ * Version: 1.9.0
  * Description: CLI command definition for 'gsc config', managing context profiles and workspace settings. Added --scope-include and --scope-exclude flags to create/update commands. Implemented 'gsc config scope validate' command to check scope patterns against tracked files. Updated to support professional CLI output: set SilenceUsage to true on all subcommands to prevent usage spam on logic errors.
  * Language: Go
- * Created-at: 2026-02-05T18:25:13.283Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), Gemini 3 Flash (v1.6.1), GLM-4.7 (v1.7.0), Gemini 3 Flash (v1.8.0)
+ * Created-at: 2026-02-05T20:07:27.804Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), Gemini 3 Flash (v1.6.1), GLM-4.7 (v1.7.0), Gemini 3 Flash (v1.8.0), Gemini 3 Flash (v1.9.0)
  */
 
 
@@ -167,6 +167,7 @@ var (
 	createField       string
 	createFormat      string
 	createRGContext   int
+	createRGFields    string
 	createAliases     string
 	createScopeInc    string
 	createScopeExc    string
@@ -213,6 +214,14 @@ If required flags are missing, you'll be guided through an interactive setup wiz
 				},
 			}
 
+			// Handle Fields
+			if cmd.Flags().Changed("fields") {
+				settings.RG.DefaultFields = strings.Split(createRGFields, ",")
+				for i := range settings.RG.DefaultFields {
+					settings.RG.DefaultFields[i] = strings.TrimSpace(settings.RG.DefaultFields[i])
+				}
+			}
+
 			// Handle Scope
 			if cmd.Flags().Changed("scope-include") || cmd.Flags().Changed("scope-exclude") {
 				scope := &manifest.ScopeConfig{}
@@ -257,6 +266,7 @@ var (
 	updateDesc     string
 	updateDB       string
 	updateField    string
+	updateRGFields string
 	updateAliases  string
 	updateScopeInc string
 	updateScopeExc string
@@ -287,6 +297,7 @@ If no flags are provided, you'll be guided through an interactive update wizard.
 		hasUpdates := cmd.Flags().Changed("description") ||
 			cmd.Flags().Changed("db") ||
 			cmd.Flags().Changed("field") ||
+			cmd.Flags().Changed("fields") ||
 			cmd.Flags().Changed("alias") ||
 			cmd.Flags().Changed("scope-include") ||
 			cmd.Flags().Changed("scope-exclude")
@@ -306,6 +317,12 @@ If no flags are provided, you'll be guided through an interactive update wizard.
 			}
 			if updateField != "" {
 				profile.Settings.Query.DefaultField = updateField
+			}
+			if cmd.Flags().Changed("fields") {
+				profile.Settings.RG.DefaultFields = strings.Split(updateRGFields, ",")
+				for i := range profile.Settings.RG.DefaultFields {
+					profile.Settings.RG.DefaultFields[i] = strings.TrimSpace(profile.Settings.RG.DefaultFields[i])
+				}
 			}
 			if updateAliases != "" {
 				aliases := strings.Split(updateAliases, ",")
@@ -371,6 +388,10 @@ var contextShowCmd = &cobra.Command{
 		fmt.Printf("  RG Format:      %s\n", profile.Settings.RG.DefaultFormat)
 		fmt.Printf("  RG Context:     %d\n", profile.Settings.RG.DefaultContext)
 		
+		if len(profile.Settings.RG.DefaultFields) > 0 {
+			fmt.Printf("  RG Fields:      %s\n", strings.Join(profile.Settings.RG.DefaultFields, ", "))
+		}
+
 		if profile.Settings.Global.Scope != nil {
 			fmt.Printf("  Scope Include:  %s\n", strings.Join(profile.Settings.Global.Scope.Include, ", "))
 			fmt.Printf("  Scope Exclude:  %s\n", strings.Join(profile.Settings.Global.Scope.Exclude, ", "))
@@ -579,6 +600,7 @@ func init() {
 	contextCreateCmd.Flags().StringVar(&createField, "field", "", "Default query field for this profile (required for non-interactive mode)")
 	contextCreateCmd.Flags().StringVar(&createFormat, "format", "table", "Default output format for this profile")
 	contextCreateCmd.Flags().IntVar(&createRGContext, "rg-context", 0, "Default ripgrep context lines for this profile")
+	contextCreateCmd.Flags().StringVar(&createRGFields, "fields", "", "Default metadata fields for this profile (comma-separated, optional)")
 	contextCreateCmd.Flags().StringVar(&createAliases, "alias", "", "Aliases for this profile (comma-separated, optional)")
 	contextCreateCmd.Flags().StringVar(&createScopeInc, "scope-include", "", "Include patterns for Focus Scope (comma-separated, optional)")
 	contextCreateCmd.Flags().StringVar(&createScopeExc, "scope-exclude", "", "Exclude patterns for Focus Scope (comma-separated, optional)")
@@ -587,6 +609,7 @@ func init() {
 	contextUpdateCmd.Flags().StringVar(&updateDesc, "description", "", "Update description (optional)")
 	contextUpdateCmd.Flags().StringVar(&updateDB, "db", "", "Update default database (optional)")
 	contextUpdateCmd.Flags().StringVar(&updateField, "field", "", "Update default query field (optional)")
+	contextUpdateCmd.Flags().StringVar(&updateRGFields, "fields", "", "Update default metadata fields (comma-separated, optional)")
 	contextUpdateCmd.Flags().StringVar(&updateAliases, "alias", "", "Update aliases (comma-separated, optional)")
 	contextUpdateCmd.Flags().StringVar(&updateScopeInc, "scope-include", "", "Update include patterns for Focus Scope (comma-separated, optional)")
 	contextUpdateCmd.Flags().StringVar(&updateScopeExc, "scope-exclude", "", "Update exclude patterns for Focus Scope (comma-separated, optional)")

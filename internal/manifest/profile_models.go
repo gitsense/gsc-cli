@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Profile Models
- * Block-UUID: ab61e972-aba6-43ef-b54e-41d68273e26c
- * Parent-UUID: f0b6dfdc-3c3a-433a-bb20-32c1b40b3160
- * Version: 1.2.0
+ * Block-UUID: 84e57fb0-d59e-48b8-8063-694bd2504902
+ * Parent-UUID: ab61e972-aba6-43ef-b54e-41d68273e26c
+ * Version: 1.3.0
  * Description: Defines the Go structs for Context Profiles, which represent named workspaces containing pre-defined configuration values. Added Scope field to GlobalSettings to support Focus Scope configuration within profiles.
  * Language: Go
- * Created-at: 2026-02-03T01:55:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
+ * Created-at: 2026-02-05T20:06:12.132Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0)
  */
 
 
@@ -46,4 +46,5 @@ type QuerySettings struct {
 type RGSettings struct {
 	DefaultFormat  string `json:"default_format"`  // The default output format (table, json)
 	DefaultContext int    `json:"default_context"` // The default number of context lines to show
+	DefaultFields  []string `json:"default_fields"`  // The default metadata fields to include in results
 }

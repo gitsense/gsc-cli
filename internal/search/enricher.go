@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Search Result Enricher
- * Block-UUID: 8736373c-593a-4cbb-a799-235046cb0619
- * Parent-UUID: 762d67e4-d04e-43cd-8822-ac6916f3f42d
- * Version: 2.4.0
+ * Block-UUID: 4960669a-4b74-4db3-8c8a-99ff1d178675
+ * Parent-UUID: 8736373c-593a-4cbb-a799-235046cb0619
+ * Version: 2.5.0
  * Description: Enriches raw search matches with metadata from the manifest database. Supports filtering by analyzed status, file patterns, and metadata conditions. Refactored SQL query construction in fetchMetadataMap for clarity and correctness. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted routine Info logs to Debug level to enable quiet-by-default behavior. Updated checkSingleCondition to support querying array fields stored as JSON strings.
  * Language: Go
- * Created-at: 2026-02-03T18:06:35.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0)
+ * Created-at: 2026-02-05T20:08:55.488Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), Gemini 3 Flash (v2.5.0)
  */
 
 
@@ -27,26 +27,26 @@ import (
 
 // EnrichMatches takes raw search matches and enriches them with metadata from the database.
 // It applies system filters (analyzed, file path) and metadata filters.
-func EnrichMatches(ctx context.Context, matches []RawMatch, dbName string, filters []FilterCondition, analyzedFilter string, filePatterns []string) ([]MatchResult, error) {
+func EnrichMatches(ctx context.Context, matches []RawMatch, dbName string, filters []FilterCondition, analyzedFilter string, filePatterns []string, requestedFields []string) ([]MatchResult, []string, error) {
 	if len(matches) == 0 {
-		return []MatchResult{}, nil
+		return []MatchResult{}, []string{}, nil
 	}
 
 	// 1. Validate Database Exists
 	if err := manifest.ValidateDBExists(dbName); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// 2. Resolve DB Path
 	dbPath, err := manifest.ResolveDBPath(dbName)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// 3. Open Database
 	database, err := db.OpenDB(dbPath)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer db.CloseDB(database)
 
@@ -64,9 +64,9 @@ func EnrichMatches(ctx context.Context, matches []RawMatch, dbName string, filte
 	// 5. Fetch metadata for all files at once, applying system filters
 	// Note: Metadata filters (conditions) are applied in-memory after fetching
 	// to handle multi-field logic correctly (e.g., topic=X AND language=Y).
-	metadataMap, err := fetchMetadataMap(ctx, database, filePaths, analyzedFilter, filePatterns)
+	metadataMap, availableFields, err := fetchMetadataMap(ctx, database, filePaths, analyzedFilter, filePatterns, requestedFields, filters)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch metadata: %w", err)
+		return nil, nil, fmt.Errorf("failed to fetch metadata: %w", err)
 	}
 
 	// 6. Enrich each match and apply metadata filters
@@ -92,6 +92,18 @@ func EnrichMatches(ctx context.Context, matches []RawMatch, dbName string, filte
 					continue
 				}
 			}
+
+			// Apply field projection (prune fields not requested)
+			if len(requestedFields) > 0 {
+				pruned := make(map[string]interface{})
+				for _, rf := range requestedFields {
+					if val, ok := result.Metadata[rf]; ok {
+						pruned[rf] = val
+					}
+				}
+				result.Metadata = pruned
+			}
+
 		} else {
 			// File did not pass system filters (e.g., analyzed=false but we wanted analyzed=true)
 			// Or file simply has no metadata.
@@ -105,7 +117,7 @@ func EnrichMatches(ctx context.Context, matches []RawMatch, dbName string, filte
 	}
 
 	logger.Debug("Enriched matches", "count", len(enriched), "filtered_from", len(matches))
-	return enriched, nil
+	return enriched, availableFields, nil
 }
 
 // fileMetadata holds the ChatID and fields for a specific file.
@@ -116,11 +128,34 @@ type fileMetadata struct {
 
 // fetchMetadataMap performs a batch query to retrieve metadata for multiple files.
 // It applies system filters (analyzed status, file patterns) via SQL.
-func fetchMetadataMap(ctx context.Context, database *sql.DB, filePaths []string, analyzedFilter string, filePatterns []string) (map[string]fileMetadata, error) {
+func fetchMetadataMap(ctx context.Context, database *sql.DB, filePaths []string, analyzedFilter string, filePatterns []string, requestedFields []string, filters []FilterCondition) (map[string]fileMetadata, []string, error) {
 	result := make(map[string]fileMetadata)
+	var availableFields []string
 
 	if len(filePaths) == 0 {
-		return result, nil
+		return result, availableFields, nil
+	}
+
+	// 1. Get all available fields in the database for discovery
+	fieldRows, err := database.QueryContext(ctx, "SELECT field_name FROM metadata_fields ORDER BY field_name")
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to query available fields: %w", err)
+	}
+	defer fieldRows.Close()
+	for fieldRows.Next() {
+		var fn string
+		if err := fieldRows.Scan(&fn); err == nil {
+			availableFields = append(availableFields, fn)
+		}
+	}
+
+	// 2. Determine which fields we MUST fetch (requested + those needed for filters)
+	fetchList := make(map[string]bool)
+	for _, f := range requestedFields {
+		fetchList[f] = true
+	}
+	for _, f := range filters {
+		fetchList[f.Field] = true
 	}
 
 	// Build query with IN clause for file paths
@@ -157,6 +192,16 @@ func fetchMetadataMap(ctx context.Context, database *sql.DB, filePaths []string,
 		}
 	}
 
+	// Add Field Projection to SQL if we have a specific list to fetch
+	if len(fetchList) > 0 {
+		var fieldPlaceholders []string
+		for f := range fetchList {
+			fieldPlaceholders = append(fieldPlaceholders, "?")
+			args = append(args, f)
+		}
+		whereClause += fmt.Sprintf(" AND mf.field_name IN (%s)", strings.Join(fieldPlaceholders, ","))
+	}
+
 	// Construct the final query
 	// We join files, file_metadata, and metadata_fields to get all field values
 	baseQuery := `
@@ -172,7 +217,7 @@ func fetchMetadataMap(ctx context.Context, database *sql.DB, filePaths []string,
 
 	rows, err := database.QueryContext(ctx, baseQuery, args...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query file metadata: %w", err)
+		return nil, nil, fmt.Errorf("failed to query file metadata: %w", err)
 	}
 	defer rows.Close()
 
@@ -183,7 +228,7 @@ func fetchMetadataMap(ctx context.Context, database *sql.DB, filePaths []string,
 		var fieldName, fieldValue sql.NullString
 
 		if err := rows.Scan(&filePath, &chatID, &fieldName, &fieldValue); err != nil {
-			return nil, fmt.Errorf("failed to scan row: %w", err)
+			return nil, nil, fmt.Errorf("failed to scan row: %w", err)
 		}
 
 		// Initialize entry if not exists
@@ -207,10 +252,10 @@ func fetchMetadataMap(ctx context.Context, database *sql.DB, filePaths []string,
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return result, nil
+	return result, availableFields, nil
 }
 
 // checkFilters verifies if a file's metadata satisfies all filter conditions.
