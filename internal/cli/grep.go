@@ -1,12 +1,12 @@
 /*
  * Component: Grep Command
- * Block-UUID: 598adf53-8cea-4e33-90b2-40f82020a13c
- * Parent-UUID: e5805c52-bd82-4068-84f0-38b6c2315c29
- * Version: 3.1.0
- * Description: CLI command definition for 'gsc grep'. Updated to support metadata filtering, stats recording, and case-sensitive defaults. Updated to resolve database names from user input or config to physical names.
+ * Block-UUID: 4f6c369b-0cf0-405f-8893-eae869a53152
+ * Parent-UUID: 598adf53-8cea-4e33-90b2-40f82020a13c
+ * Version: 3.2.0
+ * Description: CLI command definition for 'gsc grep'. Updated to support metadata filtering, stats recording, and case-sensitive defaults. Updated to resolve database names from user input or config to physical names. Refactored all logger calls to use structured Key-Value pairs instead of format strings.
  * Language: Go
  * Created-at: 2026-02-03T18:06:35.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v3.0.0), GLM-4.7 (v3.1.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v3.0.0), GLM-4.7 (v3.1.0), GLM-4.7 (v3.2.0)
  */
 
 
@@ -96,7 +96,7 @@ Filtering:
 		// 4. Get Repository Info
 		repoInfo, err := git.GetRepositoryInfo()
 		if err != nil {
-			logger.Debug("Failed to get repository info: %v", err)
+			logger.Debug("Failed to get repository info", "error", err)
 			// Continue without repo info if it fails
 			repoInfo = &git.RepositoryInfo{Name: "unknown", URL: "", Remote: ""}
 		}
@@ -104,7 +104,7 @@ Filtering:
 		// 5. Get System Info
 		sysInfo, err := git.GetSystemInfo()
 		if err != nil {
-			logger.Debug("Failed to get system info: %v", err)
+			logger.Debug("Failed to get system info", "error", err)
 			// Continue with minimal info if it fails
 			sysInfo = &git.SystemInfo{OS: "unknown", ProjectRoot: ""}
 		}
@@ -203,7 +203,7 @@ Filtering:
 			// Record in background, don't block output
 			go func() {
 				if err := search.RecordSearch(cmd.Context(), searchRecord); err != nil {
-					logger.Debug("Failed to record search stats: %v", err)
+					logger.Debug("Failed to record search stats", "error", err)
 				}
 			}()
 		}

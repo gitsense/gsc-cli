@@ -1,12 +1,12 @@
 /**
  * Component: Ripgrep Metadata Enricher
- * Block-UUID: 11fd1354-41c0-4c66-aa0a-8e0cdd997514
- * Parent-UUID: 67b1af0a-5792-411b-9eb8-17cd66ae106d
- * Version: 1.2.0
- * Description: Enriches raw ripgrep matches with metadata. Added GetMetadataForFiles to support batch lookups for the dual-pass workflow, returning a map of file paths to metadata results.
+ * Block-UUID: 3c121224-6fd9-48ff-a258-be46a197a4e1
+ * Parent-UUID: 11fd1354-41c0-4c66-aa0a-8e0cdd997514
+ * Version: 1.3.0
+ * Description: Enriches raw ripgrep matches with metadata. Added GetMetadataForFiles to support batch lookups for the dual-pass workflow, returning a map of file paths to metadata results. Refactored all logger calls to use structured Key-Value pairs instead of format strings.
  * Language: Go
  * Created-at: 2026-02-03T07:54:54.354Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
  */
 
 
@@ -55,14 +55,14 @@ func EnrichMatches(ctx context.Context, matches []RgMatch, dbName string) ([]Enr
 	for _, match := range matches {
 		enrichedMatch, err := enrichSingleMatch(ctx, database, match)
 		if err != nil {
-			logger.Warning("Failed to enrich match for file %s: %v", match.FilePath, err)
+			logger.Warning("Failed to enrich match", "file", match.FilePath, "error", err)
 			// Continue with other matches even if one fails
 			continue
 		}
 		enriched = append(enriched, enrichedMatch)
 	}
 
-	logger.Info("Enriched %d matches", len(enriched))
+	logger.Info("Enriched matches", "count", len(enriched))
 	return enriched, nil
 }
 
@@ -169,7 +169,7 @@ func GetMetadataForFiles(ctx context.Context, filePaths []string, dbName string)
 		return nil, err
 	}
 
-	logger.Info("Retrieved metadata for %d files", len(result))
+	logger.Info("Retrieved metadata for files", "count", len(result))
 	return result, nil
 }
 
@@ -221,7 +221,7 @@ func enrichSingleMatch(ctx context.Context, database *sql.DB, match RgMatch) (En
 
 	if !found {
 		// File not found in database, return match without metadata
-		logger.Warning("File not found in database: %s", match.FilePath)
+		logger.Warning("File not found in database", "file", match.FilePath)
 		return EnrichedMatch{
 			FilePath:   match.FilePath,
 			ChatID:     0,

@@ -1,12 +1,12 @@
 /*
  * Component: Ripgrep Search Engine
- * Block-UUID: f4e22502-a64f-42cf-a515-72f1f228af5b
- * Parent-UUID: 100d0cb3-dbdc-4f07-ab4c-72cb4b55129c
- * Version: 2.0.0
- * Description: Implements the SearchEngine interface using ripgrep. Updated to return SearchResult with timing and version info. Fixed line number parsing.
+ * Block-UUID: 0237b6f1-15a1-42f4-8713-81e653814711
+ * Parent-UUID: f4e22502-a64f-42cf-a515-72f1f228af5b
+ * Version: 2.1.0
+ * Description: Implements the SearchEngine interface using ripgrep. Updated to return SearchResult with timing and version info. Fixed line number parsing. Refactored all logger calls to use structured Key-Value pairs instead of format strings.
  * Language: Go
  * Created-at: 2026-02-03T18:06:35.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v2.0.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0)
  */
 
 
@@ -40,7 +40,7 @@ func (e *RipgrepEngine) Search(ctx context.Context, options SearchOptions) (Sear
 	// 2. Get ripgrep version
 	version, err := getRipgrepVersion()
 	if err != nil {
-		logger.Warning("Failed to get ripgrep version: %v", err)
+		logger.Warning("Failed to get ripgrep version", "error", err)
 		version = "unknown"
 	}
 
@@ -168,7 +168,7 @@ func (e *RipgrepEngine) parseJSONOutput(stdout interface{}) ([]RawMatch, error) 
 		
 		var message map[string]interface{}
 		if err := json.Unmarshal([]byte(line), &message); err != nil {
-			logger.Warning("Failed to parse ripgrep JSON line: %v", err)
+			logger.Warning("Failed to parse ripgrep JSON line", "error", err)
 			continue
 		}
 
@@ -214,7 +214,7 @@ func (e *RipgrepEngine) parseJSONOutput(stdout interface{}) ([]RawMatch, error) 
 					} else {
 						// Fallback: try to find line_number in other locations if standard location fails
 						// This handles potential variations in ripgrep JSON structure
-						logger.Debug("Line number not found in standard location for match: %s", match.LineText)
+						logger.Debug("Line number not found in standard location for match", "text", match.LineText)
 					}
 				}
 			}

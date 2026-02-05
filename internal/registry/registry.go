@@ -1,12 +1,12 @@
 /*
  * Component: Registry File I/O
- * Block-UUID: de00f9fb-fe45-4faf-9f8c-899fbf90f3d6
- * Parent-UUID: 494d238e-56db-446f-b14a-d43ee57ee41e
- * Version: 1.2.0
- * Description: Handles loading and saving the registry file (.gitsense/manifest.json), which tracks all manifest databases in the project.
+ * Block-UUID: 94fcd642-200c-4161-8863-e5b580d8654a
+ * Parent-UUID: de00f9fb-fe45-4faf-9f8c-899fbf90f3d6
+ * Version: 1.3.0
+ * Description: Handles loading and saving the registry file (.gitsense/manifest.json), which tracks all manifest databases in the project. Refactored all logger calls to use structured Key-Value pairs instead of format strings.
  * Language: Go
  * Created-at: 2026-02-02T05:30:00.000Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), Claude Haiku 4.5 (v1.2.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), Claude Haiku 4.5 (v1.2.0), GLM-4.7 (v1.3.0)
  */
 
 
@@ -40,7 +40,7 @@ func resolveRegistryPath() (string, error) {
 func LoadRegistry() (*Registry, error) {
 	registryPath, err := resolveRegistryPath()
 	if err != nil {
-		logger.Error("Failed to resolve registry path: %v", err)
+		logger.Error("Failed to resolve registry path", "error", err)
 		return nil, err
 	}
 
@@ -73,7 +73,7 @@ func LoadRegistry() (*Registry, error) {
 func SaveRegistry(registry *Registry) error {
 	registryPath, err := resolveRegistryPath()
 	if err != nil {
-		logger.Error("Failed to resolve registry path: %v", err)
+		logger.Error("Failed to resolve registry path", "error", err)
 		return err
 	}
 

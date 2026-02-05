@@ -1,12 +1,12 @@
 /**
  * Component: Info Command
- * Block-UUID: dc290983-4de3-4ea1-8f35-9d60518bf9c9
- * Parent-UUID: 2984e482-61c2-4204-9300-8dac9ff40905
- * Version: 1.0.1
- * Description: CLI command definition for 'gsc info', displaying the current workspace context, active profile, and available databases.
+ * Block-UUID: aa749e28-6941-4a69-8176-f281bc04d2cd
+ * Parent-UUID: dc290983-4de3-4ea1-8f35-9d60518bf9c9
+ * Version: 1.0.2
+ * Description: CLI command definition for 'gsc info', displaying the current workspace context, active profile, and available databases. Refactored all logger calls to use structured Key-Value pairs instead of format strings.
  * Language: Go
  * Created-at: 2026-02-03T03:16:25.331Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2)
  */
 
 
@@ -43,10 +43,10 @@ your current context without needing to run multiple commands.`,
 		ctx := cmd.Context()
 
 		// 1. Gather Workspace Information
-		logger.Info("Gathering workspace information...")
+		logger.Info("Gathering workspace information")
 		info, err := manifest.GetWorkspaceInfo(ctx)
 		if err != nil {
-			logger.Error("Failed to gather workspace info: %v", err)
+			logger.Error("Failed to gather workspace info", "error", err)
 			return err
 		}
 

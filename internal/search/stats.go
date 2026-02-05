@@ -1,12 +1,12 @@
 /*
  * Component: Search Statistics Recorder
- * Block-UUID: 9a4d235b-a9d3-44b8-9c08-47b3678ba1b8
- * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: Records search execution details to a local SQLite database for analytics and Scout intelligence.
+ * Block-UUID: f8a38d2b-ab4c-47de-9849-92fd4a27fd47
+ * Parent-UUID: 9a4d235b-a9d3-44b8-9c08-47b3678ba1b8
+ * Version: 1.1.0
+ * Description: Records search execution details to a local SQLite database for analytics and Scout intelligence. Refactored all logger calls to use structured Key-Value pairs instead of format strings.
  * Language: Go
  * Created-at: 2026-02-04T03:44:00.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0)
  */
 
 
@@ -30,21 +30,21 @@ func RecordSearch(ctx context.Context, searchInfo SearchRecord) error {
 	// 1. Resolve Stats DB Path
 	dbPath, err := resolveStatsDBPath()
 	if err != nil {
-		logger.Warning("Failed to resolve stats DB path, skipping stats recording: %v", err)
+		logger.Warning("Failed to resolve stats DB path, skipping stats recording", "error", err)
 		return nil // Don't fail the search if stats fail
 	}
 
 	// 2. Open Database
 	database, err := db.OpenDB(dbPath)
 	if err != nil {
-		logger.Warning("Failed to open stats DB, skipping stats recording: %v", err)
+		logger.Warning("Failed to open stats DB, skipping stats recording", "error", err)
 		return nil
 	}
 	defer db.CloseDB(database)
 
 	// 3. Ensure Schema Exists
 	if err := ensureStatsSchema(database); err != nil {
-		logger.Warning("Failed to ensure stats schema, skipping stats recording: %v", err)
+		logger.Warning("Failed to ensure stats schema, skipping stats recording", "error", err)
 		return nil
 	}
 
@@ -74,7 +74,7 @@ func RecordSearch(ctx context.Context, searchInfo SearchRecord) error {
 	)
 
 	if err != nil {
-		logger.Warning("Failed to insert search record: %v", err)
+		logger.Warning("Failed to insert search record", "error", err)
 		return nil
 	}
 

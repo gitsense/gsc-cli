@@ -1,12 +1,12 @@
 /*
  * Component: Doctor Command
- * Block-UUID: c8efe193-47fa-450e-953c-d44b57b5185f
- * Parent-UUID: ccd42669-9980-4b46-b923-59e27102570b
- * Version: 1.1.0
- * Description: CLI command for running health checks on the .gitsense environment and databases. Removed unused getter function.
+ * Block-UUID: 1f783d29-a822-485a-8cff-6afa32f787dc
+ * Parent-UUID: c8efe193-47fa-450e-953c-d44b57b5185f
+ * Version: 1.2.0
+ * Description: CLI command for running health checks on the .gitsense environment and databases. Removed unused getter function. Refactored all logger calls to use structured Key-Value pairs instead of format strings.
  * Language: Go
  * Created-at: 2026-02-02T07:58:00.000Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -30,12 +30,12 @@ var doctorCmd = &cobra.Command{
 	Long: `Run health checks on the .gitsense environment to diagnose issues with 
 the directory structure, registry file, and database connectivity.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		logger.Info("Running health checks...")
+		logger.Info("Running health checks")
 
 		// Call the logic layer to run diagnostics
 		report, err := manifest.RunDoctor(cmd.Context(), doctorFix)
 		if err != nil {
-			logger.Error("Doctor check failed: %v", err)
+			logger.Error("Doctor check failed", "error", err)
 			return err
 		}
 

@@ -1,12 +1,12 @@
 /**
  * Component: Query Configuration Manager
- * Block-UUID: dfa64e2a-d8d8-422b-9686-35825e259acb
- * Parent-UUID: 82312263-6c3d-4ece-bc7b-02fb3ece321d
- * Version: 2.2.0
- * Description: Manages the .gitsense/config.json file and profile loading. Updated GlobalSettings to include Scope, updated mergeConfig to handle scope merging, and integrated .gitsense-map loading into GetEffectiveConfig to ensure project-level scope is considered.
+ * Block-UUID: d2decfd1-5a1b-43f0-9068-95271f235f53
+ * Parent-UUID: dfa64e2a-d8d8-422b-9686-35825e259acb
+ * Version: 2.3.0
+ * Description: Manages the .gitsense/config.json file and profile loading. Updated GlobalSettings to include Scope, updated mergeConfig to handle scope merging, and integrated .gitsense-map loading into GetEffectiveConfig to ensure project-level scope is considered. Refactored all logger calls to use structured Key-Value pairs instead of format strings.
  * Language: Go
  * Created-at: 2026-02-02T18:48:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0)
  */
 
 
@@ -130,7 +130,7 @@ func GetEffectiveConfig() (*QueryConfig, error) {
 	// Load the active profile
 	profile, err := LoadProfile(config.ActiveProfile)
 	if err != nil {
-		logger.Warning("Failed to load active profile '%s', using base config: %v", config.ActiveProfile, err)
+		logger.Warning("Failed to load active profile, using base config", "profile", config.ActiveProfile, "error", err)
 		// Fallback to checking .gitsense-map if profile loading fails
 		if config.Global.Scope == nil {
 			projectMap, err := LoadGitSenseMap()

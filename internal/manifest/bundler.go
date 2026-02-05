@@ -1,12 +1,12 @@
 /**
  * Component: Manifest Bundler
- * Block-UUID: 9bdd9f7b-51e2-4a6f-9c17-ab5d8147f93b
- * Parent-UUID: 6506e1b6-236a-4b99-8db6-2764ef27819c
- * Version: 1.1.2
- * Description: Logic to generate context bundles from SQL queries against a manifest database. Fixed integer conversion to handle SQLite int64 properly. Added validation to check if the database file exists before connecting to prevent creating empty artifacts.
+ * Block-UUID: f6913e77-d7ef-476f-a2c4-e02ca71a97f8
+ * Parent-UUID: 9bdd9f7b-51e2-4a6f-9c17-ab5d8147f93b
+ * Version: 1.2.0
+ * Description: Logic to generate context bundles from SQL queries against a manifest database. Fixed integer conversion to handle SQLite int64 properly. Added validation to check if the database file exists before connecting to prevent creating empty artifacts. Refactored all logger calls to use structured Key-Value pairs instead of format strings.
  * Language: Go
  * Created-at: 2026-02-02T08:33:07.479Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), Claude Haiku 4.5 (v1.1.1), GLM-4.7 (v1.1.2)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), Claude Haiku 4.5 (v1.1.1), GLM-4.7 (v1.1.2), GLM-4.7 (v1.2.0)
  */
 
 
@@ -85,7 +85,7 @@ func CreateBundle(ctx context.Context, dbName string, query string, format strin
 				if intVal, ok := val.(int64); ok {
 					file.ChatID = int(intVal)
 				} else {
-					logger.Warning("Failed to convert chat_id to int: %v (type: %T)", val, val)
+					logger.Warning("Failed to convert chat_id to int", "value", val, "type", fmt.Sprintf("%T", val))
 					file.ChatID = 0
 				}
 			}

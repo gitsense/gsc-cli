@@ -1,12 +1,12 @@
 /*
  * Component: Schema Command
- * Block-UUID: 6e345abd-4a0c-4509-a93b-875835c33c97
- * Parent-UUID: 0953e11d-eb18-413e-b102-b986243f1e6e
- * Version: 1.2.0
- * Description: CLI command for inspecting the schema of a manifest database, listing analyzers and their fields. Removed unused getter function. Updated to resolve database names from user input to physical names.
+ * Block-UUID: 7e1adf49-269f-42f2-b22b-83f8dd3ea8bb
+ * Parent-UUID: 6e345abd-4a0c-4509-a93b-875835c33c97
+ * Version: 1.3.0
+ * Description: CLI command for inspecting the schema of a manifest database, listing analyzers and their fields. Removed unused getter function. Updated to resolve database names from user input to physical names. Refactored all logger calls to use structured Key-Value pairs instead of format strings.
  * Language: Go
  * Created-at: 2026-02-02T07:56:00.000Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
  */
 
 
@@ -41,12 +41,12 @@ for querying.`,
 			return fmt.Errorf("failed to resolve database '%s': %w", dbName, err)
 		}
 
-		logger.Info("Retrieving schema for database '%s'...", resolvedDB)
+		logger.Info("Retrieving schema for database", "db", resolvedDB)
 
 		// Call the logic layer to get schema
 		schema, err := manifest.GetSchema(cmd.Context(), resolvedDB)
 		if err != nil {
-			logger.Error("Failed to retrieve schema: %v", err)
+			logger.Error("Failed to retrieve schema", "error", err)
 			return err
 		}
 
@@ -59,7 +59,7 @@ for querying.`,
 		case "csv":
 			printSchemaCSV(schema)
 		default:
-			logger.Error("Unsupported format: %s", schemaFormat)
+			logger.Error("Unsupported format", "format", schemaFormat)
 			return fmt.Errorf("unsupported format: %s", schemaFormat)
 		}
 

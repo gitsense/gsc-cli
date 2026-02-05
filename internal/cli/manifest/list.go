@@ -1,12 +1,12 @@
 /*
  * Component: Manifest List Command
- * Block-UUID: ed89c592-36cf-4801-a356-da5b4437c588
- * Parent-UUID: d55b1259-5474-4b80-9a81-288964e817c2
- * Version: 1.3.0
- * Description: CLI command for listing available manifest databases. Added context nil check for robustness.
+ * Block-UUID: 093c618c-3ddc-4bae-86c3-3771e6c49925
+ * Parent-UUID: ed89c592-36cf-4801-a356-da5b4437c588
+ * Version: 1.4.0
+ * Description: CLI command for listing available manifest databases. Added context nil check for robustness. Refactored all logger calls to use structured Key-Value pairs instead of format strings.
  * Language: Go
  * Created-at: 2026-02-02T05:35:00Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), Claude Haiku 4.5 (v1.2.0), Claude Haiku 4.5 (v1.3.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), Claude Haiku 4.5 (v1.2.0), Claude Haiku 4.5 (v1.3.0), GLM-4.7 (v1.4.0)
  */
 
 
@@ -41,7 +41,7 @@ information about each database, including its name, description, and tags.`,
 		// Call the logic layer to get the list
 		databases, err := manifest.ListDatabases(ctx)
 		if err != nil {
-			logger.Error("Failed to list databases: %v", err)
+			logger.Error("Failed to list databases", "error", err)
 			return err
 		}
 

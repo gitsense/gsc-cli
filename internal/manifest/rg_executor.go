@@ -1,12 +1,12 @@
 /**
  * Component: Ripgrep Executor
- * Block-UUID: cc5c385a-d23c-4761-80ee-637657bd9c27
- * Parent-UUID: 125c8f82-2a91-418c-8126-30ca12ddcd1c
- * Version: 1.1.0
- * Description: Executes ripgrep as a subprocess. Added ExecuteRipgrepRaw to support the dual-pass workflow, preserving terminal colors and standard formatting for the display pass.
+ * Block-UUID: 2d5dc862-5334-4c7c-9368-ca35d36ad535
+ * Parent-UUID: cc5c385a-d23c-4761-80ee-637657bd9c27
+ * Version: 1.2.0
+ * Description: Executes ripgrep as a subprocess. Added ExecuteRipgrepRaw to support the dual-pass workflow, preserving terminal colors and standard formatting for the display pass. Refactored all logger calls to use structured Key-Value pairs instead of format strings.
  * Language: Go
  * Created-at: 2026-02-02T19:09:26.833Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), GLM-4.7 (v1.1.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -60,7 +60,7 @@ func ExecuteRipgrep(options RgOptions) ([]RgMatch, error) {
 		// We only care about "match" messages
 		var rgMessage map[string]interface{}
 		if err := json.Unmarshal([]byte(line), &rgMessage); err != nil {
-			logger.Warning("Failed to parse ripgrep JSON line: %v", err)
+			logger.Warning("Failed to parse ripgrep JSON line", "error", err)
 			continue
 		}
 
@@ -68,7 +68,7 @@ func ExecuteRipgrep(options RgOptions) ([]RgMatch, error) {
 		if msgType, ok := rgMessage["type"].(string); ok && msgType == "match" {
 			match, err := parseRipgrepMatch(rgMessage)
 			if err != nil {
-				logger.Warning("Failed to parse match: %v", err)
+				logger.Warning("Failed to parse match", "error", err)
 				continue
 			}
 			matches = append(matches, match)

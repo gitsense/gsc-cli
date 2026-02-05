@@ -1,12 +1,12 @@
 /*
  * Component: Manifest Querier
- * Block-UUID: 2a84e72b-2ec3-4b48-b0f7-f2feb3ec027e
- * Parent-UUID: 67fed41a-c28b-4ea4-b111-9d92728edab0
- * Version: 1.3.0
- * Description: Logic to query the manifest registry and list available databases. Updated to use entry.DatabaseName instead of entry.Name to resolve the correct physical database file.
+ * Block-UUID: ab279929-5911-4ab5-8c87-45a0383a2516
+ * Parent-UUID: 2a84e72b-2ec3-4b48-b0f7-f2feb3ec027e
+ * Version: 1.4.0
+ * Description: Logic to query the manifest registry and list available databases. Updated to use entry.DatabaseName instead of entry.Name to resolve the correct physical database file. Refactored all logger calls to use structured Key-Value pairs instead of format strings.
  * Language: Go
  * Created-at: 2026-02-02T05:30:00Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
  */
 
 
@@ -37,14 +37,14 @@ func ListDatabases(ctx context.Context) ([]DatabaseInfo, error) {
 	// 1. Find the project root to locate the .gitsense directory
 	root, err := git.FindProjectRoot()
 	if err != nil {
-		logger.Error("Failed to find project root: %v", err)
+		logger.Error("Failed to find project root", "error", err)
 		return nil, err
 	}
 
 	// 2. Load the registry file
 	reg, err := registry.LoadRegistry()
 	if err != nil {
-		logger.Error("Failed to load registry: %v", err)
+		logger.Error("Failed to load registry", "error", err)
 		return nil, err
 	}
 
@@ -60,13 +60,13 @@ func ListDatabases(ctx context.Context) ([]DatabaseInfo, error) {
 		var count int
 		database, err := db.OpenDB(dbPath)
 		if err != nil {
-			logger.Warning("Failed to open database '%s' for counting: %v", entry.DatabaseName, err)
+			logger.Warning("Failed to open database for counting", "db", entry.DatabaseName, "error", err)
 			count = 0
 		} else {
 			defer db.CloseDB(database)
 			row := database.QueryRow("SELECT COUNT(*) FROM files")
 			if err := row.Scan(&count); err != nil {
-				logger.Warning("Failed to count files in database '%s': %v", entry.DatabaseName, err)
+				logger.Warning("Failed to count files in database", "db", entry.DatabaseName, "error", err)
 				count = 0
 			}
 		}
@@ -80,6 +80,6 @@ func ListDatabases(ctx context.Context) ([]DatabaseInfo, error) {
 		})
 	}
 
-	logger.Info("Found %d databases in registry", len(databases))
+	logger.Info("Found databases in registry", "count", len(databases))
 	return databases, nil
 }

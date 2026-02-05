@@ -1,12 +1,12 @@
 /*
  * Component: Search Result Enricher
- * Block-UUID: 4675b8ff-922d-4ad3-8346-22e7134d95b5
- * Parent-UUID: 571a8435-b2b3-423e-9104-48c75dce5812
- * Version: 2.1.0
- * Description: Enriches raw search matches with metadata from the manifest database. Supports filtering by analyzed status, file patterns, and metadata conditions. Refactored SQL query construction in fetchMetadataMap for clarity and correctness.
+ * Block-UUID: 1f9b7458-ca62-4805-98ed-45ac176d5391
+ * Parent-UUID: 4675b8ff-922d-4ad3-8346-22e7134d95b5
+ * Version: 2.2.0
+ * Description: Enriches raw search matches with metadata from the manifest database. Supports filtering by analyzed status, file patterns, and metadata conditions. Refactored SQL query construction in fetchMetadataMap for clarity and correctness. Refactored all logger calls to use structured Key-Value pairs instead of format strings.
  * Language: Go
  * Created-at: 2026-02-03T18:06:35.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0)
  */
 
 
@@ -103,7 +103,7 @@ func EnrichMatches(ctx context.Context, matches []RawMatch, dbName string, filte
 		enriched = append(enriched, result)
 	}
 
-	logger.Info("Enriched %d matches (filtered from %d raw matches)", len(enriched), len(matches))
+	logger.Info("Enriched matches", "count", len(enriched), "filtered_from", len(matches))
 	return enriched, nil
 }
 

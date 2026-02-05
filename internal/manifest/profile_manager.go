@@ -1,12 +1,12 @@
 /*
  * Component: Profile Manager
- * Block-UUID: 1ea81347-2c64-48eb-99a1-040d5eaba503
- * Parent-UUID: d68f22a9-deda-4640-afec-88221de7579f
- * Version: 1.3.0
- * Description: Logic to manage Context Profiles, including listing, creating, deleting, activating, and deactivating profiles. Updated log messages in DeactivateProfile to use 'clear' terminology for consistency with the new CLI command.
+ * Block-UUID: 2a14ba86-c102-46cb-9e09-b2c32a8d9044
+ * Parent-UUID: 1ea81347-2c64-48eb-99a1-040d5eaba503
+ * Version: 1.4.0
+ * Description: Logic to manage Context Profiles, including listing, creating, deleting, activating, and deactivating profiles. Updated log messages in DeactivateProfile to use 'clear' terminology for consistency with the new CLI command. Refactored all logger calls to use structured Key-Value pairs instead of format strings.
  * Language: Go
  * Created-at: 2026-02-03T02:05:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
  */
 
 
@@ -59,7 +59,7 @@ func ListProfiles() ([]Profile, error) {
 		// Load profile
 		profile, err := LoadProfile(name)
 		if err != nil {
-			logger.Warning("Failed to load profile %s: %v", name, err)
+			logger.Warning("Failed to load profile", "name", name, "error", err)
 			continue
 		}
 
@@ -127,19 +127,19 @@ func DeleteProfile(name string) error {
 	// Check if it was the active profile and deactivate if necessary
 	config, err := LoadConfig()
 	if err != nil {
-		logger.Warning("Failed to load config to check active profile: %v", err)
+		logger.Warning("Failed to load config to check active profile", "error", err)
 	} else {
 		if config.ActiveProfile == name {
 			config.ActiveProfile = ""
 			if err := SaveConfig(config); err != nil {
-				logger.Warning("Failed to deactivate profile in config: %v", err)
+				logger.Warning("Failed to deactivate profile in config", "error", err)
 			} else {
-				logger.Info("Deactivated profile '%s' as it was deleted", name)
+				logger.Info("Deactivated profile as it was deleted", "name", name)
 			}
 		}
 	}
 
-	logger.Success("Profile '%s' deleted successfully", name)
+	logger.Success("Profile deleted successfully", "name", name)
 	return nil
 }
 
@@ -170,7 +170,7 @@ func SetActiveProfile(name string) error {
 		return fmt.Errorf("failed to save config: %w", err)
 	}
 
-	logger.Success("Active profile set to '%s'", profile.Name)
+	logger.Success("Active profile set", "name", profile.Name)
 	return nil
 }
 
@@ -184,7 +184,7 @@ func DeactivateProfile() error {
 
 	// Check if there is even an active profile
 	if config.ActiveProfile == "" {
-		logger.Info("No active profile to clear.")
+		logger.Info("No active profile to clear")
 		return nil
 	}
 

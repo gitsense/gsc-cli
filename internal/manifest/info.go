@@ -1,12 +1,12 @@
 /*
  * Component: Workspace Info Logic
- * Block-UUID: d3c4b2b7-19c5-49c4-be2e-8b94a9792f72
- * Parent-UUID: 69c066ad-2649-4c1d-8f22-84317d22a200
- * Version: 1.3.0
- * Description: Logic to gather and format workspace information for the 'gsc info' command, including active profiles and available databases. Added 'gsc config active' to Quick Actions for consistency with the new command name.
+ * Block-UUID: 6ac72f9c-1ee8-445c-8865-06e0175b762d
+ * Parent-UUID: d3c4b2b7-19c5-49c4-be2e-8b94a9792f72
+ * Version: 1.4.0
+ * Description: Logic to gather and format workspace information for the 'gsc info' command, including active profiles and available databases. Added 'gsc config active' to Quick Actions for consistency with the new command name. Refactored all logger calls to use structured Key-Value pairs instead of format strings.
  * Language: Go
  * Created-at: 2026-02-03T03:10:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
  */
 
 
@@ -49,11 +49,11 @@ func GetWorkspaceInfo(ctx context.Context) (*WorkspaceInfo, error) {
 	// 2. Load Active Profile
 	config, err := LoadConfig()
 	if err != nil {
-		logger.Warning("Failed to load config: %v", err)
+		logger.Warning("Failed to load config", "error", err)
 	} else if config.ActiveProfile != "" {
 		profile, err := LoadProfile(config.ActiveProfile)
 		if err != nil {
-			logger.Warning("Failed to load active profile '%s': %v", config.ActiveProfile, err)
+			logger.Warning("Failed to load active profile", "profile", config.ActiveProfile, "error", err)
 		} else {
 			info.ActiveProfile = profile
 		}
@@ -62,7 +62,7 @@ func GetWorkspaceInfo(ctx context.Context) (*WorkspaceInfo, error) {
 	// 3. List Available Databases
 	dbs, err := ListDatabases(ctx)
 	if err != nil {
-		logger.Warning("Failed to list databases: %v", err)
+		logger.Warning("Failed to list databases", "error", err)
 	} else {
 		info.AvailableDBs = dbs
 	}

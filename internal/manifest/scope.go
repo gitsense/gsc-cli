@@ -1,12 +1,12 @@
 /**
  * Component: Scope Logic
- * Block-UUID: 4a59acca-2ca1-4b4b-b589-695c12d961c9
- * Parent-UUID: b5d5495d-7ccc-49d9-9eeb-4586b29ce5ab
- * Version: 1.0.2
- * Description: Core logic for Focus Scope handling, including parsing, matching, validation, and resolution. Implements lenient parsing, doublestar glob matching, Levenshtein distance suggestions, and the full precedence chain for scope resolution.
+ * Block-UUID: b8e49f2e-add7-477d-9aee-9259cd9f4e19
+ * Parent-UUID: 4a59acca-2ca1-4b4b-b589-695c12d961c9
+ * Version: 1.0.3
+ * Description: Core logic for Focus Scope handling, including parsing, matching, validation, and resolution. Implements lenient parsing, doublestar glob matching, Levenshtein distance suggestions, and the full precedence chain for scope resolution. Refactored all logger calls to use structured Key-Value pairs instead of format strings.
  * Language: Go
  * Created-at: 2026-02-05T00:10:41.709Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), Claude Haiku 4.5 (v1.0.2)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), Claude Haiku 4.5 (v1.0.2), GLM-4.7 (v1.0.3)
  */
 
 
@@ -254,9 +254,9 @@ func ResolveScopeForQuery(ctx context.Context, profileName string, scopeOverride
 	if profileName != "" {
 		profile, err := LoadProfile(profileName)
 		if err != nil {
-			logger.Warning("Failed to load profile '%s' for scope resolution: %v", profileName, err)
+			logger.Warning("Failed to load profile for scope resolution", "profile", profileName, "error", err)
 		} else if profile.Settings.Global.Scope != nil {
-			logger.Debug("Using scope from active profile '%s'", profileName)
+			logger.Debug("Using scope from active profile", "profile", profileName)
 			return profile.Settings.Global.Scope, nil
 		}
 	}
@@ -265,7 +265,7 @@ func ResolveScopeForQuery(ctx context.Context, profileName string, scopeOverride
 	// Note: LoadGitSenseMap is defined in gitsense_map.go
 	projectMap, err := LoadGitSenseMap()
 	if err != nil {
-		logger.Debug("No .gitsense-map found or error loading: %v", err)
+		logger.Debug("No .gitsense-map found or error loading", "error", err)
 	} else if projectMap != nil {
 		logger.Debug("Using scope from .gitsense-map")
 		return projectMap, nil

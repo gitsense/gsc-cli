@@ -1,12 +1,12 @@
 /*
  * Component: Manifest Importer
- * Block-UUID: 0e312c0b-9447-4c10-bbe4-f5797c5a1669
- * Parent-UUID: fd015645-c244-4e75-802b-25aabbbd0606
- * Version: 1.4.0
- * Description: Logic to parse a JSON manifest file and import its data into a SQLite database. Updated to implement "Trust Upstream" language logic. If the manifest provides a language, it is used. Otherwise, enry is used to detect the language from the file content during import.
+ * Block-UUID: 8c2351a6-6687-4174-8e76-0069bef06d46
+ * Parent-UUID: 0e312c0b-9447-4c10-bbe4-f5797c5a1669
+ * Version: 1.5.0
+ * Description: Logic to parse a JSON manifest file and import its data into a SQLite database. Updated to implement "Trust Upstream" language logic. If the manifest provides a language, it is used. Otherwise, enry is used to detect the language from the file content during import. Refactored all logger calls to use structured Key-Value pairs instead of format strings.
  * Language: Go
  * Created-at: 2026-02-02T05:30:00Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.4.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
  */
 
 
@@ -30,7 +30,7 @@ import (
 
 // ImportManifest reads a JSON manifest file and imports it into the specified SQLite database.
 func ImportManifest(ctx context.Context, jsonPath string, dbName string) error {
-	logger.Info("Starting import from %s...", jsonPath)
+	logger.Info("Starting import", "path", jsonPath)
 
 	// 1. Read and Parse JSON
 	data, err := os.ReadFile(jsonPath)
@@ -53,12 +53,12 @@ func ImportManifest(ctx context.Context, jsonPath string, dbName string) error {
 	if dbName == "" {
 		if manifestFile.Manifest.DatabaseName != "" {
 			dbName = manifestFile.Manifest.DatabaseName
-			logger.Info("Using database name from manifest: %s", dbName)
+			logger.Info("Using database name from manifest", "db", dbName)
 		} else {
 			// Fallback to filename derivation
 			base := filepath.Base(jsonPath)
 			dbName = strings.TrimSuffix(base, filepath.Ext(base))
-			logger.Info("Using database name derived from filename: %s", dbName)
+			logger.Info("Using database name derived from filename", "db", dbName)
 		}
 	}
 
@@ -125,11 +125,11 @@ func ImportManifest(ctx context.Context, jsonPath string, dbName string) error {
 	}
 
 	if err := registry.AddEntry(entry); err != nil {
-		logger.Warning("Failed to update registry: %v", err)
+		logger.Warning("Failed to update registry", "error", err)
 		// Non-fatal error, data is imported
 	}
 
-	logger.Success("Successfully imported manifest '%s' into database '%s'", manifestFile.Manifest.Name, dbName)
+	logger.Success("Successfully imported manifest", "name", manifestFile.Manifest.Name, "db", dbName)
 	return nil
 }
 
@@ -243,7 +243,7 @@ func insertFileData(ctx context.Context, tx *sql.Tx, manifestFile *ManifestFile)
 	// Get project root for resolving file paths during language detection
 	root, err := git.FindProjectRoot()
 	if err != nil {
-		logger.Warning("Failed to find project root for language detection: %v", err)
+		logger.Warning("Failed to find project root for language detection", "error", err)
 		// Continue without root, language detection will fail for missing languages
 	}
 
@@ -256,7 +256,7 @@ func insertFileData(ctx context.Context, tx *sql.Tx, manifestFile *ManifestFile)
 			detectedLang := detectLanguage(fullPath)
 			if detectedLang != "" {
 				language = detectedLang
-				logger.Debug("Detected language for %s: %s", dataRow.FilePath, language)
+				logger.Debug("Detected language", "file", dataRow.FilePath, "language", language)
 			}
 		}
 
@@ -290,7 +290,7 @@ func detectLanguage(filePath string) string {
 	// Read file content
 	content, err := os.ReadFile(filePath)
 	if err != nil {
-		logger.Debug("Failed to read file for language detection: %s", filePath)
+		logger.Debug("Failed to read file for language detection", "file", filePath)
 		return ""
 	}
 
