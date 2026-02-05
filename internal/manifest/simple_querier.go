@@ -1,12 +1,12 @@
 /*
  * Component: Simple Query Executor
- * Block-UUID: 69190bcf-2594-441d-a028-d4e331da3955
- * Parent-UUID: 38f0fdbb-0a0b-4fc0-b4ca-0104172f138f
- * Version: 1.4.0
- * Description: Executes simple value-matching queries and hierarchical list operations. Added ExecuteCoverageAnalysis to implement Phase 3 Scout Layer coverage reporting, utilizing temporary tables for efficient Git-to-DB comparison. Added ExecuteInsightsAnalysis to implement Phase 2 Scout Layer insights and reporting features, utilizing temporary tables and type-aware SQL aggregation.
+ * Block-UUID: 054cb13f-7fbc-418c-b7a0-84f5b6565e8c
+ * Parent-UUID: 69190bcf-2594-441d-a028-d4e331da3955
+ * Version: 1.4.1
+ * Description: Executes simple value-matching queries and hierarchical list operations. Added ExecuteCoverageAnalysis to implement Phase 3 Scout Layer coverage reporting, utilizing temporary tables for efficient Git-to-DB comparison. Added ExecuteInsightsAnalysis to implement Phase 2 Scout Layer insights and reporting features, utilizing temporary tables and type-aware SQL aggregation. Fixed SQL array aggregation to use explicit alias for clarity and compatibility. Fixed null value counting logic to use NOT EXISTS to accurately identify files with no metadata entry.
  * Language: Go
  * Created-at: 2026-02-05T07:13:46.193Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0), GLM-4.7 (v1.4.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.4.1)
  */
 
 
@@ -565,9 +565,9 @@ func ExecuteInsightsAnalysis(ctx context.Context, dbName string, fields []string
 				JOIN metadata_fields mf ON fm.field_id = mf.field_id
 				JOIN files f ON fm.file_path = f.file_path
 				JOIN target_set ts ON f.file_path = ts.file_path
-				JOIN json_each(fm.field_value)
+				JOIN json_each(fm.field_value) AS je
 				WHERE mf.field_name = ?
-				GROUP BY json_each.value
+				GROUP BY je.value
 				ORDER BY count DESC
 				LIMIT ?
 			`
@@ -639,9 +639,12 @@ func ExecuteInsightsAnalysis(ctx context.Context, dbName string, fields []string
 		nullQuery := `
 			SELECT COUNT(DISTINCT ts.file_path)
 			FROM target_set ts
-			LEFT JOIN file_metadata fm ON ts.file_path = fm.file_path
-			LEFT JOIN metadata_fields mf ON fm.field_id = mf.field_id
-			WHERE mf.field_name = ? AND (fm.field_value IS NULL OR fm.field_value = '')
+			WHERE NOT EXISTS (
+				SELECT 1
+				FROM file_metadata fm
+				JOIN metadata_fields mf ON fm.field_id = mf.field_id
+				WHERE ts.file_path = fm.file_path AND mf.field_name = ?
+			)
 		`
 		if err := database.QueryRowContext(ctx, nullQuery, fieldName).Scan(&nullCount); err != nil {
 			logger.Warning("Failed to count null values", "field", fieldName, "error", err)
