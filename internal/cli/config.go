@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Config Command
- * Block-UUID: 0e15ca7f-6e71-4736-8787-f4ee6dc75cab
- * Parent-UUID: 4f84de89-eb45-477f-aed6-3a7481853b6b
- * Version: 1.6.0
+ * Block-UUID: caaab71a-1541-4a44-addb-778247de842f
+ * Parent-UUID: 0e15ca7f-6e71-4736-8787-f4ee6dc75cab
+ * Version: 1.6.1
  * Description: CLI command definition for 'gsc config', managing context profiles and workspace settings. Added --scope-include and --scope-exclude flags to create/update commands. Implemented 'gsc config scope validate' command to check scope patterns against tracked files.
  * Language: Go
- * Created-at: 2026-02-03T02:10:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0)
+ * Created-at: 2026-02-05T00:06:49.501Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), Gemini 3 Flash (v1.6.1)
  */
 
 
@@ -298,14 +298,14 @@ If no flags are provided, you'll be guided through an interactive update wizard.
 				if profile.Settings.Global.Scope == nil {
 					profile.Settings.Global.Scope = &manifest.ScopeConfig{}
 				}
-				if createScopeInc != "" {
-					profile.Settings.Global.Scope.Include = strings.Split(createScopeInc, ",")
+				if updateScopeInc != "" {
+					profile.Settings.Global.Scope.Include = strings.Split(updateScopeInc, ",")
 					for i := range profile.Settings.Global.Scope.Include {
 						profile.Settings.Global.Scope.Include[i] = strings.TrimSpace(profile.Settings.Global.Scope.Include[i])
 					}
 				}
-				if createScopeExc != "" {
-					profile.Settings.Global.Scope.Exclude = strings.Split(createScopeExc, ",")
+				if updateScopeExc != "" {
+					profile.Settings.Global.Scope.Exclude = strings.Split(updateScopeExc, ",")
 					for i := range profile.Settings.Global.Scope.Exclude {
 						profile.Settings.Global.Scope.Exclude[i] = strings.TrimSpace(profile.Settings.Global.Scope.Exclude[i])
 					}

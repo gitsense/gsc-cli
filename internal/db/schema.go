@@ -132,7 +132,6 @@ func CreateSchema(db *sql.DB) error {
 		"CREATE INDEX IF NOT EXISTS idx_analyzer_ref ON analyzers(analyzer_ref_id);",
 		"CREATE INDEX IF NOT EXISTS idx_field_ref ON metadata_fields(field_ref_id);",
 		"CREATE INDEX IF NOT EXISTS idx_files_language ON files(language);",
-		"CREATE INDEX IF NOT EXISTS idx_files_chat_id ON files(chat_id);",
 	}
 
 	for _, indexSQL := range indexes {

@@ -1,12 +1,12 @@
 /**
  * Component: Scope Logic
- * Block-UUID: b5d5495d-7ccc-49d9-9eeb-4586b29ce5ab
- * Parent-UUID: 708f0868-3429-49a3-9119-a9b81ae4fe58
- * Version: 1.0.1
+ * Block-UUID: 4a59acca-2ca1-4b4b-b589-695c12d961c9
+ * Parent-UUID: b5d5495d-7ccc-49d9-9eeb-4586b29ce5ab
+ * Version: 1.0.2
  * Description: Core logic for Focus Scope handling, including parsing, matching, validation, and resolution. Implements lenient parsing, doublestar glob matching, Levenshtein distance suggestions, and the full precedence chain for scope resolution.
  * Language: Go
- * Created-at: 2026-02-05T00:00:33.939Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1)
+ * Created-at: 2026-02-05T00:10:41.709Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), Claude Haiku 4.5 (v1.0.2)
  */
 
 
@@ -128,6 +128,7 @@ func ValidateScope(ctx context.Context, scope *ScopeConfig, repoRoot string) (*S
 	result.TotalTrackedFiles = len(trackedFiles)
 
 	// 2. Check Include patterns
+	inScopeSet := make(map[string]bool)
 	if scope != nil && len(scope.Include) > 0 {
 		for _, pattern := range scope.Include {
 			matches := 0
@@ -138,10 +139,16 @@ func ValidateScope(ctx context.Context, scope *ScopeConfig, repoRoot string) (*S
 			}
 			if matches == 0 {
 				result.Warnings = append(result.Warnings, fmt.Sprintf("Include pattern '%s' matched 0 files.", pattern))
+				// Note: We still add to suggestions even if matches is 0
 				suggestions := suggestPatternCorrection(pattern, trackedFiles)
 				result.Suggestions = append(result.Suggestions, suggestions...)
 			}
-			result.InScopeFiles += matches // Note: This is a rough estimate, overlaps possible
+			// Track unique files for accurate counting
+			for _, file := range trackedFiles {
+				if ok, _ := doublestar.Match(pattern, file); ok {
+					inScopeSet[file] = true
+				}
+			}
 		}
 	} else {
 		// If no include patterns, all tracked files are in scope
@@ -149,6 +156,10 @@ func ValidateScope(ctx context.Context, scope *ScopeConfig, repoRoot string) (*S
 	}
 
 	// 3. Check Exclude patterns
+	// Note: Excluded files are subtracted from the total tracked, not the in-scope set,
+	// to match the logic of "Total - Excluded = In Scope" when no includes are defined.
+	// However, strictly speaking, Excluded files should be those that match exclude patterns
+	// regardless of whether they were included.
 	if scope != nil && len(scope.Exclude) > 0 {
 		for _, pattern := range scope.Exclude {
 			matches := 0
@@ -162,6 +173,11 @@ func ValidateScope(ctx context.Context, scope *ScopeConfig, repoRoot string) (*S
 			}
 			result.ExcludedFiles += matches
 		}
+	}
+
+	// Update InScopeFiles with the unique count
+	if len(inScopeSet) > 0 {
+		result.InScopeFiles = len(inScopeSet)
 	}
 
 	return result, nil
