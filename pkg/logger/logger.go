@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Logger
- * Block-UUID: 30644fbe-cfc4-4df3-9469-8699e31cb478
- * Parent-UUID: 48049ca6-69f6-48a3-a4a2-7ac29e0d2a55
- * Version: 2.0.0
+ * Block-UUID: 81480f81-067e-4318-bb39-74f8796924fe
+ * Parent-UUID: 30644fbe-cfc4-4df3-9469-8699e31cb478
+ * Version: 2.1.0
  * Description: Package logger provides standardized logging utilities for the GSC CLI. Implemented a Log Level system (Error, Warning, Info, Debug) replacing the previous boolean quiet mode. Added key-value pair formatting and Stderr output.
  * Language: Go
- * Created-at: 2026-02-02T05:47:00.123Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v2.0.0)
+ * Created-at: 2026-02-05T00:38:08.372Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0)
  */
 
 
@@ -73,7 +73,7 @@ func formatMessage(message string, args ...interface{}) string {
 
 // Info logs an informational message (Level 2)
 func Info(message string, args ...interface{}) {
-	if currentLevel >= LevelInfo {
+	if currentLevel >= LevelWarning {
 		formatted := formatMessage(message, args...)
 		fmt.Fprintf(os.Stderr, "%s[INFO]%s %s\n", ColorBlue, ColorReset, formatted)
 	}

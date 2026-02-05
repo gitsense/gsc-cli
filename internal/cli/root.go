@@ -1,12 +1,12 @@
 /**
  * Component: Root CLI Command
- * Block-UUID: 38d34349-2913-43f2-b4c4-be7d5b8b7bc2
- * Parent-UUID: 6f330be1-7265-4c75-9eb5-e06f827ec863
- * Version: 1.11.0
+ * Block-UUID: 81480f81-067e-4318-bb39-74f8796924fe
+ * Parent-UUID: 38d34349-2913-43f2-b4c4-be7d5b8b7bc2
+ * Version: 1.12.0
  * Description: Root command for the gsc CLI, registering the manifest subcommand group, top-level usage commands, config command, and the new info command. Replaced 'rg' with 'grep' command.
  * Language: Go
- * Created-at: 2026-02-02T19:10:57.816Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), Claude Haiku 4.5 (v1.3.0), Claude Haiku 4.5 (v1.4.0), GLM-4.7 (v1.5.0), Claude Haiku 4.5 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0)
+ * Created-at: 2026-02-05T00:38:52.660Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), Claude Haiku 4.5 (v1.3.0), Claude Haiku 4.5 (v1.4.0), GLM-4.7 (v1.5.0), Claude Haiku 4.5 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0)
  */
 
 
@@ -38,6 +38,12 @@ Management Commands:
 	// Shell completion functionality exists in Cobra but is hidden for now.
 	CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		// Check for quiet flag first
+		quiet, _ := cmd.Flags().GetBool("quiet")
+		if quiet {
+			logger.SetLogLevel(logger.LevelError)
+			return
+		}
 		// Check verbosity count to set log level
 		verbose, _ := cmd.Flags().GetCount("verbose")
 		switch verbose {
@@ -73,6 +79,7 @@ func init() {
 	// Add global verbose flag
 	// -v for Info level, -vv for Debug level
 	rootCmd.PersistentFlags().CountP("verbose", "c", "Increase verbosity (-c for info, -cc for debug)")
+	rootCmd.PersistentFlags().Bool("quiet", false, "Suppress all output except errors")
 
 	logger.Debug("Root command initialized with manifest, query, grep, config, and info commands")
 }
