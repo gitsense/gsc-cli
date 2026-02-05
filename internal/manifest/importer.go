@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Manifest Importer
- * Block-UUID: 7545d036-870d-4e73-acd1-6f03bd990dee
- * Parent-UUID: 8c2351a6-6687-4174-8e76-0069bef06d46
- * Version: 1.6.0
+ * Block-UUID: 3213ef4d-f131-419b-9f81-77cdc3f0aab5
+ * Parent-UUID: 7545d036-870d-4e73-acd1-6f03bd990dee
+ * Version: 1.6.1
  * Description: Logic to parse a JSON manifest file and import its data into a SQLite database. Implemented atomic import workflow: temp file creation, backup rotation, atomic swap, and registry upsert. Added --force and --no-backup support.
  * Language: Go
- * Created-at: 2026-02-02T05:30:00Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0)
+ * Created-at: 2026-02-05T02:34:17.139Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.6.1)
  */
 
 
@@ -445,7 +445,7 @@ func rotateBackups(backupDir, dbName string) error {
 	}
 
 	// Filter files belonging to this database
-	var files []os.FileInfo
+	var files []os.DirEntry
 	for _, entry := range entries {
 		if entry.IsDir() {
 			continue
@@ -462,7 +462,9 @@ func rotateBackups(backupDir, dbName string) error {
 	if len(files) > settings.MaxBackups {
 		// Sort by modification time (oldest first)
 		sort.Slice(files, func(i, j int) bool {
-			return files[i].ModTime().Before(files[j].ModTime())
+			infoI, _ := files[i].Info()
+			infoJ, _ := files[j].Info()
+			return infoI.ModTime().Before(infoJ.ModTime())
 		})
 
 		// Delete oldest files (and their corresponding registry json)
