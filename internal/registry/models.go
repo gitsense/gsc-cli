@@ -1,12 +1,12 @@
 /*
  * Component: Registry Models
- * Block-UUID: e416d612-0822-41bb-a3eb-d4f6e98cd2f2
- * Parent-UUID: 1c5e5a14-8423-4383-ba2f-d926d2637a70
- * Version: 1.1.0
- * Description: Defines the data structures for the GitSense registry file (.gitsense/manifest.json), which tracks all available manifest databases. Updated to include DatabaseName to link registry entries to physical database files.
+ * Block-UUID: eb77ea0b-7f02-4764-8b65-64b3c759e163
+ * Parent-UUID: e416d612-0822-41bb-a3eb-d4f6e98cd2f2
+ * Version: 1.2.0
+ * Description: Defines the data structures for the GitSense registry file (.gitsense/manifest.json). Added UpdatedAt field, UpsertEntry method for idempotent updates, and FindEntryByDBName for existence checks.
  * Language: Go
  * Created-at: 2026-02-02T05:30:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -30,6 +30,7 @@ type RegistryEntry struct {
 	Tags         []string  `json:"tags"`          // Keywords for categorization (e.g., ["security", "javascript"])
 	Version      string    `json:"version"`       // Version of the manifest data
 	CreatedAt    time.Time `json:"created_at"`    // Timestamp when the database was created
+	UpdatedAt    time.Time `json:"updated_at"`    // Timestamp when the database was last updated
 	SourceFile   string    `json:"source_file"`   // The original JSON file used to import this database
 }
 
@@ -42,11 +43,26 @@ func NewRegistry() *Registry {
 }
 
 // AddEntry adds a new database entry to the registry.
+// Deprecated: Use UpsertEntry for idempotent updates.
 func (r *Registry) AddEntry(entry RegistryEntry) {
 	r.Databases = append(r.Databases, entry)
 }
 
-// FindEntry searches for a database entry by name.
+// UpsertEntry updates an existing database entry by DatabaseName or appends it as new.
+// This ensures the registry acts as a source of truth and prevents duplicate entries.
+func (r *Registry) UpsertEntry(entry RegistryEntry) {
+	for i, existing := range r.Databases {
+		if existing.DatabaseName == entry.DatabaseName {
+			// Replace entire entry (Source of Truth from manifest)
+			r.Databases[i] = entry
+			return
+		}
+	}
+	// Not found, append as new
+	r.Databases = append(r.Databases, entry)
+}
+
+// FindEntry searches for a database entry by human-readable name.
 // Returns the entry and true if found, nil and false otherwise.
 func (r *Registry) FindEntry(name string) (*RegistryEntry, bool) {
 	for i := range r.Databases {
@@ -57,7 +73,18 @@ func (r *Registry) FindEntry(name string) (*RegistryEntry, bool) {
 	return nil, false
 }
 
-// RemoveEntry removes a database entry by name.
+// FindEntryByDBName searches for a database entry by its physical database name (slug).
+// Returns the entry and true if found, nil and false otherwise.
+func (r *Registry) FindEntryByDBName(dbName string) (*RegistryEntry, bool) {
+	for i := range r.Databases {
+		if r.Databases[i].DatabaseName == dbName {
+			return &r.Databases[i], true
+		}
+	}
+	return nil, false
+}
+
+// RemoveEntry removes a database entry by human-readable name.
 // Returns true if an entry was removed, false if it wasn't found.
 func (r *Registry) RemoveEntry(name string) bool {
 	for i, entry := range r.Databases {
