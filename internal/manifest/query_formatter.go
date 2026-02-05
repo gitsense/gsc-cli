@@ -1,12 +1,12 @@
 /**
  * Component: Query Output Formatter
- * Block-UUID: 6e51147d-9071-4a32-bae2-3d14c580ceea
- * Parent-UUID: 8a5644d7-afd6-49dd-b679-1e8af1931c70
- * Version: 2.4.0
- * Description: Formats query results, list results, and status views. Added FormatCoverageReport to support Phase 3 Scout Layer coverage analysis, including ASCII progress bars and detailed language/directory breakdowns.
+ * Block-UUID: c2a9d1ba-f7b4-4f8f-a265-ddbc4e0f6f15
+ * Parent-UUID: d1eba7aa-4ef1-4279-84ce-a50e69386e54
+ * Version: 2.5.1
+ * Description: Formats query results, list results, and status views. Added FormatCoverageReport to support Phase 3 Scout Layer coverage analysis, including ASCII progress bars and detailed language/directory breakdowns. Added FormatInsightsReport and FormatReport to support Phase 2 Scout Layer features, providing JSON metadata aggregation and ASCII dashboard visualization. Fixed unused variable 'withoutMeta' in formatReportTable.
  * Language: Go
  * Created-at: 2026-02-05T07:14:42.511Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), Gemini 3 Flash (v2.4.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), Gemini 3 Flash (v2.4.0), GLM-4.7 (v2.5.0), GLM-4.7 (v2.5.1)
  */
 
 
@@ -299,6 +299,132 @@ func formatCoverageTable(report *CoverageReport, quiet bool, config *QueryConfig
 		}
 	}
 	sb.WriteString("\nHint: Use 'gsc query --insights' to see metadata distribution.\n")
+
+	return sb.String()
+}
+
+// FormatInsightsReport formats an InsightsReport into the specified format (JSON or Table).
+func FormatInsightsReport(report *InsightsReport, format string, quiet bool, config *QueryConfig) string {
+	switch strings.ToLower(format) {
+	case "json":
+		return formatInsightsJSON(report)
+	case "table":
+		return formatReportTable(report, quiet, config) // Reuse table formatter for insights
+	default:
+		return fmt.Sprintf("Unsupported format: %s", format)
+	}
+}
+
+func formatInsightsJSON(report *InsightsReport) string {
+	bytes, err := json.MarshalIndent(report, "", "  ")
+	if err != nil {
+		return fmt.Sprintf("Error formatting JSON: %v", err)
+	}
+	return string(bytes)
+}
+
+// FormatReport formats an InsightsReport as a human-readable ASCII dashboard.
+func FormatReport(report *InsightsReport, format string, quiet bool, config *QueryConfig) string {
+	switch strings.ToLower(format) {
+	case "json":
+		return formatInsightsJSON(report) // JSON output is same as insights
+	case "table":
+		return formatReportTable(report, quiet, config)
+	default:
+		return fmt.Sprintf("Unsupported format: %s", format)
+	}
+}
+
+func formatReportTable(report *InsightsReport, quiet bool, config *QueryConfig) string {
+	var sb strings.Builder
+
+	dbName := config.Global.DefaultDatabase
+	if dbName == "" {
+		dbName = report.Context.Database
+	}
+
+	// Header
+	sb.WriteString(fmt.Sprintf("GitSense Intelligence Report: %s\n", dbName))
+	sb.WriteString(strings.Repeat("=", 41+len(dbName)) + "\n")
+	sb.WriteString(fmt.Sprintf("Active Profile: %s\n", getStatusValue(config.ActiveProfile)))
+	
+	scopeStr := "All tracked files"
+	if report.Context.ScopeDefinition != nil {
+		scopeStr = fmt.Sprintf("Include %v | Exclude %v", report.Context.ScopeDefinition.Include, report.Context.ScopeDefinition.Exclude)
+	}
+	sb.WriteString(fmt.Sprintf("Focus Scope: %s\n", scopeStr))
+	sb.WriteString(fmt.Sprintf("Report Generated: %s\n\n", report.Context.Timestamp.Format(time.RFC3339)))
+
+	// Status
+	totalFiles := report.Summary.TotalFilesInScope
+	analyzedCount := 0
+	if len(report.Summary.FilesWithMetadata) > 0 {
+		// Use the first field's count as a proxy for "analyzed" status in the header
+		// or sum them up? The spec example shows "19/61 In-Scope Files Analyzed".
+		// This implies files that have *any* metadata.
+		// Since we don't have a global "has_any_metadata" count in the summary struct,
+		// we will use the count of the first field or a calculated average.
+		// For simplicity, we'll use the first field's count if available.
+		for _, count := range report.Summary.FilesWithMetadata {
+			if count > analyzedCount {
+				analyzedCount = count
+			}
+		}
+	}
+	
+	percent := 0.0
+	if totalFiles > 0 {
+		percent = (float64(analyzedCount) / float64(totalFiles)) * 100
+	}
+	
+	sb.WriteString(fmt.Sprintf("Status: %d/%d In-Scope Files Analyzed (%.0f%%)\n\n", analyzedCount, totalFiles, percent))
+
+	// Fields Breakdown
+	// Sort field names alphabetically for consistent output
+	var fieldNames []string
+	for name := range report.Insights {
+		fieldNames = append(fieldNames, name)
+	}
+	sort.Strings(fieldNames)
+
+	for _, fieldName := range fieldNames {
+		insights := report.Insights[fieldName]
+		
+		sb.WriteString(fmt.Sprintf("Field: %s (Top %d)\n", fieldName, report.Context.Limit))
+		sb.WriteString("----------------------------------------------------------\n")
+		
+		for _, insight := range insights {
+			displayValue := insight.Value
+			if displayValue == "" {
+				displayValue = "(unrated)"
+			}
+			sb.WriteString(fmt.Sprintf("%-15s %s %5.1f%% (%d files)\n", 
+				displayValue, 
+				renderProgressBar(insight.Percentage), 
+				insight.Percentage, 
+				insight.Count))
+		}
+		sb.WriteString("\n")
+	}
+
+	// Metadata Completeness
+	sb.WriteString("Metadata Completeness\n")
+	sb.WriteString("----------------------------------------------------------\n")
+	for _, fieldName := range fieldNames {
+		withMeta := report.Summary.FilesWithMetadata[fieldName]
+		
+		completeness := 0.0
+		if totalFiles > 0 {
+			completeness = (float64(withMeta) / float64(totalFiles)) * 100
+		}
+		
+		sb.WriteString(fmt.Sprintf("%-20s: %5.1f%% of in-scope files have values\n", fieldName, completeness))
+	}
+	sb.WriteString("\n")
+
+	// Hints
+	sb.WriteString("Hint: Use 'gsc grep <term> --filter \"<field>=<value>\"' to investigate.\n")
+	sb.WriteString("Hint: Run 'gsc query --coverage' for detailed coverage analysis.\n")
 
 	return sb.String()
 }

@@ -1,12 +1,12 @@
 /*
  * Component: Simple Query Executor
- * Block-UUID: 38f0fdbb-0a0b-4fc0-b4ca-0104172f138f
- * Parent-UUID: fcb4dd65-2763-4bbb-acb1-83a6253fa67d
- * Version: 1.3.0
- * Description: Executes simple value-matching queries and hierarchical list operations. Added ExecuteCoverageAnalysis to implement Phase 3 Scout Layer coverage reporting, utilizing temporary tables for efficient Git-to-DB comparison.
+ * Block-UUID: 69190bcf-2594-441d-a028-d4e331da3955
+ * Parent-UUID: 38f0fdbb-0a0b-4fc0-b4ca-0104172f138f
+ * Version: 1.4.0
+ * Description: Executes simple value-matching queries and hierarchical list operations. Added ExecuteCoverageAnalysis to implement Phase 3 Scout Layer coverage reporting, utilizing temporary tables for efficient Git-to-DB comparison. Added ExecuteInsightsAnalysis to implement Phase 2 Scout Layer insights and reporting features, utilizing temporary tables and type-aware SQL aggregation.
  * Language: Go
  * Created-at: 2026-02-05T07:13:46.193Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0), GLM-4.7 (v1.4.0)
  */
 
 
@@ -483,6 +483,171 @@ func ExecuteCoverageAnalysis(ctx context.Context, dbName string, scopeOverride s
 	} else {
 		report.AnalysisStatus = "No Coverage"
 		report.Recommendations = append(report.Recommendations, "No files in scope have been analyzed. Run 'gsc manifest import' to add intelligence.")
+	}
+
+	return report, nil
+}
+
+// ExecuteInsightsAnalysis performs metadata aggregation for the requested fields within the active Focus Scope.
+// It implements type-aware SQL aggregation (scalar vs array) and calculates summary statistics.
+func ExecuteInsightsAnalysis(ctx context.Context, dbName string, fields []string, limit int, scopeOverride string, repoRoot string, profileName string) (*InsightsReport, error) {
+	// 1. Resolve Scope
+	scope, err := ResolveScopeForQuery(ctx, profileName, scopeOverride)
+	if err != nil {
+		return nil, err
+	}
+
+	// 2. Open Database
+	dbPath, err := ResolveDBPath(dbName)
+	if err != nil {
+		return nil, err
+	}
+	database, err := db.OpenDB(dbPath)
+	if err != nil {
+		return nil, err
+	}
+	defer db.CloseDB(database)
+
+	// 3. Prepare Target Set (Temporary Table)
+	if err := PrepareTargetSet(ctx, database, scope, repoRoot); err != nil {
+		return nil, err
+	}
+
+	// 4. Initialize Report
+	report := &InsightsReport{
+		Context: InsightsContext{
+			Database:        dbName,
+			Type:            "insights",
+			Limit:           limit,
+			ScopeApplied:    scope != nil,
+			ScopeDefinition: scope,
+			Timestamp:       time.Now(),
+		},
+		Insights: make(map[string][]FieldInsight),
+		Summary: InsightsSummary{
+			FilesWithMetadata:             make(map[string]int),
+			FilesWithoutRequestedMetadata: make(map[string]int),
+			NullValueCounts:               make(map[string]int),
+		},
+	}
+
+	// 5. Get Total Files In Scope (Denominator for percentages)
+	var totalFilesInScope int
+	err = database.QueryRowContext(ctx, "SELECT COUNT(*) FROM target_set").Scan(&totalFilesInScope)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query total files in scope: %w", err)
+	}
+	report.Summary.TotalFilesInScope = totalFilesInScope
+
+	// 6. Process each requested field
+	for _, fieldName := range fields {
+		// 6a. Get field info (ID and Type)
+		var fieldID, fieldType string
+		fieldQuery := `SELECT field_id, field_type FROM metadata_fields WHERE field_name = ? LIMIT 1`
+		err = database.QueryRowContext(ctx, fieldQuery, fieldName).Scan(&fieldID, &fieldType)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				logger.Warning("Field not found in database", "field", fieldName, "database", dbName)
+				continue // Skip this field but continue processing others
+			}
+			return nil, fmt.Errorf("failed to query field info for '%s': %w", fieldName, err)
+		}
+
+		// 6b. Execute Aggregation Query based on type
+		var rows *sql.Rows
+		var queryErr error
+
+		if fieldType == "array" || fieldType == "list" {
+			// Array Type: Use json_each to expand values
+			query := `
+				SELECT json_each.value as value, COUNT(DISTINCT f.file_path) as count
+				FROM file_metadata fm
+				JOIN metadata_fields mf ON fm.field_id = mf.field_id
+				JOIN files f ON fm.file_path = f.file_path
+				JOIN target_set ts ON f.file_path = ts.file_path
+				JOIN json_each(fm.field_value)
+				WHERE mf.field_name = ?
+				GROUP BY json_each.value
+				ORDER BY count DESC
+				LIMIT ?
+			`
+			rows, queryErr = database.QueryContext(ctx, query, fieldName, limit)
+		} else {
+			// Scalar Type: Standard GROUP BY
+			query := `
+				SELECT fm.field_value as value, COUNT(DISTINCT f.file_path) as count
+				FROM file_metadata fm
+				JOIN metadata_fields mf ON fm.field_id = mf.field_id
+				JOIN files f ON fm.file_path = f.file_path
+				JOIN target_set ts ON f.file_path = ts.file_path
+				WHERE mf.field_name = ?
+				GROUP BY fm.field_value
+				ORDER BY count DESC
+				LIMIT ?
+			`
+			rows, queryErr = database.QueryContext(ctx, query, fieldName, limit)
+		}
+
+		if queryErr != nil {
+			return nil, fmt.Errorf("failed to execute aggregation query for field '%s': %w", fieldName, queryErr)
+		}
+		defer rows.Close()
+
+		// 6c. Parse Results
+		var insights []FieldInsight
+		for rows.Next() {
+			var insight FieldInsight
+			if err := rows.Scan(&insight.Value, &insight.Count); err != nil {
+				return nil, fmt.Errorf("failed to scan insight row for field '%s': %w", fieldName, err)
+			}
+			
+			// Calculate percentage
+			if totalFilesInScope > 0 {
+				insight.Percentage = (float64(insight.Count) / float64(totalFilesInScope)) * 100
+			}
+			
+			insights = append(insights, insight)
+		}
+		if err := rows.Err(); err != nil {
+			return nil, err
+		}
+
+		report.Insights[fieldName] = insights
+
+		// 6d. Calculate Summary Stats for this field
+		// Count files with metadata (non-null values)
+		var filesWithMeta int
+		metaCountQuery := `
+			SELECT COUNT(DISTINCT f.file_path)
+			FROM file_metadata fm
+			JOIN metadata_fields mf ON fm.field_id = mf.field_id
+			JOIN files f ON fm.file_path = f.file_path
+			JOIN target_set ts ON f.file_path = ts.file_path
+			WHERE mf.field_name = ? AND fm.field_value IS NOT NULL AND fm.field_value != ''
+		`
+		if err := database.QueryRowContext(ctx, metaCountQuery, fieldName).Scan(&filesWithMeta); err != nil {
+			logger.Warning("Failed to count files with metadata", "field", fieldName, "error", err)
+			filesWithMeta = 0
+		}
+		report.Summary.FilesWithMetadata[fieldName] = filesWithMeta
+
+		// Count files without metadata (null or empty)
+		report.Summary.FilesWithoutRequestedMetadata[fieldName] = totalFilesInScope - filesWithMeta
+		
+		// Count null values specifically (files in target_set that have no entry in file_metadata for this field)
+		var nullCount int
+		nullQuery := `
+			SELECT COUNT(DISTINCT ts.file_path)
+			FROM target_set ts
+			LEFT JOIN file_metadata fm ON ts.file_path = fm.file_path
+			LEFT JOIN metadata_fields mf ON fm.field_id = mf.field_id
+			WHERE mf.field_name = ? AND (fm.field_value IS NULL OR fm.field_value = '')
+		`
+		if err := database.QueryRowContext(ctx, nullQuery, fieldName).Scan(&nullCount); err != nil {
+			logger.Warning("Failed to count null values", "field", fieldName, "error", err)
+			nullCount = 0
+		}
+		report.Summary.NullValueCounts[fieldName] = nullCount
 	}
 
 	return report, nil

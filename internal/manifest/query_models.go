@@ -1,12 +1,12 @@
 /*
  * Component: Query Models
- * Block-UUID: ab34a4e7-fd6b-448f-9ea1-99b421d73a1d
- * Parent-UUID: 854ea0c7-91a2-44dc-b3ab-bfd0f3469775
- * Version: 1.1.0
- * Description: Defines the Go structs for query operations, configuration, and list results. Added CoverageReport and supporting structs to implement the Phase 3 Scout Layer coverage analysis feature.
+ * Block-UUID: 13197252-95c2-4160-b59e-f29eb309fa79
+ * Parent-UUID: ab34a4e7-fd6b-448f-9ea1-99b421d73a1d
+ * Version: 1.2.0
+ * Description: Defines the Go structs for query operations, configuration, and list results. Added CoverageReport and supporting structs to implement the Phase 3 Scout Layer coverage analysis feature. Added InsightsReport, InsightsContext, FieldInsight, and InsightsSummary to support Phase 2 Scout Layer insights and reporting features.
  * Language: Go
  * Created-at: 2026-02-02T18:45:00.000Z
- * Authors: GLM-4.7 (v1.0.0), Gemini 3 Flash (v1.1.0)
+ * Authors: GLM-4.7 (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -96,4 +96,36 @@ type DirectoryBlindSpot struct {
 	TotalFiles    int     `json:"total_files"`
 	AnalyzedFiles int     `json:"analyzed_files"`
 	Percent       float64 `json:"percent"`
+}
+
+// InsightsReport represents the full results of an insights analysis.
+type InsightsReport struct {
+	Context  InsightsContext            `json:"context"`
+	Insights map[string][]FieldInsight  `json:"insights"` // Keyed by field name (e.g., "risk_level")
+	Summary  InsightsSummary            `json:"summary"`
+}
+
+// InsightsContext provides metadata about the insights query execution.
+type InsightsContext struct {
+	Database        string       `json:"database"`
+	Type            string       `json:"type"` // "insights"
+	Limit           int          `json:"limit"`
+	ScopeApplied    bool         `json:"scope_applied"`
+	ScopeDefinition *ScopeConfig `json:"scope_definition,omitempty"`
+	Timestamp       time.Time    `json:"timestamp"`
+}
+
+// FieldInsight represents a single value distribution for a specific field.
+type FieldInsight struct {
+	Value      string  `json:"value"`
+	Count      int     `json:"count"`
+	Percentage float64 `json:"percentage"`
+}
+
+// InsightsSummary provides quantitative totals for the insights query.
+type InsightsSummary struct {
+	TotalFilesInScope             int            `json:"total_files_in_scope"`
+	FilesWithMetadata             map[string]int `json:"files_with_metadata"`             // Keyed by field name
+	FilesWithoutRequestedMetadata map[string]int `json:"files_without_requested_metadata"` // Keyed by field name
+	NullValueCounts               map[string]int `json:"null_value_counts"`               // Keyed by field name
 }

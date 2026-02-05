@@ -1,12 +1,12 @@
 /**
  * Component: Query Command
- * Block-UUID: 08207ae5-f591-4d34-a342-e48e6e5d6f10
- * Parent-UUID: 2afd0a1d-b135-40e9-9a7a-9c391b7eb412
- * Version: 2.5.0
- * Description: CLI command definition for 'gsc query'. Added --coverage and --scope-override flags to support Phase 3 Scout Layer features. Implemented handleCoverage to orchestrate coverage analysis and reporting.
+ * Block-UUID: d95a7a03-9399-4e5a-8f81-d39bbb4ce616
+ * Parent-UUID: 08207ae5-f591-4d34-a342-e48e6e5d6f10
+ * Version: 2.6.0
+ * Description: CLI command definition for 'gsc query'. Added --coverage and --scope-override flags to support Phase 3 Scout Layer features. Implemented handleCoverage to orchestrate coverage analysis and reporting. Added --insights and --report flags to support Phase 2 Scout Layer features, including metadata aggregation and ASCII reporting.
  * Language: Go
  * Created-at: 2026-02-02T19:55:00.000Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), Claude Haiku 4.5 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), Gemini 3 Flash (v1.0.5), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), Gemini 3 Flash (v2.5.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), Claude Haiku 4.5 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), Gemini 3 Flash (v1.0.5), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), Gemini 3 Flash (v2.5.0), GLM-4.7 (v2.6.0)
  */
 
 
@@ -15,6 +15,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/yourusername/gsc-cli/internal/git"
@@ -33,6 +34,9 @@ var (
 	queryQuiet         bool
 	queryCoverage      bool
 	queryScopeOverride string
+	queryInsights      bool
+	queryReport        bool
+	queryInsightsLimit int
 )
 
 // queryCmd represents the query command
@@ -61,7 +65,10 @@ Supports hierarchical discovery (--list), context profiles, and simple value mat
   gsc query --value critical
 
   # 7. Run coverage analysis
-  gsc query --coverage`,
+  gsc query --coverage
+
+  # 8. Get insights on metadata distribution
+  gsc query --insights --field risk_level,parent_keywords`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
 
@@ -79,12 +86,20 @@ Supports hierarchical discovery (--list), context profiles, and simple value mat
 			return handleCoverage(ctx, queryDB, queryScopeOverride, queryFormat, queryQuiet)
 		}
 
-		// Priority 3: Hierarchical Discovery
+		// Priority 3: Insights & Report
+		if queryInsights || queryReport {
+			if queryInsights && queryReport {
+				return fmt.Errorf("--insights and --report are mutually exclusive")
+			}
+			return handleInsights(ctx, queryDB, queryField, queryInsightsLimit, queryScopeOverride, queryFormat, queryQuiet, queryReport)
+		}
+
+		// Priority 4: Hierarchical Discovery
 		if queryList {
 			return handleHierarchicalList(ctx, queryDB, queryField, queryFormat, queryQuiet)
 		}
 
-		// Priority 4: Query Execution or Status View
+		// Priority 5: Query Execution or Status View
 		return handleQueryOrStatus(ctx, queryDB, queryField, queryValue, queryFormat, queryQuiet)
 	},
 	SilenceUsage: true, // Silence usage output on logic errors
@@ -101,6 +116,11 @@ func init() {
 	queryCmd.Flags().BoolVar(&queryQuiet, "quiet", false, "Suppress headers, footers, and hints (clean output)")
 	queryCmd.Flags().BoolVar(&queryCoverage, "coverage", false, "Enable coverage analysis mode")
 	queryCmd.Flags().StringVar(&queryScopeOverride, "scope-override", "", "Temporary scope override (e.g., include=src/**;exclude=tests/**)")
+	
+	// Insights/Report Flags
+	queryCmd.Flags().BoolVar(&queryInsights, "insights", false, "Enable insights mode (JSON output)")
+	queryCmd.Flags().BoolVar(&queryReport, "report", false, "Enable report mode (ASCII dashboard)")
+	queryCmd.Flags().IntVar(&queryInsightsLimit, "limit", 10, "Limit number of top values to return (1-1000)")
 }
 
 // handleCoverage orchestrates the coverage analysis process.
@@ -138,6 +158,72 @@ func handleCoverage(ctx context.Context, dbName string, scopeOverride string, fo
 
 	// Pass config to formatter to enable workspace headers
 	output := manifest.FormatCoverageReport(report, format, quiet, config)
+	fmt.Println(output)
+	return nil
+}
+
+// handleInsights orchestrates the insights and report generation process.
+func handleInsights(ctx context.Context, dbName string, fieldsStr string, limit int, scopeOverride string, format string, quiet bool, isReport bool) error {
+	config, err := manifest.GetEffectiveConfig()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	resolvedDB := dbName
+	if resolvedDB == "" {
+		resolvedDB = config.Global.DefaultDatabase
+	}
+
+	if resolvedDB == "" {
+		return fmt.Errorf("database is required for insights. Use --db flag or set a profile with 'gsc config use <name>'")
+	}
+
+	// Resolve database name to physical name
+	resolvedDB, err = registry.ResolveDatabase(resolvedDB)
+	if err != nil {
+		return err
+	}
+
+	// Parse fields
+	if fieldsStr == "" {
+		return fmt.Errorf("--field is required for insights/report mode")
+	}
+	fields := strings.Split(fieldsStr, ",")
+
+	// Validate limit
+	if limit < 1 || limit > 1000 {
+		return fmt.Errorf("--limit must be between 1 and 1000")
+	}
+
+	repoRoot, err := git.FindGitRoot()
+	if err != nil {
+		return fmt.Errorf("failed to find git root: %w", err)
+	}
+
+	logger.Debug("Executing insights analysis", "database", resolvedDB, "fields", fields, "limit", limit, "scope_override", scopeOverride)
+	report, err := manifest.ExecuteInsightsAnalysis(ctx, resolvedDB, fields, limit, scopeOverride, repoRoot, config.ActiveProfile)
+	if err != nil {
+		return err
+	}
+
+	// Determine output format
+	// --insights defaults to JSON, --report defaults to Table
+	outputFormat := format
+	if outputFormat == "" {
+		if isReport {
+			outputFormat = "table"
+		} else {
+			outputFormat = "json"
+		}
+	}
+
+	var output string
+	if isReport {
+		output = manifest.FormatReport(report, outputFormat, quiet, config)
+	} else {
+		output = manifest.FormatInsightsReport(report, outputFormat, quiet, config)
+	}
+
 	fmt.Println(output)
 	return nil
 }
