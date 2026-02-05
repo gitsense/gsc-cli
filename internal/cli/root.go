@@ -1,12 +1,12 @@
 /**
  * Component: Root CLI Command
- * Block-UUID: 81480f81-067e-4318-bb39-74f8796924fe
- * Parent-UUID: 38d34349-2913-43f2-b4c4-be7d5b8b7bc2
- * Version: 1.12.0
- * Description: Root command for the gsc CLI, registering the manifest subcommand group, top-level usage commands, config command, and the new info command. Replaced 'rg' with 'grep' command.
+ * Block-UUID: e6b32d9d-60f5-4346-8573-2c1c9100e314
+ * Parent-UUID: 81480f81-067e-4318-bb39-74f8796924fe
+ * Version: 1.13.0
+ * Description: Root command for the gsc CLI, registering the manifest subcommand group, top-level usage commands, config command, and the new info command. Replaced 'rg' with 'grep' command. Added pre-flight check in PersistentPreRun to ensure .gitsense directory exists for all commands except 'init' and 'doctor', preventing misleading errors.
  * Language: Go
- * Created-at: 2026-02-05T00:38:52.660Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), Claude Haiku 4.5 (v1.3.0), Claude Haiku 4.5 (v1.4.0), GLM-4.7 (v1.5.0), Claude Haiku 4.5 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0)
+ * Created-at: 2026-02-02T05:30:00.000Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), Claude Haiku 4.5 (v1.3.0), Claude Haiku 4.5 (v1.4.0), GLM-4.7 (v1.5.0), Claude Haiku 4.5 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0)
  */
 
 
@@ -14,9 +14,13 @@ package cli
 
 import (
 	"os"
+	"path/filepath"
+
 	"github.com/spf13/cobra"
 	"github.com/yourusername/gsc-cli/internal/cli/manifest"
+	"github.com/yourusername/gsc-cli/internal/git"
 	"github.com/yourusername/gsc-cli/pkg/logger"
+	"github.com/yourusername/gsc-cli/pkg/settings"
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -38,21 +42,45 @@ Management Commands:
 	// Shell completion functionality exists in Cobra but is hidden for now.
 	CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		// Check for quiet flag first
+		// 1. Check for quiet flag first
 		quiet, _ := cmd.Flags().GetBool("quiet")
 		if quiet {
 			logger.SetLogLevel(logger.LevelError)
-			return
+		} else {
+			// Check verbosity count to set log level
+			verbose, _ := cmd.Flags().GetCount("verbose")
+			switch verbose {
+			case 0:
+				logger.SetLogLevel(logger.LevelWarning)
+			case 1:
+				logger.SetLogLevel(logger.LevelInfo)
+			default:
+				logger.SetLogLevel(logger.LevelDebug)
+			}
 		}
-		// Check verbosity count to set log level
-		verbose, _ := cmd.Flags().GetCount("verbose")
-		switch verbose {
-		case 0:
-			logger.SetLogLevel(logger.LevelWarning)
-		case 1:
-			logger.SetLogLevel(logger.LevelInfo)
-		default:
-			logger.SetLogLevel(logger.LevelDebug)
+
+		// 2. Pre-flight Check: Ensure .gitsense directory exists
+		// Skip for 'init' (creates it) and 'doctor' (diagnostic tool)
+		commandName := cmd.Name()
+		if commandName != "init" && commandName != "doctor" {
+			root, err := git.FindProjectRoot()
+			if err != nil {
+				// If we are not in a git repository, we can't have a .gitsense dir
+				// Return a clear error instead of letting commands fail with obscure messages
+				logger.Error("Not in a git repository", "error", err)
+				return
+			}
+
+			gitsenseDir := filepath.Join(root, settings.GitSenseDir)
+			if _, err := os.Stat(gitsenseDir); os.IsNotExist(err) {
+				// The directory does not exist. Stop execution immediately.
+				logger.Error("GitSense workspace not initialized")
+				// We use fmt.Errorf here to ensure Cobra prints the error cleanly
+				// and exits with the correct code.
+				cmd.Println("Error: GitSense workspace not initialized.")
+				cmd.Println("Please run 'gsc manifest init' first.")
+				os.Exit(1)
+			}
 		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
