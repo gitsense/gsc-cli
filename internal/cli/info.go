@@ -1,12 +1,12 @@
 /**
  * Component: Info Command
- * Block-UUID: aa749e28-6941-4a69-8176-f281bc04d2cd
- * Parent-UUID: dc290983-4de3-4ea1-8f35-9d60518bf9c9
- * Version: 1.0.2
- * Description: CLI command definition for 'gsc info', displaying the current workspace context, active profile, and available databases. Refactored all logger calls to use structured Key-Value pairs instead of format strings.
+ * Block-UUID: 1dc4eb6b-2a29-4f0b-adba-9a95abe54779
+ * Parent-UUID: aa749e28-6941-4a69-8176-f281bc04d2cd
+ * Version: 1.0.3
+ * Description: CLI command definition for 'gsc info', displaying the current workspace context, active profile, and available databases. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted Info logs to Debug, removed redundant Error logs, and set SilenceUsage to true.
  * Language: Go
  * Created-at: 2026-02-03T03:16:25.331Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3)
  */
 
 
@@ -43,10 +43,10 @@ your current context without needing to run multiple commands.`,
 		ctx := cmd.Context()
 
 		// 1. Gather Workspace Information
-		logger.Info("Gathering workspace information")
+		logger.Debug("Gathering workspace information")
 		info, err := manifest.GetWorkspaceInfo(ctx)
 		if err != nil {
-			logger.Error("Failed to gather workspace info", "error", err)
+			// Error is returned to Cobra, which will print it cleanly via root.HandleExit
 			return err
 		}
 
@@ -56,6 +56,7 @@ your current context without needing to run multiple commands.`,
 
 		return nil
 	},
+	SilenceUsage: true, // Silence usage output on logic errors
 }
 
 func init() {

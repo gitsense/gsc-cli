@@ -1,12 +1,12 @@
 /*
  * Component: Doctor Command
- * Block-UUID: 1f783d29-a822-485a-8cff-6afa32f787dc
- * Parent-UUID: c8efe193-47fa-450e-953c-d44b57b5185f
- * Version: 1.2.0
- * Description: CLI command for running health checks on the .gitsense environment and databases. Removed unused getter function. Refactored all logger calls to use structured Key-Value pairs instead of format strings.
+ * Block-UUID: 29887279-40a5-42b9-bd3e-568d7ba9bad7
+ * Parent-UUID: 1f783d29-a822-485a-8cff-6afa32f787dc
+ * Version: 1.3.0
+ * Description: CLI command for running health checks on the .gitsense environment and databases. Removed unused getter function. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted progress Info logs to Debug, removed redundant Error logs, and set SilenceUsage to true.
  * Language: Go
  * Created-at: 2026-02-02T07:58:00.000Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
  */
 
 
@@ -30,12 +30,12 @@ var doctorCmd = &cobra.Command{
 	Long: `Run health checks on the .gitsense environment to diagnose issues with 
 the directory structure, registry file, and database connectivity.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		logger.Info("Running health checks")
+		logger.Debug("Running health checks")
 
 		// Call the logic layer to run diagnostics
 		report, err := manifest.RunDoctor(cmd.Context(), doctorFix)
 		if err != nil {
-			logger.Error("Doctor check failed", "error", err)
+			// Error is returned to Cobra, which will print it cleanly via root.HandleExit
 			return err
 		}
 
@@ -49,6 +49,7 @@ the directory structure, registry file, and database connectivity.`,
 
 		return nil
 	},
+	SilenceUsage: true, // Silence usage output on logic errors
 }
 
 func init() {

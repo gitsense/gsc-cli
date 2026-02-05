@@ -1,12 +1,12 @@
 /**
  * Component: Manifest Initializer
- * Block-UUID: 8d6c954a-f22e-46e9-a5e1-6c631f0b1ef1
- * Parent-UUID: ebea8209-f9a0-40b4-beec-fefe41e938ec
- * Version: 1.5.0
- * Description: Logic to initialize the .gitsense directory structure and registry file. Reclassified internal state logs to Debug level to support quiet mode by default. Refactored all logger calls to use structured Key-Value pairs instead of format strings.
+ * Block-UUID: deded7eb-5738-43c2-b311-12704a3e3c6d
+ * Parent-UUID: 8d6c954a-f22e-46e9-a5e1-6c631f0b1ef1
+ * Version: 1.6.0
+ * Description: Logic to initialize the .gitsense directory structure and registry file. Reclassified internal state logs to Debug level to support quiet mode by default. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted Info logs to Debug level to prevent duplicate output with the CLI layer and enable quiet-by-default behavior.
  * Language: Go
  * Created-at: 2026-02-05T00:42:23.439Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), Claude Haiku 4.5 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.4.1), GLM-4.7 (v1.5.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), Claude Haiku 4.5 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.4.1), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0)
  */
 
 
@@ -47,7 +47,7 @@ func InitializeGitSense() error {
 
 	// 3. Check if registry already exists
 	if _, err := os.Stat(registryPath); err == nil {
-		logger.Info("GitSense workspace already initialized", "path", gitsenseDir)
+		logger.Debug("GitSense workspace already initialized", "path", gitsenseDir)
 		return nil
 	}
 
@@ -73,6 +73,6 @@ func InitializeGitSense() error {
 		// Non-fatal error, continue
 	}
 
-	logger.Info("GitSense workspace initialized successfully", "path", gitsenseDir)
+	logger.Debug("GitSense workspace initialized successfully", "path", gitsenseDir)
 	return nil
 }

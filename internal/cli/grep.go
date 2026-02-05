@@ -1,12 +1,12 @@
 /*
  * Component: Grep Command
- * Block-UUID: 4f6c369b-0cf0-405f-8893-eae869a53152
- * Parent-UUID: 598adf53-8cea-4e33-90b2-40f82020a13c
- * Version: 3.2.0
- * Description: CLI command definition for 'gsc grep'. Updated to support metadata filtering, stats recording, and case-sensitive defaults. Updated to resolve database names from user input or config to physical names. Refactored all logger calls to use structured Key-Value pairs instead of format strings.
+ * Block-UUID: 2d5a73d8-f430-4d64-a8f3-c0ef7f96b78a
+ * Parent-UUID: 4f6c369b-0cf0-405f-8893-eae869a53152
+ * Version: 3.3.0
+ * Description: CLI command definition for 'gsc grep'. Updated to support metadata filtering, stats recording, and case-sensitive defaults. Updated to resolve database names from user input or config to physical names. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted Info logs to Debug and set SilenceUsage to true.
  * Language: Go
  * Created-at: 2026-02-03T18:06:35.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v3.0.0), GLM-4.7 (v3.1.0), GLM-4.7 (v3.2.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v3.0.0), GLM-4.7 (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.7 (v3.3.0)
  */
 
 
@@ -210,6 +210,7 @@ Filtering:
 
 		return nil
 	},
+	SilenceUsage: true, // Silence usage output on logic errors
 }
 
 func init() {

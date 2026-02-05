@@ -1,12 +1,12 @@
 /**
  * Component: Config Command
- * Block-UUID: caaab71a-1541-4a44-addb-778247de842f
- * Parent-UUID: 0e15ca7f-6e71-4736-8787-f4ee6dc75cab
- * Version: 1.6.1
- * Description: CLI command definition for 'gsc config', managing context profiles and workspace settings. Added --scope-include and --scope-exclude flags to create/update commands. Implemented 'gsc config scope validate' command to check scope patterns against tracked files.
+ * Block-UUID: ce1f228c-4676-4861-9e8b-5469cc28d27f
+ * Parent-UUID: caaab71a-1541-4a44-addb-778247de842f
+ * Version: 1.7.0
+ * Description: CLI command definition for 'gsc config', managing context profiles and workspace settings. Added --scope-include and --scope-exclude flags to create/update commands. Implemented 'gsc config scope validate' command to check scope patterns against tracked files. Updated to support professional CLI output: set SilenceUsage to true on all subcommands to prevent usage spam on logic errors.
  * Language: Go
  * Created-at: 2026-02-05T00:06:49.501Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), Gemini 3 Flash (v1.6.1)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), Gemini 3 Flash (v1.6.1), GLM-4.7 (v1.7.0)
  */
 
 
@@ -61,6 +61,7 @@ If no argument is provided, an interactive selection menu will appear.`,
 		fmt.Printf("Switched to profile '%s'.\n", name)
 		return nil
 	},
+	SilenceUsage: true,
 }
 
 // clearCmd represents the 'config clear' command
@@ -77,6 +78,7 @@ This does not delete the profile; it simply stops using it.`,
 		fmt.Println("Profile cleared. Using global defaults.")
 		return nil
 	},
+	SilenceUsage: true,
 }
 
 // contextCmd represents the 'config context' command group
@@ -137,6 +139,7 @@ var contextListCmd = &cobra.Command{
 		fmt.Print(output.FormatTable(headers, rows))
 		return nil
 	},
+	SilenceUsage: true,
 }
 
 // contextCreateCmd represents the 'config context create' command
@@ -228,6 +231,7 @@ If required flags are missing, you'll be guided through an interactive setup wiz
 		// Interactive mode
 		return manifest.CreateProfileInteractive(ctx, name)
 	},
+	SilenceUsage: true,
 }
 
 // contextUpdateCmd represents the 'config context update' command
@@ -322,6 +326,7 @@ If no flags are provided, you'll be guided through an interactive update wizard.
 		// Interactive mode
 		return manifest.UpdateProfileInteractive(ctx, name)
 	},
+	SilenceUsage: true,
 }
 
 // contextShowCmd represents the 'config context show' command
@@ -355,6 +360,7 @@ var contextShowCmd = &cobra.Command{
 
 		return nil
 	},
+	SilenceUsage: true,
 }
 
 // contextDeleteCmd represents the 'config context delete' command
@@ -386,6 +392,7 @@ var contextDeleteCmd = &cobra.Command{
 		fmt.Printf("Profile '%s' deleted.\n", name)
 		return nil
 	},
+	SilenceUsage: true,
 }
 
 // activeCmd represents the 'config active' command
@@ -419,6 +426,7 @@ var activeCmd = &cobra.Command{
 		}
 		return nil
 	},
+	SilenceUsage: true,
 }
 
 // scopeCmd represents the 'config scope' command group
@@ -526,6 +534,7 @@ It checks if patterns match files and provides suggestions for typos.`,
 
 		return nil
 	},
+	SilenceUsage: true,
 }
 
 func init() {

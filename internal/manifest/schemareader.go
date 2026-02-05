@@ -1,12 +1,12 @@
 /**
  * Component: Schema Reader
- * Block-UUID: d602b4d4-3d46-4ca1-b758-66f79b320c17
- * Parent-UUID: 8c147009-1739-4170-bebd-70efa18c9128
- * Version: 1.4.0
- * Description: Logic to query the database and retrieve analyzer and field definitions. Added GetFieldTypes helper for filter parser to determine field types. Refactored all logger calls to use structured Key-Value pairs instead of format strings.
+ * Block-UUID: dee3955b-6213-4e3f-a67e-d762702b5137
+ * Parent-UUID: d602b4d4-3d46-4ca1-b758-66f79b320c17
+ * Version: 1.5.0
+ * Description: Logic to query the database and retrieve analyzer and field definitions. Added GetFieldTypes helper for filter parser to determine field types. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted routine Info logs to Debug level to enable quiet-by-default behavior.
  * Language: Go
  * Created-at: 2026-02-02T08:34:20.421Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
  */
 
 
@@ -153,7 +153,7 @@ func GetSchema(ctx context.Context, dbName string) (*SchemaInfo, error) {
 		}
 	}
 
-	logger.Info("Retrieved schema", "analyzers", len(analyzers))
+	logger.Debug("Retrieved schema", "analyzers", len(analyzers))
 
 	return &SchemaInfo{
 		DatabaseName: dbName,

@@ -1,12 +1,12 @@
 /*
  * Component: Manifest List Command
- * Block-UUID: 093c618c-3ddc-4bae-86c3-3771e6c49925
- * Parent-UUID: ed89c592-36cf-4801-a356-da5b4437c588
- * Version: 1.4.0
- * Description: CLI command for listing available manifest databases. Added context nil check for robustness. Refactored all logger calls to use structured Key-Value pairs instead of format strings.
+ * Block-UUID: d1622670-df1a-4dbe-b095-5029820987ef
+ * Parent-UUID: 093c618c-3ddc-4bae-86c3-3771e6c49925
+ * Version: 1.5.0
+ * Description: CLI command for listing available manifest databases. Added context nil check for robustness. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: removed redundant logger.Error calls in RunE and set SilenceUsage to true to prevent usage spam on logic errors.
  * Language: Go
  * Created-at: 2026-02-02T05:35:00Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), Claude Haiku 4.5 (v1.2.0), Claude Haiku 4.5 (v1.3.0), GLM-4.7 (v1.4.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), Claude Haiku 4.5 (v1.2.0), Claude Haiku 4.5 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
  */
 
 
@@ -19,7 +19,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/yourusername/gsc-cli/internal/manifest"
 	"github.com/yourusername/gsc-cli/internal/output"
-	"github.com/yourusername/gsc-cli/pkg/logger"
 )
 
 var listFormat string
@@ -41,7 +40,7 @@ information about each database, including its name, description, and tags.`,
 		// Call the logic layer to get the list
 		databases, err := manifest.ListDatabases(ctx)
 		if err != nil {
-			logger.Error("Failed to list databases", "error", err)
+			// Error is returned to Cobra, which will print it cleanly via root.HandleExit
 			return err
 		}
 
@@ -68,6 +67,7 @@ information about each database, including its name, description, and tags.`,
 		output.FormatDatabaseTable(dbInterfaces, listFormat)
 		return nil
 	},
+	SilenceUsage: true, // Silence usage output on logic errors (e.g., registry not found)
 }
 
 func init() {

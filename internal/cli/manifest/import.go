@@ -1,12 +1,12 @@
 /*
  * Component: Manifest Import Command
- * Block-UUID: 17f6fbf9-b729-4268-b4da-683cd9c815e3
- * Parent-UUID: 508dc480-a13d-4fca-bad1-aff81c21198e
- * Version: 1.2.0
- * Description: CLI command definition for importing a manifest JSON file. Added --force flag to allow overwriting existing databases and --no-backup flag to skip backup creation.
+ * Block-UUID: 16b34bb8-2011-417b-ae15-9663b216f128
+ * Parent-UUID: 17f6fbf9-b729-4268-b4da-683cd9c815e3
+ * Version: 1.3.0
+ * Description: CLI command definition for importing a manifest JSON file. Added --force flag to allow overwriting existing databases and --no-backup flag to skip backup creation. Updated to support professional CLI output: removed redundant logger.Error calls in RunE and set SilenceUsage to true to prevent usage spam on logic errors.
  * Language: Go
  * Created-at: 2026-02-02T05:35:00Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
  */
 
 
@@ -52,13 +52,14 @@ existing database is automatically created in .gitsense/backups/ unless --no-bac
 
 		ctx := context.Background()
 		if err := manifest.ImportManifest(ctx, jsonPath, dbName, force, noBackup); err != nil {
-			logger.Error(fmt.Sprintf("Import failed: %v", err))
+			// Error is returned to Cobra, which will print it cleanly via root.HandleExit
 			return err
 		}
 
 		logger.Success("Import completed successfully.")
 		return nil
 	},
+	SilenceUsage: true, // Silence usage output on logic errors (e.g., DB exists)
 }
 
 func init() {

@@ -1,12 +1,12 @@
 /*
  * Component: Manifest Querier
- * Block-UUID: ab279929-5911-4ab5-8c87-45a0383a2516
- * Parent-UUID: 2a84e72b-2ec3-4b48-b0f7-f2feb3ec027e
- * Version: 1.4.0
- * Description: Logic to query the manifest registry and list available databases. Updated to use entry.DatabaseName instead of entry.Name to resolve the correct physical database file. Refactored all logger calls to use structured Key-Value pairs instead of format strings.
+ * Block-UUID: 988bbe7d-ad2b-4be6-98be-2361ab2f7815
+ * Parent-UUID: ab279929-5911-4ab5-8c87-45a0383a2516
+ * Version: 1.5.0
+ * Description: Logic to query the manifest registry and list available databases. Updated to use entry.DatabaseName instead of entry.Name to resolve the correct physical database file. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted routine Info logs to Debug level to enable quiet-by-default behavior.
  * Language: Go
  * Created-at: 2026-02-02T05:30:00Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
  */
 
 
@@ -80,6 +80,6 @@ func ListDatabases(ctx context.Context) ([]DatabaseInfo, error) {
 		})
 	}
 
-	logger.Info("Found databases in registry", "count", len(databases))
+	logger.Debug("Found databases in registry", "count", len(databases))
 	return databases, nil
 }

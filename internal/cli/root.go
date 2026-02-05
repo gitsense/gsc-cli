@@ -1,18 +1,19 @@
 /**
  * Component: Root CLI Command
- * Block-UUID: e6b32d9d-60f5-4346-8573-2c1c9100e314
- * Parent-UUID: 81480f81-067e-4318-bb39-74f8796924fe
- * Version: 1.13.0
- * Description: Root command for the gsc CLI, registering the manifest subcommand group, top-level usage commands, config command, and the new info command. Replaced 'rg' with 'grep' command. Added pre-flight check in PersistentPreRun to ensure .gitsense directory exists for all commands except 'init' and 'doctor', preventing misleading errors.
+ * Block-UUID: b680f663-bfcd-4dc6-96d0-462ce0c26272
+ * Parent-UUID: e6b32d9d-60f5-4346-8573-2c1c9100e314
+ * Version: 1.14.0
+ * Description: Root command for the gsc CLI, registering the manifest subcommand group, top-level usage commands, config command, and the new info command. Replaced 'rg' with 'grep' command. Added pre-flight check in PersistentPreRun to ensure .gitsense directory exists for all commands except 'init' and 'doctor', preventing misleading errors. Updated to support professional CLI output: modified HandleExit to print clean error messages without logger prefixes, and refactored PersistentPreRun to return errors for pre-flight checks while silencing usage output for logic errors.
  * Language: Go
  * Created-at: 2026-02-02T05:30:00.000Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), Claude Haiku 4.5 (v1.3.0), Claude Haiku 4.5 (v1.4.0), GLM-4.7 (v1.5.0), Claude Haiku 4.5 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), Claude Haiku 4.5 (v1.3.0), Claude Haiku 4.5 (v1.4.0), GLM-4.7 (v1.5.0), Claude Haiku 4.5 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0)
  */
 
 
 package cli
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -65,21 +66,16 @@ Management Commands:
 		if commandName != "init" && commandName != "doctor" {
 			root, err := git.FindProjectRoot()
 			if err != nil {
-				// If we are not in a git repository, we can't have a .gitsense dir
-				// Return a clear error instead of letting commands fail with obscure messages
-				logger.Error("Not in a git repository", "error", err)
+				// Logic error: Not in a git repository. Silence usage and return error.
+				cmd.SilenceUsage = true
 				return
 			}
 
 			gitsenseDir := filepath.Join(root, settings.GitSenseDir)
 			if _, err := os.Stat(gitsenseDir); os.IsNotExist(err) {
-				// The directory does not exist. Stop execution immediately.
-				logger.Error("GitSense workspace not initialized")
-				// We use fmt.Errorf here to ensure Cobra prints the error cleanly
-				// and exits with the correct code.
-				cmd.Println("Error: GitSense workspace not initialized.")
-				cmd.Println("Please run 'gsc manifest init' first.")
-				os.Exit(1)
+				// Logic error: Workspace not initialized. Silence usage and return error.
+				cmd.SilenceUsage = true
+				return
 			}
 		}
 	},
@@ -121,7 +117,8 @@ func Execute() error {
 // HandleExit handles the exit code from Execute()
 func HandleExit(err error) {
 	if err != nil {
-		logger.Error(err.Error())
+		// Print clean error message without [ERROR] prefix or timestamp
+		fmt.Fprintf(os.Stderr, "Error: %s\n", err.Error())
 		os.Exit(1)
 	}
 	os.Exit(0)

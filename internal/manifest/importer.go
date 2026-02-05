@@ -1,12 +1,12 @@
 /**
  * Component: Manifest Importer
- * Block-UUID: 70c0084c-5679-4866-b204-f7d0ab5dfcbf
- * Parent-UUID: 3213ef4d-f131-419b-9f81-77cdc3f0aab5
- * Version: 1.7.0
- * Description: Logic to parse a JSON manifest file and import its data into a SQLite database. Implemented atomic import workflow: temp file creation, backup rotation, atomic swap, and registry upsert. Added --force and --no-backup support. Added file-based locking to prevent concurrent imports and strict error handling for backup failures.
+ * Block-UUID: 34ec8d5e-dd42-49a0-b9c7-d9e05ae1c5da
+ * Parent-UUID: 70c0084c-5679-4866-b204-f7d0ab5dfcbf
+ * Version: 1.8.0
+ * Description: Logic to parse a JSON manifest file and import its data into a SQLite database. Implemented atomic import workflow: temp file creation, backup rotation, atomic swap, and registry upsert. Added --force and --no-backup support. Added file-based locking to prevent concurrent imports and strict error handling for backup failures. Updated to support professional CLI output: demoted routine Info logs to Debug level to enable quiet-by-default behavior.
  * Language: Go
  * Created-at: 2026-02-05T02:34:17.139Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.6.1), GLM-4.7 (v1.7.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.6.1), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0)
  */
 
 
@@ -37,7 +37,7 @@ import (
 // It implements an atomic swap strategy: imports to a temp file, backs up the existing DB (if any),
 // and then renames the temp file to the final name.
 func ImportManifest(ctx context.Context, jsonPath string, dbName string, force bool, noBackup bool) error {
-	logger.Info("Starting import", "path", jsonPath)
+	logger.Debug("Starting import", "path", jsonPath)
 
 	// 1. Acquire Lock
 	// Prevents concurrent imports from corrupting the registry or database files.
@@ -74,12 +74,12 @@ func ImportManifest(ctx context.Context, jsonPath string, dbName string, force b
 	if dbName == "" {
 		if manifestFile.Manifest.DatabaseName != "" {
 			dbName = manifestFile.Manifest.DatabaseName
-			logger.Info("Using database name from manifest", "db", dbName)
+			logger.Debug("Using database name from manifest", "db", dbName)
 		} else {
 			// Fallback to filename derivation
 			base := filepath.Base(jsonPath)
 			dbName = strings.TrimSuffix(base, filepath.Ext(base))
-			logger.Info("Using database name derived from filename", "db", dbName)
+			logger.Debug("Using database name derived from filename", "db", dbName)
 		}
 	}
 
@@ -104,7 +104,7 @@ func ImportManifest(ctx context.Context, jsonPath string, dbName string, force b
 	// Cleanup temp file on error
 	defer func() {
 		if err != nil {
-			logger.Info("Cleaning up temp file due to error", "path", tempPath)
+			logger.Debug("Cleaning up temp file due to error", "path", tempPath)
 			os.Remove(tempPath)
 		}
 	}()
@@ -165,20 +165,20 @@ func ImportManifest(ctx context.Context, jsonPath string, dbName string, force b
 	if !noBackup {
 		if _, err := os.Stat(finalPath); err == nil {
 			// File exists, perform backup
-			logger.Info("Backing up existing database", "db", dbName)
+			logger.Debug("Backing up existing database", "db", dbName)
 			if err := backupDatabase(dbName, finalPath); err != nil {
 				// If backup fails and --no-backup was not specified, fail the import to prevent data loss
 				return fmt.Errorf("backup failed and --no-backup was not specified: %w", err)
 			}
 		} else {
-			logger.Info("No existing database found, skipping backup", "db", dbName)
+			logger.Debug("No existing database found, skipping backup", "db", dbName)
 		}
 	} else {
-		logger.Info("Skipping backup due to --no-backup flag", "db", dbName)
+		logger.Debug("Skipping backup due to --no-backup flag", "db", dbName)
 	}
 
 	// 16. Atomic Swap
-	logger.Info("Performing atomic swap", "from", tempPath, "to", finalPath)
+	logger.Debug("Performing atomic swap", "from", tempPath, "to", finalPath)
 	if err := os.Rename(tempPath, finalPath); err != nil {
 		return fmt.Errorf("failed to swap database: %w", err)
 	}
@@ -396,7 +396,7 @@ func backupDatabase(dbName string, dbPath string) error {
 	if err := compressFile(dbPath, dbBackupPath); err != nil {
 		return fmt.Errorf("failed to compress database: %w", err)
 	}
-	logger.Info("Database backed up", "path", dbBackupPath)
+	logger.Debug("Database backed up", "path", dbBackupPath)
 
 	// 2. Backup Registry Metadata
 	reg, err := registry.LoadRegistry()
@@ -420,7 +420,7 @@ func backupDatabase(dbName string, dbPath string) error {
 		if err := os.WriteFile(regBackupPath, data, 0644); err != nil {
 			return fmt.Errorf("failed to write registry backup: %w", err)
 		}
-		logger.Info("Registry metadata backed up", "path", regBackupPath)
+		logger.Debug("Registry metadata backed up", "path", regBackupPath)
 	}
 
 	// 3. Rotate Backups

@@ -1,12 +1,12 @@
 /**
  * Component: Query Command
- * Block-UUID: decf0dad-833c-4cb1-a86c-3c5e995609c9
- * Parent-UUID: e3bb7aff-b8b9-4586-99b7-a6af38bd4943
- * Version: 2.3.0
- * Description: CLI command definition for 'gsc query'. Removed --set-default flags, added --quiet flag, and updated to use effective configuration (profiles). Updated to pass config to formatter for workspace headers. Updated list handlers to pass config for workspace headers. Updated to resolve database names from user input or config to physical names.
+ * Block-UUID: 2afd0a1d-b135-40e9-9a7a-9c391b7eb412
+ * Parent-UUID: decf0dad-833c-4cb1-a86c-3c5e995609c9
+ * Version: 2.4.0
+ * Description: CLI command definition for 'gsc query'. Removed --set-default flags, added --quiet flag, and updated to use effective configuration (profiles). Updated to pass config to formatter for workspace headers. Updated list handlers to pass config for workspace headers. Updated to resolve database names from user input or config to physical names. Updated to support professional CLI output: demoted Info logs to Debug and set SilenceUsage to true.
  * Language: Go
  * Created-at: 2026-02-02T19:55:00.000Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), Claude Haiku 4.5 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), Gemini 3 Flash (v1.0.5), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), Claude Haiku 4.5 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), Gemini 3 Flash (v1.0.5), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0)
  */
 
 
@@ -76,6 +76,7 @@ Supports hierarchical discovery (--list), context profiles, and simple value mat
 		// Priority 3: Query Execution or Status View
 		return handleQueryOrStatus(ctx, queryDB, queryField, queryValue, queryFormat, queryQuiet)
 	},
+	SilenceUsage: true, // Silence usage output on logic errors
 }
 
 func init() {
@@ -128,7 +129,7 @@ func handleList(ctx context.Context, dbName string, fieldName string, format str
 		}
 	}
 
-	logger.Info("Listing items", "database", dbName, "field", fieldName)
+	logger.Debug("Listing items", "database", dbName, "field", fieldName)
 
 	result, err := manifest.GetListResult(ctx, dbName, fieldName)
 	if err != nil {
@@ -183,7 +184,7 @@ func handleQueryOrStatus(ctx context.Context, dbName string, fieldName string, v
 		return fmt.Errorf("field is required. Use --field flag or set a profile with 'gsc config use <name>'")
 	}
 
-	logger.Info("Executing query", "database", resolvedDB, "field", resolvedField, "value", value)
+	logger.Debug("Executing query", "database", resolvedDB, "field", resolvedField, "value", value)
 	results, err := manifest.ExecuteSimpleQuery(ctx, resolvedDB, resolvedField, value)
 	if err != nil {
 		return err

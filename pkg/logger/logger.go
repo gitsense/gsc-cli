@@ -1,12 +1,12 @@
 /**
  * Component: Logger
- * Block-UUID: 81480f81-067e-4318-bb39-74f8796924fe
- * Parent-UUID: 30644fbe-cfc4-4df3-9469-8699e31cb478
- * Version: 2.1.0
- * Description: Package logger provides standardized logging utilities for the GSC CLI. Implemented a Log Level system (Error, Warning, Info, Debug) replacing the previous boolean quiet mode. Added key-value pair formatting and Stderr output.
+ * Block-UUID: 6066c165-4ce4-481a-a2ee-66656d0dc9c4
+ * Parent-UUID: 81480f81-067e-4318-bb39-74f8796924fe
+ * Version: 2.2.0
+ * Description: Package logger provides standardized logging utilities for the GSC CLI. Implemented a Log Level system (Error, Warning, Info, Debug) replacing the previous boolean quiet mode. Added key-value pair formatting and Stderr output. Updated Info level logic to respect LevelInfo threshold, enabling quiet-by-default behavior.
  * Language: Go
  * Created-at: 2026-02-05T00:38:08.372Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0)
  */
 
 
@@ -73,7 +73,8 @@ func formatMessage(message string, args ...interface{}) string {
 
 // Info logs an informational message (Level 2)
 func Info(message string, args ...interface{}) {
-	if currentLevel >= LevelWarning {
+	// Updated to check against LevelInfo to support quiet-by-default behavior
+	if currentLevel >= LevelInfo {
 		formatted := formatMessage(message, args...)
 		fmt.Fprintf(os.Stderr, "%s[INFO]%s %s\n", ColorBlue, ColorReset, formatted)
 	}

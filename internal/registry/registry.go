@@ -1,12 +1,12 @@
 /*
  * Component: Registry File I/O
- * Block-UUID: 13c3751e-ec29-4169-8515-8628f699c736
- * Parent-UUID: 94fcd642-200c-4161-8863-e5b580d8654a
- * Version: 1.4.0
- * Description: Handles loading and saving the registry file (.gitsense/manifest.json). Updated AddEntry to use UpsertEntry logic to prevent duplicate registry entries and ensure the manifest acts as the source of truth.
+ * Block-UUID: 3b44d021-8dd1-4927-9008-8e8e9ab9a1f0
+ * Parent-UUID: 13c3751e-ec29-4169-8515-8628f699c736
+ * Version: 1.5.0
+ * Description: Handles loading and saving the registry file (.gitsense/manifest.json). Updated AddEntry to use UpsertEntry logic to prevent duplicate registry entries and ensure the manifest acts as the source of truth. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted routine Info and Success logs to Debug level to enable quiet-by-default behavior.
  * Language: Go
  * Created-at: 2026-02-02T05:30:00.000Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), Claude Haiku 4.5 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), Claude Haiku 4.5 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
  */
 
 
@@ -28,7 +28,8 @@ import (
 func resolveRegistryPath() (string, error) {
 	root, err := git.FindProjectRoot()
 	if err != nil {
-		return "", fmt.Errorf("failed to find project root: %w", err)
+		logger.Error("Failed to resolve registry path", "error", err)
+		return "", err
 	}
 
 	registryPath := filepath.Join(root, settings.GitSenseDir, settings.RegistryFileName)
@@ -46,7 +47,7 @@ func LoadRegistry() (*Registry, error) {
 
 	// Check if file exists
 	if _, err := os.Stat(registryPath); os.IsNotExist(err) {
-		logger.Info("Registry file not found, creating new registry", "path", registryPath)
+		logger.Debug("Registry file not found, creating new registry", "path", registryPath)
 		return NewRegistry(), nil
 	}
 
@@ -64,7 +65,7 @@ func LoadRegistry() (*Registry, error) {
 		return nil, err
 	}
 
-	logger.Info("Registry loaded successfully", "path", registryPath, "databases", len(registry.Databases))
+	logger.Debug("Registry loaded successfully", "path", registryPath, "databases", len(registry.Databases))
 	return &registry, nil
 }
 
@@ -97,7 +98,7 @@ func SaveRegistry(registry *Registry) error {
 		return err
 	}
 
-	logger.Success("Registry saved successfully", "path", registryPath)
+	logger.Debug("Registry saved successfully", "path", registryPath)
 	return nil
 }
 

@@ -1,12 +1,12 @@
 /*
  * Component: Manifest Bundle Command
- * Block-UUID: 535bc371-99a6-4b3b-8d58-fcb8cbb9f210
- * Parent-UUID: 612e37d9-20da-4ccb-8ad1-6ffc95312246
- * Version: 1.1.0
- * Description: CLI command definition for generating context bundles from a manifest database using SQL queries. Removed unused getter function.
+ * Block-UUID: f2767aa4-33e1-4446-80f5-14ed2d5162ee
+ * Parent-UUID: 535bc371-99a6-4b3b-8d58-fcb8cbb9f210
+ * Version: 1.2.0
+ * Description: CLI command definition for generating context bundles from a manifest database using SQL queries. Removed unused getter function. Updated to support professional CLI output: removed redundant logger.Error calls in RunE and set SilenceUsage to true to prevent usage spam on logic errors.
  * Language: Go
  * Created-at: 2026-02-02T08:10:00.000Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -43,13 +43,14 @@ optimized for GitSense Chat context loading.`,
 		ctx := context.Background()
 		output, err := manifest.CreateBundle(ctx, dbName, bundleQuery, bundleFormat)
 		if err != nil {
-			logger.Error(fmt.Sprintf("Bundle generation failed: %v", err))
+			// Error is returned to Cobra, which will print it cleanly via root.HandleExit
 			return err
 		}
 
 		fmt.Println(output)
 		return nil
 	},
+	SilenceUsage: true, // Silence usage output on logic errors (e.g., DB not found)
 }
 
 func init() {

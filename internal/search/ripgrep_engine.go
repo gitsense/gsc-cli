@@ -1,12 +1,12 @@
 /*
  * Component: Ripgrep Search Engine
- * Block-UUID: 0237b6f1-15a1-42f4-8713-81e653814711
- * Parent-UUID: f4e22502-a64f-42cf-a515-72f1f228af5b
- * Version: 2.1.0
- * Description: Implements the SearchEngine interface using ripgrep. Updated to return SearchResult with timing and version info. Fixed line number parsing. Refactored all logger calls to use structured Key-Value pairs instead of format strings.
+ * Block-UUID: 5ed1e9cb-0cb4-43d3-b642-36c9ee36492f
+ * Parent-UUID: 0237b6f1-15a1-42f4-8713-81e653814711
+ * Version: 2.2.0
+ * Description: Implements the SearchEngine interface using ripgrep. Updated to return SearchResult with timing and version info. Fixed line number parsing. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted routine Info logs to Debug level to enable quiet-by-default behavior.
  * Language: Go
  * Created-at: 2026-02-03T18:06:35.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0)
  */
 
 
@@ -46,7 +46,7 @@ func (e *RipgrepEngine) Search(ctx context.Context, options SearchOptions) (Sear
 
 	// 3. Build ripgrep command
 	args := e.buildArgs(options)
-	logger.Info("Executing ripgrep", "pattern", options.Pattern, "args", strings.Join(args, " "))
+	logger.Debug("Executing ripgrep", "pattern", options.Pattern, "args", strings.Join(args, " "))
 
 	// 4. Create command
 	cmd := exec.CommandContext(ctx, "rg", args...)
@@ -72,7 +72,7 @@ func (e *RipgrepEngine) Search(ctx context.Context, options SearchOptions) (Sear
 	if err := cmd.Wait(); err != nil {
 		// Ripgrep returns exit code 1 if no matches found, which is not an error for us
 		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
-			logger.Info("Ripgrep found no matches")
+			logger.Debug("Ripgrep found no matches")
 			return SearchResult{
 				Matches:     []RawMatch{},
 				ToolName:    "ripgrep",
@@ -84,7 +84,7 @@ func (e *RipgrepEngine) Search(ctx context.Context, options SearchOptions) (Sear
 	}
 
 	duration := int(time.Since(startTime).Milliseconds())
-	logger.Info("Ripgrep execution completed", "matches", len(matches), "duration_ms", duration)
+	logger.Debug("Ripgrep execution completed", "matches", len(matches), "duration_ms", duration)
 
 	return SearchResult{
 		Matches:     matches,

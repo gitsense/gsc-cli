@@ -1,12 +1,12 @@
 /**
  * Component: Query Configuration Manager
- * Block-UUID: d2decfd1-5a1b-43f0-9068-95271f235f53
- * Parent-UUID: dfa64e2a-d8d8-422b-9686-35825e259acb
- * Version: 2.3.0
- * Description: Manages the .gitsense/config.json file and profile loading. Updated GlobalSettings to include Scope, updated mergeConfig to handle scope merging, and integrated .gitsense-map loading into GetEffectiveConfig to ensure project-level scope is considered. Refactored all logger calls to use structured Key-Value pairs instead of format strings.
+ * Block-UUID: 669a4b74-5db3-4c8a-99ff-1d1786758846
+ * Parent-UUID: d2decfd1-5a1b-43f0-9068-95271f235f53
+ * Version: 2.4.0
+ * Description: Manages the .gitsense/config.json file and profile loading. Updated GlobalSettings to include Scope, updated mergeConfig to handle scope merging, and integrated .gitsense-map loading into GetEffectiveConfig to ensure project-level scope is considered. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted routine Info and Success logs to Debug level to prevent duplicate output with the CLI layer and enable quiet-by-default behavior.
  * Language: Go
  * Created-at: 2026-02-02T18:48:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0)
  */
 
 
@@ -100,7 +100,7 @@ func SaveConfig(config *QueryConfig) error {
 		return err
 	}
 
-	logger.Success("Config saved successfully", "path", configPath)
+	logger.Debug("Config saved successfully", "path", configPath)
 	return nil
 }
 
@@ -198,7 +198,7 @@ func SaveProfile(profile *Profile) error {
 		return err
 	}
 
-	logger.Success("Profile saved successfully", "name", profile.Name)
+	logger.Debug("Profile saved successfully", "name", profile.Name)
 	return nil
 }
 
