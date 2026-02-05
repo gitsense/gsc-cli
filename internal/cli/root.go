@@ -1,12 +1,12 @@
 /**
  * Component: Root CLI Command
- * Block-UUID: b680f663-bfcd-4dc6-96d0-462ce0c26272
- * Parent-UUID: e6b32d9d-60f5-4346-8573-2c1c9100e314
- * Version: 1.14.0
+ * Block-UUID: df7b58fa-9b5f-4541-85cd-c1b1af3872f2
+ * Parent-UUID: b680f663-bfcd-4dc6-96d0-462ce0c26272
+ * Version: 1.15.0
  * Description: Root command for the gsc CLI, registering the manifest subcommand group, top-level usage commands, config command, and the new info command. Replaced 'rg' with 'grep' command. Added pre-flight check in PersistentPreRun to ensure .gitsense directory exists for all commands except 'init' and 'doctor', preventing misleading errors. Updated to support professional CLI output: modified HandleExit to print clean error messages without logger prefixes, and refactored PersistentPreRun to return errors for pre-flight checks while silencing usage output for logic errors.
  * Language: Go
- * Created-at: 2026-02-02T05:30:00.000Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), Claude Haiku 4.5 (v1.3.0), Claude Haiku 4.5 (v1.4.0), GLM-4.7 (v1.5.0), Claude Haiku 4.5 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0)
+ * Created-at: 2026-02-05T04:09:04.879Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), Claude Haiku 4.5 (v1.3.0), Claude Haiku 4.5 (v1.4.0), GLM-4.7 (v1.5.0), Claude Haiku 4.5 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0)
  */
 
 
@@ -42,6 +42,7 @@ Management Commands:
 	// Disable the default 'completion' command to reduce test scope.
 	// Shell completion functionality exists in Cobra but is hidden for now.
 	CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
+	SilenceErrors: true,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		// 1. Check for quiet flag first
 		quiet, _ := cmd.Flags().GetBool("quiet")

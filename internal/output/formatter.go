@@ -1,12 +1,12 @@
 /**
  * Component: Output Formatter
- * Block-UUID: f24a8400-1ac9-4d41-b062-d477874ea5dd
- * Parent-UUID: a571e35e-d1dd-4335-b6aa-96d39b4980e0
- * Version: 1.4.0
+ * Block-UUID: 10ecb6c7-54b4-449e-8e81-cee5d74b002a
+ * Parent-UUID: 5783c69e-5eea-4cfb-be12-6e40b405dddc
+ * Version: 1.6.0
  * Description: Provides utility functions to format data into JSON, Table, or CSV strings. Added FormatMetadataYAML and FormatMetadataJSON to support the ripgrep metadata appendix.
  * Language: Go
- * Created-at: 2026-02-03T07:53:59.293Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
+ * Created-at: 2026-02-05T04:25:15.860Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0)
  */
 
 
@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/mattn/go-isatty"
@@ -88,6 +89,19 @@ func FormatTable(headers []string, rows [][]string) string {
 	return sb.String()
 }
 
+// truncate shortens a string to a maximum length, appending "..." if truncated.
+func truncate(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	// Ensure we don't cut in the middle of a multibyte character
+	runes := []rune(s)
+	if len(runes) <= maxLen {
+		return s
+	}
+	return string(runes[:maxLen-3]) + "..."
+}
+
 // FormatCSV converts headers and rows into a CSV formatted string and prints it.
 func FormatCSV(headers []string, rows [][]string) {
 	var sb strings.Builder
@@ -128,7 +142,7 @@ func FormatDatabaseTable(databases []interface{}, format string) {
 	case "json":
 		FormatJSON(databases)
 	case "csv":
-		headers := []string{"Name", "Description", "Tags", "DB Path", "Entry Count"}
+		headers := []string{"Name", "Description", "Tags", "DB Name", "Entry Count"}
 		rows := make([][]string, len(databases))
 		for i, db := range databases {
 			dbInfo := db.(map[string]interface{})
@@ -138,15 +152,15 @@ func FormatDatabaseTable(databases []interface{}, format string) {
 			}
 			rows[i] = []string{
 				fmt.Sprintf("%v", dbInfo["name"]),
-				fmt.Sprintf("%v", dbInfo["description"]),
+				truncate(fmt.Sprintf("%v", dbInfo["description"]), 60), // Truncate description to 60 chars
 				tags,
-				fmt.Sprintf("%v", dbInfo["db_path"]),
+				filepath.Base(fmt.Sprintf("%v", dbInfo["db_path"])),
 				fmt.Sprintf("%v", dbInfo["entry_count"]),
 			}
 		}
 		FormatCSV(headers, rows)
 	case "table":
-		headers := []string{"Name", "Description", "Tags", "DB Path", "Entry Count"}
+		headers := []string{"Name", "Description", "Tags", "DB Name", "Entry Count"}
 		rows := make([][]string, len(databases))
 		for i, db := range databases {
 			dbInfo := db.(map[string]interface{})
@@ -156,9 +170,9 @@ func FormatDatabaseTable(databases []interface{}, format string) {
 			}
 			rows[i] = []string{
 				fmt.Sprintf("%v", dbInfo["name"]),
-				fmt.Sprintf("%v", dbInfo["description"]),
+				truncate(fmt.Sprintf("%v", dbInfo["description"]), 60), // Truncate description to 60 chars
 				tags,
-				fmt.Sprintf("%v", dbInfo["db_path"]),
+				filepath.Base(fmt.Sprintf("%v", dbInfo["db_path"])),
 				fmt.Sprintf("%v", dbInfo["entry_count"]),
 			}
 		}
