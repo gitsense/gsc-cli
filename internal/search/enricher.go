@@ -1,12 +1,12 @@
 /*
  * Component: Search Result Enricher
- * Block-UUID: 762d67e4-d04e-43cd-8822-ac6916f3f42d
- * Parent-UUID: 1f9b7458-ca62-4805-98ed-45ac176d5391
- * Version: 2.3.0
- * Description: Enriches raw search matches with metadata from the manifest database. Supports filtering by analyzed status, file patterns, and metadata conditions. Refactored SQL query construction in fetchMetadataMap for clarity and correctness. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted routine Info logs to Debug level to enable quiet-by-default behavior.
+ * Block-UUID: 8736373c-593a-4cbb-a799-235046cb0619
+ * Parent-UUID: 762d67e4-d04e-43cd-8822-ac6916f3f42d
+ * Version: 2.4.0
+ * Description: Enriches raw search matches with metadata from the manifest database. Supports filtering by analyzed status, file patterns, and metadata conditions. Refactored SQL query construction in fetchMetadataMap for clarity and correctness. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted routine Info logs to Debug level to enable quiet-by-default behavior. Updated checkSingleCondition to support querying array fields stored as JSON strings.
  * Language: Go
  * Created-at: 2026-02-03T18:06:35.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0)
  */
 
 
@@ -15,6 +15,7 @@ package search
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -246,49 +247,23 @@ func checkSingleCondition(metadata map[string]interface{}, cond FilterCondition)
 	valueStr = strings.ToLower(valueStr)
 	condValue := strings.ToLower(cond.Value)
 
+	// Attempt to parse as JSON array first
+	var jsonArray []interface{}
+	if err := json.Unmarshal([]byte(fmt.Sprintf("%v", value)), &jsonArray); err == nil {
+		// Successfully parsed as JSON array
+		return checkArrayCondition(jsonArray, cond)
+	}
+
+	// Fallback to scalar logic
 	switch cond.Operator {
 	case "=":
-		// For lists (stored as comma-separated or JSON), check if value contains the target
-		// For scalars, check equality
-		if strings.Contains(valueStr, ",") {
-			// Treat as list
-			parts := strings.Split(valueStr, ",")
-			for _, part := range parts {
-				if strings.TrimSpace(part) == condValue {
-					return true
-				}
-			}
-			return false
-		}
 		return valueStr == condValue
 
 	case "!=":
-		if strings.Contains(valueStr, ",") {
-			parts := strings.Split(valueStr, ",")
-			for _, part := range parts {
-				if strings.TrimSpace(part) == condValue {
-					return false
-				}
-			}
-			return true
-		}
 		return valueStr != condValue
 
 	case "in":
 		targetValues := strings.Split(condValue, ",")
-		if strings.Contains(valueStr, ",") {
-			// List in List: check intersection
-			sourceParts := strings.Split(valueStr, ",")
-			for _, src := range sourceParts {
-				for _, tgt := range targetValues {
-					if strings.TrimSpace(src) == strings.TrimSpace(tgt) {
-						return true
-					}
-				}
-			}
-			return false
-		}
-		// Scalar in List
 		for _, tgt := range targetValues {
 			if valueStr == strings.TrimSpace(tgt) {
 				return true
@@ -298,17 +273,6 @@ func checkSingleCondition(metadata map[string]interface{}, cond FilterCondition)
 
 	case "not in":
 		targetValues := strings.Split(condValue, ",")
-		if strings.Contains(valueStr, ",") {
-			sourceParts := strings.Split(valueStr, ",")
-			for _, src := range sourceParts {
-				for _, tgt := range targetValues {
-					if strings.TrimSpace(src) == strings.TrimSpace(tgt) {
-						return false
-					}
-				}
-			}
-			return true
-		}
 		for _, tgt := range targetValues {
 			if valueStr == strings.TrimSpace(tgt) {
 				return false
@@ -356,4 +320,77 @@ func checkSingleCondition(metadata map[string]interface{}, cond FilterCondition)
 	}
 
 	return false
+}
+
+// checkArrayCondition handles comparison logic for JSON array fields.
+func checkArrayCondition(array []interface{}, cond FilterCondition) bool {
+	condValue := strings.ToLower(cond.Value)
+
+	switch cond.Operator {
+	case "=":
+		// Check if condValue exists in the array
+		for _, item := range array {
+			if strings.ToLower(fmt.Sprintf("%v", item)) == condValue {
+				return true
+			}
+		}
+		return false
+
+	case "!=":
+		// Check if condValue does NOT exist in the array
+		for _, item := range array {
+			if strings.ToLower(fmt.Sprintf("%v", item)) == condValue {
+				return false
+			}
+		}
+		return true
+
+	case "in":
+		// Check if any of the comma-separated values in condValue exist in the array
+		targetValues := strings.Split(condValue, ",")
+		for _, item := range array {
+			itemStr := strings.ToLower(fmt.Sprintf("%v", item))
+			for _, tgt := range targetValues {
+				if itemStr == strings.TrimSpace(tgt) {
+					return true
+				}
+			}
+		}
+		return false
+
+	case "not in":
+		// Check if NONE of the comma-separated values in condValue exist in the array
+		targetValues := strings.Split(condValue, ",")
+		for _, item := range array {
+			itemStr := strings.ToLower(fmt.Sprintf("%v", item))
+			for _, tgt := range targetValues {
+				if itemStr == strings.TrimSpace(tgt) {
+					return false
+				}
+			}
+		}
+		return true
+
+	case "~":
+		// Check if any element in the array contains condValue
+		for _, item := range array {
+			if strings.Contains(strings.ToLower(fmt.Sprintf("%v", item)), condValue) {
+				return true
+			}
+		}
+		return false
+
+	case "!~":
+		// Check if NO element in the array contains condValue
+		for _, item := range array {
+			if strings.Contains(strings.ToLower(fmt.Sprintf("%v", item)), condValue) {
+				return false
+			}
+		}
+		return true
+
+	default:
+		// Operators like >, <, range are not supported for arrays in this context
+		return false
+	}
 }

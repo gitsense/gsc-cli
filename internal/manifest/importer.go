@@ -1,12 +1,12 @@
 /**
  * Component: Manifest Importer
- * Block-UUID: 34ec8d5e-dd42-49a0-b9c7-d9e05ae1c5da
- * Parent-UUID: 70c0084c-5679-4866-b204-f7d0ab5dfcbf
- * Version: 1.8.0
- * Description: Logic to parse a JSON manifest file and import its data into a SQLite database. Implemented atomic import workflow: temp file creation, backup rotation, atomic swap, and registry upsert. Added --force and --no-backup support. Added file-based locking to prevent concurrent imports and strict error handling for backup failures. Updated to support professional CLI output: demoted routine Info logs to Debug level to enable quiet-by-default behavior.
+ * Block-UUID: 52f818ee-dfb8-43cc-b490-3dd5a2a092ce
+ * Parent-UUID: 34ec8d5e-dd42-49a0-b9c7-d9e05ae1c5da
+ * Version: 1.9.0
+ * Description: Logic to parse a JSON manifest file and import its data into a SQLite database. Implemented atomic import workflow: temp file creation, backup rotation, atomic swap, and registry upsert. Added --force and --no-backup support. Added file-based locking to prevent concurrent imports and strict error handling for backup failures. Updated to support professional CLI output: demoted routine Info logs to Debug level to enable quiet-by-default behavior. Updated to store array metadata fields as JSON strings to preserve structure and enable accurate querying.
  * Language: Go
  * Created-at: 2026-02-05T02:34:17.139Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.6.1), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.6.1), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0)
  */
 
 
@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 	"time"
@@ -345,8 +346,21 @@ func insertFileData(ctx context.Context, tx *sql.Tx, manifestFile *ManifestFile)
 
 		// Insert Metadata Fields
 		for fieldRef, value := range dataRow.Fields {
-			// Convert value to string for storage
-			valueStr := fmt.Sprintf("%v", value)
+			var valueStr string
+
+			// Check if value is a slice/array to store as JSON
+			val := reflect.ValueOf(value)
+			if val.Kind() == reflect.Slice || val.Kind() == reflect.Array {
+				jsonData, err := json.Marshal(value)
+				if err != nil {
+					logger.Warning("Failed to marshal array field to JSON, falling back to string", "field", fieldRef, "error", err)
+					valueStr = fmt.Sprintf("%v", value)
+				} else {
+					valueStr = string(jsonData)
+				}
+			} else {
+				valueStr = fmt.Sprintf("%v", value)
+			}
 
 			if _, err := metaStmt.ExecContext(ctx, dataRow.FilePath, fieldRef, valueStr); err != nil {
 				return fmt.Errorf("failed to insert metadata for %s: %w", dataRow.FilePath, err)

@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Workspace Info Logic
- * Block-UUID: 6ac72f9c-1ee8-445c-8865-06e0175b762d
- * Parent-UUID: d3c4b2b7-19c5-49c4-be2e-8b94a9792f72
- * Version: 1.4.0
+ * Block-UUID: 80793b68-5814-44f7-b37b-dbd9a507d88c
+ * Parent-UUID: 6ac72f9c-1ee8-445c-8865-06e0175b762d
+ * Version: 1.5.0
  * Description: Logic to gather and format workspace information for the 'gsc info' command, including active profiles and available databases. Added 'gsc config active' to Quick Actions for consistency with the new command name. Refactored all logger calls to use structured Key-Value pairs instead of format strings.
  * Language: Go
- * Created-at: 2026-02-03T03:10:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
+ * Created-at: 2026-02-05T05:24:58.365Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
  */
 
 
@@ -97,7 +97,7 @@ func formatInfoTable(info *WorkspaceInfo, verbose bool) string {
 
 	// Use the extracted header function
 	// We need a QueryConfig to pass to it, so we construct a minimal one or load it
-	config, err := LoadConfig()
+	config, err := GetEffectiveConfig()
 	if err != nil {
 		// Fallback if config fails to load
 		sb.WriteString("╔════════════════════════════════════════════════════════════════╗\n")
@@ -166,7 +166,15 @@ func FormatWorkspaceHeader(config *QueryConfig) string {
 		sb.WriteString(fmt.Sprintf("Active Profile:  %s\n", config.ActiveProfile))
 		sb.WriteString(fmt.Sprintf("├─ Database:    %s\n", config.Global.DefaultDatabase))
 		sb.WriteString(fmt.Sprintf("├─ Field:       %s\n", config.Query.DefaultField))
-		sb.WriteString(fmt.Sprintf("└─ Format:      %s\n", config.Query.DefaultFormat))
+		sb.WriteString(fmt.Sprintf("├─ Format:      %s\n", config.Query.DefaultFormat))
+
+		// Display Scope Configuration
+		if config.Global.Scope != nil {
+			sb.WriteString(fmt.Sprintf("├─ Scope Inc:   %s\n", strings.Join(config.Global.Scope.Include, ", ")))
+			sb.WriteString(fmt.Sprintf("└─ Scope Exc:   %s\n", strings.Join(config.Global.Scope.Exclude, ", ")))
+		} else {
+			sb.WriteString("└─ Scope:       (default - all tracked files)\n")
+		}
 	} else {
 		sb.WriteString("Active Profile:  (none)\n")
 		sb.WriteString("  Run 'gsc config use <name>' to activate a profile.\n")

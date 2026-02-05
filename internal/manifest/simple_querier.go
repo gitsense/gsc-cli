@@ -1,12 +1,12 @@
 /*
  * Component: Simple Query Executor
- * Block-UUID: 13bdeb15-93f7-40e7-9b30-0dee06e728b1
- * Parent-UUID: f918b0c7-4112-4598-863f-f8a7b7b3a3af
- * Version: 1.1.0
- * Description: Executes simple value-matching queries against the manifest database and handles hierarchical list operations. Added PrepareTargetSet to create and populate a temporary table with files matching the active Focus Scope, enabling scalable SQL joins for Phase 2 aggregations.
+ * Block-UUID: fcb4dd65-2763-4bbb-acb1-83a6253fa67d
+ * Parent-UUID: 13bdeb15-93f7-40e7-9b30-0dee06e728b1
+ * Version: 1.2.0
+ * Description: Executes simple value-matching queries against the manifest database and handles hierarchical list operations. Added PrepareTargetSet to create and populate a temporary table with files matching the active Focus Scope, enabling scalable SQL joins for Phase 2 aggregations. Updated ExecuteSimpleQuery to support querying array fields stored as JSON using SQLite's json_each function.
  * Language: Go
  * Created-at: 2026-02-02T18:50:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -53,10 +53,10 @@ func ExecuteSimpleQuery(ctx context.Context, dbName string, fieldName string, va
 	// The field_name is stored in metadata_fields, and the value is in file_metadata
 	// We need to join tables to get the field_id first, then match values
 	
-	// Step 5a: Get field_id for the field name
-	var fieldID string
-	fieldQuery := `SELECT field_id FROM metadata_fields WHERE field_name = ? LIMIT 1`
-	err = database.QueryRowContext(ctx, fieldQuery, fieldName).Scan(&fieldID)
+	// Step 5a: Get field_id and field_type for the field name
+	var fieldID, fieldType string
+	fieldQuery := `SELECT field_id, field_type FROM metadata_fields WHERE field_name = ? LIMIT 1`
+	err = database.QueryRowContext(ctx, fieldQuery, fieldName).Scan(&fieldID, &fieldType)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("field '%s' not found in database '%s'", fieldName, dbName)
@@ -65,23 +65,40 @@ func ExecuteSimpleQuery(ctx context.Context, dbName string, fieldName string, va
 	}
 
 	// Step 5b: Query files matching the values
-	// We use LIKE for partial matching or = for exact matching?
-	// The spec says "value matching", usually implies exact match or contains.
-	// Let's use exact match for now, but handle the OR logic.
+	// Strategy depends on field_type:
+	// - If "array" or "list": Use json_each to search within the JSON array string.
+	// - Otherwise: Use standard IN clause for scalar matching.
 	
+	args := make([]interface{}, 0, len(values)+1)
+	args = append(args, fieldID)
+
+	var query string
 	placeholders := strings.Repeat("?,", len(values))
 	placeholders = placeholders[:len(placeholders)-1] // Remove trailing comma
 
-	query := fmt.Sprintf(`
-		SELECT f.file_path, f.chat_id
-		FROM files f
-		INNER JOIN file_metadata fm ON f.file_path = fm.file_path
-		WHERE fm.field_id = ?
-		  AND fm.field_value IN (%s)
-	`, placeholders)
+	if fieldType == "array" || fieldType == "list" {
+		// JSON Array Query: Check if any of the target values exist in the JSON array
+		query = fmt.Sprintf(`
+			SELECT f.file_path, f.chat_id
+			FROM files f
+			INNER JOIN file_metadata fm ON f.file_path = fm.file_path
+			WHERE fm.field_id = ?
+			  AND EXISTS (
+				  SELECT 1 FROM json_each(fm.field_value)
+				  WHERE json_each.value IN (%s)
+			  )
+		`, placeholders)
+	} else {
+		// Scalar Query: Standard exact match
+		query = fmt.Sprintf(`
+			SELECT f.file_path, f.chat_id
+			FROM files f
+			INNER JOIN file_metadata fm ON f.file_path = fm.file_path
+			WHERE fm.field_id = ?
+			  AND fm.field_value IN (%s)
+		`, placeholders)
+	}
 
-	args := make([]interface{}, 0, len(values)+1)
-	args = append(args, fieldID)
 	for _, v := range values {
 		args = append(args, strings.TrimSpace(v))
 	}
