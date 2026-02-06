@@ -1,12 +1,12 @@
 /**
  * Component: Git Discovery
- * Block-UUID: d6a7296e-f17a-44fa-9aee-5b796e2f64a5
- * Parent-UUID: 6b39f1a4-918d-47c4-bfdd-0d36cce6aa53
- * Version: 1.6.0
+ * Block-UUID: d564e339-ef25-4f2d-894f-611175df95ad
+ * Parent-UUID: d6a7296e-f17a-44fa-9aee-5b796e2f64a5
+ * Version: 1.7.0
  * Description: Provides functionality to discover the project root by locating the .git directory. Added GetTrackedFiles to execute 'git ls-files' for scope validation and coverage analysis.
  * Language: Go
- * Created-at: 2026-02-02T05:30:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), Claude Haiku 4.5 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0)
+ * Created-at: 2026-02-06T04:05:10.555Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), Claude Haiku 4.5 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), Gemini 3 Flash (v1.7.0)
  */
 
 
@@ -35,6 +35,36 @@ const (
 // with a global .gitsense directory in the user's home folder.
 func FindProjectRoot() (string, error) {
 	return FindGitRoot()
+}
+
+// GetRepoContext returns the canonical (physical) absolute path to the repository root
+// and the relative path from that root to the current working directory.
+// This handles symlinks by evaluating them before calculating the offset.
+func GetRepoContext() (root string, cwdOffset string, err error) {
+	rawRoot, err := FindGitRoot()
+	if err != nil {
+		return "", "", err
+	}
+
+	// Evaluate symlinks for the root
+	root, err = filepath.EvalSymlinks(rawRoot)
+	if err != nil {
+		return "", "", err
+	}
+
+	// Get and evaluate symlinks for the CWD
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", "", err
+	}
+	absCwd, err := filepath.EvalSymlinks(cwd)
+	if err != nil {
+		return "", "", err
+	}
+
+	// Calculate the relative offset from root to CWD
+	cwdOffset, err = filepath.Rel(root, absCwd)
+	return root, cwdOffset, err
 }
 
 // FindGitRoot walks up the directory tree from the current working directory

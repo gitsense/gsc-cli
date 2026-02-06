@@ -1,12 +1,12 @@
 /**
  * Component: Grep Command
- * Block-UUID: 8f012f7d-eab5-4a68-958e-c82ec3eb57ed
- * Parent-UUID: cfa7f686-94a8-4b3b-97e5-fb3eb7af5cce
- * Version: 3.8.0
+ * Block-UUID: 3324f514-a7e8-4e02-88ba-478d2663f435
+ * Parent-UUID: 0b8566f5-c17e-4923-b295-1241f4541dce
+ * Version: 3.9.1
  * Description: CLI command definition for 'gsc grep'. Updated to support metadata filtering, stats recording, and case-sensitive defaults. Updated to resolve database names from user input or config to physical names. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted Info logs to Debug and set SilenceUsage to true.
  * Language: Go
- * Created-at: 2026-02-06T03:04:32.420Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v3.0.0), GLM-4.7 (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.7 (v3.3.0), Gemini 3 Flash (v3.4.0), Gemini 3 Flash (v3.5.0), Gemini 3 Flash (v3.6.0), Gemini 3 Flash (v3.7.0), Gemini 3 Flash (v3.8.0)
+ * Created-at: 2026-02-06T04:09:20.723Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v3.0.0), GLM-4.7 (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.7 (v3.3.0), Gemini 3 Flash (v3.4.0), Gemini 3 Flash (v3.5.0), Gemini 3 Flash (v3.6.0), Gemini 3 Flash (v3.7.0), Gemini 3 Flash (v3.8.0), Gemini 3 Flash (v3.9.0), Gemini 3 Flash (v3.9.1)
  */
 
 
@@ -122,6 +122,14 @@ Filtering:
 			requestedFields = config.RG.DefaultFields
 		}
 
+		// 4. Get Repository Context (Root and CWD Offset)
+		repoRoot, cwdOffset, err := git.GetRepoContext()
+		if err != nil {
+			logger.Debug("Failed to get repository context", "error", err)
+			// Fallback to empty offset if not in a git repo
+			cwdOffset = ""
+		}
+
 		// 4. Get Repository Info
 		repoInfo, err := git.GetRepositoryInfo()
 		if err != nil {
@@ -131,11 +139,12 @@ Filtering:
 		}
 
 		// 5. Get System Info
+		// We already have the repoRoot from GetRepoContext, so we can use it directly
 		sysInfo, err := git.GetSystemInfo()
 		if err != nil {
 			logger.Debug("Failed to get system info", "error", err)
 			// Continue with minimal info if it fails
-			sysInfo = &git.SystemInfo{OS: "unknown", ProjectRoot: ""}
+			sysInfo = &git.SystemInfo{OS: "unknown", ProjectRoot: repoRoot}
 		}
 
 		// 6. Parse Filters
@@ -160,7 +169,7 @@ Filtering:
 		}
 
 		// 8. Enrich Matches (with filters)
-		enrichedMatches, availableFields, err := search.EnrichMatches(cmd.Context(), searchResult.Matches, dbName, filters, grepAnalyzed, grepFiles, requestedFields)
+		enrichedMatches, availableFields, err := search.EnrichMatches(cmd.Context(), searchResult.Matches, dbName, filters, grepAnalyzed, grepFiles, requestedFields, cwdOffset)
 		if err != nil {
 			return err
 		}
@@ -191,7 +200,7 @@ Filtering:
 			},
 			System: search.SystemInfo{
 				OS:          sysInfo.OS,
-				ProjectRoot: sysInfo.ProjectRoot,
+				ProjectRoot: repoRoot, // Use the canonical root we discovered
 			},
 			Repository: search.RepositoryInfo{
 				Name:   repoInfo.Name,

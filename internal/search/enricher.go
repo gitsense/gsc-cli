@@ -1,12 +1,12 @@
 /**
  * Component: Search Result Enricher
- * Block-UUID: 5a96db41-a3d3-498d-99f2-a00865a47e23
- * Parent-UUID: 727c6dbf-a785-4c0c-8495-43b2028ab81d
- * Version: 2.6.1
+ * Block-UUID: 21ddbd40-3b85-4859-979b-89412a29d417
+ * Parent-UUID: 5a96db41-a3d3-498d-99f2-a00865a47e23
+ * Version: 2.7.0
  * Description: Enriches raw search matches with metadata from the manifest database. Supports filtering by analyzed status, file patterns, and metadata conditions. Refactored SQL query construction in fetchMetadataMap for clarity and correctness. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted routine Info logs to Debug level to enable quiet-by-default behavior. Updated checkSingleCondition to support querying array fields stored as JSON strings.
  * Language: Go
- * Created-at: 2026-02-06T02:16:46.027Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), Gemini 3 Flash (v2.5.0), Gemini 3 Flash (v2.6.0), Gemini 3 Flash (v2.6.1)
+ * Created-at: 2026-02-06T04:07:02.769Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), Gemini 3 Flash (v2.5.0), Gemini 3 Flash (v2.6.0), Gemini 3 Flash (v2.6.1), Gemini 3 Flash (v2.7.0)
  */
 
 
@@ -17,6 +17,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -27,7 +28,7 @@ import (
 
 // EnrichMatches takes raw search matches and enriches them with metadata from the database.
 // It applies system filters (analyzed, file path) and metadata filters.
-func EnrichMatches(ctx context.Context, matches []RawMatch, dbName string, filters []FilterCondition, analyzedFilter string, filePatterns []string, requestedFields []string) ([]MatchResult, []string, error) {
+func EnrichMatches(ctx context.Context, matches []RawMatch, dbName string, filters []FilterCondition, analyzedFilter string, filePatterns []string, requestedFields []string, cwdOffset string) ([]MatchResult, []string, error) {
 	if len(matches) == 0 {
 		return []MatchResult{}, []string{}, nil
 	}
@@ -53,7 +54,9 @@ func EnrichMatches(ctx context.Context, matches []RawMatch, dbName string, filte
 	// 4. Extract unique file paths for batch lookup
 	uniquePaths := make(map[string]bool)
 	for _, match := range matches {
-		uniquePaths[match.FilePath] = true
+		// Normalize path to be relative to repo root for DB lookup
+		dbPath := filepath.Join(cwdOffset, match.FilePath)
+		uniquePaths[dbPath] = true
 	}
 
 	filePaths := make([]string, 0, len(uniquePaths))
@@ -72,8 +75,11 @@ func EnrichMatches(ctx context.Context, matches []RawMatch, dbName string, filte
 	// 6. Enrich each match and apply metadata filters
 	var enriched []MatchResult
 	for _, match := range matches {
+		// Normalize path for lookup
+		dbPath := filepath.Join(cwdOffset, match.FilePath)
+
 		result := MatchResult{
-			FilePath:      match.FilePath,
+			FilePath:      dbPath, // Use normalized path for the result
 			LineNumber:    match.LineNumber,
 			LineText:      match.LineText,
 			ContextBefore: match.ContextBefore,
@@ -82,7 +88,7 @@ func EnrichMatches(ctx context.Context, matches []RawMatch, dbName string, filte
 		}
 
 		// Check if file exists in metadata map (passed system filters)
-		if meta, exists := metadataMap[match.FilePath]; exists {
+		if meta, exists := metadataMap[dbPath]; exists {
 			result.ChatID = meta.ChatID
 			result.Metadata = meta.Fields
 
