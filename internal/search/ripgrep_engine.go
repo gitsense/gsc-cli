@@ -1,12 +1,12 @@
 /**
  * Component: Ripgrep Search Engine
- * Block-UUID: 86856e68-1f1d-4ef8-830d-01143457abea
- * Parent-UUID: 5ed1e9cb-0cb4-43d3-b642-36c9ee36492f
- * Version: 2.3.0
+ * Block-UUID: fdc96a4b-5a28-4abc-a1b9-cc9d294f2f96
+ * Parent-UUID: 86856e68-1f1d-4ef8-830d-01143457abea
+ * Version: 2.3.1
  * Description: Implements the SearchEngine interface using ripgrep. Updated to return SearchResult with timing and version info. Fixed line number parsing. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted routine Info logs to Debug level to enable quiet-by-default behavior.
  * Language: Go
- * Created-at: 2026-02-06T01:48:22.745Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), Gemini 3 Flash (v2.3.0)
+ * Created-at: 2026-02-06T02:15:47.902Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), Gemini 3 Flash (v2.3.0), Gemini 3 Flash (v2.3.1)
  */
 
 
@@ -209,13 +209,12 @@ func (e *RipgrepEngine) parseJSONOutput(stdout interface{}) ([]RawMatch, error) 
 					if text, ok := lines["text"].(string); ok {
 						match.LineText = text
 					}
-					if num, ok := lines["line_number"].(float64); ok {
-						match.LineNumber = int(num)
-					} else {
-						// Fallback: try to find line_number in other locations if standard location fails
-						// This handles potential variations in ripgrep JSON structure
-						logger.Debug("Line number not found in standard location for match", "text", match.LineText)
-					}
+				}
+
+				if num, ok := data["line_number"].(float64); ok {
+					match.LineNumber = int(num)
+				} else {
+					logger.Debug("Line number not found in standard location for match", "text", match.LineText)
 				}
 
 				// Extract submatches for highlighting

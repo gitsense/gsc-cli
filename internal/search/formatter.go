@@ -1,12 +1,12 @@
 /**
  * Component: Search Response Formatter
- * Block-UUID: 59876543-abcd-4321-8765-1234567890ab
- * Parent-UUID: 42d253b4-b9f2-48bd-9cea-277419cfea67
- * Version: 2.3.0
+ * Block-UUID: 2e3a0c3f-6c14-44a1-8cd2-8fc0ffa91035
+ * Parent-UUID: 59876543-abcd-4321-8765-1234567890ab
+ * Version: 2.3.1
  * Description: Formats search results into the final JSON response structure. Updated to accept and include filter strings in the QueryContext.
  * Language: Go
- * Created-at: 2026-02-06T01:50:35.446Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), Gemini 3 Flash (v2.2.0), Gemini 3 Flash (v2.3.0)
+ * Created-at: 2026-02-06T02:17:27.184Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), Gemini 3 Flash (v2.2.0), Gemini 3 Flash (v2.3.0), Gemini 3 Flash (v2.3.1)
  */
 
 
@@ -172,7 +172,8 @@ func GroupMatchesByFile(matches []MatchResult) []FileResult {
 				Matches:  []MatchDetail{},
 			}
 			if fr.Analyzed {
-				fr.ChatID = &m.ChatID
+				id := m.ChatID
+				fr.ChatID = &id
 				fr.Metadata = m.Metadata
 			}
 			fileMap[m.FilePath] = &fr
@@ -182,6 +183,7 @@ func GroupMatchesByFile(matches []MatchResult) []FileResult {
 		fileMap[m.FilePath].Matches = append(fileMap[m.FilePath].Matches, MatchDetail{
 			LineNumber:    m.LineNumber,
 			LineText:      m.LineText,
+			Submatches:    m.Submatches,
 			ContextBefore: m.ContextBefore,
 			ContextAfter:  m.ContextAfter,
 		})

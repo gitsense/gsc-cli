@@ -1,12 +1,12 @@
 /**
  * Component: Search Result Enricher
- * Block-UUID: 727c6dbf-a785-4c0c-8495-43b2028ab81d
- * Parent-UUID: 4960669a-4b74-4db3-8c8a-99ff1d178675
- * Version: 2.6.0
+ * Block-UUID: 5a96db41-a3d3-498d-99f2-a00865a47e23
+ * Parent-UUID: 727c6dbf-a785-4c0c-8495-43b2028ab81d
+ * Version: 2.6.1
  * Description: Enriches raw search matches with metadata from the manifest database. Supports filtering by analyzed status, file patterns, and metadata conditions. Refactored SQL query construction in fetchMetadataMap for clarity and correctness. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted routine Info logs to Debug level to enable quiet-by-default behavior. Updated checkSingleCondition to support querying array fields stored as JSON strings.
  * Language: Go
- * Created-at: 2026-02-06T01:49:00.093Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), Gemini 3 Flash (v2.5.0), Gemini 3 Flash (v2.6.0)
+ * Created-at: 2026-02-06T02:16:46.027Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), Gemini 3 Flash (v2.5.0), Gemini 3 Flash (v2.6.0), Gemini 3 Flash (v2.6.1)
  */
 
 
@@ -225,7 +225,7 @@ func fetchMetadataMap(ctx context.Context, database *sql.DB, filePaths []string,
 	// Process results
 	for rows.Next() {
 		var filePath string
-		var chatID int
+		var chatID sql.NullInt64
 		var fieldName, fieldValue sql.NullString
 
 		if err := rows.Scan(&filePath, &chatID, &fieldName, &fieldValue); err != nil {
@@ -234,8 +234,12 @@ func fetchMetadataMap(ctx context.Context, database *sql.DB, filePaths []string,
 
 		// Initialize entry if not exists
 		if _, exists := result[filePath]; !exists {
+			cID := 0
+			if chatID.Valid {
+				cID = int(chatID.Int64)
+			}
 			result[filePath] = fileMetadata{
-				ChatID: chatID,
+				ChatID: cID,
 				Fields: make(map[string]interface{}),
 			}
 		}
