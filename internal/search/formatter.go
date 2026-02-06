@@ -1,12 +1,12 @@
 /**
  * Component: Search Response Formatter
- * Block-UUID: 2e3a0c3f-6c14-44a1-8cd2-8fc0ffa91035
- * Parent-UUID: 59876543-abcd-4321-8765-1234567890ab
- * Version: 2.3.1
+ * Block-UUID: 9565f0e2-2727-416d-b91b-caedadf58ab2
+ * Parent-UUID: 2e3a0c3f-6c14-44a1-8cd2-8fc0ffa91035
+ * Version: 2.4.0
  * Description: Formats search results into the final JSON response structure. Updated to accept and include filter strings in the QueryContext.
  * Language: Go
- * Created-at: 2026-02-06T02:17:27.184Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), Gemini 3 Flash (v2.2.0), Gemini 3 Flash (v2.3.0), Gemini 3 Flash (v2.3.1)
+ * Created-at: 2026-02-06T02:30:35.326Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), Gemini 3 Flash (v2.2.0), Gemini 3 Flash (v2.3.0), Gemini 3 Flash (v2.3.1), GLM-4.7 (v2.4.0)
  */
 
 
@@ -70,7 +70,6 @@ func formatHumanResponse(summary GrepSummary, matches []MatchResult, opts Format
 
 	for _, file := range files {
 		status := "  "
-		chatID := ""
 		if file.Analyzed {
 			status = "✓ "
 			if useColor {
@@ -81,11 +80,21 @@ func formatHumanResponse(summary GrepSummary, matches []MatchResult, opts Format
 				if useColor {
 					idStr = logger.ColorCyan + idStr + logger.ColorReset
 				}
-				chatID = " " + idStr
+			}
+		} else {
+			status = "x "
+			if useColor {
+				status = logger.ColorRed + status + logger.ColorReset
 			}
 		}
 
-		fmt.Printf("%s%s%s\n", status, file.FilePath, chatID)
+		// Colorize filename
+		filePath := file.FilePath
+		if useColor {
+			filePath = logger.ColorCyan + filePath + logger.ColorReset
+		}
+
+		fmt.Printf("%s%s\n", status, filePath)
 
 		// Show metadata if not disabled
 		if !opts.NoFields && file.Analyzed && len(file.Metadata) > 0 {
@@ -110,6 +119,9 @@ func formatHumanResponse(summary GrepSummary, matches []MatchResult, opts Format
 			}
 		}
 
+		// Blank line after metadata/header section
+		fmt.Println()
+
 		if opts.SummaryOnly {
 			matchCount := 0
 			for _, m := range matches {
@@ -131,7 +143,7 @@ func formatHumanResponse(summary GrepSummary, matches []MatchResult, opts Format
 				fmt.Printf("%s:%s\n", lineNum, lineText)
 			}
 		}
-		fmt.Println()
+		fmt.Println() // Blank line after matches (file separator)
 	}
 
 	return nil
