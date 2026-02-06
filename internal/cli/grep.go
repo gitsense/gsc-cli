@@ -1,12 +1,12 @@
 /**
  * Component: Grep Command
- * Block-UUID: cfa7f686-94a8-4b3b-97e5-fb3eb7af5cce
- * Parent-UUID: 1914fac4-7b74-4520-9820-741c4a820c6d
- * Version: 3.7.0
+ * Block-UUID: 8f012f7d-eab5-4a68-958e-c82ec3eb57ed
+ * Parent-UUID: cfa7f686-94a8-4b3b-97e5-fb3eb7af5cce
+ * Version: 3.8.0
  * Description: CLI command definition for 'gsc grep'. Updated to support metadata filtering, stats recording, and case-sensitive defaults. Updated to resolve database names from user input or config to physical names. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted Info logs to Debug and set SilenceUsage to true.
  * Language: Go
- * Created-at: 2026-02-06T01:49:57.768Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v3.0.0), GLM-4.7 (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.7 (v3.3.0), Gemini 3 Flash (v3.4.0), Gemini 3 Flash (v3.5.0), Gemini 3 Flash (v3.6.0), Gemini 3 Flash (v3.7.0)
+ * Created-at: 2026-02-06T03:04:32.420Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v3.0.0), GLM-4.7 (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.7 (v3.3.0), Gemini 3 Flash (v3.4.0), Gemini 3 Flash (v3.5.0), Gemini 3 Flash (v3.6.0), Gemini 3 Flash (v3.7.0), Gemini 3 Flash (v3.8.0)
  */
 
 
@@ -52,7 +52,9 @@ var grepCmd = &cobra.Command{
 from a manifest database. This allows you to see search results alongside
 contextual information like risk levels, topics, or business impact.
 
-The output is human-readable by default. Use --format json for AI consumption.
+The output is human-readable by default, featuring a "Record/Card" layout with 
+color-coded status indicators (✓/x), bold headers, and aligned metadata. 
+Use --format json for AI consumption.
 
 Modes:
   --summary    Returns only aggregated metadata (cheap, fast)

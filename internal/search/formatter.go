@@ -1,12 +1,12 @@
 /**
  * Component: Search Response Formatter
- * Block-UUID: 9565f0e2-2727-416d-b91b-caedadf58ab2
- * Parent-UUID: 2e3a0c3f-6c14-44a1-8cd2-8fc0ffa91035
- * Version: 2.4.0
+ * Block-UUID: 3158c94a-cfec-499c-9c30-d126d0676275
+ * Parent-UUID: acf3da28-009e-4acf-8d0e-eaa8c63e10e2
+ * Version: 2.6.0
  * Description: Formats search results into the final JSON response structure. Updated to accept and include filter strings in the QueryContext.
  * Language: Go
- * Created-at: 2026-02-06T02:30:35.326Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), Gemini 3 Flash (v2.2.0), Gemini 3 Flash (v2.3.0), Gemini 3 Flash (v2.3.1), GLM-4.7 (v2.4.0)
+ * Created-at: 2026-02-06T03:04:07.041Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), Gemini 3 Flash (v2.2.0), Gemini 3 Flash (v2.3.0), Gemini 3 Flash (v2.3.1), GLM-4.7 (v2.4.0), Gemini 3 Flash (v2.5.0), Gemini 3 Flash (v2.6.0)
  */
 
 
@@ -75,12 +75,6 @@ func formatHumanResponse(summary GrepSummary, matches []MatchResult, opts Format
 			if useColor {
 				status = logger.ColorGreen + status + logger.ColorReset
 			}
-			if file.ChatID != nil {
-				idStr := fmt.Sprintf("(chat-id: %d)", *file.ChatID)
-				if useColor {
-					idStr = logger.ColorCyan + idStr + logger.ColorReset
-				}
-			}
 		} else {
 			status = "x "
 			if useColor {
@@ -91,12 +85,13 @@ func formatHumanResponse(summary GrepSummary, matches []MatchResult, opts Format
 		// Colorize filename
 		filePath := file.FilePath
 		if useColor {
-			filePath = logger.ColorCyan + filePath + logger.ColorReset
+			filePath = logger.ColorBold + logger.ColorCyan + filePath + logger.ColorReset
 		}
 
 		fmt.Printf("%s%s\n", status, filePath)
 
 		// Show metadata if not disabled
+		metadataPrinted := false
 		if !opts.NoFields && file.Analyzed && len(file.Metadata) > 0 {
 			for k, v := range file.Metadata {
 				if len(opts.RequestedFields) > 0 {
@@ -115,12 +110,15 @@ func formatHumanResponse(summary GrepSummary, matches []MatchResult, opts Format
 				if useColor {
 					key = logger.ColorYellow + k + logger.ColorReset
 				}
-				fmt.Printf("  ; %s: %v\n", key, v)
+				fmt.Printf("; %s: %v\n", key, v)
+				metadataPrinted = true
 			}
 		}
 
-		// Blank line after metadata/header section
-		fmt.Println()
+		// Blank line after metadata section if it was printed
+		if metadataPrinted {
+			fmt.Println()
+		}
 
 		if opts.SummaryOnly {
 			matchCount := 0
@@ -143,7 +141,7 @@ func formatHumanResponse(summary GrepSummary, matches []MatchResult, opts Format
 				fmt.Printf("%s:%s\n", lineNum, lineText)
 			}
 		}
-		fmt.Println() // Blank line after matches (file separator)
+		fmt.Print("\n\n") // Two blank lines after matches (file separator)
 	}
 
 	return nil
