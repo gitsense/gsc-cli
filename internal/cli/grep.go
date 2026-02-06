@@ -1,12 +1,12 @@
 /**
  * Component: Grep Command
- * Block-UUID: cd39782a-41b0-4ab9-8978-42b777d53be1
- * Parent-UUID: 53ad3c18-fcfd-4e40-97f6-6a700d1bd004
- * Version: 3.5.0
+ * Block-UUID: 1914fac4-7b74-4520-9820-741c4a820c6d
+ * Parent-UUID: cd39782a-41b0-4ab9-8978-42b777d53be1
+ * Version: 3.6.0
  * Description: CLI command definition for 'gsc grep'. Updated to support metadata filtering, stats recording, and case-sensitive defaults. Updated to resolve database names from user input or config to physical names. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted Info logs to Debug and set SilenceUsage to true.
  * Language: Go
- * Created-at: 2026-02-05T20:10:11.172Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v3.0.0), GLM-4.7 (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.7 (v3.3.0), Gemini 3 Flash (v3.4.0), Gemini 3 Flash (v3.5.0)
+ * Created-at: 2026-02-05T20:19:26.830Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v3.0.0), GLM-4.7 (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.7 (v3.3.0), Gemini 3 Flash (v3.4.0), Gemini 3 Flash (v3.5.0), Gemini 3 Flash (v3.6.0)
  */
 
 
@@ -36,6 +36,7 @@ var (
 	grepFilters      []string
 	grepFields       []string
 	grepAnalyzed     string
+	grepFieldSingular []string
 	grepFiles        []string
 	grepNoStats      bool
 )
@@ -61,6 +62,12 @@ Filtering:
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		pattern := args[0]
+		
+		// Check for common typo: --field instead of --fields
+		if cmd.Flags().Changed("field") {
+			return fmt.Errorf("unknown flag: --field. Did you mean --fields?")
+		}
+
 		startTime := time.Now()
 
 		// 1. Load Effective Config (Merges active profile)
@@ -237,6 +244,7 @@ func init() {
 	// New Filter Flags
 	grepCmd.Flags().StringArrayVar(&grepFilters, "filter", []string{}, "Filter by metadata field (e.g., 'topic=security')")
 	grepCmd.Flags().StringSliceVar(&grepFields, "fields", []string{}, "Metadata fields to include in results (comma-separated)")
+	grepCmd.Flags().StringSliceVar(&grepFieldSingular, "field", []string{}, "Did you mean --fields?")
 	grepCmd.Flags().StringVar(&grepAnalyzed, "analyzed", "all", "Filter by analysis status: true, false, or all (default: all)")
 	grepCmd.Flags().StringArrayVar(&grepFiles, "file", []string{}, "Filter by file path pattern (supports wildcards)")
 	grepCmd.Flags().BoolVar(&grepNoStats, "no-stats", false, "Disable recording of search statistics")
