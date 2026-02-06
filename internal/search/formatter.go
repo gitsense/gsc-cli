@@ -1,12 +1,12 @@
 /**
  * Component: Search Response Formatter
- * Block-UUID: 7a05736c-8017-4921-b7a3-826ab2b37b8a
- * Parent-UUID: 24e8fee6-f595-4ef0-9c44-94ecc9c31728
- * Version: 2.10.0
+ * Block-UUID: 9e877260-ad90-4316-a774-e7962841c199
+ * Parent-UUID: 7a05736c-8017-4921-b7a3-826ab2b37b8a
+ * Version: 2.11.0
  * Description: Added Chat ID display to human-readable output for analyzed files and introduced ShowChatID option for configurability.
  * Language: Go
- * Created-at: 2026-02-06T04:51:36.025Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), Gemini 3 Flash (v2.2.0), Gemini 3 Flash (v2.3.0), Gemini 3 Flash (v2.3.1), GLM-4.7 (v2.4.0), Gemini 3 Flash (v2.5.0), Gemini 3 Flash (v2.6.0), Gemini 3 Flash (v2.7.0), Gemini 3 Flash (v2.8.0), Gemini 3 Flash (v2.9.0), Gemini 3 Flash (v2.10.0)
+ * Created-at: 2026-02-06T05:06:32.928Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), Gemini 3 Flash (v2.2.0), Gemini 3 Flash (v2.3.0), Gemini 3 Flash (v2.3.1), GLM-4.7 (v2.4.0), Gemini 3 Flash (v2.5.0), Gemini 3 Flash (v2.6.0), Gemini 3 Flash (v2.7.0), Gemini 3 Flash (v2.8.0), Gemini 3 Flash (v2.9.0), Gemini 3 Flash (v2.10.0), GLM-4.7 (v2.11.0)
  */
 
 
@@ -186,17 +186,19 @@ func printIntelligenceHeader(ctx QueryContext, summary GrepSummary, useColor boo
 	if ctx.ProfileName != "" {
 		profile := ctx.ProfileName
 		if useColor { profile = logger.ColorBold + profile + logger.ColorReset }
-		fmt.Printf("# Context:  %s (Active Profile)\n", profile)
+		fmt.Printf("#  Context:  %s\n", profile)
+	} else {
+		fmt.Printf("#  Context:  No active profile\n")
 	}
 
-	fmt.Printf("# Search:   %s\n", ctx.Pattern)
+	fmt.Printf("#   Search:  %s\n", ctx.Pattern)
 	
 	brain := ctx.Database
 	if useColor { brain = logger.ColorCyan + brain + logger.ColorReset }
-	fmt.Printf("# Database:    %s\n", brain)
+	fmt.Printf("# Database:  %s\n", brain)
 
 	if ctx.ScopeSummary != "" {
-		fmt.Printf("# Scope:    %s\n", ctx.ScopeSummary)
+		fmt.Printf("#  Scope:    %s\n", ctx.ScopeSummary)
 	}
 
 	coverage := 0
@@ -204,7 +206,7 @@ func printIntelligenceHeader(ctx QueryContext, summary GrepSummary, useColor boo
 		coverage = (summary.AnalyzedFiles * 100) / summary.TotalFiles
 	}
 	
-	fmt.Printf("# Summary:  %d matches in %d files (%d%% analyzed coverage)\n", 
+	fmt.Printf("#  Summary:  %d matches in %d files (%d%% analyzed coverage)\n", 
 		summary.TotalMatches, summary.TotalFiles, coverage)
 	fmt.Println(divider)
 	fmt.Println()
@@ -284,3 +286,4 @@ func GroupMatchesByFile(matches []MatchResult) []FileResult {
 
 	return results
 }
+
