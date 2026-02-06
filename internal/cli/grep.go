@@ -1,12 +1,12 @@
 /**
  * Component: Grep Command
- * Block-UUID: 1914fac4-7b74-4520-9820-741c4a820c6d
- * Parent-UUID: cd39782a-41b0-4ab9-8978-42b777d53be1
- * Version: 3.6.0
+ * Block-UUID: cfa7f686-94a8-4b3b-97e5-fb3eb7af5cce
+ * Parent-UUID: 1914fac4-7b74-4520-9820-741c4a820c6d
+ * Version: 3.7.0
  * Description: CLI command definition for 'gsc grep'. Updated to support metadata filtering, stats recording, and case-sensitive defaults. Updated to resolve database names from user input or config to physical names. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted Info logs to Debug and set SilenceUsage to true.
  * Language: Go
- * Created-at: 2026-02-05T20:19:26.830Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v3.0.0), GLM-4.7 (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.7 (v3.3.0), Gemini 3 Flash (v3.4.0), Gemini 3 Flash (v3.5.0), Gemini 3 Flash (v3.6.0)
+ * Created-at: 2026-02-06T01:49:57.768Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v3.0.0), GLM-4.7 (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.7 (v3.3.0), Gemini 3 Flash (v3.4.0), Gemini 3 Flash (v3.5.0), Gemini 3 Flash (v3.6.0), Gemini 3 Flash (v3.7.0)
  */
 
 
@@ -16,6 +16,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/yourusername/gsc-cli/internal/git"
@@ -39,6 +40,8 @@ var (
 	grepFieldSingular []string
 	grepFiles        []string
 	grepNoStats      bool
+	grepFormat       string
+	grepNoFields     bool
 )
 
 // grepCmd represents the grep command
@@ -49,7 +52,7 @@ var grepCmd = &cobra.Command{
 from a manifest database. This allows you to see search results alongside
 contextual information like risk levels, topics, or business impact.
 
-The output is JSON formatted for AI agent consumption.
+The output is human-readable by default. Use --format json for AI consumption.
 
 Modes:
   --summary    Returns only aggregated metadata (cheap, fast)
@@ -66,6 +69,16 @@ Filtering:
 		// Check for common typo: --field instead of --fields
 		if cmd.Flags().Changed("field") {
 			return fmt.Errorf("unknown flag: --field. Did you mean --fields?")
+		}
+
+		// Validate format
+		grepFormat = strings.ToLower(grepFormat)
+		if grepFormat != "human" && grepFormat != "json" {
+			return fmt.Errorf("invalid format: %s. Supported formats: human, json", grepFormat)
+		}
+
+		if grepNoFields && len(grepFields) > 0 {
+			return fmt.Errorf("cannot use --fields and --no-fields together")
 		}
 
 		startTime := time.Now()
@@ -188,7 +201,16 @@ Filtering:
 		}
 
 		// 11. Format and Output
-		if err := search.FormatResponse(queryContext, summary, enrichedMatches, grepSummary, grepFilters, requestedFields, availableFields); err != nil {
+		formatOpts := search.FormatOptions{
+			Format:          grepFormat,
+			SummaryOnly:     grepSummary,
+			NoFields:        grepNoFields,
+			RequestedFields: requestedFields,
+			Filters:         grepFilters,
+			AvailableFields: availableFields,
+		}
+
+		if err := search.FormatResponse(queryContext, summary, enrichedMatches, formatOpts); err != nil {
 			return err
 		}
 
@@ -248,6 +270,8 @@ func init() {
 	grepCmd.Flags().StringVar(&grepAnalyzed, "analyzed", "all", "Filter by analysis status: true, false, or all (default: all)")
 	grepCmd.Flags().StringArrayVar(&grepFiles, "file", []string{}, "Filter by file path pattern (supports wildcards)")
 	grepCmd.Flags().BoolVar(&grepNoStats, "no-stats", false, "Disable recording of search statistics")
+	grepCmd.Flags().StringVar(&grepFormat, "format", "human", "Output format: human or json (default: human)")
+	grepCmd.Flags().BoolVar(&grepNoFields, "no-fields", false, "Do not show metadata fields in the output")
 }
 
 // optionsToArgs converts SearchOptions to a slice of arguments for display.

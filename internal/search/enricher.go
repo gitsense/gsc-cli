@@ -1,12 +1,12 @@
 /**
  * Component: Search Result Enricher
- * Block-UUID: 4960669a-4b74-4db3-8c8a-99ff1d178675
- * Parent-UUID: 8736373c-593a-4cbb-a799-235046cb0619
- * Version: 2.5.0
+ * Block-UUID: 727c6dbf-a785-4c0c-8495-43b2028ab81d
+ * Parent-UUID: 4960669a-4b74-4db3-8c8a-99ff1d178675
+ * Version: 2.6.0
  * Description: Enriches raw search matches with metadata from the manifest database. Supports filtering by analyzed status, file patterns, and metadata conditions. Refactored SQL query construction in fetchMetadataMap for clarity and correctness. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted routine Info logs to Debug level to enable quiet-by-default behavior. Updated checkSingleCondition to support querying array fields stored as JSON strings.
  * Language: Go
- * Created-at: 2026-02-05T20:08:55.488Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), Gemini 3 Flash (v2.5.0)
+ * Created-at: 2026-02-06T01:49:00.093Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), Gemini 3 Flash (v2.5.0), Gemini 3 Flash (v2.6.0)
  */
 
 
@@ -78,6 +78,7 @@ func EnrichMatches(ctx context.Context, matches []RawMatch, dbName string, filte
 			LineText:      match.LineText,
 			ContextBefore: match.ContextBefore,
 			ContextAfter:  match.ContextAfter,
+			Submatches:    match.Submatches,
 		}
 
 		// Check if file exists in metadata map (passed system filters)

@@ -1,12 +1,12 @@
 /**
  * Component: Search Response Formatter
- * Block-UUID: 42d253b4-b9f2-48bd-9cea-277419cfea67
- * Parent-UUID: de1c4a8d-cdb9-46fb-a99b-b58e7a23021b
- * Version: 2.2.0
+ * Block-UUID: 59876543-abcd-4321-8765-1234567890ab
+ * Parent-UUID: 42d253b4-b9f2-48bd-9cea-277419cfea67
+ * Version: 2.3.0
  * Description: Formats search results into the final JSON response structure. Updated to accept and include filter strings in the QueryContext.
  * Language: Go
- * Created-at: 2026-02-05T20:09:25.246Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), Gemini 3 Flash (v2.2.0)
+ * Created-at: 2026-02-06T01:50:35.446Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), Gemini 3 Flash (v2.2.0), Gemini 3 Flash (v2.3.0)
  */
 
 
@@ -15,22 +15,43 @@ package search
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
+
+	"github.com/yourusername/gsc-cli/internal/output"
+	"github.com/yourusername/gsc-cli/pkg/logger"
 )
 
-// FormatResponse constructs the final JSON response and prints it to stdout.
-func FormatResponse(context QueryContext, summary GrepSummary, matches []MatchResult, summaryOnly bool, filters []string, requestedFields []string, availableFields []string) error {
-	// Populate filters in the context to ensure they appear in the JSON output
-	context.Filters = filters
-	context.RequestedFields = requestedFields
-	context.AvailableFields = availableFields
+// FormatOptions holds configuration for the output formatter.
+type FormatOptions struct {
+	Format          string
+	SummaryOnly     bool
+	NoFields        bool
+	RequestedFields []string
+	Filters         []string
+	AvailableFields []string
+}
 
+// FormatResponse constructs the final JSON response and prints it to stdout.
+func FormatResponse(context QueryContext, summary GrepSummary, matches []MatchResult, opts FormatOptions) error {
+	// Populate filters in the context to ensure they appear in the JSON output
+	context.Filters = opts.Filters
+	context.RequestedFields = opts.RequestedFields
+	context.AvailableFields = opts.AvailableFields
+
+	if opts.Format == "json" {
+		return formatJSONResponse(context, summary, matches, opts.SummaryOnly)
+	}
+
+	return formatHumanResponse(summary, matches, opts)
+}
+
+func formatJSONResponse(context QueryContext, summary GrepSummary, matches []MatchResult, summaryOnly bool) error {
 	response := GrepResponse{
 		Context: context,
 		Summary: summary,
 	}
 
 	if !summaryOnly {
-		// Group matches by file for the full response
 		response.Files = GroupMatchesByFile(matches)
 	}
 
@@ -41,6 +62,102 @@ func FormatResponse(context QueryContext, summary GrepSummary, matches []MatchRe
 
 	fmt.Println(string(data))
 	return nil
+}
+
+func formatHumanResponse(summary GrepSummary, matches []MatchResult, opts FormatOptions) error {
+	files := GroupMatchesByFile(matches)
+	useColor := output.IsTerminal()
+
+	for _, file := range files {
+		status := "  "
+		chatID := ""
+		if file.Analyzed {
+			status = "✓ "
+			if useColor {
+				status = logger.ColorGreen + status + logger.ColorReset
+			}
+			if file.ChatID != nil {
+				idStr := fmt.Sprintf("(chat-id: %d)", *file.ChatID)
+				if useColor {
+					idStr = logger.ColorCyan + idStr + logger.ColorReset
+				}
+				chatID = " " + idStr
+			}
+		}
+
+		fmt.Printf("%s%s%s\n", status, file.FilePath, chatID)
+
+		// Show metadata if not disabled
+		if !opts.NoFields && file.Analyzed && len(file.Metadata) > 0 {
+			for k, v := range file.Metadata {
+				if len(opts.RequestedFields) > 0 {
+					found := false
+					for _, rf := range opts.RequestedFields {
+						if rf == k {
+							found = true
+							break
+						}
+					}
+					if !found {
+						continue
+					}
+				}
+				key := k
+				if useColor {
+					key = logger.ColorYellow + k + logger.ColorReset
+				}
+				fmt.Printf("  ; %s: %v\n", key, v)
+			}
+		}
+
+		if opts.SummaryOnly {
+			matchCount := 0
+			for _, m := range matches {
+				if m.FilePath == file.FilePath {
+					matchCount++
+				}
+			}
+			fmt.Printf("  ; matches: %d\n", matchCount)
+		} else {
+			for _, m := range file.Matches {
+				lineNum := fmt.Sprintf("%d", m.LineNumber)
+				lineText := m.LineText
+
+				if useColor {
+					lineNum = logger.ColorGreen + lineNum + logger.ColorReset
+					lineText = highlightText(m.LineText, m.Submatches)
+				}
+
+				fmt.Printf("%s:%s\n", lineNum, lineText)
+			}
+		}
+		fmt.Println()
+	}
+
+	return nil
+}
+
+func highlightText(text string, offsets []MatchOffset) string {
+	if len(offsets) == 0 {
+		return text
+	}
+
+	var sb strings.Builder
+	lastEnd := 0
+
+	for _, offset := range offsets {
+		// Append text before the match
+		sb.WriteString(text[lastEnd:offset.Start])
+		// Append highlighted match
+		sb.WriteString(logger.ColorGreen)
+		sb.WriteString(text[offset.Start:offset.End])
+		sb.WriteString(logger.ColorReset)
+		lastEnd = offset.End
+	}
+
+	// Append remaining text
+	sb.WriteString(text[lastEnd:])
+	return sb.String()
 }
 
 // GroupMatchesByFile converts a flat list of matches into a list of file results.

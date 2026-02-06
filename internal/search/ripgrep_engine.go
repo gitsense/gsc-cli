@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Ripgrep Search Engine
- * Block-UUID: 5ed1e9cb-0cb4-43d3-b642-36c9ee36492f
- * Parent-UUID: 0237b6f1-15a1-42f4-8713-81e653814711
- * Version: 2.2.0
+ * Block-UUID: 86856e68-1f1d-4ef8-830d-01143457abea
+ * Parent-UUID: 5ed1e9cb-0cb4-43d3-b642-36c9ee36492f
+ * Version: 2.3.0
  * Description: Implements the SearchEngine interface using ripgrep. Updated to return SearchResult with timing and version info. Fixed line number parsing. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted routine Info logs to Debug level to enable quiet-by-default behavior.
  * Language: Go
- * Created-at: 2026-02-03T18:06:35.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0)
+ * Created-at: 2026-02-06T01:48:22.745Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), Gemini 3 Flash (v2.3.0)
  */
 
 
@@ -215,6 +215,22 @@ func (e *RipgrepEngine) parseJSONOutput(stdout interface{}) ([]RawMatch, error) 
 						// Fallback: try to find line_number in other locations if standard location fails
 						// This handles potential variations in ripgrep JSON structure
 						logger.Debug("Line number not found in standard location for match", "text", match.LineText)
+					}
+				}
+
+				// Extract submatches for highlighting
+				if submatches, ok := data["submatches"].([]interface{}); ok {
+					for _, sm := range submatches {
+						if smMap, ok := sm.(map[string]interface{}); ok {
+							start, okStart := smMap["start"].(float64)
+							end, okEnd := smMap["end"].(float64)
+							if okStart && okEnd {
+								match.Submatches = append(match.Submatches, MatchOffset{
+									Start: int(start),
+									End:   int(end),
+								})
+							}
+						}
 					}
 				}
 			}
