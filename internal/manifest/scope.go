@@ -1,12 +1,12 @@
 /**
  * Component: Scope Logic
- * Block-UUID: b8e49f2e-add7-477d-9aee-9259cd9f4e19
- * Parent-UUID: 4a59acca-2ca1-4b4b-b589-695c12d961c9
- * Version: 1.0.3
+ * Block-UUID: 5724d360-0ddb-414c-82d6-196d87785fcf
+ * Parent-UUID: b8e49f2e-add7-477d-9aee-9259cd9f4e19
+ * Version: 1.1.0
  * Description: Core logic for Focus Scope handling, including parsing, matching, validation, and resolution. Implements lenient parsing, doublestar glob matching, Levenshtein distance suggestions, and the full precedence chain for scope resolution. Refactored all logger calls to use structured Key-Value pairs instead of format strings.
  * Language: Go
- * Created-at: 2026-02-05T00:10:41.709Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), Claude Haiku 4.5 (v1.0.2), GLM-4.7 (v1.0.3)
+ * Created-at: 2026-02-06T04:30:19.140Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), Claude Haiku 4.5 (v1.0.2), GLM-4.7 (v1.0.3), Gemini 3 Flash (v1.1.0)
  */
 
 
@@ -29,6 +29,28 @@ import (
 type ScopeConfig struct {
 	Include []string `json:"include"`
 	Exclude []string `json:"exclude"`
+}
+
+// String returns a comma-separated string of include patterns, or "all" if empty.
+func (s *ScopeConfig) String() string {
+	if s == nil || len(s.Include) == 0 {
+		return "all"
+	}
+	return strings.Join(s.Include, ", ")
+}
+
+// GetSummary returns a human-readable summary of the scope's impact.
+// Example: "backend/src/** (Focus Active: 128 files ignored)"
+func (s *ScopeConfig) GetSummary(ctx context.Context, repoRoot string) string {
+	if s == nil {
+		return "all"
+	}
+	res, err := ValidateScope(ctx, s, repoRoot)
+	if err != nil || res.TotalTrackedFiles == res.InScopeFiles {
+		return s.String()
+	}
+	ignored := res.TotalTrackedFiles - res.InScopeFiles
+	return fmt.Sprintf("%s (Focus Active: %d files ignored)", s.String(), ignored)
 }
 
 // ScopeValidationResult contains the outcome of a scope validation check.

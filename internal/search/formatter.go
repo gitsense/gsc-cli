@@ -1,12 +1,12 @@
 /**
  * Component: Search Response Formatter
- * Block-UUID: dc14101c-f555-436c-9085-ce180beb054a
- * Parent-UUID: 7ad6b101-489a-4539-8329-41abc2940bde
- * Version: 2.8.0
+ * Block-UUID: 7a05736c-8017-4921-b7a3-826ab2b37b8a
+ * Parent-UUID: 24e8fee6-f595-4ef0-9c44-94ecc9c31728
+ * Version: 2.10.0
  * Description: Added Chat ID display to human-readable output for analyzed files and introduced ShowChatID option for configurability.
  * Language: Go
- * Created-at: 2026-02-06T03:19:11.985Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), Gemini 3 Flash (v2.2.0), Gemini 3 Flash (v2.3.0), Gemini 3 Flash (v2.3.1), GLM-4.7 (v2.4.0), Gemini 3 Flash (v2.5.0), Gemini 3 Flash (v2.6.0), Gemini 3 Flash (v2.7.0), Gemini 3 Flash (v2.8.0)
+ * Created-at: 2026-02-06T04:51:36.025Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), Gemini 3 Flash (v2.2.0), Gemini 3 Flash (v2.3.0), Gemini 3 Flash (v2.3.1), GLM-4.7 (v2.4.0), Gemini 3 Flash (v2.5.0), Gemini 3 Flash (v2.6.0), Gemini 3 Flash (v2.7.0), Gemini 3 Flash (v2.8.0), Gemini 3 Flash (v2.9.0), Gemini 3 Flash (v2.10.0)
  */
 
 
@@ -15,6 +15,7 @@ package search
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/yourusername/gsc-cli/internal/output"
@@ -43,7 +44,7 @@ func FormatResponse(context QueryContext, summary GrepSummary, matches []MatchRe
 		return formatJSONResponse(context, summary, matches, opts.SummaryOnly)
 	}
 
-	return formatHumanResponse(summary, matches, opts)
+	return formatHumanResponse(context, summary, matches, opts)
 }
 
 func formatJSONResponse(context QueryContext, summary GrepSummary, matches []MatchResult, summaryOnly bool) error {
@@ -65,10 +66,13 @@ func formatJSONResponse(context QueryContext, summary GrepSummary, matches []Mat
 	return nil
 }
 
-func formatHumanResponse(summary GrepSummary, matches []MatchResult, opts FormatOptions) error {
+func formatHumanResponse(context QueryContext, summary GrepSummary, matches []MatchResult, opts FormatOptions) error {
 	files := GroupMatchesByFile(matches)
 	useColor := output.IsTerminal()
 
+	printIntelligenceHeader(context, summary, useColor)
+
+	// File Card Layout
 	for _, file := range files {
 		status := "  "
 		if file.Analyzed {
@@ -104,7 +108,15 @@ func formatHumanResponse(summary GrepSummary, matches []MatchResult, opts Format
 		// Show metadata if not disabled
 		metadataPrinted := false
 		if !opts.NoFields && file.Analyzed && len(file.Metadata) > 0 {
-			for k, v := range file.Metadata {
+			// Get and sort keys for consistent output
+			var keys []string
+			for k := range file.Metadata {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
+
+			for _, k := range keys {
+				// Respect RequestedFields if provided
 				if len(opts.RequestedFields) > 0 {
 					found := false
 					for _, rf := range opts.RequestedFields {
@@ -117,16 +129,16 @@ func formatHumanResponse(summary GrepSummary, matches []MatchResult, opts Format
 						continue
 					}
 				}
+
 				key := k
 				if useColor {
-					key = logger.ColorYellow + k + logger.ColorReset
+					key = logger.ColorYellow + key + logger.ColorReset
 				}
-				fmt.Printf("; %s: %v\n", key, v)
+				fmt.Printf("; %s: %v\n", key, file.Metadata[k])
 				metadataPrinted = true
 			}
 		}
 
-		// Blank line after metadata section if it was printed
 		if metadataPrinted {
 			fmt.Println()
 		}
@@ -157,7 +169,59 @@ func formatHumanResponse(summary GrepSummary, matches []MatchResult, opts Format
 		fmt.Print("\n\n") // Two blank lines after matches (file separator)
 	}
 
+	if summary.MatchesOutsideScope > 0 {
+		printHintFooter(summary.MatchesOutsideScope, useColor)
+	}
+
 	return nil
+}
+
+func printIntelligenceHeader(ctx QueryContext, summary GrepSummary, useColor bool) {
+	divider := "# ──────────────────────────────────────────────────────────────────────────────"
+	if useColor {
+		divider = logger.ColorWhite + divider + logger.ColorReset
+	}
+
+	fmt.Println(divider)
+	if ctx.ProfileName != "" {
+		profile := ctx.ProfileName
+		if useColor { profile = logger.ColorBold + profile + logger.ColorReset }
+		fmt.Printf("# Context:  %s (Active Profile)\n", profile)
+	}
+
+	fmt.Printf("# Search:   %s\n", ctx.Pattern)
+	
+	brain := ctx.Database
+	if useColor { brain = logger.ColorCyan + brain + logger.ColorReset }
+	fmt.Printf("# Database:    %s\n", brain)
+
+	if ctx.ScopeSummary != "" {
+		fmt.Printf("# Scope:    %s\n", ctx.ScopeSummary)
+	}
+
+	coverage := 0
+	if summary.TotalFiles > 0 {
+		coverage = (summary.AnalyzedFiles * 100) / summary.TotalFiles
+	}
+	
+	fmt.Printf("# Summary:  %d matches in %d files (%d%% analyzed coverage)\n", 
+		summary.TotalMatches, summary.TotalFiles, coverage)
+	fmt.Println(divider)
+	fmt.Println()
+}
+
+func printHintFooter(outsideCount int, useColor bool) {
+	divider := "# ──────────────────────────────────────────────────────────────────────────────"
+	hint := "Hint:"
+	if useColor {
+		divider = logger.ColorWhite + divider + logger.ColorReset
+		hint = logger.ColorYellow + hint + logger.ColorReset
+	}
+
+	fmt.Println(divider)
+	fmt.Printf("# %s %d matches found outside of current Focus Scope. \n", hint, outsideCount)
+	fmt.Println("# Run 'gsc config scope clear' to see all results.")
+	fmt.Println(divider)
 }
 
 func highlightText(text string, offsets []MatchOffset) string {

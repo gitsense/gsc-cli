@@ -1,12 +1,12 @@
 /**
  * Component: Grep Command
- * Block-UUID: 3324f514-a7e8-4e02-88ba-478d2663f435
- * Parent-UUID: 0b8566f5-c17e-4923-b295-1241f4541dce
- * Version: 3.9.1
+ * Block-UUID: 46ae2bb0-13a1-4d55-99a7-e70d6667dc32
+ * Parent-UUID: 9cf9707a-160a-455b-8f0d-f203549398fe
+ * Version: 4.0.1
  * Description: CLI command definition for 'gsc grep'. Updated to support metadata filtering, stats recording, and case-sensitive defaults. Updated to resolve database names from user input or config to physical names. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted Info logs to Debug and set SilenceUsage to true.
  * Language: Go
- * Created-at: 2026-02-06T04:09:20.723Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v3.0.0), GLM-4.7 (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.7 (v3.3.0), Gemini 3 Flash (v3.4.0), Gemini 3 Flash (v3.5.0), Gemini 3 Flash (v3.6.0), Gemini 3 Flash (v3.7.0), Gemini 3 Flash (v3.8.0), Gemini 3 Flash (v3.9.0), Gemini 3 Flash (v3.9.1)
+ * Created-at: 2026-02-06T04:36:16.847Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v3.0.0), GLM-4.7 (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.7 (v3.3.0), Gemini 3 Flash (v3.4.0), Gemini 3 Flash (v3.5.0), Gemini 3 Flash (v3.6.0), Gemini 3 Flash (v3.7.0), Gemini 3 Flash (v3.8.0), Gemini 3 Flash (v3.9.0), Gemini 3 Flash (v3.9.1), Gemini 3 Flash (v4.0.0), Gemini 3 Flash (v4.0.1)
  */
 
 
@@ -39,6 +39,7 @@ var (
 	grepAnalyzed     string
 	grepFieldSingular []string
 	grepFiles        []string
+	grepScope        string
 	grepNoStats      bool
 	grepFormat       string
 	grepNoFields     bool
@@ -122,6 +123,13 @@ Filtering:
 			requestedFields = config.RG.DefaultFields
 		}
 
+		// 3.5 Resolve Focus Scope
+		activeProfileName, _ := manifest.GetActiveProfileName()
+		scope, err := manifest.ResolveScopeForQuery(cmd.Context(), activeProfileName, grepScope)
+		if err != nil {
+			return err
+		}
+
 		// 4. Get Repository Context (Root and CWD Offset)
 		repoRoot, cwdOffset, err := git.GetRepoContext()
 		if err != nil {
@@ -168,14 +176,21 @@ Filtering:
 			return err
 		}
 
-		// 8. Enrich Matches (with filters)
-		enrichedMatches, availableFields, err := search.EnrichMatches(cmd.Context(), searchResult.Matches, dbName, filters, grepAnalyzed, grepFiles, requestedFields, cwdOffset)
+		// 8. Enrich Matches (with filters and scope)
+		// Note: We combine explicit --file flags with the Focus Scope
+		filePatterns := grepFiles
+		if scope != nil && len(scope.Include) > 0 {
+			filePatterns = append(filePatterns, scope.Include...)
+		}
+
+		enrichedMatches, availableFields, matchesOutsideScope, err := search.EnrichMatches(cmd.Context(), searchResult.Matches, dbName, filters, grepAnalyzed, filePatterns, requestedFields, cwdOffset)
 		if err != nil {
 			return err
 		}
 
 		// 9. Aggregate Summary
 		summary := search.AggregateMatches(enrichedMatches, grepLimit)
+		summary.MatchesOutsideScope = matchesOutsideScope
 
 		// 10. Build Query Context
 		mode := "full"
@@ -183,9 +198,16 @@ Filtering:
 			mode = "summary"
 		}
 
+		scopeSummary := ""
+		if scope != nil {
+			scopeSummary = scope.GetSummary(cmd.Context(), repoRoot)
+		}
+
 		queryContext := search.QueryContext{
 			Pattern:    pattern,
 			Database:   dbName,
+			ProfileName: activeProfileName,
+			ScopeSummary: scopeSummary,
 			Mode:       mode,
 			Tool: search.ToolInfo{
 				Name:      searchResult.ToolName,
@@ -269,6 +291,7 @@ func init() {
 	grepCmd.Flags().StringVarP(&grepDB, "db", "d", "", "Database name for enrichment (inherits from profile)")
 	grepCmd.Flags().StringVarP(&grepProfile, "profile", "p", "", "Profile name to use (overrides active profile)")
 	grepCmd.Flags().BoolVar(&grepSummary, "summary", false, "Return only the summary (no matches)")
+	grepCmd.Flags().StringVar(&grepScope, "scope", "", "Temporary scope override (e.g., include=src/**;exclude=tests/**)")
 	grepCmd.Flags().IntVarP(&grepContext, "context", "C", 0, "Show N lines of context around matches")
 	grepCmd.Flags().BoolVar(&grepCaseSensitive, "case-sensitive", true, "Case-sensitive search (default: true)")
 	grepCmd.Flags().StringVarP(&grepFileType, "type", "t", "", "Filter by file type (e.g., js, py)")

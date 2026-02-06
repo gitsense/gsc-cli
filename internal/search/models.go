@@ -1,12 +1,12 @@
 /**
  * Component: Search Intelligence Models
- * Block-UUID: 4776f1e6-2a3e-47ed-b1c2-4cd2d9eb9951
- * Parent-UUID: b6fb7155-da6f-41db-947a-e705c78bd39c
- * Version: 2.3.0
- * Description: Defines the structured JSON response for gsc grep. Updated to support grouped file results, tool metadata, system info, truncation signals, and filter structures.
+ * Block-UUID: f1852a66-a505-4dd0-87be-2ed2b4a06472
+ * Parent-UUID: 4776f1e6-2a3e-47ed-b1c2-4cd2d9eb9951
+ * Version: 2.4.0
+ * Description: Defines the structured JSON response for gsc grep. Updated to support grouped file results, tool metadata, system info, truncation signals, and filter structures. Added ProfileName and ScopeSummary to QueryContext, and MatchesOutsideScope to GrepSummary to support the Intelligence Layer reporting.
  * Language: Go
  * Created-at: 2026-02-06T01:47:07.919Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.0.1), GLM-4.7 (v2.1.0), Gemini 3 Flash (v2.2.0), Gemini 3 Flash (v2.3.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.0.1), GLM-4.7 (v2.1.0), Gemini 3 Flash (v2.2.0), Gemini 3 Flash (v2.3.0), Gemini 3 Flash (v2.4.0)
  */
 
 
@@ -25,6 +25,8 @@ type GrepResponse struct {
 type QueryContext struct {
 	Pattern     string       `json:"pattern"`
 	Database    string       `json:"database"`
+	ProfileName string       `json:"profile_name,omitempty"`
+	ScopeSummary string      `json:"scope_summary,omitempty"`
 	Mode        string       `json:"mode"` // "summary" or "full"
 	Tool        ToolInfo     `json:"tool"`
 	SearchScope SearchScope  `json:"search_scope"`
@@ -70,6 +72,7 @@ type GrepSummary struct {
 	TotalFiles      int                       `json:"total_files"`
 	AnalyzedFiles   int                       `json:"analyzed_files"`
 	IsTruncated     bool                      `json:"is_truncated"`
+	MatchesOutsideScope int                   `json:"matches_outside_scope,omitempty"`
 	FieldDistribution map[string]map[string]int `json:"field_distribution"`
 	Files           []FileSummary             `json:"files"`
 }

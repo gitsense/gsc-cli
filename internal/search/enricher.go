@@ -1,12 +1,12 @@
 /**
  * Component: Search Result Enricher
- * Block-UUID: 21ddbd40-3b85-4859-979b-89412a29d417
- * Parent-UUID: 5a96db41-a3d3-498d-99f2-a00865a47e23
- * Version: 2.7.0
+ * Block-UUID: 8f7c2a1d-5e9b-4c3f-a8d2-1b6e9f4c7a2d
+ * Parent-UUID: 21ddbd40-3b85-4859-979b-89412a29d417
+ * Version: 2.8.0
  * Description: Enriches raw search matches with metadata from the manifest database. Supports filtering by analyzed status, file patterns, and metadata conditions. Refactored SQL query construction in fetchMetadataMap for clarity and correctness. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted routine Info logs to Debug level to enable quiet-by-default behavior. Updated checkSingleCondition to support querying array fields stored as JSON strings.
  * Language: Go
- * Created-at: 2026-02-06T04:07:02.769Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), Gemini 3 Flash (v2.5.0), Gemini 3 Flash (v2.6.0), Gemini 3 Flash (v2.6.1), Gemini 3 Flash (v2.7.0)
+ * Created-at: 2026-02-06T04:34:00.908Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), Gemini 3 Flash (v2.5.0), Gemini 3 Flash (v2.6.0), Gemini 3 Flash (v2.6.1), Gemini 3 Flash (v2.7.0), Gemini 3 Flash (v2.8.0)
  */
 
 
@@ -28,26 +28,26 @@ import (
 
 // EnrichMatches takes raw search matches and enriches them with metadata from the database.
 // It applies system filters (analyzed, file path) and metadata filters.
-func EnrichMatches(ctx context.Context, matches []RawMatch, dbName string, filters []FilterCondition, analyzedFilter string, filePatterns []string, requestedFields []string, cwdOffset string) ([]MatchResult, []string, error) {
+func EnrichMatches(ctx context.Context, matches []RawMatch, dbName string, filters []FilterCondition, analyzedFilter string, filePatterns []string, requestedFields []string, cwdOffset string) ([]MatchResult, []string, int, error) {
 	if len(matches) == 0 {
-		return []MatchResult{}, []string{}, nil
+		return []MatchResult{}, []string{}, 0, nil
 	}
 
 	// 1. Validate Database Exists
 	if err := manifest.ValidateDBExists(dbName); err != nil {
-		return nil, nil, err
+		return nil, nil, 0, err
 	}
 
 	// 2. Resolve DB Path
 	dbPath, err := manifest.ResolveDBPath(dbName)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, 0, err
 	}
 
 	// 3. Open Database
 	database, err := db.OpenDB(dbPath)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, 0, err
 	}
 	defer db.CloseDB(database)
 
@@ -69,7 +69,7 @@ func EnrichMatches(ctx context.Context, matches []RawMatch, dbName string, filte
 	// to handle multi-field logic correctly (e.g., topic=X AND language=Y).
 	metadataMap, availableFields, err := fetchMetadataMap(ctx, database, filePaths, analyzedFilter, filePatterns, requestedFields, filters)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to fetch metadata: %w", err)
+		return nil, nil, 0, fmt.Errorf("failed to fetch metadata: %w", err)
 	}
 
 	// 6. Enrich each match and apply metadata filters
@@ -124,7 +124,7 @@ func EnrichMatches(ctx context.Context, matches []RawMatch, dbName string, filte
 	}
 
 	logger.Debug("Enriched matches", "count", len(enriched), "filtered_from", len(matches))
-	return enriched, availableFields, nil
+	return enriched, availableFields, len(matches) - len(enriched), nil
 }
 
 // fileMetadata holds the ChatID and fields for a specific file.
