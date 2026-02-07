@@ -128,6 +128,108 @@ Management of context profiles and workspace settings.
 ### `gsc info`
 Display current workspace context, active profile, and database status.
 
+## CLI Bridge Integration
+
+The `gsc` CLI supports a "Bridge Mode" that allows command output to be automatically inserted into an active GitSense Chat conversation via a temporary 6-digit code. This enables a seamless workflow where CLI results appear in the web UI without manual copy-pasting.
+
+### Usage
+
+To use the bridge, the user generates a code in the GitSense Chat Web UI and passes it to the `gsc` command using the `--code` flag:
+
+```bash
+gsc grep "TODO" --code 123456
+```
+
+When this flag is present, `gsc` does not print results to stdout. Instead, it executes the following protocol to hand off the results to the web application.
+
+### The Code File Protocol
+
+The Web UI creates a JSON handshake file at `${GSC_HOME}/data/codes/<code>.json`. The CLI must read, update, and manage this file according to the lifecycle defined below.
+
+#### 1. File Schema
+
+The CLI must be able to parse and write the following JSON structure:
+
+```json
+{
+  "code": "123456",
+  "chatId": "uuid-of-the-conversation",
+  "dbPath": "/absolute/path/to/chats.sqlite3",
+  "gscHome": "/absolute/path/to/gsc_home",
+  "expiresAt": 1738867200000,
+  "createdAt": 1738867080000,
+  "defaultVisibility": "human-public",
+  "generatedBy": "web-ui",
+  "consumer": "gsc",
+  "status": "pending",
+  "command": null,
+  "startedAt": null,
+  "finishedAt": null,
+  "error": null,
+  "result": {
+    "messageId": null,
+    "output": null
+  }
+}
+```
+
+#### 2. Lifecycle Steps
+
+When `--code` is provided, the CLI must execute these steps in order:
+
+1.  **Discovery & Validation**
+    *   Read `${GSC_HOME}/data/codes/<code>.json`.
+    *   **Validate:** Ensure `consumer` is `"gsc"` (or compatible).
+    *   **Validate:** Ensure `expiresAt` > `Date.now()`. If expired, abort with an error.
+    *   **Validate:** Ensure `dbPath` exists and is a valid SQLite database.
+
+2.  **Initialization (Atomic Write)**
+    *   Update the file to indicate execution has started:
+        *   `status`: `"running"`
+        *   `startedAt`: Current timestamp (ms)
+        *   `command`: The full command string executed by the user.
+    *   **Critical:** Perform an atomic write (write to temp file, then rename) to prevent race conditions with the Web UI's polling service.
+
+3.  **Execution**
+    *   Run the underlying command (e.g., `grep`, `query`).
+    *   Capture the output (stdout/stderr) as a string.
+
+4.  **Database Insertion**
+    *   Connect to the database specified in `dbPath`.
+    *   Insert a new message into the `messages` table with the following schema:
+        *   `uuid`: Generate a new RFC4122 v4 UUID.
+        *   `chat_id`: Use the `chatId` from the JSON file.
+        *   `type`: `'gsc-cli-output'` (Required for Web UI detection).
+        *   `message`: The captured command output string.
+        *   `visibility`: Use `defaultVisibility` from the JSON file (usually `'human-public'`).
+        *   `created_at`: Current timestamp (ms).
+
+5.  **Completion (Atomic Write)**
+    *   Update the JSON file with the result:
+        *   `status`: `"success"`
+        *   `finishedAt`: Current timestamp (ms)
+        *   `result.messageId`: The UUID of the inserted database row.
+        *   `result.output`: The command output string.
+    *   **Cleanup:** Delete the `<code>.json` file from the filesystem.
+
+#### 3. Error Handling
+
+If an error occurs at any point (validation failure, DB connection error, command execution failure), the CLI must:
+
+1.  Update the JSON file:
+    *   `status`: `"error"`
+    *   `finishedAt`: Current timestamp (ms)
+    *   `error`: An object containing `{ code: "ERROR_CODE", message: "Description", details: {...} }`.
+2.  **Do NOT delete** the JSON file. The Web UI polling service will read this error and display it to the user.
+
+#### 4. Security & Visibility
+
+The `defaultVisibility` field in the code file dictates who can see the resulting message in the chat.
+*   **`human-public`**: The message is visible to the user but hidden from the AI context (prevents accidental token costs on large outputs).
+*   **`public`**: The message is visible to both the user and the AI.
+
+The CLI **must** respect this value when inserting the message into the database.
+
 ## Architecture
 
 `gsc` is built on a modular architecture designed for performance and tool-agnosticism:
@@ -150,6 +252,3 @@ An enhanced filesystem listing command that brings domain-specific intelligence 
 
 ## Contributing
 GitSense Chat CLI is an open source project. We welcome contributions that improve the intelligence layer or add new search engine implementations.
-
-## License
-[Your License Here]
