@@ -1,12 +1,12 @@
 /**
  * Component: CLI Bridge Orchestrator
- * Block-UUID: f77d7e2d-db29-41b1-8bb1-e00a933c9495
- * Parent-UUID: 13301aea-4648-429a-8034-01f65c70fc8b
- * Version: 1.3.0
+ * Block-UUID: 988e3eee-f244-49a4-85ea-48f6244e7e44
+ * Parent-UUID: f77d7e2d-db29-41b1-8bb1-e00a933c9495
+ * Version: 1.3.1
  * Description: Orchestrates the CLI Bridge lifecycle, including handshake file management, terminal prompts, signal handling, and database integration. Added the main Execute entry point with signal handling for SIGINT/SIGTERM and terminal prompt logic for user confirmation. Implemented bloat protection for the handshake file by truncating the output preview if it exceeds 100KB. Added debug logging to trace GSC_HOME resolution and handshake file path construction. Added helpful error message when GSC_HOME is not set and the handshake file is not found.
  * Language: Go
- * Created-at: 2026-02-08T07:34:07.051Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0)
+ * Created-at: 2026-02-08T19:06:26.138Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), Gemini 3 Flash (v1.3.1)
  */
 
 
@@ -274,7 +274,7 @@ func (h *Handshake) InsertToChat(markdown string) (int64, error) {
 		ChatID:     h.ChatID,
 		ParentID:   h.ParentMessageID,
 		Level:      parent.Level + 1,
-		Role:       "system",
+		Role:       "assistant",
 		RealModel:  sql.NullString{String: settings.RealModelNotes, Valid: true},
 		Temperature: sql.NullFloat64{Float64: 0, Valid: true},
 		Message:    sql.NullString{String: markdown, Valid: true},
@@ -293,7 +293,7 @@ func (h *Handshake) InsertToChat(markdown string) (int64, error) {
 func (h *Handshake) Cleanup() {
 	path := filepath.Join(h.GSCHome, settings.BridgeHandshakeDir, h.Code+".json")
 	if err := os.Remove(path); err != nil {
-		logger.Debug("[BRIDGE] Failed to delete handshake file", "path", "path", "error", err)
+		logger.Debug("[BRIDGE] Failed to delete handshake file", "path", path, "error", err)
 	}
 }
 

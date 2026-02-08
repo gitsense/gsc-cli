@@ -1,12 +1,12 @@
 /**
  * Component: Search Response Formatter
- * Block-UUID: eaf862fb-89d4-4f58-ac8d-2ff94339a801
- * Parent-UUID: 9e877260-ad90-4316-a774-e7962841c199
- * Version: 2.12.0
+ * Block-UUID: 224a7bef-747f-4666-9af0-55a512e53903
+ * Parent-UUID: eaf862fb-89d4-4f58-ac8d-2ff94339a801
+ * Version: 2.13.0
  * Description: Added Chat ID display to human-readable output for analyzed files and introduced ShowChatID option for configurability. Added FormatResponseToString helper to support CLI Bridge integration and refactored FormatResponse to use it.
  * Language: Go
- * Created-at: 2026-02-06T05:06:32.928Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), Gemini 3 Flash (v2.2.0), Gemini 3 Flash (v2.3.0), Gemini 3 Flash (v2.3.1), GLM-4.7 (v2.4.0), Gemini 3 Flash (v2.5.0), Gemini 3 Flash (v2.6.0), Gemini 3 Flash (v2.7.0), Gemini 3 Flash (v2.8.0), Gemini 3 Flash (v2.9.0), Gemini 3 Flash (v2.10.0), GLM-4.7 (v2.11.0), Gemini 3 Flash (v2.12.0)
+ * Created-at: 2026-02-08T19:08:01.207Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), Gemini 3 Flash (v2.2.0), Gemini 3 Flash (v2.3.0), Gemini 3 Flash (v2.3.1), GLM-4.7 (v2.4.0), Gemini 3 Flash (v2.5.0), Gemini 3 Flash (v2.6.0), Gemini 3 Flash (v2.7.0), Gemini 3 Flash (v2.8.0), Gemini 3 Flash (v2.9.0), Gemini 3 Flash (v2.10.0), GLM-4.7 (v2.11.0), Gemini 3 Flash (v2.12.0), Gemini 3 Flash (v2.13.0)
  */
 
 
@@ -30,6 +30,7 @@ type FormatOptions struct {
 	ShowChatID      bool
 	RequestedFields []string
 	Filters         []string
+	NoColor         bool
 	AvailableFields []string
 }
 
@@ -79,7 +80,7 @@ func formatJSONResponseToString(context QueryContext, summary GrepSummary, match
 func formatHumanResponseToString(context QueryContext, summary GrepSummary, matches []MatchResult, opts FormatOptions) (string, error) {
 	var sb strings.Builder
 	files := GroupMatchesByFile(matches)
-	useColor := output.IsTerminal()
+	useColor := !opts.NoColor && output.IsTerminal()
 
 	sb.WriteString(getIntelligenceHeader(context, summary, useColor))
 
