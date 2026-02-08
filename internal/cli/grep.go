@@ -1,12 +1,12 @@
 /**
  * Component: Grep Command
- * Block-UUID: 9a9d57e3-ac6d-4b55-8b56-667ad7a093ff
- * Parent-UUID: 46ae2bb0-13a1-4d55-99a7-e70d6667dc32
- * Version: 4.1.0
- * Description: CLI command definition for 'gsc grep'. Updated to support metadata filtering, stats recording, and case-sensitive defaults. Updated to resolve database names from user input or config to physical names. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted Info logs to Debug and set SilenceUsage to true. Integrated CLI Bridge: if --code is provided, output is captured and sent to the bridge orchestrator for chat insertion.
+ * Block-UUID: 888b351a-1be5-4ae8-b847-a7458133beba
+ * Parent-UUID: 9a9d57e3-ac6d-4b55-8b56-667ad7a093ff
+ * Version: 4.2.0
+ * Description: CLI command definition for 'gsc grep'. Updated to support metadata filtering, stats recording, and case-sensitive defaults. Updated to resolve database names from user input or config to physical names. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted Info logs to Debug and set SilenceUsage to true. Integrated CLI Bridge: if --code is provided, output is captured and sent to the bridge orchestrator for chat insertion. Added debug logging to trace the bridge code received from the CLI arguments.
  * Language: Go
  * Created-at: 2026-02-06T04:36:16.847Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v3.0.0), GLM-4.7 (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.7 (v3.3.0), Gemini 3 Flash (v3.4.0), Gemini 3 Flash (v3.5.0), Gemini 3 Flash (v3.6.0), Gemini 3 Flash (v3.7.0), Gemini 3 Flash (v3.8.0), Gemini 3 Flash (v3.9.0), Gemini 3 Flash (v3.9.1), Gemini 3 Flash (v4.0.0), Gemini 3 Flash (v4.0.1), Gemini 3 Flash (v4.1.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v3.0.0), GLM-4.7 (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.7 (v3.3.0), Gemini 3 Flash (v3.4.0), Gemini 3 Flash (v3.5.0), Gemini 3 Flash (v3.6.0), Gemini 3 Flash (v3.7.0), Gemini 3 Flash (v3.8.0), Gemini 3 Flash (v3.9.0), Gemini 3 Flash (v3.9.1), Gemini 3 Flash (v4.0.0), Gemini 3 Flash (v4.0.1), Gemini 3 Flash (v4.1.0), GLM-4.7 (v4.2.0)
  */
 
 
@@ -247,6 +247,9 @@ Filtering:
 
 		// CLI Bridge Integration
 		if bridgeCode != "" {
+			// Debug: Log the bridge code received
+			logger.Debug("CLI Bridge code received", "code", bridgeCode)
+
 			// 1. Generate the formatted string
 			outputStr, err := search.FormatResponseToString(queryContext, summary, enrichedMatches, formatOpts)
 			if err != nil {
