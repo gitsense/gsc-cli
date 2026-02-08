@@ -1,27 +1,33 @@
 /**
  * Component: CLI Bridge Orchestrator
- * Block-UUID: bcb2fffe-0d56-4e3e-a646-07397fec6087
- * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: Orchestrates the CLI Bridge lifecycle, including handshake file management and database integration.
+ * Block-UUID: 516656f2-1a8b-469a-a183-1da64969bbe2
+ * Parent-UUID: bcb2fffe-0d56-4e3e-a646-07397fec6087
+ * Version: 1.1.0
+ * Description: Orchestrates the CLI Bridge lifecycle, including handshake file management, terminal prompts, signal handling, and database integration. Added the main Execute entry point with signal handling for SIGINT/SIGTERM and terminal prompt logic for user confirmation. Implemented bloat protection for the handshake file by truncating the output preview if it exceeds 100KB.
  * Language: Go
  * Created-at: 2026-02-08T04:18:45.123Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0)
  */
 
 
 package bridge
 
 import (
+	"bufio"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"strings"
+	"syscall"
 	"time"
 
 	"github.com/yourusername/gsc-cli/internal/db"
+	"github.com/yourusername/gsc-cli/internal/output"
 	"github.com/yourusername/gsc-cli/pkg/logger"
+	"github.com/yourusername/gsc-cli/pkg/settings"
 )
 
 // Handshake represents the JSON handshake file created by the Web UI.
@@ -58,9 +64,95 @@ type Result struct {
 	OutputSize *int64  `json:"outputSize"`
 }
 
+// Execute is the main entry point for the CLI Bridge.
+// It handles the entire lifecycle from loading the handshake to final insertion.
+func Execute(code string, rawOutput string, format string, cmdStr string, duration time.Duration, dbName string, force bool) error {
+	// 1. Resolve GSC_HOME and Load Handshake
+	gscHome, err := resolveGSCHome()
+	if err != nil {
+		return fmt.Errorf("failed to resolve GSC_HOME: %w", err)
+	}
+
+	h, err := LoadHandshake(gscHome, code)
+	if err != nil {
+		return err // Already formatted
+	}
+
+	// 2. Setup Signal Handling (SIGINT/SIGTERM)
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sigChan
+		h.UpdateStatus("error", &Error{Code: "USER_ABORTED", Message: "Process interrupted by user"})
+		os.Exit(2)
+	}()
+
+	// 3. Update Status to Running
+	if err := h.UpdateStatus("running", nil); err != nil {
+		return err
+	}
+
+	// 4. Format the Markdown Message
+	markdown := output.FormatBridgeMarkdown(cmdStr, duration, dbName, format, rawOutput)
+	outputSize := int64(len(markdown))
+
+	// 5. Size Validation & Confirmation
+	if outputSize > h.MaxOutputSize {
+		h.UpdateStatus("oversized", nil)
+		fmt.Fprintf(os.Stderr, "\n⚠️  Output (%.2f MB) exceeds the %.2f MB limit. Proceed anyway? [y/N] ", 
+			float64(outputSize)/1024/1024, float64(h.MaxOutputSize)/1024/1024)
+		
+		if !askConfirmation(false) {
+			h.UpdateStatus("error", &Error{Code: "USER_ABORTED_OVERSIZED", Message: "User declined oversized output"})
+			return fmt.Errorf("message was not added to chat (size exceeded limit)")
+		}
+	} else if !force {
+		// Show hint for JSON format if in human mode
+		if strings.ToLower(format) == "human" {
+			fmt.Fprintln(os.Stderr, "\nHint: For better AI analysis, use '--format json' to provide structured data.")
+		}
+
+		fmt.Fprintf(os.Stderr, "Insert into chat \"%s\" (%.2f MB)? [Y/n] ", 
+			h.ChatTitle, float64(outputSize)/1024/1024)
+		
+		if !askConfirmation(true) {
+			h.UpdateStatus("error", &Error{Code: "USER_ABORTED", Message: "User declined insertion"})
+			return fmt.Errorf("message was not added to chat")
+		}
+	}
+
+	// 6. Database Insertion
+	msgID, err := h.InsertToChat(markdown)
+	if err != nil {
+		h.UpdateStatus("error", &Error{Code: "ERR_DB_INSERT", Message: err.Error()})
+		return err
+	}
+
+	// 7. Success & Cleanup
+	h.Result.MessageID = &msgID
+	h.Result.OutputSize = &outputSize
+	
+	// Bloat Protection: Truncate output in JSON if > 100KB
+	preview := markdown
+	if outputSize > 102400 {
+		preview = markdown[:102400] + "\n\n[Output truncated in handshake file. Full content is in the chat database.]"
+	}
+	h.Result.Output = &preview
+
+	if err := h.UpdateStatus("success", nil); err != nil {
+		return err
+	}
+
+	h.Cleanup()
+	fmt.Fprintf(os.Stderr, "\n[BRIDGE] Success! Message ID: %d\n", msgID)
+	fmt.Fprintln(os.Stderr, "[BRIDGE] Note: This bridge code has been consumed and cannot be reused.")
+
+	return nil
+}
+
 // LoadHandshake reads and validates the handshake file for a given code.
 func LoadHandshake(gscHome, code string) (*Handshake, error) {
-	path := filepath.Join(gscHome, "data", "codes", code+".json")
+	path := filepath.Join(gscHome, settings.BridgeHandshakeDir, code+".json")
 	
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -108,7 +200,7 @@ func (h *Handshake) UpdateStatus(status string, errObj *Error) error {
 		return fmt.Errorf("failed to marshal handshake: %w", err)
 	}
 
-	path := filepath.Join(h.GSCHome, "data", "codes", h.Code+".json")
+	path := filepath.Join(h.GSCHome, settings.BridgeHandshakeDir, h.Code+".json")
 	tmpPath := path + ".tmp"
 
 	if err := os.WriteFile(tmpPath, data, 0644); err != nil {
@@ -130,7 +222,7 @@ func (h *Handshake) InsertToChat(markdown string) (int64, error) {
 	}
 	defer sqliteDB.Close()
 
-	// 1. Validate Parent
+	// 1. Validate Parent and fetch level
 	parent, err := db.GetMessage(sqliteDB, h.ParentMessageID)
 	if err != nil {
 		return 0, fmt.Errorf("parent validation failed: %w", err)
@@ -154,7 +246,7 @@ func (h *Handshake) InsertToChat(markdown string) (int64, error) {
 		ParentID:   h.ParentMessageID,
 		Level:      parent.Level + 1,
 		Role:       "system",
-		RealModel:  sql.NullString{String: "GitSense Notes", Valid: true},
+		RealModel:  sql.NullString{String: settings.RealModelNotes, Valid: true},
 		Temperature: sql.NullFloat64{Float64: 0, Valid: true},
 		Message:    sql.NullString{String: markdown, Valid: true},
 	}
@@ -170,8 +262,34 @@ func (h *Handshake) InsertToChat(markdown string) (int64, error) {
 
 // Cleanup deletes the handshake file upon success.
 func (h *Handshake) Cleanup() {
-	path := filepath.Join(h.GSCHome, "data", "codes", h.Code+".json")
+	path := filepath.Join(h.GSCHome, settings.BridgeHandshakeDir, h.Code+".json")
 	if err := os.Remove(path); err != nil {
 		logger.Debug("[BRIDGE] Failed to delete handshake file", "path", path, "error", err)
 	}
+}
+
+// resolveGSCHome determines the GSC_HOME directory.
+func resolveGSCHome() (string, error) {
+	if gscHome := os.Getenv("GSC_HOME"); gscHome != "" {
+		return gscHome, nil
+	}
+	
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	
+	return filepath.Join(homeDir, ".gitsense"), nil
+}
+
+// askConfirmation prompts the user for a Y/n or y/N response.
+func askConfirmation(defaultYes bool) bool {
+	reader := bufio.NewReader(os.Stdin)
+	input, _ := reader.ReadString('\n')
+	input = strings.TrimSpace(strings.ToLower(input))
+
+	if input == "" {
+		return defaultYes
+	}
+	return input == "y" || input == "yes"
 }

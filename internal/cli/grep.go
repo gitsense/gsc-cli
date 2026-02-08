@@ -1,12 +1,12 @@
 /**
  * Component: Grep Command
- * Block-UUID: 46ae2bb0-13a1-4d55-99a7-e70d6667dc32
- * Parent-UUID: 9cf9707a-160a-455b-8f0d-f203549398fe
- * Version: 4.0.1
- * Description: CLI command definition for 'gsc grep'. Updated to support metadata filtering, stats recording, and case-sensitive defaults. Updated to resolve database names from user input or config to physical names. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted Info logs to Debug and set SilenceUsage to true.
+ * Block-UUID: 9a9d57e3-ac6d-4b55-8b56-667ad7a093ff
+ * Parent-UUID: 46ae2bb0-13a1-4d55-99a7-e70d6667dc32
+ * Version: 4.1.0
+ * Description: CLI command definition for 'gsc grep'. Updated to support metadata filtering, stats recording, and case-sensitive defaults. Updated to resolve database names from user input or config to physical names. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted Info logs to Debug and set SilenceUsage to true. Integrated CLI Bridge: if --code is provided, output is captured and sent to the bridge orchestrator for chat insertion.
  * Language: Go
  * Created-at: 2026-02-06T04:36:16.847Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v3.0.0), GLM-4.7 (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.7 (v3.3.0), Gemini 3 Flash (v3.4.0), Gemini 3 Flash (v3.5.0), Gemini 3 Flash (v3.6.0), Gemini 3 Flash (v3.7.0), Gemini 3 Flash (v3.8.0), Gemini 3 Flash (v3.9.0), Gemini 3 Flash (v3.9.1), Gemini 3 Flash (v4.0.0), Gemini 3 Flash (v4.0.1)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v3.0.0), GLM-4.7 (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.7 (v3.3.0), Gemini 3 Flash (v3.4.0), Gemini 3 Flash (v3.5.0), Gemini 3 Flash (v3.6.0), Gemini 3 Flash (v3.7.0), Gemini 3 Flash (v3.8.0), Gemini 3 Flash (v3.9.0), Gemini 3 Flash (v3.9.1), Gemini 3 Flash (v4.0.0), Gemini 3 Flash (v4.0.1), Gemini 3 Flash (v4.1.0)
  */
 
 
@@ -15,10 +15,12 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
-	"time"
+	"os"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/yourusername/gsc-cli/internal/bridge"
 	"github.com/yourusername/gsc-cli/internal/git"
 	"github.com/yourusername/gsc-cli/internal/manifest"
 	"github.com/yourusername/gsc-cli/internal/registry"
@@ -243,6 +245,23 @@ Filtering:
 			AvailableFields: availableFields,
 		}
 
+		// CLI Bridge Integration
+		if bridgeCode != "" {
+			// 1. Generate the formatted string
+			outputStr, err := search.FormatResponseToString(queryContext, summary, enrichedMatches, formatOpts)
+			if err != nil {
+				return fmt.Errorf("failed to format bridge output: %w", err)
+			}
+
+			// 2. Print to stdout (as per spec: "display output as we normally would")
+			fmt.Print(outputStr)
+
+			// 3. Hand off to bridge orchestrator
+			cmdStr := strings.Join(os.Args, " ")
+			return bridge.Execute(bridgeCode, outputStr, grepFormat, cmdStr, time.Since(startTime), dbName, forceInsert)
+		}
+
+		// Standard Output Mode
 		if err := search.FormatResponse(queryContext, summary, enrichedMatches, formatOpts); err != nil {
 			return err
 		}
