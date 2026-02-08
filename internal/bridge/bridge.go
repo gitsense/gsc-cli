@@ -1,12 +1,12 @@
 /**
  * Component: CLI Bridge Orchestrator
- * Block-UUID: 516656f2-1a8b-469a-a183-1da64969bbe2
- * Parent-UUID: bcb2fffe-0d56-4e3e-a646-07397fec6087
- * Version: 1.1.0
+ * Block-UUID: 13301aea-4648-429a-8034-01f65c70fc8b
+ * Parent-UUID: 516656f2-1a8b-469a-a183-1da64969bbe2
+ * Version: 1.2.0
  * Description: Orchestrates the CLI Bridge lifecycle, including handshake file management, terminal prompts, signal handling, and database integration. Added the main Execute entry point with signal handling for SIGINT/SIGTERM and terminal prompt logic for user confirmation. Implemented bloat protection for the handshake file by truncating the output preview if it exceeds 100KB.
  * Language: Go
- * Created-at: 2026-02-08T04:18:45.123Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0)
+ * Created-at: 2026-02-08T07:34:07.051Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0)
  */
 
 
@@ -29,6 +29,18 @@ import (
 	"github.com/yourusername/gsc-cli/pkg/logger"
 	"github.com/yourusername/gsc-cli/pkg/settings"
 )
+
+// BridgeError represents an error that occurred during bridge execution
+// with a specific exit code for the CLI.
+type BridgeError struct {
+	ExitCode int
+	Message  string
+	Err      error
+}
+
+func (e *BridgeError) Error() string {
+	return e.Message
+}
 
 // Handshake represents the JSON handshake file created by the Web UI.
 type Handshake struct {
@@ -83,8 +95,17 @@ func Execute(code string, rawOutput string, format string, cmdStr string, durati
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		<-sigChan
-		h.UpdateStatus("error", &Error{Code: "USER_ABORTED", Message: "Process interrupted by user"})
-		os.Exit(2)
+		// Hard 500ms timeout for cleanup write
+		done := make(chan bool, 1)
+		go func() {
+			h.UpdateStatus("error", &Error{Code: "USER_ABORTED", Message: "Process interrupted by user"})
+			done <- true
+		}()
+		select {
+		case <-done:
+		case <-time.After(500 * time.Millisecond):
+		}
+		os.Exit(2) // Standardized exit code for User Abort
 	}()
 
 	// 3. Update Status to Running
@@ -104,9 +125,10 @@ func Execute(code string, rawOutput string, format string, cmdStr string, durati
 		
 		if !askConfirmation(false) {
 			h.UpdateStatus("error", &Error{Code: "USER_ABORTED_OVERSIZED", Message: "User declined oversized output"})
-			return fmt.Errorf("message was not added to chat (size exceeded limit)")
+			return &BridgeError{ExitCode: 4, Message: "message was not added to chat (size exceeded limit)"}
 		}
 	} else if !force {
+		h.UpdateStatus("awaiting-confirmation", nil)
 		// Show hint for JSON format if in human mode
 		if strings.ToLower(format) == "human" {
 			fmt.Fprintln(os.Stderr, "\nHint: For better AI analysis, use '--format json' to provide structured data.")
@@ -117,7 +139,7 @@ func Execute(code string, rawOutput string, format string, cmdStr string, durati
 		
 		if !askConfirmation(true) {
 			h.UpdateStatus("error", &Error{Code: "USER_ABORTED", Message: "User declined insertion"})
-			return fmt.Errorf("message was not added to chat")
+			return &BridgeError{ExitCode: 2, Message: "message was not added to chat"}
 		}
 	}
 
@@ -125,7 +147,7 @@ func Execute(code string, rawOutput string, format string, cmdStr string, durati
 	msgID, err := h.InsertToChat(markdown)
 	if err != nil {
 		h.UpdateStatus("error", &Error{Code: "ERR_DB_INSERT", Message: err.Error()})
-		return err
+		return &BridgeError{ExitCode: 3, Message: err.Error(), Err: err}
 	}
 
 	// 7. Success & Cleanup
