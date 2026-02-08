@@ -1,12 +1,12 @@
 /**
  * Component: Output Formatter
- * Block-UUID: 10ecb6c7-54b4-449e-8e81-cee5d74b002a
- * Parent-UUID: 5783c69e-5eea-4cfb-be12-6e40b405dddc
- * Version: 1.6.0
+ * Block-UUID: 97fe4a86-bd11-46c5-bba2-1e0254e644b8
+ * Parent-UUID: 10ecb6c7-54b4-449e-8e81-cee5d74b002a
+ * Version: 1.7.0
  * Description: Provides utility functions to format data into JSON, Table, or CSV strings. Added FormatMetadataYAML and FormatMetadataJSON to support the ripgrep metadata appendix.
  * Language: Go
- * Created-at: 2026-02-05T04:25:15.860Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0)
+ * Created-at: 2026-02-08T06:38:32.696Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), Gemini 3 Flash (v1.7.0)
  */
 
 
@@ -19,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/mattn/go-isatty"
 )
@@ -186,4 +187,32 @@ func FormatDatabaseTable(databases []interface{}, format string) {
 // This is used to determine whether to show decorative headers/footers.
 func IsTerminal() bool {
 	return isatty.IsTerminal(os.Stdout.Fd())
+}
+
+// FormatBridgeMarkdown constructs the Markdown message for the CLI Bridge.
+func FormatBridgeMarkdown(command string, duration time.Duration, dbName string, format string, output string) string {
+	var sb strings.Builder
+
+	sb.WriteString("## GSC CLI Output\n\n")
+	sb.WriteString("| Property | Value |\n")
+	sb.WriteString("| :--- | :--- |\n")
+	sb.WriteString(fmt.Sprintf("| **Command** | `%s` |\n", command))
+	sb.WriteString(fmt.Sprintf("| **Execution Time** | %v |\n", duration.Round(time.Millisecond)))
+	sb.WriteString(fmt.Sprintf("| **Database** | `%s` |\n", dbName))
+	sb.WriteString(fmt.Sprintf("| **Format** | %s |\n", strings.ToUpper(format)))
+	sb.WriteString("\n")
+
+	lang := "text"
+	if strings.ToLower(format) == "json" {
+		lang = "json"
+	}
+
+	sb.WriteString(fmt.Sprintf("```%s\n", lang))
+	sb.WriteString(output)
+	if !strings.HasSuffix(output, "\n") {
+		sb.WriteString("\n")
+	}
+	sb.WriteString("```\n")
+
+	return sb.String()
 }
