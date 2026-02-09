@@ -241,7 +241,7 @@ func FormatStatusView(config *QueryConfig, quiet bool) string {
 
 	sb.WriteString("Quick Actions:\n")
 	sb.WriteString("  • List fields:     gsc query list\n")
-	sb.WriteString("  • View insights:   gsc query insights --field <field>\n")
+	sb.WriteString("  • View insights:   gsc query insights --db <name> --field <field>\n")
 	sb.WriteString("  • Check coverage:  gsc query coverage\n\n")
 
 	sb.WriteString("Need more help? Run 'gsc query --help' for the full manual.\n")
