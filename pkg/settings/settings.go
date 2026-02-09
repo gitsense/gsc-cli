@@ -12,10 +12,10 @@
 
 package settings
 
-// DefaultGitSenseDir is the default name of the directory where GitSense stores its data
+// DefaultGitSenseDir is the default name of the directory where GitSense Chat stores its data
 const DefaultGitSenseDir = ".gitsense"
 
-// GitSenseDir is the name of the directory where GitSense stores its data
+// GitSenseDir is the name of the directory where GitSense Chat stores its data
 // This is a variable so it can be overridden by CLI flags
 var GitSenseDir = DefaultGitSenseDir
 

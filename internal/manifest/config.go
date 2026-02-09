@@ -1,12 +1,12 @@
 /**
  * Component: Query Configuration Manager
- * Block-UUID: 960de2c0-9666-44d0-b130-864bcbe321bb
- * Parent-UUID: 669a4b74-5db3-4c8a-99ff-1d1786758846
- * Version: 2.5.0
- * Description: Manages the .gitsense/config.json file and profile loading. Updated GlobalSettings to include Scope, updated mergeConfig to handle scope merging, and integrated .gitsense-map loading into GetEffectiveConfig to ensure project-level scope is considered. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted routine Info and Success logs to Debug level to prevent duplicate output with the CLI layer and enable quiet-by-default behavior.
+ * Block-UUID: 1da261d0-29b6-440e-a699-5b94387832de
+ * Parent-UUID: 960de2c0-9666-44d0-b130-864bcbe321bb
+ * Version: 2.6.0
+ * Description: Manages the .gitsense/config.json file and profile loading. Updated GlobalSettings to include Scope, updated mergeConfig to handle scope merging, and integrated .gitsense-map loading into GetEffectiveConfig to ensure project-level scope is considered. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted routine Info and Success logs to Debug level to prevent duplicate output with the CLI layer and enable quiet-by-default behavior. Added INTERNAL comments to clarify that profile and config logic is retained for internal use but hidden from the user interface.
  * Language: Go
  * Created-at: 2026-02-05T20:06:43.927Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), Gemini 3 Flash (v2.5.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), Gemini 3 Flash (v2.5.0), GLM-4.7 (v2.6.0)
  */
 
 
@@ -43,6 +43,7 @@ type QueryConfig struct {
 
 // LoadConfig loads the query configuration from .gitsense/config.json.
 // If the file does not exist, it returns a new, empty configuration.
+// INTERNAL: This function is used internally to support hidden profile features.
 func LoadConfig() (*QueryConfig, error) {
 	configPath, err := resolveConfigPath()
 	if err != nil {
@@ -74,6 +75,7 @@ func LoadConfig() (*QueryConfig, error) {
 }
 
 // SaveConfig saves the query configuration to .gitsense/config.json.
+// INTERNAL: This function is used internally to support hidden profile features.
 func SaveConfig(config *QueryConfig) error {
 	configPath, err := resolveConfigPath()
 	if err != nil {
@@ -108,6 +110,7 @@ func SaveConfig(config *QueryConfig) error {
 // It also integrates project-level scope from .gitsense-map if no profile scope is defined.
 // This is the primary function that commands should use to get their settings.
 // Precedence: Profile Settings > Global Settings > .gitsense-map.
+// INTERNAL: Profile logic is handled here but hidden from the user interface.
 func GetEffectiveConfig() (*QueryConfig, error) {
 	config, err := LoadConfig()
 	if err != nil {
@@ -157,6 +160,7 @@ func GetEffectiveConfig() (*QueryConfig, error) {
 }
 
 // LoadProfile loads a specific profile JSON file from the .gitsense/profiles directory.
+// INTERNAL: This function is used internally to support hidden profile features.
 func LoadProfile(name string) (*Profile, error) {
 	profilePath, err := resolveProfilePath(name)
 	if err != nil {
@@ -177,6 +181,7 @@ func LoadProfile(name string) (*Profile, error) {
 }
 
 // SaveProfile saves a profile to the .gitsense/profiles directory.
+// INTERNAL: This function is used internally to support hidden profile features.
 func SaveProfile(profile *Profile) error {
 	profilePath, err := resolveProfilePath(profile.Name)
 	if err != nil {
@@ -204,6 +209,7 @@ func SaveProfile(profile *Profile) error {
 
 // mergeConfig merges profile settings into the base configuration.
 // Profile settings take precedence over global settings.
+// INTERNAL: This function is used internally to support hidden profile features.
 func mergeConfig(base *QueryConfig, profile *Profile) *QueryConfig {
 	merged := *base // Copy base
 
@@ -261,7 +267,7 @@ func NewQueryConfig() *QueryConfig {
 }
 
 // SetDefault sets a default value for a specific key in the configuration.
-// NOTE: This function is deprecated in favor of profiles but kept for compatibility.
+// INTERNAL/DEPRECATED: This function is deprecated in favor of profiles but kept for internal compatibility.
 func SetDefault(key string, value string) error {
 	config, err := LoadConfig()
 	if err != nil {
@@ -283,7 +289,7 @@ func SetDefault(key string, value string) error {
 }
 
 // ClearDefault clears a default value for a specific key.
-// NOTE: This function is deprecated in favor of profiles but kept for compatibility.
+// INTERNAL/DEPRECATED: This function is deprecated in favor of profiles but kept for internal compatibility.
 func ClearDefault(key string) error {
 	config, err := LoadConfig()
 	if err != nil {

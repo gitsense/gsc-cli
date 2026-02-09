@@ -68,14 +68,14 @@ func RunDoctor(ctx context.Context, fix bool) (*DoctorReport, error) {
 	if _, err := os.Stat(gitsenseDir); os.IsNotExist(err) {
 		report.IsHealthy = false
 		report.Checks = append(report.Checks, CheckResult{
-			Name:    "GitSense Directory",
+			Name:    "GitSense Chat Directory",
 			Status:  "error",
 			Message: fmt.Sprintf("Directory not found at %s", gitsenseDir),
 		})
 		return report, nil
 	}
 	report.Checks = append(report.Checks, CheckResult{
-		Name:    "GitSense Directory",
+		Name:    "GitSense Chat Directory",
 		Status:  "ok",
 		Message: fmt.Sprintf("Found at %s", gitsenseDir),
 	})

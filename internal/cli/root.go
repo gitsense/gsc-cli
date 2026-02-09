@@ -1,12 +1,12 @@
 /**
  * Component: Root CLI Command
- * Block-UUID: f3633d2e-b8a5-46e8-8d33-83eb211c5536
- * Parent-UUID: 3bac1959-9c33-4adb-9074-dab9a8297084
- * Version: 1.18.0
- * Description: Updated the root command's long description to reflect the enhanced discovery capabilities of the 'query' command following its refactor into subcommands (list, insights, coverage).
+ * Block-UUID: ac245d37-3a21-4bb2-b4ac-d01ca0a47dcf
+ * Parent-UUID: f3633d2e-b8a5-46e8-8d33-83eb211c5536
+ * Version: 1.19.0
+ * Description: Updated the root command's long description to remove references to the 'config' command and profiles. The 'config' command registration has been commented out to hide the feature from the user interface while retaining the implementation code for internal use.
  * Language: Go
  * Created-at: 2026-02-08T07:30:01.169Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), ..., Claude Haiku 4.5 (v1.16.0), Gemini 3 Flash (v1.17.0), Gemini 3 Flash (v1.18.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), ..., Claude Haiku 4.5 (v1.16.0), Gemini 3 Flash (v1.17.0), Gemini 3 Flash (v1.18.0), GLM-4.7 (v1.19.0)
  */
 
 
@@ -34,15 +34,14 @@ var (
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "gsc",
-	Short: "GitSense CLI - Manage metadata manifests and SQLite databases",
-	Long: `GitSense CLI (gsc) is a command-line tool for managing codebase intelligence manifests.
+	Short: "GitSense Chat CLI - Manage metadata manifests and SQLite databases",
+	Long: `GitSense Chat CLI (gsc) is a command-line tool for managing codebase intelligence manifests.
 It enables AI agents and developers to interact with structured metadata extracted from code repositories.
 
 Top-Level Commands:
-  info        Show current workspace context and status
+  info        Show current workspace information
   query       Find files and discover codebase intelligence (list, insights, coverage)
   grep        Search code with metadata enrichment
-  config      Manage context profiles and workspace settings
 
 Management Commands:
   manifest     Initialize, import, and query metadata manifests`,
@@ -102,8 +101,8 @@ func init() {
 	// Replaced rgCmd with grepCmd
 	RegisterGrepCommand(rootCmd)
 
-	// Register the config command
-	RegisterConfigCommand(rootCmd)
+	// INTERNAL: Config command is hidden from users to reduce complexity
+	// RegisterConfigCommand(rootCmd)
 
 	// Register the info command
 	RegisterInfoCommand(rootCmd)
@@ -117,7 +116,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&bridgeCode, "code", "", "Bridge code for chat integration (6 digits)")
 	rootCmd.PersistentFlags().BoolVar(&forceInsert, "force", false, "Skip confirmation prompt (only if under size limit)")
 
-	logger.Debug("Root command initialized with manifest, query, grep, config, and info commands")
+	logger.Debug("Root command initialized with manifest, query, grep, and info commands")
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

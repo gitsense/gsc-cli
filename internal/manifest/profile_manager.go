@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Profile Manager
- * Block-UUID: 28102c58-31ee-4125-82ed-416a38af2c82
- * Parent-UUID: 2a14ba86-c102-46cb-9e09-b2c32a8d9044
- * Version: 1.5.0
- * Description: Logic to manage Context Profiles, including listing, creating, deleting, activating, and deactivating profiles. Updated log messages in DeactivateProfile to use 'clear' terminology for consistency with the new CLI command. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted Info and Success logs to Debug level to prevent duplicate output with the CLI layer and enable quiet-by-default behavior.
+ * Block-UUID: 35f68033-3019-4a23-bbc1-110aa978e61b
+ * Parent-UUID: 28102c58-31ee-4125-82ed-416a38af2c82
+ * Version: 1.6.0
+ * Description: Logic to manage Context Profiles, including listing, creating, deleting, activating, and deactivating profiles. INTERNAL: This feature is currently hidden from the user interface to reduce complexity. The implementation is retained for potential future use. Updated log messages in DeactivateProfile to use 'clear' terminology for consistency with the new CLI command. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted Info and Success logs to Debug level to prevent duplicate output with the CLI layer and enable quiet-by-default behavior.
  * Language: Go
  * Created-at: 2026-02-03T02:05:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0)
  */
 
 
@@ -24,7 +24,7 @@ import (
 	"github.com/yourusername/gsc-cli/pkg/settings"
 )
 
-// ListProfiles returns a list of all available profiles in the .gitsense/profiles directory.
+// INTERNAL: ListProfiles returns a list of all available profiles in the .gitsense/profiles directory.
 func ListProfiles() ([]Profile, error) {
 	profilesDir, err := resolveProfilesDir()
 	if err != nil {
@@ -74,7 +74,7 @@ func ListProfiles() ([]Profile, error) {
 	return profiles, nil
 }
 
-// CreateProfile creates a new profile with the specified name, description, aliases, and settings.
+// INTERNAL: CreateProfile creates a new profile with the specified name, description, aliases, and settings.
 func CreateProfile(name string, description string, aliases []string, settings ProfileSettings) error {
 	// Validate name
 	if name == "" {
@@ -106,7 +106,7 @@ func CreateProfile(name string, description string, aliases []string, settings P
 	return SaveProfile(&profile)
 }
 
-// DeleteProfile deletes a profile by name.
+// INTERNAL: DeleteProfile deletes a profile by name.
 // If the profile is currently active, it will be deactivated.
 func DeleteProfile(name string) error {
 	profilePath, err := resolveProfilePath(name)
@@ -143,12 +143,12 @@ func DeleteProfile(name string) error {
 	return nil
 }
 
-// ShowProfile returns the details of a specific profile.
+// INTERNAL: ShowProfile returns the details of a specific profile.
 func ShowProfile(name string) (*Profile, error) {
 	return LoadProfile(name)
 }
 
-// SetActiveProfile sets the active profile in the configuration.
+// INTERNAL: SetActiveProfile sets the active profile in the configuration.
 func SetActiveProfile(name string) error {
 	// Resolve profile (supports aliases)
 	profile, err := ResolveProfile(name)
@@ -174,7 +174,7 @@ func SetActiveProfile(name string) error {
 	return nil
 }
 
-// DeactivateProfile clears the active profile in the configuration.
+// INTERNAL: DeactivateProfile clears the active profile in the configuration.
 func DeactivateProfile() error {
 	// Load config
 	config, err := LoadConfig()
@@ -200,7 +200,7 @@ func DeactivateProfile() error {
 	return nil
 }
 
-// GetActiveProfileName returns the name of the currently active profile.
+// INTERNAL: GetActiveProfileName returns the name of the currently active profile.
 func GetActiveProfileName() (string, error) {
 	config, err := LoadConfig()
 	if err != nil {
@@ -209,7 +209,7 @@ func GetActiveProfileName() (string, error) {
 	return config.ActiveProfile, nil
 }
 
-// ValidateAliasUniqueness checks if an alias is already used by another profile.
+// INTERNAL: ValidateAliasUniqueness checks if an alias is already used by another profile.
 // excludeProfileName is used to skip the check when updating a profile (so it can keep its own alias).
 func ValidateAliasUniqueness(alias string, excludeProfileName string) error {
 	if alias == "" {
@@ -238,7 +238,7 @@ func ValidateAliasUniqueness(alias string, excludeProfileName string) error {
 	return nil
 }
 
-// ResolveProfile attempts to find a profile by name or alias.
+// INTERNAL: ResolveProfile attempts to find a profile by name or alias.
 // It first tries an exact name match, then scans all profiles for an alias match.
 func ResolveProfile(input string) (*Profile, error) {
 	if input == "" {

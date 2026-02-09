@@ -1,12 +1,12 @@
 /**
  * Component: Info Command
- * Block-UUID: 3f73ed1a-0e4a-4507-9b22-10da1bf75391
- * Parent-UUID: de10aac0-9d2f-4721-a207-ddfa657c1a8c
- * Version: 1.0.5
- * Description: CLI command definition for 'gsc info', displaying the current workspace context, active profile, and available databases. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted Info logs to Debug, removed redundant Error logs, and set SilenceUsage to true. Integrated CLI Bridge: if --code is provided, output is captured and sent to the bridge orchestrator for chat insertion.
+ * Block-UUID: 0ca81879-f2d3-4719-8472-78465957ae09
+ * Parent-UUID: 3f73ed1a-0e4a-4507-9b22-10da1bf75391
+ * Version: 1.0.6
+ * Description: CLI command definition for 'gsc info', displaying the current workspace context and available databases. Updated help text to remove references to profiles and configuration features, which are now internal/hidden. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted Info logs to Debug, removed redundant Error logs, and set SilenceUsage to true. Integrated CLI Bridge: if --code is provided, output is captured and sent to the bridge orchestrator for chat insertion.
  * Language: Go
  * Created-at: 2026-02-09T02:48:32.741Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.1.0 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), Gemini 3 Flash (v1.0.4), Gemini 3 Flash (v1.0.5)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.1.0 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), Gemini 3 Flash (v1.0.4), Gemini 3 Flash (v1.0.5), GLM-4.7 (v1.0.6)
  */
 
 
@@ -33,10 +33,10 @@ var (
 // infoCmd represents the info command
 var infoCmd = &cobra.Command{
 	Use:   "info",
-	Short: "Show current workspace context and status",
-	Long: `Display a summary of the current GitSense workspace, including the active profile,
-available databases, and project configuration. This command helps you understand
-your current context without needing to run multiple commands.`,
+	Short: "Show current workspace information",
+	Long: `Display a summary of the current GitSense Chat workspace and available databases.
+This command helps you understand your current context without needing to run
+multiple commands.`,
 	Example: `  # Show basic workspace info
   gsc info
 
@@ -57,6 +57,7 @@ your current context without needing to run multiple commands.`,
 		}
 
 		// 1. Gather Workspace Information
+		// INTERNAL: This function loads internal profile data, but the formatter hides it.
 		logger.Debug("Gathering workspace information")
 		info, err := manifest.GetWorkspaceInfo(ctx)
 		if err != nil {

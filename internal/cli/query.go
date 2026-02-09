@@ -1,12 +1,12 @@
 /**
  * Component: Query Command
- * Block-UUID: c68951ae-c60f-4060-aca2-3893f01a19ba
- * Parent-UUID: c6be04da-4088-4f7a-bab0-49b6fce64d7b
- * Version: 3.3.0
- * Description: Updated the 'query' command and its subcommands (list, insights, coverage) to support the '--code' flag for CLI Bridge integration. Refactored handler functions to return output strings instead of printing directly to stdout, enabling the bridge orchestrator to capture and insert results into the chat.
+ * Block-UUID: acbceab1-4861-4770-9c05-dc54f4a1db30
+ * Parent-UUID: c68951ae-c60f-4060-aca2-3893f01a19ba
+ * Version: 3.4.0
+ * Description: Updated the 'query' command and its subcommands (list, insights, coverage) to remove references to profiles and config features from help text and error messages. The underlying logic for loading effective config (which includes profiles) is retained internally but hidden from the user interface. Updated to support the '--code' flag for CLI Bridge integration. Refactored handler functions to return output strings instead of printing directly to stdout, enabling the bridge orchestrator to capture and insert results into the chat.
  * Language: Go
  * Created-at: 2026-02-09T07:09:43.817Z
- * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.7 (v3.3.0)
+ * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.7 (v3.3.0), GLM-4.7 (v3.4.0)
  */
 
 
@@ -45,7 +45,7 @@ var (
 var queryCmd = &cobra.Command{
 	Use:   "query",
 	Short: "Find files by metadata value",
-	Long: `Find files in a focused database by matching a metadata field value.
+	Long: `Find files in a database by matching a metadata field value.
 If no value is provided, it displays the current workspace context.`,
 	Example: `  # Query using defaults (efficient!)
   gsc query --value critical
@@ -288,7 +288,7 @@ func handleCoverage(ctx context.Context, dbName string, scopeOverride string, fo
 	}
 
 	if resolvedDB == "" {
-		return "", "", fmt.Errorf("database is required for coverage analysis. Use --db flag or set a profile with 'gsc config use <name>'")
+		return "", "", fmt.Errorf("database is required for coverage analysis. Use --db flag.")
 	}
 
 	// Resolve database name to physical name
@@ -303,6 +303,7 @@ func handleCoverage(ctx context.Context, dbName string, scopeOverride string, fo
 	}
 
 	logger.Debug("Executing coverage analysis", "database", resolvedDB, "scope_override", scopeOverride)
+	// INTERNAL: We pass the active profile internally, but it's not exposed to the user
 	report, err := manifest.ExecuteCoverageAnalysis(ctx, resolvedDB, scopeOverride, repoRoot, config.ActiveProfile)
 	if err != nil {
 		return "", "", err
@@ -313,7 +314,7 @@ func handleCoverage(ctx context.Context, dbName string, scopeOverride string, fo
 	return output, resolvedDB, nil
 }
 
-// handleInsights orchestrates the insights and report generation process.
+ // handleInsights orchestrates the insights and report generation process.
 func handleInsights(ctx context.Context, dbName string, fieldsStr string, limit int, scopeOverride string, format string, quiet bool, isReport bool) (string, string, error) {
 	config, err := manifest.GetEffectiveConfig()
 	if err != nil {
@@ -326,7 +327,7 @@ func handleInsights(ctx context.Context, dbName string, fieldsStr string, limit 
 	}
 
 	if resolvedDB == "" {
-		return "", "", fmt.Errorf("database is required for insights. Use --db flag or set a profile with 'gsc config use <name>'")
+		return "", "", fmt.Errorf("database is required for insights. Use --db flag.")
 	}
 
 	// Resolve database name to physical name
@@ -352,6 +353,7 @@ func handleInsights(ctx context.Context, dbName string, fieldsStr string, limit 
 	}
 
 	logger.Debug("Executing insights analysis", "database", resolvedDB, "fields", fields, "limit", limit, "scope_override", scopeOverride)
+	// INTERNAL: We pass the active profile internally, but it's not exposed to the user
 	report, err := manifest.ExecuteInsightsAnalysis(ctx, resolvedDB, fields, limit, scopeOverride, repoRoot, config.ActiveProfile)
 	if err != nil {
 		return "", "", err
@@ -464,10 +466,10 @@ func handleQueryOrStatus(ctx context.Context, dbName string, fieldName string, v
 	}
 
 	if resolvedDB == "" {
-		return "", "", fmt.Errorf("database is required. Use --db flag or set a profile with 'gsc config use <name>'")
+		return "", "", fmt.Errorf("database is required. Use --db flag.")
 	}
 	if resolvedField == "" {
-		return "", "", fmt.Errorf("field is required. Use --field flag or set a profile with 'gsc config use <name>'")
+		return "", "", fmt.Errorf("field is required. Use --field flag.")
 	}
 
 	logger.Debug("Executing query", "database", resolvedDB, "field", resolvedField, "value", value)
@@ -482,6 +484,7 @@ func handleQueryOrStatus(ctx context.Context, dbName string, fieldName string, v
 		return "", "", fmt.Errorf("failed to find git root for coverage analysis: %w", err)
 	}
 
+	// INTERNAL: We pass the active profile internally, but it's not exposed to the user
 	coverageReport, err := manifest.ExecuteCoverageAnalysis(ctx, resolvedDB, "", repoRoot, config.ActiveProfile)
 	if err != nil {
 		logger.Warning("Failed to execute coverage analysis", "error", err)

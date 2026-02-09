@@ -1,12 +1,12 @@
 /**
  * Component: Grep Command
- * Block-UUID: 31a17d64-12b4-4e5e-85d1-672992bd93ad
- * Parent-UUID: 65370c1f-9da3-4f7b-8d51-27c19aa908cc
- * Version: 4.4.0
- * Description: CLI command definition for 'gsc grep'. Updated to support metadata filtering, stats recording, and case-sensitive defaults. Updated to resolve database names from user input or config to physical names. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted Info logs to Debug and set SilenceUsage to true. Integrated CLI Bridge: if --code is provided, output is captured and sent to the bridge orchestrator for chat insertion. Added debug logging to trace the bridge code received from the CLI arguments.
+ * Block-UUID: 9ec1a8a6-3854-4093-97c4-ebf88dfa9723
+ * Parent-UUID: 31a17d64-12b4-4e5e-85d1-672992bd93ad
+ * Version: 4.5.0
+ * Description: CLI command definition for 'gsc grep'. Updated to remove references to profiles and config features from help text and error messages. Removed the '--profile' flag to hide the feature from the user interface. Updated to support metadata filtering, stats recording, and case-sensitive defaults. Updated to resolve database names from user input or config to physical names. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted Info logs to Debug and set SilenceUsage to true. Integrated CLI Bridge: if --code is provided, output is captured and sent to the bridge orchestrator for chat insertion. Added debug logging to trace the bridge code received from the CLI arguments.
  * Language: Go
  * Created-at: 2026-02-09T02:49:16.740Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v3.0.0), GLM-4.7 (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.7 (v3.3.0), Gemini 3 Flash (v3.4.0), Gemini 3 Flash (v3.5.0), Gemini 3 Flash (v3.6.0), Gemini 3 Flash (v3.7.0), Gemini 3 Flash (v3.8.0), Gemini 3 Flash (v3.9.0), Gemini 3 Flash (v3.9.1), Gemini 3 Flash (v4.0.0), Gemini 3 Flash (v4.0.1), Gemini 3 Flash (v4.1.0), GLM-4.7 (v4.2.0), Gemini 3 Flash (v4.3.0), GLM-4.7 (v4.3.1), Gemini 3 Flash (v4.4.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v3.0.0), GLM-4.7 (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.7 (v3.3.0), Gemini 3 Flash (v3.4.0), Gemini 3 Flash (v3.5.0), Gemini 3 Flash (v3.6.0), Gemini 3 Flash (v3.7.0), Gemini 3 Flash (v3.8.0), Gemini 3 Flash (v3.9.0), Gemini 3 Flash (v3.9.1), Gemini 3 Flash (v4.0.0), Gemini 3 Flash (v4.0.1), Gemini 3 Flash (v4.1.0), GLM-4.7 (v4.2.0), Gemini 3 Flash (v4.3.0), GLM-4.7 (v4.3.1), Gemini 3 Flash (v4.4.0), GLM-4.7 (v4.5.0)
  */
 
 
@@ -31,7 +31,7 @@ import (
 
 var (
 	grepDB           string
-	grepProfile      string
+	grepProfile      string // INTERNAL: Retained for potential future use, but flag is hidden
 	grepSummary      bool
 	grepContext      int
 	grepCaseSensitive bool
@@ -96,7 +96,8 @@ Filtering:
 
 		startTime := time.Now()
 
-		// 1. Load Effective Config (Merges active profile)
+		// 1. Load Effective Config (Merges active profile internally)
+		// INTERNAL: Profile logic is handled here but hidden from the user.
 		config, err := manifest.GetEffectiveConfig()
 		if err != nil {
 			return fmt.Errorf("failed to load config: %w", err)
@@ -117,7 +118,7 @@ Filtering:
 		}
 
 		if dbName == "" {
-			return fmt.Errorf("database is required. Use --db flag or set a profile with 'gsc config use <name>'")
+			return fmt.Errorf("database is required. Use --db flag.")
 		}
 
 		// 3. Resolve Context (flag > profile default)
@@ -134,6 +135,7 @@ Filtering:
 		}
 
 		// 3.5 Resolve Focus Scope
+		// INTERNAL: We use the active profile name internally for scope resolution, but don't expose it.
 		activeProfileName, _ := manifest.GetActiveProfileName()
 		scope, err := manifest.ResolveScopeForQuery(cmd.Context(), activeProfileName, grepScope)
 		if err != nil {
@@ -216,7 +218,7 @@ Filtering:
 		queryContext := search.QueryContext{
 			Pattern:    pattern,
 			Database:   dbName,
-			ProfileName: activeProfileName,
+			ProfileName: activeProfileName, // INTERNAL: Kept for tracking, but not exposed in UI
 			ScopeSummary: scopeSummary,
 			Mode:       mode,
 			Tool: search.ToolInfo{
@@ -319,8 +321,9 @@ Filtering:
 
 func init() {
 	// Add flags
-	grepCmd.Flags().StringVarP(&grepDB, "db", "d", "", "Database name for enrichment (inherits from profile)")
-	grepCmd.Flags().StringVarP(&grepProfile, "profile", "p", "", "Profile name to use (overrides active profile)")
+	grepCmd.Flags().StringVarP(&grepDB, "db", "d", "", "Database name for enrichment")
+	// INTERNAL: --profile flag removed to hide the feature from users
+	// grepCmd.Flags().StringVarP(&grepProfile, "profile", "p", "", "Profile name to use (overrides active profile)")
 	grepCmd.Flags().BoolVar(&grepSummary, "summary", false, "Return only the summary (no matches)")
 	grepCmd.Flags().StringVar(&grepScope, "scope", "", "Temporary scope override (e.g., include=src/**;exclude=tests/**)")
 	grepCmd.Flags().IntVarP(&grepContext, "context", "C", 0, "Show N lines of context around matches")

@@ -1,12 +1,12 @@
 /**
  * Component: Config Command
- * Block-UUID: 1960669a-4b74-4db3-8c8a-99ff1d178675
- * Parent-UUID: 9ff66498-5b1f-460a-a663-a8da3de2ee79
- * Version: 1.9.0
- * Description: CLI command definition for 'gsc config', managing context profiles and workspace settings. Added --scope-include and --scope-exclude flags to create/update commands. Implemented 'gsc config scope validate' command to check scope patterns against tracked files. Updated to support professional CLI output: set SilenceUsage to true on all subcommands to prevent usage spam on logic errors.
+ * Block-UUID: 9ab987ca-86a9-4a1d-b479-6dd242f0f200
+ * Parent-UUID: 1960669a-4b74-4db3-8c8a-99ff1d178675
+ * Version: 1.10.0
+ * Description: CLI command definition for 'gsc config', managing context profiles and workspace settings. This command is currently HIDDEN from the user interface (not registered in root.go) to reduce complexity. The implementation is retained internally for potential future use. Added --scope-include and --scope-exclude flags to create/update commands. Implemented 'gsc config scope validate' command to check scope patterns against tracked files. Updated to support professional CLI output: set SilenceUsage to true on all subcommands to prevent usage spam on logic errors.
  * Language: Go
  * Created-at: 2026-02-05T20:07:27.804Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), Gemini 3 Flash (v1.6.1), GLM-4.7 (v1.7.0), Gemini 3 Flash (v1.8.0), Gemini 3 Flash (v1.9.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), Gemini 3 Flash (v1.6.1), GLM-4.7 ( Ministers (v1.7.0), Gemini 3 Flash (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.10.0)
  */
 
 
@@ -24,11 +24,16 @@ import (
 	"github.com/yourusername/gsc-cli/internal/output"
 )
 
+// INTERNAL FEATURE: The 'config' command and its subcommands are currently hidden from the user
+// to reduce technical debt and complexity. The implementation is retained here for potential
+// future re-introduction. To re-enable, uncomment RegisterConfigCommand in internal/cli/root.go.
+
 // configCmd represents the config command
 var configCmd = &cobra.Command{
 	Use:   "config",
 	Short: "Manage context profiles and workspace settings",
-	Long: `Manage context profiles and workspace settings.
+	Long: `INTERNAL: Manage context profiles and workspace settings.
+This command is currently hidden from the user interface.
 Profiles allow you to switch between different workspaces (e.g., security, payments)
 with a single command.`,
 	Example: `  # 1. Create a new profile using the interactive wizard
@@ -622,6 +627,7 @@ func init() {
 }
 
 // RegisterConfigCommand registers the config command with the root command.
+// INTERNAL: This function is currently not called in root.go to hide the feature.
 func RegisterConfigCommand(rootCmd *cobra.Command) {
 	rootCmd.AddCommand(configCmd)
 }

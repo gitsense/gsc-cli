@@ -23,7 +23,7 @@ import (
 	"github.com/yourusername/gsc-cli/pkg/settings"
 )
 
-// InitializeGitSense creates the .gitsense directory structure and the manifest.json registry file.
+// InitializeGitSense Chat creates the .gitsense directory structure and the manifest.json registry file.
 // It performs the following steps:
 // 1. Locates the project root.
 // 2. Creates the .gitsense directory.
@@ -33,7 +33,7 @@ func InitializeGitSense() error {
 	// 1. Find Project Root
 	projectRoot, err := git.FindProjectRoot()
 	if err != nil {
-		return fmt.Errorf("GitSense can only be initialized within a Git repository. Error: %w", err)
+		return fmt.Errorf("GitSense Chat can only be initialized within a Git repository. Error: %w", err)
 	}
 
 	gitsenseDir := filepath.Join(projectRoot, settings.GitSenseDir)
@@ -47,7 +47,7 @@ func InitializeGitSense() error {
 
 	// 3. Check if registry already exists
 	if _, err := os.Stat(registryPath); err == nil {
-		logger.Debug("GitSense workspace already initialized", "path", gitsenseDir)
+		logger.Debug("GitSense Chat workspace already initialized", "path", gitsenseDir)
 		return nil
 	}
 
@@ -73,6 +73,6 @@ func InitializeGitSense() error {
 		// Non-fatal error, continue
 	}
 
-	logger.Debug("GitSense workspace initialized successfully", "path", gitsenseDir)
+	logger.Debug("GitSense Chat workspace initialized successfully", "path", gitsenseDir)
 	return nil
 }

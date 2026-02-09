@@ -1,12 +1,12 @@
 /**
  * Component: Workspace Info Logic
- * Block-UUID: 94604752-7799-4aeb-a15b-72631c2e8294
- * Parent-UUID: 8c267277-ad7b-48d0-a394-4a5a3a40953e
- * Version: 1.7.0
- * Description: Logic to gather and format workspace information for the 'gsc info' command, including active profiles, available profiles, and available databases. Added 'AvailableProfiles' to WorkspaceInfo struct and updated GetWorkspaceInfo to populate it via ListProfiles. Updated formatInfoTable to display the list of available profiles, marking the active one with an asterisk. Added 'gsc config active' to Quick Actions for consistency with the new command name. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support CLI Bridge: added noColor parameter to formatting functions to ensure ensure clean output without ANSI escape sequences.
+ * Block-UUID: 78f27e29-99b3-426a-84f9-f1c7b31c68fa
+ * Parent-UUID: 94604752-7799-4aeb-a15b-72631c2e8294
+ * Version: 1.8.0
+ * Description: Logic to gather and format workspace information for the 'gsc info' command. Updated to hide profile and config features from the user interface. Removed 'Active Profile' and 'Available Profiles' sections from output. Added hint for database import. Updated 'FormatWorkspaceHeader' to remove profile context. Implementation logic for profiles is retained internally but not exposed to the user.
  * Language: Go
  * Created-at: 2026-02-05T05:24:58.365Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0)
  */
 
 
@@ -24,7 +24,8 @@ import (
 	"github.com/yourusername/gsc-cli/pkg/settings"
 )
 
-// WorkspaceInfo represents the complete state of the GitSense workspace.
+// WorkspaceInfo represents the complete state of the GitSense Chat workspace.
+// INTERNAL: Profile fields are retained for internal logic but hidden from UI.
 type WorkspaceInfo struct {
 	ActiveProfile    *Profile       `json:"active_profile,omitempty"`
 	AvailableProfiles []Profile     `json:"available_profiles"` // List of all available profiles
@@ -35,6 +36,8 @@ type WorkspaceInfo struct {
 }
 
 // GetWorkspaceInfo gathers all relevant information about the current workspace.
+// INTERNAL: This function still loads profiles internally to support hidden features,
+// but the output formatters will suppress this information from the user.
 func GetWorkspaceInfo(ctx context.Context) (*WorkspaceInfo, error) {
 	info := &WorkspaceInfo{}
 
@@ -47,7 +50,7 @@ func GetWorkspaceInfo(ctx context.Context) (*WorkspaceInfo, error) {
 	info.GitSenseDir = filepath.Join(root, settings.GitSenseDir)
 	info.RegistryPath = filepath.Join(info.GitSenseDir, settings.RegistryFileName)
 
-	// 2. Load Active Profile
+	// 2. Load Active Profile (Internal Use Only)
 	config, err := LoadConfig()
 	if err != nil {
 		logger.Warning("Failed to load config", "error", err)
@@ -60,7 +63,7 @@ func GetWorkspaceInfo(ctx context.Context) (*WorkspaceInfo, error) {
 		}
 	}
 
-	// 3. List Available Profiles
+	// 3. List Available Profiles (Internal Use Only)
 	profiles, err := ListProfiles()
 	if err != nil {
 		logger.Warning("Failed to list profiles", "error", err)
@@ -93,6 +96,8 @@ func FormatWorkspaceInfo(info *WorkspaceInfo, format string, verbose bool, noCol
 }
 
 // formatInfoJSON returns the workspace info as a JSON string.
+// INTERNAL: JSON output still contains profile data for potential internal tooling use,
+// but this endpoint is not advertised to users.
 func formatInfoJSON(info *WorkspaceInfo) string {
 	bytes, err := json.MarshalIndent(info, "", "  ")
 	if err != nil {
@@ -102,6 +107,7 @@ func formatInfoJSON(info *WorkspaceInfo) string {
 }
 
 // formatInfoTable returns the workspace info as a formatted text table.
+// UPDATED: Removed 'Active Profile' and 'Available Profiles' sections to hide the feature.
 func formatInfoTable(info *WorkspaceInfo, verbose bool, noColor bool) string {
 	var sb strings.Builder
 
@@ -111,45 +117,23 @@ func formatInfoTable(info *WorkspaceInfo, verbose bool, noColor bool) string {
 	if err != nil {
 		// Fallback if config fails to load
 		sb.WriteString("╔════════════════════════════════════════════════════════════════╗\n")
-		sb.WriteString("║                    GitSense Workspace Info                     ║\n")
+		sb.WriteString("║                 GitSense Chat Workspace Info                   ║\n")
 		sb.WriteString("╚════════════════════════════════════════════════════════════════╝\n")
 		sb.WriteString("\n")
-		sb.WriteString("Active Profile:  (unknown)\n")
 	} else {
 		sb.WriteString(FormatWorkspaceHeader(config, noColor))
 	}
 
-	// Available Profiles Section
-	sb.WriteString("Available Profiles:\n")
-	if len(info.AvailableProfiles) == 0 {
-		sb.WriteString("  (none)\n")
-	} else {
-		for _, profile := range info.AvailableProfiles {
-			marker := " "
-			if info.ActiveProfile != nil && info.ActiveProfile.Name == profile.Name {
-				marker = "*"
-			}
-
-			sb.WriteString(fmt.Sprintf("├─ %s %-16s", marker, profile.Name))
-
-			if verbose {
-				sb.WriteString(fmt.Sprintf("\n│  Description: %s", profile.Description))
-				if len(profile.Aliases) > 0 {
-					sb.WriteString(fmt.Sprintf("\n│  Aliases:     [%s]", strings.Join(profile.Aliases, ", ")))
-				}
-			}
-			sb.WriteString("\n")
-		}
-	}
-	sb.WriteString("\n")
-
 	// Available Databases Section
 	sb.WriteString("Available Databases:\n")
 	if len(info.AvailableDBs) == 0 {
-		sb.WriteString("  (none)\n")
+		sb.WriteString("   (none)\n")
+		sb.WriteString("\n")
+		sb.WriteString("Hint: To add a database, use `gsc import <manifest>`\n")
 	} else {
 		for _, db := range info.AvailableDBs {
 			marker := " "
+			// INTERNAL: We still mark the active DB internally, but don't show the profile name
 			if info.ActiveProfile != nil && info.ActiveProfile.Settings.Global.DefaultDatabase == db.Name {
 				marker = "*"
 			}
@@ -181,32 +165,16 @@ func formatInfoTable(info *WorkspaceInfo, verbose bool, noColor bool) string {
 
 // FormatWorkspaceHeader returns the prominent workspace header box.
 // This is reused by query and rg commands to show context.
+// UPDATED: Removed profile details to hide the feature from the user.
 func FormatWorkspaceHeader(config *QueryConfig, noColor bool) string {
 	var sb strings.Builder
 
 	sb.WriteString("╔════════════════════════════════════════════════════════════════╗\n")
-	sb.WriteString("║                    GitSense Workspace Info                     ║\n")
+	sb.WriteString("║                 GitSense Chat Workspace Info                   ║\n")
 	sb.WriteString("╚════════════════════════════════════════════════════════════════╝\n")
 	sb.WriteString("\n")
 
-	if config.ActiveProfile != "" {
-		sb.WriteString(fmt.Sprintf("Active Profile:  %s\n", config.ActiveProfile))
-		sb.WriteString(fmt.Sprintf("├─ Database:    %s\n", config.Global.DefaultDatabase))
-		sb.WriteString(fmt.Sprintf("├─ Field:       %s\n", config.Query.DefaultField))
-		sb.WriteString(fmt.Sprintf("├─ Format:      %s\n", config.Query.DefaultFormat))
-
-		// Display Scope Configuration
-		if config.Global.Scope != nil {
-			sb.WriteString(fmt.Sprintf("├─ Scope Inc:   %s\n", strings.Join(config.Global.Scope.Include, ", ")))
-			sb.WriteString(fmt.Sprintf("└─ Scope Exc:   %s\n", strings.Join(config.Global.Scope.Exclude, ", ")))
-		} else {
-			sb.WriteString("└─ Scope:       (default - all tracked files)\n")
-		}
-	} else {
-		sb.WriteString("Active Profile:  (none)\n")
-		sb.WriteString("  Run 'gsc config use <name>' to activate a profile.\n")
-	}
-	sb.WriteString("\n")
-
+	// Profile information removed from display
+	
 	return sb.String()
 }

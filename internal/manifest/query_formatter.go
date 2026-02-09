@@ -119,10 +119,10 @@ func formatListResultTable(listResult *ListResult, quiet bool, config *QueryConf
 		}
 
 		if isAllView {
-			sb.WriteString("GitSense Intelligence Map (All Databases)\n")
+			sb.WriteString("GitSense Chat Intelligence Map (All Databases)\n")
 			sb.WriteString("=========================================\n\n")
 		} else {
-			sb.WriteString("GitSense Intelligence Map\n")
+			sb.WriteString("GitSense Chat Intelligence Map\n")
 			sb.WriteString("=========================\n\n")
 		}
 
@@ -277,7 +277,7 @@ func formatCoverageTable(report *CoverageReport, quiet bool, config *QueryConfig
 		dbName = "unknown"
 	}
 
-	sb.WriteString(fmt.Sprintf("GitSense Coverage Report: %s\n", dbName))
+	sb.WriteString(fmt.Sprintf("GitSense Chat Coverage Report: %s\n", dbName))
 	sb.WriteString(strings.Repeat("=", 41+len(dbName)) + "\n")
 	sb.WriteString(fmt.Sprintf("Active Profile: %s\n", getStatusValue(report.ActiveProfile)))
 	
@@ -396,7 +396,7 @@ func formatReportTable(report *InsightsReport, quiet bool, config *QueryConfig) 
 		dbName = report.Context.Database
 	}
 
-	sb.WriteString(fmt.Sprintf("GitSense Intelligence Report: %s\n", dbName))
+	sb.WriteString(fmt.Sprintf("GitSense Chat Intelligence Report: %s\n", dbName))
 	sb.WriteString(strings.Repeat("=", 41+len(dbName)) + "\n")
 	sb.WriteString(fmt.Sprintf("Active Profile: %s\n", getStatusValue(config.ActiveProfile)))
 	
