@@ -161,10 +161,8 @@ var queryInsightsCmd = &cobra.Command{
 	Long: `Provides a high-level overview of how metadata is distributed across the codebase.
 Useful for identifying common patterns or unanalyzed areas.`,
 	Example: `  # Get insights for specific fields
-  gsc query insights --field risk_level,topic
+  gsc query insights --db security --field risk_level,topic`,
 
-  # Generate a human-readable ASCII report
-  gsc query insights --field risk_level --report`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		startTime := time.Now()
 
@@ -205,8 +203,11 @@ files that have not yet been analyzed within the current focus scope.`,
 	Example: `  # Check coverage for the active database
   gsc query coverage
 
+  # Check coverage for the security database
+  gsc query coverage --db security
+
   # Check coverage with a temporary scope override
-  gsc query coverage --scope-override "include=src/**"`,
+  gsc query coverage --db security --scope-override "include=src/**"`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		startTime := time.Now()
 
