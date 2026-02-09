@@ -1,12 +1,12 @@
 /**
  * Component: Root CLI Command
- * Block-UUID: 3bac1959-9c33-4adb-9074-dab9a8297084
- * Parent-UUID: 67d4326c-8f7e-4434-91c2-dcd1fb9d79ba
- * Version: 1.17.0
- * Description: Root command for the gsc CLI, registering the manifest subcommand group, top-level usage commands, config command, and the new info command. Replaced 'rg' with 'grep' command. Added pre-flight check in PersistentPreRun to ensure .gitsense directory exists for all commands except 'init' and 'doctor', preventing misleading errors. Updated to support professional CLI output: modified HandleExit to print clean error messages without logger prefixes, and refactored PersistentPreRun to return errors for pre-flight checks while silencing usage output for logic errors. Added persistent global flags for CLI Bridge integration: --code (6-digit bridge code) and --force (skip confirmation prompt).
+ * Block-UUID: f3633d2e-b8a5-46e8-8d33-83eb211c5536
+ * Parent-UUID: 3bac1959-9c33-4adb-9074-dab9a8297084
+ * Version: 1.18.0
+ * Description: Updated the root command's long description to reflect the enhanced discovery capabilities of the 'query' command following its refactor into subcommands (list, insights, coverage).
  * Language: Go
  * Created-at: 2026-02-08T07:30:01.169Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), ..., Claude Haiku 4.5 (v1.16.0), Gemini 3 Flash (v1.17.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), ..., Claude Haiku 4.5 (v1.16.0), Gemini 3 Flash (v1.17.0), Gemini 3 Flash (v1.18.0)
  */
 
 
@@ -40,7 +40,7 @@ It enables AI agents and developers to interact with structured metadata extract
 
 Top-Level Commands:
   info        Show current workspace context and status
-  query       Find files by metadata value
+  query       Find files and discover codebase intelligence (list, insights, coverage)
   grep        Search code with metadata enrichment
   config      Manage context profiles and workspace settings
 

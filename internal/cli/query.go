@@ -1,12 +1,12 @@
 /**
  * Component: Query Command
- * Block-UUID: 8a4d235b-a9d3-44b8-9c08-47b3678ba1b8
- * Parent-UUID: d95a7a03-9399-4e5a-8f81-d39bbb4ce616
- * Version: 2.7.0
- * Description: CLI command definition for 'gsc query'. Added --coverage and --scope-override flags to support Phase 3 Scout Layer features. Implemented handleCoverage to orchestrate coverage analysis and reporting. Added --insights and --report flags to support Phase 2 Scout Layer features, including metadata aggregation and ASCII reporting.
+ * Block-UUID: aff82dd6-f244-4e35-95ae-29389ad9013e
+ * Parent-UUID: 8a4d235b-a9d3-44b8-9c08-47b3678ba1b8
+ * Version: 3.0.0
+ * Description: Major refactor of 'gsc query' to promote --list, --insights, and --coverage flags to subcommands. This improves ergonomics and prepares the CLI for the 'gsc scout' orchestrator. Top-level 'query' now focuses on direct value matching or status display.
  * Language: Go
  * Created-at: 2026-02-05T19:30:15.160Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), Claude Haiku 4.5 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), Gemini 3 Flash (v1.0.5), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), Gemini 3 Flash (v2.5.0), GLM-4.7 (v2.6.0), Gemini 3 Flash (v2.7.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), Claude Haiku 4.5 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), Gemini 3 Flash (v1.0.5), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), Gemini 3 Flash (v2.5.0), GLM-4.7 (v2.6.0), Gemini 3 Flash (v2.7.0), Gemini 3 Flash (v3.0.0)
  */
 
 
@@ -28,51 +28,52 @@ var (
 	queryDB            string
 	queryField         string
 	queryValue         string
-	queryList          bool
-	queryListDB        bool
 	queryFormat        string
 	queryQuiet         bool
-	queryCoverage      bool
 	queryScopeOverride string
-	queryInsights      bool
-	queryReport        bool
 	queryInsightsLimit int
+	queryListDB        bool
+	queryReport        bool
 )
 
-// queryCmd represents the query command
+// queryCmd represents the base query command
 var queryCmd = &cobra.Command{
 	Use:   "query",
 	Short: "Find files by metadata value",
 	Long: `Find files in a focused database by matching a metadata field value.
-Supports hierarchical discovery (--list), context profiles, and simple value matching.`,
-	Example: `  # 1. Discover what databases are available
-  gsc query --list-db
-
-  # 2. Explore fields in the default database (or list all DBs)
-  gsc query --list
-
-  # 3. See what values exist for a field
-  gsc query --field risk_level --list
-
-  # 4. Set your workspace context (using profiles)
-  gsc config context create security --db security --field risk_level
-  gsc config use security
-
-  # 5. Check your current context
-  gsc query
-
-  # 6. Query using defaults (efficient!)
+If no value is provided, it displays the current workspace context.`,
+	Example: `  # Query using defaults (efficient!)
   gsc query --value critical
 
-  # 7. Run coverage analysis
-  gsc query --coverage
+  # Override defaults
+  gsc query --db security --field risk_level --value high`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return handleQueryOrStatus(cmd.Context(), queryDB, queryField, queryValue, queryFormat, queryQuiet)
+	},
+	SilenceUsage: true,
+}
 
-  # 8. Get insights on metadata distribution
-  gsc query --insights --field risk_level,parent_keywords`,
+// queryListCmd represents the discovery subcommand
+var queryListCmd = &cobra.Command{
+	Use:   "list [field]",
+	Short: "Discover available databases, fields, or values",
+	Long: `Hierarchical discovery of the intelligence hub.
+1. No arguments: Lists fields in the default/active database.
+2. With [field]: Lists unique values for that specific field.
+3. With --dbs: Lists all available databases.`,
+	Example: `  # List all available databases
+  gsc query list --dbs
+
+  # List fields in the active database
+  gsc query list
+
+  # List values for a specific field
+  gsc query list risk_level`,
+	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
-
-		// Priority 1: Explicit Database List
+		
+		// Explicit Database List
 		if queryListDB {
 			config, err := manifest.GetEffectiveConfig()
 			if err != nil {
@@ -81,46 +82,80 @@ Supports hierarchical discovery (--list), context profiles, and simple value mat
 			return handleList(ctx, "", "", queryFormat, queryQuiet, config)
 		}
 
-		// Priority 2: Coverage Analysis
-		if queryCoverage {
-			return handleCoverage(ctx, queryDB, queryScopeOverride, queryFormat, queryQuiet)
+		fieldName := ""
+		if len(args) > 0 {
+			fieldName = args[0]
 		}
 
-		// Priority 3: Insights & Report
-		if queryInsights || queryReport {
-			if queryInsights && queryReport {
-				return fmt.Errorf("--insights and --report are mutually exclusive")
-			}
-			return handleInsights(ctx, queryDB, queryField, queryInsightsLimit, queryScopeOverride, queryFormat, queryQuiet, queryReport)
-		}
-
-		// Priority 4: Hierarchical Discovery
-		if queryList {
-			return handleHierarchicalList(ctx, queryDB, queryField, queryFormat, queryQuiet)
-		}
-
-		// Priority 5: Query Execution or Status View
-		return handleQueryOrStatus(ctx, queryDB, queryField, queryValue, queryFormat, queryQuiet)
+		return handleHierarchicalList(ctx, queryDB, fieldName, queryFormat, queryQuiet)
 	},
-	SilenceUsage: true, // Silence usage output on logic errors
+}
+
+// queryInsightsCmd represents the metadata distribution analysis subcommand
+var queryInsightsCmd = &cobra.Command{
+	Use:   "insights",
+	Short: "Analyze metadata distribution and completeness",
+	Long: `Provides a high-level overview of how metadata is distributed across the codebase.
+Useful for identifying common patterns or unanalyzed areas.`,
+	Example: `  # Get insights for specific fields
+  gsc query insights --field risk_level,topic
+
+  # Generate a human-readable ASCII report
+  gsc query insights --field risk_level --report`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return handleInsights(cmd.Context(), queryDB, queryField, queryInsightsLimit, queryScopeOverride, queryFormat, queryQuiet, queryReport)
+	},
+}
+
+// queryCoverageCmd represents the analysis coverage subcommand
+var queryCoverageCmd = &cobra.Command{
+	Use:   "coverage",
+	Short: "Analyze analysis coverage and identify blind spots",
+	Long: `Compares Git tracked files against the manifest database to identify 
+files that have not yet been analyzed within the current focus scope.`,
+	Example: `  # Check coverage for the active database
+  gsc query coverage
+
+  # Check coverage with a temporary scope override
+  gsc query coverage --scope-override "include=src/**"`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return handleCoverage(cmd.Context(), queryDB, queryScopeOverride, queryFormat, queryQuiet)
+	},
 }
 
 func init() {
-	// Add flags
+	// Top-level Query Flags
 	queryCmd.Flags().StringVarP(&queryDB, "db", "d", "", "Database name (or use default)")
 	queryCmd.Flags().StringVarP(&queryField, "field", "f", "", "Field name (or use default)")
 	queryCmd.Flags().StringVarP(&queryValue, "value", "v", "", "Value to match (comma-separated for OR)")
-	queryCmd.Flags().BoolVarP(&queryList, "list", "l", false, "List fields or values (respects default DB)")
-	queryCmd.Flags().BoolVar(&queryListDB, "list-db", false, "Explicitly list all available databases")
 	queryCmd.Flags().StringVarP(&queryFormat, "format", "o", "table", "Output format (json, table)")
-	queryCmd.Flags().BoolVar(&queryQuiet, "quiet", false, "Suppress headers, footers, and hints (clean output)")
-	queryCmd.Flags().BoolVar(&queryCoverage, "coverage", false, "Enable coverage analysis mode")
-	queryCmd.Flags().StringVar(&queryScopeOverride, "scope-override", "", "Temporary scope override (e.g., include=src/**;exclude=tests/**)")
-	
-	// Insights/Report Flags
-	queryCmd.Flags().BoolVar(&queryInsights, "insights", false, "Enable insights mode (JSON output)")
-	queryCmd.Flags().BoolVar(&queryReport, "report", false, "Enable report mode (ASCII dashboard)")
-	queryCmd.Flags().IntVar(&queryInsightsLimit, "limit", 10, "Limit number of top values to return (1-1000)")
+	queryCmd.Flags().BoolVar(&queryQuiet, "quiet", false, "Suppress headers, footers, and hints")
+
+	// List Subcommand Flags
+	queryListCmd.Flags().BoolVar(&queryListDB, "dbs", false, "List all available databases")
+	queryListCmd.Flags().StringVarP(&queryDB, "db", "d", "", "Database to list fields from")
+	queryListCmd.Flags().StringVarP(&queryFormat, "format", "o", "table", "Output format")
+	queryListCmd.Flags().BoolVar(&queryQuiet, "quiet", false, "Suppress headers and hints")
+
+	// Insights Subcommand Flags
+	queryInsightsCmd.Flags().StringVarP(&queryField, "field", "f", "", "Field(s) to analyze (required, comma-separated)")
+	queryInsightsCmd.Flags().BoolVar(&queryReport, "report", false, "Generate ASCII dashboard report")
+	queryInsightsCmd.Flags().IntVar(&queryInsightsLimit, "limit", 10, "Limit top values (1-1000)")
+	queryInsightsCmd.Flags().StringVar(&queryScopeOverride, "scope-override", "", "Temporary scope override")
+	queryInsightsCmd.Flags().StringVarP(&queryDB, "db", "d", "", "Database override")
+	queryInsightsCmd.Flags().StringVarP(&queryFormat, "format", "o", "", "Output format (json/table)")
+	queryInsightsCmd.Flags().BoolVar(&queryQuiet, "quiet", false, "Suppress headers")
+
+	// Coverage Subcommand Flags
+	queryCoverageCmd.Flags().StringVar(&queryScopeOverride, "scope-override", "", "Temporary scope override")
+	queryCoverageCmd.Flags().StringVarP(&queryDB, "db", "d", "", "Database override")
+	queryCoverageCmd.Flags().StringVarP(&queryFormat, "format", "o", "table", "Output format")
+	queryCoverageCmd.Flags().BoolVar(&queryQuiet, "quiet", false, "Suppress headers")
+
+	// Register Subcommands
+	queryCmd.AddCommand(queryListCmd)
+	queryCmd.AddCommand(queryInsightsCmd)
+	queryCmd.AddCommand(queryCoverageCmd)
 }
 
 // handleCoverage orchestrates the coverage analysis process.

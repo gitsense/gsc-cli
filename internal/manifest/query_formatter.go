@@ -1,12 +1,12 @@
 /**
  * Component: Query Output Formatter
- * Block-UUID: dbe56bd5-3a80-42f8-abe1-2c003970a03f
- * Parent-UUID: 7b39e9d6-8b0a-4535-89d7-88ab244795a2
- * Version: 2.9.2
- * Description: Formats query results, list results, and status views. Added FormatCoverageReport to support Phase 3 Scout Layer coverage analysis, including ASCII progress bars and detailed language/directory breakdowns. Added FormatInsightsReport and FormatReport to support Phase 2 Scout Layer features, providing JSON metadata aggregation and ASCII dashboard visualization. Fixed unused variable 'withoutMeta' in formatReportTable.
+ * Block-UUID: cd3b09e8-2e43-4212-aad6-c58fab6c1fc2
+ * Parent-UUID: dbe56bd5-3a80-42f8-abe1-2c003970a03f
+ * Version: 3.0.0
+ * Description: Updated all hints, quick actions, and status views to reflect the promotion of --list, --insights, and --coverage to subcommands. This ensures the CLI output guides users toward the new ergonomic command structure.
  * Language: Go
  * Created-at: 2026-02-09T00:36:02.868Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), Gemini 3 Flash (v2.3.0), GLM-4.7 (v2.4.0), GLM-4.7 (v2.5.0), GLM-4.7 (v2.5.1), Gemini 3 Flash (v2.6.0), Gemini 3 Flash (v2.7.0), GLM-4.7 (v2.7.1), Claude Haiku 4.5 (v2.8.0), Gemini 3 Flash (v2.9.0), Gemini 3 Flash (v2.9.1), Gemini 3 Flash (v2.9.2)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), Gemini 3 Flash (v2.3.0), GLM-4.7 (v2.4.0), GLM-4.7 (v2.5.0), GLM-4.7 (v2.5.1), Gemini 3 Flash (v2.6.0), Gemini 3 Flash (v2.7.0), GLM-4.7 (v2.7.1), Claude Haiku 4.5 (v2.8.0), Gemini 3 Flash (v2.9.0), Gemini 3 Flash (v2.9.1), Gemini 3 Flash (v2.9.2), Gemini 3 Flash (v3.0.0)
  */
 
 
@@ -23,7 +23,6 @@ import (
 )
 
 // FormatQueryResults formats a slice of QueryResult into the specified format.
-// Updated to accept config for workspace header generation.
 func FormatQueryResults(response *QueryResponse, format string, quiet bool, config *QueryConfig) string {
 	switch strings.ToLower(format) {
 	case "json":
@@ -63,7 +62,6 @@ func formatQueryResultsTable(response *QueryResponse, quiet bool, config *QueryC
 
 	var sb strings.Builder
 
-	// Check if we are in a terminal
 	if output.IsTerminal() {
 		sb.WriteString(FormatWorkspaceHeader(config, quiet))
 		sb.WriteString(fmt.Sprintf("Database: %s\n", response.Summary.Database))
@@ -82,7 +80,7 @@ func formatQueryResultsTable(response *QueryResponse, quiet bool, config *QueryC
 			renderProgressBar(response.Summary.CoveragePercent), 
 			response.Summary.CoveragePercent, 
 			response.Summary.TotalResults))
-		sb.WriteString("Hint: Run 'gsc query --coverage' for a detailed breakdown of blind spots.\n\n")
+		sb.WriteString("Hint: Run 'gsc query coverage' for a detailed breakdown of blind spots.\n\n")
 		sb.WriteString(fmt.Sprintf("[Context: %s] | Switch: gsc config use <name>", getActiveProfileName()))
 	}
 
@@ -90,7 +88,6 @@ func formatQueryResultsTable(response *QueryResponse, quiet bool, config *QueryC
 }
 
 // FormatListResult formats a ListResult into the specified format.
-// Updated to accept config for workspace header generation in table format.
 func FormatListResult(listResult *ListResult, format string, quiet bool, config *QueryConfig) string {
 	switch strings.ToLower(format) {
 	case "json":
@@ -117,7 +114,6 @@ func formatListResultTable(listResult *ListResult, quiet bool, config *QueryConf
 
 	var sb strings.Builder
 
-	// Add Workspace Header if TTY and not quiet
 	if !quiet && output.IsTerminal() {
 		sb.WriteString(FormatWorkspaceHeader(config, quiet))
 	}
@@ -130,7 +126,6 @@ func formatListResultTable(listResult *ListResult, quiet bool, config *QueryConf
 	case "database":
 		headers = []string{"DB Name", "Summary", "DB File", "File Count"}
 		for _, item := range listResult.Items {
-			// Truncate description to 60 chars
 			summary := item.Description
 			if len(summary) > 60 {
 				summary = summary[:57] + "..."
@@ -142,7 +137,7 @@ func formatListResultTable(listResult *ListResult, quiet bool, config *QueryConf
 				fmt.Sprintf("%d", item.Count),
 			})
 		}
-		footer = "Hint: Use 'gsc query --db <name|file> --list' to see fields in a database."
+		footer = "Hint: Use 'gsc query list --db <name>' to see fields in a database."
 	case "field":
 		headers = []string{"Field Name", "Type", "Description"}
 		for _, item := range listResult.Items {
@@ -152,7 +147,7 @@ func formatListResultTable(listResult *ListResult, quiet bool, config *QueryConf
 				truncate(item.Description, 80),
 			})
 		}
-		footer = "Hint: Use 'gsc query --field <name> --list' to see values for a field.\nHint: Use 'gsc query --list-db' to see all databases."
+		footer = "Hint: Use 'gsc query list <field>' to see values for a field.\nHint: Use 'gsc query list --dbs' to see all databases."
 	case "value":
 		headers = []string{"Value", "Count"}
 		for _, item := range listResult.Items {
@@ -161,7 +156,7 @@ func formatListResultTable(listResult *ListResult, quiet bool, config *QueryConf
 				fmt.Sprintf("%d", item.Count),
 			})
 		}
-		footer = "Hint: Use 'gsc query --value <val>' to find files.\nHint: Use 'gsc query --list' to go back to fields."
+		footer = "Hint: Use 'gsc query --value <val>' to find files.\nHint: Use 'gsc query list' to go back to fields."
 	default:
 		return fmt.Sprintf("Unknown list level: %s", listResult.Level)
 	}
@@ -191,18 +186,20 @@ func FormatStatusView(config *QueryConfig, quiet bool) string {
 	sb.WriteString("Find files by metadata value or analyze codebase coverage and insights.\n\n")
 	sb.WriteString(FormatWorkspaceHeader(config, quiet))
 
+	sb.WriteString("Primary Subcommands:\n")
+	sb.WriteString("  list [field]       Discover fields or values (hierarchical)\n")
+	sb.WriteString("  insights           Analyze metadata distribution (Phase 2)\n")
+	sb.WriteString("  coverage           Analyze analysis blind spots (Phase 3)\n\n")
+
 	sb.WriteString("Primary Flags:\n")
 	sb.WriteString("  -v, --value <val>  Match metadata value (comma-separated for OR)\n")
-	sb.WriteString("  -l, --list         Discover fields or values (hierarchical)\n")
-	sb.WriteString("  --insights         Analyze metadata distribution (Phase 2)\n")
-	sb.WriteString("  --coverage         Analyze analysis blind spots (Phase 3)\n")
-	sb.WriteString("  -d, --db <name|file> Override default database\n")
+	sb.WriteString("  -d, --db <name>    Override default database\n")
 	sb.WriteString("  -f, --field <name> Override default field\n\n")
 
 	sb.WriteString("Quick Actions:\n")
-	sb.WriteString("  • List fields:     gsc query --list\n")
-	sb.WriteString("  • View insights:   gsc query --insights --field <field>\n")
-	sb.WriteString("  • Check coverage:  gsc query --coverage\n\n")
+	sb.WriteString("  • List fields:     gsc query list\n")
+	sb.WriteString("  • View insights:   gsc query insights --field <field>\n")
+	sb.WriteString("  • Check coverage:  gsc query coverage\n\n")
 
 	sb.WriteString("Need more help? Run 'gsc query --help' for the full manual.\n")
 
@@ -237,7 +234,6 @@ func formatCoverageTable(report *CoverageReport, quiet bool, config *QueryConfig
 		dbName = "unknown"
 	}
 
-	// Header
 	sb.WriteString(fmt.Sprintf("GitSense Coverage Report: %s\n", dbName))
 	sb.WriteString(strings.Repeat("=", 41+len(dbName)) + "\n")
 	sb.WriteString(fmt.Sprintf("Active Profile: %s\n", getStatusValue(report.ActiveProfile)))
@@ -249,7 +245,6 @@ func formatCoverageTable(report *CoverageReport, quiet bool, config *QueryConfig
 	sb.WriteString(fmt.Sprintf("Focus Scope: %s\n", scopeStr))
 	sb.WriteString(fmt.Sprintf("Report Generated: %s\n\n", report.Timestamp.Format(time.RFC3339)))
 
-	// Overall Coverage
 	sb.WriteString("Overall Coverage\n")
 	sb.WriteString("----------------------------------------------------------\n")
 	sb.WriteString(fmt.Sprintf("Total Tracked Files: %8d\n", report.Totals.TrackedFiles))
@@ -257,7 +252,6 @@ func formatCoverageTable(report *CoverageReport, quiet bool, config *QueryConfig
 	sb.WriteString(fmt.Sprintf("Analyzed Files:      %8d\n", report.Totals.AnalyzedFiles))
 	sb.WriteString(fmt.Sprintf("Out-of-Scope Files:  %8d\n\n", report.Totals.OutOfScopeFiles))
 
-	// Percentages
 	sb.WriteString("Coverage Percentages\n")
 	sb.WriteString("----------------------------------------------------------\n")
 	sb.WriteString(fmt.Sprintf("Focus Coverage:    %s %.1f%% (%d/%d in-scope)\n", 
@@ -271,11 +265,9 @@ func formatCoverageTable(report *CoverageReport, quiet bool, config *QueryConfig
 		report.Totals.AnalyzedFiles, 
 		report.Totals.TrackedFiles))
 
-	// Language Breakdown
 	sb.WriteString("Coverage by Language\n")
 	sb.WriteString("----------------------------------------------------------\n")
 	
-	// Sort languages by total count descending
 	var langs []string
 	for l := range report.ByLanguage {
 		langs = append(langs, l)
@@ -295,7 +287,6 @@ func formatCoverageTable(report *CoverageReport, quiet bool, config *QueryConfig
 	}
 	sb.WriteString("\n")
 
-	// Blind Spots
 	sb.WriteString("Top Unanalyzed Directories\n")
 	sb.WriteString("----------------------------------------------------------\n")
 	if len(report.BlindSpots.Directories) == 0 {
@@ -308,7 +299,6 @@ func formatCoverageTable(report *CoverageReport, quiet bool, config *QueryConfig
 	}
 	sb.WriteString("\n")
 
-	// Status and Recommendations
 	sb.WriteString(fmt.Sprintf("Analysis Status: %s\n", strings.ToUpper(report.AnalysisStatus)))
 	sb.WriteString("----------------------------------------------------------\n")
 	for _, rec := range report.Recommendations {
@@ -320,18 +310,17 @@ func formatCoverageTable(report *CoverageReport, quiet bool, config *QueryConfig
 			sb.WriteString("→ " + rec + "\n")
 		}
 	}
-	sb.WriteString("\nHint: Use 'gsc query --insights' to see metadata distribution.\n")
+	sb.WriteString("\nHint: Use 'gsc query insights' to see metadata distribution.\n")
 
 	return sb.String()
 }
 
-// FormatInsightsReport formats an InsightsReport into the specified format (JSON or Table).
 func FormatInsightsReport(report *InsightsReport, format string, quiet bool, config *QueryConfig) string {
 	switch strings.ToLower(format) {
 	case "json":
 		return formatInsightsJSON(report)
 	case "table":
-		return formatReportTable(report, quiet, config) // Reuse table formatter for insights
+		return formatReportTable(report, quiet, config)
 	default:
 		return fmt.Sprintf("Unsupported format: %s", format)
 	}
@@ -345,11 +334,10 @@ func formatInsightsJSON(report *InsightsReport) string {
 	return string(bytes)
 }
 
-// FormatReport formats an InsightsReport as a human-readable ASCII dashboard.
 func FormatReport(report *InsightsReport, format string, quiet bool, config *QueryConfig) string {
 	switch strings.ToLower(format) {
 	case "json":
-		return formatInsightsJSON(report) // JSON output is same as insights
+		return formatInsightsJSON(report)
 	case "table":
 		return formatReportTable(report, quiet, config)
 	default:
@@ -365,7 +353,6 @@ func formatReportTable(report *InsightsReport, quiet bool, config *QueryConfig) 
 		dbName = report.Context.Database
 	}
 
-	// Header
 	sb.WriteString(fmt.Sprintf("GitSense Intelligence Report: %s\n", dbName))
 	sb.WriteString(strings.Repeat("=", 41+len(dbName)) + "\n")
 	sb.WriteString(fmt.Sprintf("Active Profile: %s\n", getStatusValue(config.ActiveProfile)))
@@ -377,16 +364,9 @@ func formatReportTable(report *InsightsReport, quiet bool, config *QueryConfig) 
 	sb.WriteString(fmt.Sprintf("Focus Scope: %s\n", scopeStr))
 	sb.WriteString(fmt.Sprintf("Report Generated: %s\n\n", report.Context.Timestamp.Format(time.RFC3339)))
 
-	// Status
 	totalFiles := report.Summary.TotalFilesInScope
 	analyzedCount := 0
 	if len(report.Summary.FilesWithMetadata) > 0 {
-		// Use the first field's count as a proxy for "analyzed" status in the header
-		// or sum them up? The spec example shows "19/61 In-Scope Files Analyzed".
-		// This implies files that have *any* metadata.
-		// Since we don't have a global "has_any_metadata" count in the summary struct,
-		// we will use the count of the first field or a calculated average.
-		// For simplicity, we'll use the first field's count if available.
 		for _, count := range report.Summary.FilesWithMetadata {
 			if count > analyzedCount {
 				analyzedCount = count
@@ -401,8 +381,6 @@ func formatReportTable(report *InsightsReport, quiet bool, config *QueryConfig) 
 	
 	sb.WriteString(fmt.Sprintf("Status: %d/%d In-Scope Files Analyzed (%.0f%%)\n\n", analyzedCount, totalFiles, percent))
 
-	// Fields Breakdown
-	// Sort field names alphabetically for consistent output
 	var fieldNames []string
 	for name := range report.Insights {
 		fieldNames = append(fieldNames, name)
@@ -412,14 +390,12 @@ func formatReportTable(report *InsightsReport, quiet bool, config *QueryConfig) 
 	for _, fieldName := range fieldNames {
 		insights := report.Insights[fieldName]
 		
-		// Calculate the maximum width of field values (truncated to 100 chars)
 		maxValWidth := 0
 		for _, insight := range insights {
 			displayValue := insight.Value
 			if displayValue == "" {
 				displayValue = "(unrated)"
 			}
-			// Truncate to 100 characters max
 			if len(displayValue) > 100 {
 				displayValue = displayValue[:97] + "..."
 			}
@@ -436,7 +412,6 @@ func formatReportTable(report *InsightsReport, quiet bool, config *QueryConfig) 
 			if displayValue == "" {
 				displayValue = "(unrated)"
 			}
-			// Truncate to 100 characters max
 			if len(displayValue) > 100 {
 				displayValue = displayValue[:97] + "..."
 			}
@@ -450,7 +425,6 @@ func formatReportTable(report *InsightsReport, quiet bool, config *QueryConfig) 
 		sb.WriteString("\n")
 	}
 
-	// Metadata Completeness
 	sb.WriteString("Metadata Completeness\n")
 	sb.WriteString("----------------------------------------------------------\n")
 	for _, fieldName := range fieldNames {
@@ -465,9 +439,8 @@ func formatReportTable(report *InsightsReport, quiet bool, config *QueryConfig) 
 	}
 	sb.WriteString("\n")
 
-	// Hints
 	sb.WriteString("Hint: Use 'gsc grep <term> --filter \"<field>=<value>\"' to investigate.\n")
-	sb.WriteString("Hint: Run 'gsc query --coverage' for detailed coverage analysis.\n")
+	sb.WriteString("Hint: Run 'gsc query coverage' for detailed coverage analysis.\n")
 
 	return sb.String()
 }
@@ -482,7 +455,6 @@ func renderProgressBar(percent float64) string {
 	return "[" + bar + "]"
 }
 
-// truncate shortens a string to a maximum length, appending "..." if truncated.
 func truncate(s string, maxLen int) string {
 	if len(s) <= maxLen {
 		return s
@@ -501,8 +473,6 @@ func getStatusValue(value string) string {
 	return value
 }
 
-// getActiveProfileName is a helper to get the profile name from the current config.
-// It attempts to load the config to find the active profile name.
 func getActiveProfileName() string {
 	config, err := LoadConfig()
 	if err != nil {
