@@ -1,12 +1,12 @@
 /**
  * Component: Query Command
- * Block-UUID: c6be04da-4088-4f7a-bab0-49b6fce64d7b
- * Parent-UUID: 6a320e3d-ebb4-4d70-a04c-1a385198046c
- * Version: 3.2.0
+ * Block-UUID: c68951ae-c60f-4060-aca2-3893f01a19ba
+ * Parent-UUID: c6be04da-4088-4f7a-bab0-49b6fce64d7b
+ * Version: 3.3.0
  * Description: Updated the 'query' command and its subcommands (list, insights, coverage) to support the '--code' flag for CLI Bridge integration. Refactored handler functions to return output strings instead of printing directly to stdout, enabling the bridge orchestrator to capture and insert results into the chat.
  * Language: Go
- * Created-at: 2026-02-05T19:30:15.160Z
- * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.0.0), Gemini 3 Flash (v3.1.0), GLM-4.7 (v3.2.0)
+ * Created-at: 2026-02-09T07:09:43.817Z
+ * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.7 (v3.3.0)
  */
 
 
@@ -58,6 +58,7 @@ If no value is provided, it displays the current workspace context.`,
 		// Early Validation for Bridge
 		if bridgeCode != "" {
 			if err := bridge.ValidateCode(bridgeCode, bridge.StageDiscovery); err != nil {
+				cmd.SilenceUsage = true
 				return err
 			}
 		}
@@ -110,6 +111,7 @@ var queryListCmd = &cobra.Command{
 		// Early Validation for Bridge
 		if bridgeCode != "" {
 			if err := bridge.ValidateCode(bridgeCode, bridge.StageDiscovery); err != nil {
+				cmd.SilenceUsage = true
 				return err
 			}
 		}
@@ -169,6 +171,7 @@ Useful for identifying common patterns or unanalyzed areas.`,
 		// Early Validation for Bridge
 		if bridgeCode != "" {
 			if err := bridge.ValidateCode(bridgeCode, bridge.StageDiscovery); err != nil {
+				cmd.SilenceUsage = true
 				return err
 			}
 		}
@@ -210,6 +213,7 @@ files that have not yet been analyzed within the current focus scope.`,
 		// Early Validation for Bridge
 		if bridgeCode != "" {
 			if err := bridge.ValidateCode(bridgeCode, bridge.StageDiscovery); err != nil {
+				cmd.SilenceUsage = true
 				return err
 			}
 		}
