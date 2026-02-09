@@ -1,12 +1,12 @@
 /**
  * Component: Query Output Formatter
- * Block-UUID: cd3b09e8-2e43-4212-aad6-c58fab6c1fc2
- * Parent-UUID: dbe56bd5-3a80-42f8-abe1-2c003970a03f
- * Version: 3.0.0
- * Description: Updated all hints, quick actions, and status views to reflect the promotion of --list, --insights, and --coverage to subcommands. This ensures the CLI output guides users toward the new ergonomic command structure.
+ * Block-UUID: 586fd9dd-dbe8-43a4-8ef2-4e4b4ba979c0
+ * Parent-UUID: cd3b09e8-2e43-4212-aad6-c58fab6c1fc2
+ * Version: 3.1.0
+ * Description: Updated the list result formatter to support the "Discovery Dashboard" view, which combines database and field listings. Refined table headers for better ergonomics (e.g., 'Database' instead of 'DB Name') and ensured that context-aware hints are displayed for both human and AI (JSON) consumers.
  * Language: Go
  * Created-at: 2026-02-09T00:36:02.868Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), Gemini 3 Flash (v2.3.0), GLM-4.7 (v2.4.0), GLM-4.7 (v2.5.0), GLM-4.7 (v2.5.1), Gemini 3 Flash (v2.6.0), Gemini 3 Flash (v2.7.0), GLM-4.7 (v2.7.1), Claude Haiku 4.5 (v2.8.0), Gemini 3 Flash (v2.9.0), Gemini 3 Flash (v2.9.1), Gemini 3 Flash (v2.9.2), Gemini 3 Flash (v3.0.0)
+ * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.0.0), Gemini 3 Flash (v3.1.0)
  */
 
 
@@ -108,65 +108,75 @@ func formatListResultJSON(listResult *ListResult) string {
 }
 
 func formatListResultTable(listResult *ListResult, quiet bool, config *QueryConfig) string {
-	if len(listResult.Items) == 0 {
-		return "No items found."
-	}
-
 	var sb strings.Builder
 
 	if !quiet && output.IsTerminal() {
 		sb.WriteString(FormatWorkspaceHeader(config, quiet))
 	}
 
-	var headers []string
-	var rows [][]string
-	var footer string
-
 	switch listResult.Level {
-	case "database":
-		headers = []string{"DB Name", "Summary", "DB File", "File Count"}
-		for _, item := range listResult.Items {
-			summary := item.Description
-			if len(summary) > 60 {
-				summary = summary[:57] + "..."
+	case "discovery":
+		// 1. Render Databases
+		if len(listResult.Databases) > 0 {
+			sb.WriteString("Available Databases:\n")
+			sb.WriteString("-------------------\n")
+			headers := []string{"Database", "Summary", "Files"}
+			var rows [][]string
+			for _, item := range listResult.Databases {
+				name := item.Name
+				if item.Name == listResult.ActiveDatabase {
+					name = "* " + name + " (active)"
+				}
+				rows = append(rows, []string{
+					name,
+					truncate(item.Description, 60),
+					fmt.Sprintf("%d", item.Count),
+				})
 			}
-			rows = append(rows, []string{
-				item.Name,
-				summary,
-				item.Source,
-				fmt.Sprintf("%d", item.Count),
-			})
+			sb.WriteString(output.FormatTable(headers, rows))
+			sb.WriteString("\n")
 		}
-		footer = "Hint: Use 'gsc query list --db <name>' to see fields in a database."
-	case "field":
-		headers = []string{"Field Name", "Type", "Description"}
-		for _, item := range listResult.Items {
-			rows = append(rows, []string{
-				item.Name,
-				item.Type,
-				truncate(item.Description, 80),
-			})
+
+		// 2. Render Fields
+		if len(listResult.Fields) > 0 {
+			sb.WriteString(fmt.Sprintf("Available Fields (in '%s'):\n", listResult.ActiveDatabase))
+			sb.WriteString("--------------------------------\n")
+			headers := []string{"Field", "Type", "Description"}
+			var rows [][]string
+			for _, item := range listResult.Fields {
+				rows = append(rows, []string{
+					item.Name,
+					item.Type,
+					truncate(item.Description, 80),
+				})
+			}
+			sb.WriteString(output.FormatTable(headers, rows))
+			sb.WriteString("\n")
+		} else if listResult.ActiveDatabase == "" {
+			sb.WriteString("No active database. Use '--db <name>' to see available fields.\n\n")
 		}
-		footer = "Hint: Use 'gsc query list <field>' to see values for a field.\nHint: Use 'gsc query list --dbs' to see all databases."
+
 	case "value":
-		headers = []string{"Value", "Count"}
-		for _, item := range listResult.Items {
+		headers := []string{"Value", "Count"}
+		var rows [][]string
+		for _, item := range listResult.Values {
 			rows = append(rows, []string{
 				item.Name,
 				fmt.Sprintf("%d", item.Count),
 			})
 		}
-		footer = "Hint: Use 'gsc query --value <val>' to find files.\nHint: Use 'gsc query list' to go back to fields."
+		sb.WriteString(output.FormatTable(headers, rows))
+		sb.WriteString("\n")
+
 	default:
 		return fmt.Sprintf("Unknown list level: %s", listResult.Level)
 	}
 
-	table := output.FormatTable(headers, rows)
-	sb.WriteString(table)
-	
-	if !quiet {
-		sb.WriteString("\n")
-		sb.WriteString(footer)
+	// Render Hints
+	if !quiet && len(listResult.Hints) > 0 {
+		for _, hint := range listResult.Hints {
+			sb.WriteString(fmt.Sprintf("Hint: %s\n", hint))
+		}
 	}
 
 	return sb.String()

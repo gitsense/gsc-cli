@@ -1,12 +1,12 @@
 /**
  * Component: Query Models
- * Block-UUID: d2b3efb1-31c4-4fd0-b884-8ba29765cbb5
- * Parent-UUID: e77c976b-b776-4538-ab33-5b9197128e8a
- * Version: 1.4.0
+ * Block-UUID: c7e07dd0-70b7-406f-8af3-b63c1f77db51
+ * Parent-UUID: d2b3efb1-31c4-4fd0-b884-8ba29765cbb5
+ * Version: 1.5.0
  * Description: Defines the Go structs for query operations, configuration, and list results. Added CoverageReport and supporting structs to implement the Phase 3 Scout Layer coverage analysis feature. Added InsightsReport, InsightsContext, FieldInsight, and InsightsSummary to support Phase 2 Scout Layer insights and reporting features.
  * Language: Go
- * Created-at: 2026-02-05T19:28:09.139Z
- * Authors: GLM-4.7 (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0), Gemini 3 Flash (v1.4.0)
+ * Created-at: 2026-02-09T04:19:42.189Z
+ * Authors: GLM-4.7 (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0), Gemini 3 Flash (v1.4.0), Gemini 3 Flash (v1.5.0)
  */
 
 
@@ -45,8 +45,12 @@ type QuerySummary struct {
 // ListResult represents the result of a --list operation.
 // It can represent a list of databases, fields within a database, or values within a field.
 type ListResult struct {
-	Level string     `json:"level"` // "database", "field", or "value"
-	Items []ListItem `json:"items"`
+	Level          string     `json:"level"` // "discovery", "database", "field", or "value"
+	ActiveDatabase string     `json:"active_database,omitempty"`
+	Databases      []ListItem `json:"databases,omitempty"`
+	Fields         []ListItem `json:"fields,omitempty"`
+	Values         []ListItem `json:"values,omitempty"`
+	Hints          []string   `json:"hints,omitempty"`
 }
 
 // ListItem represents a single item in a list result.
@@ -54,7 +58,7 @@ type ListItem struct {
 	Name        string `json:"name"`                  // The name of the item (db, field, or value)
 	Description string `json:"description,omitempty"` // Optional description
 	Source      string `json:"source,omitempty"`      // Optional source (e.g., physical filename)
-	Type        string `json:"type,omitempty"`        // Optional type (for fields)
+	Type        string `json:"type,omitempty"`        // Optional type (for fields
 	Count       int    `json:"count,omitempty"`       // Optional count (for values)
 }
 

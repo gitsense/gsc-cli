@@ -1,12 +1,12 @@
 /**
  * Component: Simple Query Executor
- * Block-UUID: 04687c2a-5156-4a15-8daf-e1ce8430fd2d
- * Parent-UUID: 054cb13f-7fbc-418c-b7a0-84f5b6565e8c
- * Version: 1.5.0
- * Description: Executes simple value-matching queries and hierarchical list operations. Added ExecuteCoverageAnalysis to implement Phase 3 Scout Layer coverage reporting, utilizing temporary tables for efficient Git-to-DB comparison. Added ExecuteInsightsAnalysis to implement Phase 2 Scout Layer insights and reporting features, utilizing temporary tables and type-aware SQL aggregation. Fixed SQL array aggregation to use explicit alias for clarity and compatibility. Fixed null value counting logic to use NOT EXISTS to accurately identify files with no metadata entry.
+ * Block-UUID: 01f3aded-e327-4002-8ba9-e29e1ce2181e
+ * Parent-UUID: 04687c2a-5156-4a15-8daf-e1ce8430fd2d
+ * Version: 1.6.0
+ * Description: Executes simple value-matching queries and hierarchical list operations. Refactored GetListResult to implement the "Discovery Dashboard" logic, combining database and field listings when no specific field is requested. Added context-aware hints to the ListResult to guide users and AI agents (Scout) through the discovery workflow.
  * Language: Go
  * Created-at: 2026-02-05T18:11:17.686Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.4.1), Gemini 3 Flash (v1.5.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.4.1), Gemini 3 Flash (v1.5.0), Gemini 3 Flash (v1.6.0)
  */
 
 
@@ -129,26 +129,57 @@ func ExecuteSimpleQuery(ctx context.Context, dbName string, fieldName string, va
 }
 
 // GetListResult performs hierarchical discovery based on the provided arguments.
-// - If dbName is empty: Lists all databases.
-// - If dbName is set but fieldName is empty: Lists fields in the database.
-// - If both are set: Lists unique values for the field.
+// It implements the "Discovery Dashboard" logic:
+// - If fieldName is empty: Returns both Databases and Fields (if dbName is set).
+// - If fieldName is set: Returns unique values for that field.
 func GetListResult(ctx context.Context, dbName string, fieldName string) (*ListResult, error) {
-	// Level 1: List Databases
-	if dbName == "" {
-		return listAllDatabases(ctx)
+	result := &ListResult{
+		ActiveDatabase: dbName,
+		Hints:          []string{},
 	}
 
-	// Level 2: List Fields
+	// Level 1 & 2: Discovery (Databases and/or Fields)
 	if fieldName == "" {
-		return listFieldsInDatabase(ctx, dbName)
+		result.Level = "discovery"
+		
+		// Always get databases
+		dbs, err := listAllDatabases(ctx)
+		if err != nil {
+			return nil, err
+		}
+		result.Databases = dbs
+
+		// If a database is active, also get its fields
+		if dbName != "" {
+			fields, err := listFieldsInDatabase(ctx, dbName)
+			if err != nil {
+				return nil, err
+			}
+			result.Fields = fields
+			result.Hints = append(result.Hints, "Use 'gsc query list <field>' to see unique values for a specific field.")
+			result.Hints = append(result.Hints, "Use 'gsc query list --db <name>' to see fields for a different database.")
+		} else {
+			result.Hints = append(result.Hints, "Use 'gsc query list --db <name>' to see available fields, or 'gsc config use <name>' to set a default database.")
+		}
+
+		return result, nil
 	}
 
-	// Level 3: List Values
-	return listValuesForField(ctx, dbName, fieldName)
+	// Level 3: Value Discovery
+	result.Level = "value"
+	values, err := listValuesForField(ctx, dbName, fieldName)
+	if err != nil {
+		return nil, err
+	}
+	result.Values = values
+	result.Hints = append(result.Hints, "Use 'gsc query --value <val>' to find matching files.")
+	result.Hints = append(result.Hints, "Use 'gsc query list' to go back to the field map.")
+
+	return result, nil
 }
 
 // listAllDatabases returns a list of all registered databases.
-func listAllDatabases(ctx context.Context) (*ListResult, error) {
+func listAllDatabases(ctx context.Context) ([]ListItem, error) {
 	dbs, err := ListDatabases(ctx)
 	if err != nil {
 		return nil, err
@@ -164,14 +195,11 @@ func listAllDatabases(ctx context.Context) (*ListResult, error) {
 		})
 	}
 
-	return &ListResult{
-		Level: "database",
-		Items: items,
-	}, nil
+	return items, nil
 }
 
 // listFieldsInDatabase returns a list of all fields in the specified database.
-func listFieldsInDatabase(ctx context.Context, dbName string) (*ListResult, error) {
+func listFieldsInDatabase(ctx context.Context, dbName string) ([]ListItem, error) {
 	// 1. Validate Database Exists
 	if err := ValidateDBExists(dbName); err != nil {
 		return nil, err
@@ -220,14 +248,11 @@ func listFieldsInDatabase(ctx context.Context, dbName string) (*ListResult, erro
 		return nil, err
 	}
 
-	return &ListResult{
-		Level: "field",
-		Items: items,
-	}, nil
+	return items, nil
 }
 
 // listValuesForField returns a list of unique values for the specified field in the database.
-func listValuesForField(ctx context.Context, dbName string, fieldName string) (*ListResult, error) {
+func listValuesForField(ctx context.Context, dbName string, fieldName string) ([]ListItem, error) {
 	// 1. Validate Database Exists
 	if err := ValidateDBExists(dbName); err != nil {
 		return nil, err
@@ -289,10 +314,7 @@ func listValuesForField(ctx context.Context, dbName string, fieldName string) (*
 		return nil, err
 	}
 
-	return &ListResult{
-		Level: "value",
-		Items: items,
-	}, nil
+	return items, nil
 }
 
 // PrepareTargetSet creates and populates a temporary table with files matching the active Focus Scope.
