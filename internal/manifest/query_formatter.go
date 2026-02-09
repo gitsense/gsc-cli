@@ -120,10 +120,10 @@ func formatListResultTable(listResult *ListResult, quiet bool, config *QueryConf
 
 		if isAllView {
 			sb.WriteString("GitSense Chat Intelligence Map (All Databases)\n")
-			sb.WriteString("=========================================\n\n")
+			sb.WriteString("==============================================\n\n")
 		} else {
 			sb.WriteString("GitSense Chat Intelligence Map\n")
-			sb.WriteString("=========================\n\n")
+			sb.WriteString("==============================\n\n")
 		}
 
 		// 1. Render Databases

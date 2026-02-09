@@ -116,16 +116,16 @@ func formatInfoTable(info *WorkspaceInfo, verbose bool, noColor bool) string {
 	config, err := GetEffectiveConfig()
 	if err != nil {
 		// Fallback if config fails to load
-		sb.WriteString("╔════════════════════════════════════════════════════════════════╗\n")
-		sb.WriteString("║                 GitSense Chat Workspace Info                   ║\n")
-		sb.WriteString("╚════════════════════════════════════════════════════════════════╝\n")
+		//sb.WriteString("╔════════════════════════════════════════════════════════════════╗\n")
+		//sb.WriteString("║                 GitSense Chat Workspace Info                   ║\n")
+		//sb.WriteString("╚════════════════════════════════════════════════════════════════╝\n")
 		sb.WriteString("\n")
 	} else {
 		sb.WriteString(FormatWorkspaceHeader(config, noColor))
 	}
 
 	// Available Databases Section
-	sb.WriteString("Available Databases:\n")
+	sb.WriteString("\nAvailable Databases:\n")
 	if len(info.AvailableDBs) == 0 {
 		sb.WriteString("   (none)\n")
 		sb.WriteString("\n")
@@ -169,11 +169,10 @@ func formatInfoTable(info *WorkspaceInfo, verbose bool, noColor bool) string {
 func FormatWorkspaceHeader(config *QueryConfig, noColor bool) string {
 	var sb strings.Builder
 
-	sb.WriteString("╔════════════════════════════════════════════════════════════════╗\n")
-	sb.WriteString("║                 GitSense Chat Workspace Info                   ║\n")
-	sb.WriteString("╚════════════════════════════════════════════════════════════════╝\n")
-	sb.WriteString("\n")
-
+	//sb.WriteString("╔════════════════════════════════════════════════════════════════╗\n")
+	//sb.WriteString("║                 GitSense Chat Workspace Info                   ║\n")
+	//sb.WriteString("╚════════════════════════════════════════════════════════════════╝\n")
+	//sb.WriteString("\n")
 	// Profile information removed from display
 	
 	return sb.String()
