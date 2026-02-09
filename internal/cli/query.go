@@ -1,12 +1,12 @@
 /**
  * Component: Query Command
- * Block-UUID: 6a320e3d-ebb4-4d70-a04c-1a385198046c
- * Parent-UUID: aff82dd6-f244-4e35-95ae-29389ad9013e
- * Version: 3.1.0
- * Description: Updated the 'query list' subcommand to support the '--all' flag. This flag enables the "Intelligence Map" view, which provides a complete hierarchical listing of all databases and their fields, optimized for AI agents like 'scout' to perform initial reconnaissance in a single turn.
+ * Block-UUID: c6be04da-4088-4f7a-bab0-49b6fce64d7b
+ * Parent-UUID: 6a320e3d-ebb4-4d70-a04c-1a385198046c
+ * Version: 3.2.0
+ * Description: Updated the 'query' command and its subcommands (list, insights, coverage) to support the '--code' flag for CLI Bridge integration. Refactored handler functions to return output strings instead of printing directly to stdout, enabling the bridge orchestrator to capture and insert results into the chat.
  * Language: Go
  * Created-at: 2026-02-05T19:30:15.160Z
- * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.0.0), Gemini 3 Flash (v3.1.0)
+ * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.0.0), Gemini 3 Flash (v3.1.0), GLM-4.7 (v3.2.0)
  */
 
 
@@ -15,9 +15,13 @@ package cli
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/yourusername/gsc-cli/internal/bridge"
 	"github.com/yourusername/gsc-cli/internal/git"
 	"github.com/yourusername/gsc-cli/internal/manifest"
 	"github.com/yourusername/gsc-cli/internal/registry"
@@ -49,7 +53,32 @@ If no value is provided, it displays the current workspace context.`,
   # Override defaults
   gsc query --db security --field risk_level --value high`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return handleQueryOrStatus(cmd.Context(), queryDB, queryField, queryValue, queryFormat, queryQuiet)
+		startTime := time.Now()
+
+		// Early Validation for Bridge
+		if bridgeCode != "" {
+			if err := bridge.ValidateCode(bridgeCode, bridge.StageDiscovery); err != nil {
+				return err
+			}
+		}
+
+		outputStr, resolvedDB, err := handleQueryOrStatus(cmd.Context(), queryDB, queryField, queryValue, queryFormat, queryQuiet)
+		if err != nil {
+			return err
+		}
+
+		if bridgeCode != "" {
+			// 1. Print to stdout
+			fmt.Print(outputStr)
+
+			// 2. Hand off to bridge orchestrator
+			cmdStr := filepath.Base(os.Args[0]) + " " + strings.Join(os.Args[1:], " ")
+			return bridge.Execute(bridgeCode, outputStr, queryFormat, cmdStr, time.Since(startTime), resolvedDB, forceInsert)
+		}
+
+		// Standard Output Mode
+		fmt.Println(outputStr)
+		return nil
 	},
 	SilenceUsage: true,
 }
@@ -76,23 +105,50 @@ var queryListCmd = &cobra.Command{
   gsc query list risk_level`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		startTime := time.Now()
+
+		// Early Validation for Bridge
+		if bridgeCode != "" {
+			if err := bridge.ValidateCode(bridgeCode, bridge.StageDiscovery); err != nil {
+				return err
+			}
+		}
+
 		ctx := cmd.Context()
-		
+		var outputStr, resolvedDB string
+		var err error
+
 		// Explicit Database List
 		if queryListDB {
 			config, err := manifest.GetEffectiveConfig()
 			if err != nil {
 				return fmt.Errorf("failed to load config: %w", err)
 			}
-			return handleList(ctx, "", "", queryFormat, queryQuiet, config, queryListAll)
+			outputStr, resolvedDB, err = handleList(ctx, "", "", queryFormat, queryQuiet, config, queryListAll)
+		} else {
+			fieldName := ""
+			if len(args) > 0 {
+				fieldName = args[0]
+			}
+			outputStr, resolvedDB, err = handleHierarchicalList(ctx, queryDB, fieldName, queryFormat, queryQuiet, queryListAll)
 		}
 
-		fieldName := ""
-		if len(args) > 0 {
-			fieldName = args[0]
+		if err != nil {
+			return err
 		}
 
-		return handleHierarchicalList(ctx, queryDB, fieldName, queryFormat, queryQuiet, queryListAll)
+		if bridgeCode != "" {
+			// 1. Print to stdout
+			fmt.Print(outputStr)
+
+			// 2. Hand off to bridge orchestrator
+			cmdStr := filepath.Base(os.Args[0]) + " " + strings.Join(os.Args[1:], " ")
+			return bridge.Execute(bridgeCode, outputStr, queryFormat, cmdStr, time.Since(startTime), resolvedDB, forceInsert)
+		}
+
+		// Standard Output Mode
+		fmt.Println(outputStr)
+		return nil
 	},
 }
 
@@ -108,7 +164,32 @@ Useful for identifying common patterns or unanalyzed areas.`,
   # Generate a human-readable ASCII report
   gsc query insights --field risk_level --report`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return handleInsights(cmd.Context(), queryDB, queryField, queryInsightsLimit, queryScopeOverride, queryFormat, queryQuiet, queryReport)
+		startTime := time.Now()
+
+		// Early Validation for Bridge
+		if bridgeCode != "" {
+			if err := bridge.ValidateCode(bridgeCode, bridge.StageDiscovery); err != nil {
+				return err
+			}
+		}
+
+		outputStr, resolvedDB, err := handleInsights(cmd.Context(), queryDB, queryField, queryInsightsLimit, queryScopeOverride, queryFormat, queryQuiet, queryReport)
+		if err != nil {
+			return err
+		}
+
+		if bridgeCode != "" {
+			// 1. Print to stdout
+			fmt.Print(outputStr)
+
+			// 2. Hand off to bridge orchestrator
+			cmdStr := filepath.Base(os.Args[0]) + " " + strings.Join(os.Args[1:], " ")
+			return bridge.Execute(bridgeCode, outputStr, queryFormat, cmdStr, time.Since(startTime), resolvedDB, forceInsert)
+		}
+
+		// Standard Output Mode
+		fmt.Println(outputStr)
+		return nil
 	},
 }
 
@@ -124,7 +205,32 @@ files that have not yet been analyzed within the current focus scope.`,
   # Check coverage with a temporary scope override
   gsc query coverage --scope-override "include=src/**"`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return handleCoverage(cmd.Context(), queryDB, queryScopeOverride, queryFormat, queryQuiet)
+		startTime := time.Now()
+
+		// Early Validation for Bridge
+		if bridgeCode != "" {
+			if err := bridge.ValidateCode(bridgeCode, bridge.StageDiscovery); err != nil {
+				return err
+			}
+		}
+
+		outputStr, resolvedDB, err := handleCoverage(cmd.Context(), queryDB, queryScopeOverride, queryFormat, queryQuiet)
+		if err != nil {
+			return err
+		}
+
+		if bridgeCode != "" {
+			// 1. Print to stdout
+			fmt.Print(outputStr)
+
+			// 2. Hand off to bridge orchestrator
+			cmdStr := filepath.Base(os.Args[0]) + " " + strings.Join(os.Args[1:], " ")
+			return bridge.Execute(bridgeCode, outputStr, queryFormat, cmdStr, time.Since(startTime), resolvedDB, forceInsert)
+		}
+
+		// Standard Output Mode
+		fmt.Println(outputStr)
+		return nil
 	},
 }
 
@@ -165,10 +271,10 @@ func init() {
 }
 
 // handleCoverage orchestrates the coverage analysis process.
-func handleCoverage(ctx context.Context, dbName string, scopeOverride string, format string, quiet bool) error {
+func handleCoverage(ctx context.Context, dbName string, scopeOverride string, format string, quiet bool) (string, string, error) {
 	config, err := manifest.GetEffectiveConfig()
 	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
+		return "", "", fmt.Errorf("failed to load config: %w", err)
 	}
 
 	resolvedDB := dbName
@@ -177,37 +283,36 @@ func handleCoverage(ctx context.Context, dbName string, scopeOverride string, fo
 	}
 
 	if resolvedDB == "" {
-		return fmt.Errorf("database is required for coverage analysis. Use --db flag or set a profile with 'gsc config use <name>'")
+		return "", "", fmt.Errorf("database is required for coverage analysis. Use --db flag or set a profile with 'gsc config use <name>'")
 	}
 
 	// Resolve database name to physical name
 	resolvedDB, err = registry.ResolveDatabase(resolvedDB)
 	if err != nil {
-		return err
+		return "", "", err
 	}
 
 	repoRoot, err := git.FindGitRoot()
 	if err != nil {
-		return fmt.Errorf("failed to find git root: %w", err)
+		return "", "", fmt.Errorf("failed to find git root: %w", err)
 	}
 
 	logger.Debug("Executing coverage analysis", "database", resolvedDB, "scope_override", scopeOverride)
 	report, err := manifest.ExecuteCoverageAnalysis(ctx, resolvedDB, scopeOverride, repoRoot, config.ActiveProfile)
 	if err != nil {
-		return err
+		return "", "", err
 	}
 
 	// Pass config to formatter to enable workspace headers
 	output := manifest.FormatCoverageReport(report, format, quiet, config)
-	fmt.Println(output)
-	return nil
+	return output, resolvedDB, nil
 }
 
 // handleInsights orchestrates the insights and report generation process.
-func handleInsights(ctx context.Context, dbName string, fieldsStr string, limit int, scopeOverride string, format string, quiet bool, isReport bool) error {
+func handleInsights(ctx context.Context, dbName string, fieldsStr string, limit int, scopeOverride string, format string, quiet bool, isReport bool) (string, string, error) {
 	config, err := manifest.GetEffectiveConfig()
 	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
+		return "", "", fmt.Errorf("failed to load config: %w", err)
 	}
 
 	resolvedDB := dbName
@@ -216,35 +321,35 @@ func handleInsights(ctx context.Context, dbName string, fieldsStr string, limit 
 	}
 
 	if resolvedDB == "" {
-		return fmt.Errorf("database is required for insights. Use --db flag or set a profile with 'gsc config use <name>'")
+		return "", "", fmt.Errorf("database is required for insights. Use --db flag or set a profile with 'gsc config use <name>'")
 	}
 
 	// Resolve database name to physical name
 	resolvedDB, err = registry.ResolveDatabase(resolvedDB)
 	if err != nil {
-		return err
+		return "", "", err
 	}
 
 	// Parse fields
 	if fieldsStr == "" {
-		return fmt.Errorf("--field is required for insights/report mode")
+		return "", "", fmt.Errorf("--field is required for insights/report mode")
 	}
 	fields := strings.Split(fieldsStr, ",")
 
 	// Validate limit
 	if limit < 1 || limit > 1000 {
-		return fmt.Errorf("--limit must be between 1 and 1000")
+		return "", "", fmt.Errorf("--limit must be between 1 and 1000")
 	}
 
 	repoRoot, err := git.FindGitRoot()
 	if err != nil {
-		return fmt.Errorf("failed to find git root: %w", err)
+		return "", "", fmt.Errorf("failed to find git root: %w", err)
 	}
 
 	logger.Debug("Executing insights analysis", "database", resolvedDB, "fields", fields, "limit", limit, "scope_override", scopeOverride)
 	report, err := manifest.ExecuteInsightsAnalysis(ctx, resolvedDB, fields, limit, scopeOverride, repoRoot, config.ActiveProfile)
 	if err != nil {
-		return err
+		return "", "", err
 	}
 
 	// Determine output format
@@ -265,15 +370,14 @@ func handleInsights(ctx context.Context, dbName string, fieldsStr string, limit 
 		output = manifest.FormatInsightsReport(report, outputFormat, quiet, config)
 	}
 
-	fmt.Println(output)
-	return nil
+	return output, resolvedDB, nil
 }
 
 // handleHierarchicalList resolves the database from defaults if not provided.
-func handleHierarchicalList(ctx context.Context, dbName string, fieldName string, format string, quiet bool, all bool) error {
+func handleHierarchicalList(ctx context.Context, dbName string, fieldName string, format string, quiet bool, all bool) (string, string, error) {
 	config, err := manifest.GetEffectiveConfig()
 	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
+		return "", "", fmt.Errorf("failed to load config: %w", err)
 	}
 
 	resolvedDB := dbName
@@ -285,7 +389,7 @@ func handleHierarchicalList(ctx context.Context, dbName string, fieldName string
 	if resolvedDB != "" {
 		resolvedDB, err = registry.ResolveDatabase(resolvedDB)
 		if err != nil {
-			return err
+			return "", "", err
 		}
 	}
 
@@ -298,13 +402,13 @@ func handleHierarchicalList(ctx context.Context, dbName string, fieldName string
 }
 
 // handleList performs the actual discovery call.
-func handleList(ctx context.Context, dbName string, fieldName string, format string, quiet bool, config *manifest.QueryConfig, all bool) error {
+func handleList(ctx context.Context, dbName string, fieldName string, format string, quiet bool, config *manifest.QueryConfig, all bool) (string, string, error) {
 	// Resolve database name if provided (might be a display name)
 	if dbName != "" {
 		var err error
 		dbName, err = registry.ResolveDatabase(dbName)
 		if err != nil {
-			return err
+			return "", "", err
 		}
 	}
 
@@ -312,25 +416,23 @@ func handleList(ctx context.Context, dbName string, fieldName string, format str
 
 	result, err := manifest.GetListResult(ctx, dbName, fieldName, all)
 	if err != nil {
-		return err
+		return "", "", err
 	}
 
 	output := manifest.FormatListResult(result, format, quiet, config)
-	fmt.Println(output)
-	return nil
+	return output, dbName, nil
 }
 
 // handleQueryOrStatus determines whether to show status or execute a query.
-func handleQueryOrStatus(ctx context.Context, dbName string, fieldName string, value string, format string, quiet bool) error {
+func handleQueryOrStatus(ctx context.Context, dbName string, fieldName string, value string, format string, quiet bool) (string, string, error) {
 	config, err := manifest.GetEffectiveConfig()
 	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
+		return "", "", fmt.Errorf("failed to load config: %w", err)
 	}
 
 	if value == "" {
 		status := manifest.FormatStatusView(config, quiet)
-		fmt.Println(status)
-		return nil
+		return status, "", nil
 	}
 
 	resolvedDB := dbName
@@ -342,7 +444,7 @@ func handleQueryOrStatus(ctx context.Context, dbName string, fieldName string, v
 	if resolvedDB != "" {
 		resolvedDB, err = registry.ResolveDatabase(resolvedDB)
 		if err != nil {
-			return err
+			return "", "", err
 		}
 	}
 
@@ -357,22 +459,22 @@ func handleQueryOrStatus(ctx context.Context, dbName string, fieldName string, v
 	}
 
 	if resolvedDB == "" {
-		return fmt.Errorf("database is required. Use --db flag or set a profile with 'gsc config use <name>'")
+		return "", "", fmt.Errorf("database is required. Use --db flag or set a profile with 'gsc config use <name>'")
 	}
 	if resolvedField == "" {
-		return fmt.Errorf("field is required. Use --field flag or set a profile with 'gsc config use <name>'")
+		return "", "", fmt.Errorf("field is required. Use --field flag or set a profile with 'gsc config use <name>'")
 	}
 
 	logger.Debug("Executing query", "database", resolvedDB, "field", resolvedField, "value", value)
 	results, err := manifest.ExecuteSimpleQuery(ctx, resolvedDB, resolvedField, value)
 	if err != nil {
-		return err
+		return "", "", err
 	}
 
 	// Perform Coverage Analysis for the enriched response
 	repoRoot, err := git.FindGitRoot()
 	if err != nil {
-		return fmt.Errorf("failed to find git root for coverage analysis: %w", err)
+		return "", "", fmt.Errorf("failed to find git root for coverage analysis: %w", err)
 	}
 
 	coverageReport, err := manifest.ExecuteCoverageAnalysis(ctx, resolvedDB, "", repoRoot, config.ActiveProfile)
@@ -403,8 +505,7 @@ func handleQueryOrStatus(ctx context.Context, dbName string, fieldName string, v
 
 	// Pass config to formatter to enable workspace headers
 	output := manifest.FormatQueryResults(response, resolvedFormat, quiet, config)
-	fmt.Println(output)
-	return nil
+	return output, resolvedDB, nil
 }
 
 // RegisterQueryCommand registers the query command with the root command.
