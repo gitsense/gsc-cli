@@ -165,7 +165,6 @@ func Execute(code string, rawOutput string, format string, cmdStr string, durati
 		return err
 	}
 
-	h.Cleanup()
 	fmt.Fprintf(os.Stderr, "\n[BRIDGE] Success! Message ID: %d\n", msgID)
 	fmt.Fprintln(os.Stderr, "[BRIDGE] Note: This bridge code has been consumed and cannot be reused.")
 
