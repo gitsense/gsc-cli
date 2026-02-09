@@ -1,12 +1,12 @@
 /**
  * Component: Info Command
- * Block-UUID: de10aac0-9d2f-4721-a207-ddfa657c1a8c
- * Parent-UUID: 1dc4eb6b-2a29-4f0b-adba-9a95abe54779
- * Version: 1.0.4
+ * Block-UUID: 3f73ed1a-0e4a-4507-9b22-10da1bf75391
+ * Parent-UUID: de10aac0-9d2f-4721-a207-ddfa657c1a8c
+ * Version: 1.0.5
  * Description: CLI command definition for 'gsc info', displaying the current workspace context, active profile, and available databases. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted Info logs to Debug, removed redundant Error logs, and set SilenceUsage to true. Integrated CLI Bridge: if --code is provided, output is captured and sent to the bridge orchestrator for chat insertion.
  * Language: Go
- * Created-at: 2026-02-03T03:16:25.331Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.1.0 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), Gemini 3 Flash (v1.0.4)
+ * Created-at: 2026-02-09T02:48:32.741Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.1.0 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), Gemini 3 Flash (v1.0.4), Gemini 3 Flash (v1.0.5)
  */
 
 
@@ -48,6 +48,13 @@ your current context without needing to run multiple commands.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		startTime := time.Now()
 		ctx := cmd.Context()
+
+		// 0. Early Validation for Bridge
+		if bridgeCode != "" {
+			if err := bridge.ValidateCode(bridgeCode, bridge.StageDiscovery); err != nil {
+				return err
+			}
+		}
 
 		// 1. Gather Workspace Information
 		logger.Debug("Gathering workspace information")
@@ -91,7 +98,7 @@ func init() {
 func print(s string) {
 	// For now, just print to stdout
 	// In the future, we might support --output flag
-	fmt.Print(s)
+	fmt.Println(s)
 }
 
 // RegisterInfoCommand registers the info command with the root command.

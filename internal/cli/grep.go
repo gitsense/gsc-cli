@@ -1,12 +1,12 @@
 /**
  * Component: Grep Command
- * Block-UUID: 65370c1f-9da3-4f7b-8d51-27c19aa908cc
- * Parent-UUID: 95561f42-e22a-493a-b592-4d4a73d63715
- * Version: 4.3.1
+ * Block-UUID: 31a17d64-12b4-4e5e-85d1-672992bd93ad
+ * Parent-UUID: 65370c1f-9da3-4f7b-8d51-27c19aa908cc
+ * Version: 4.4.0
  * Description: CLI command definition for 'gsc grep'. Updated to support metadata filtering, stats recording, and case-sensitive defaults. Updated to resolve database names from user input or config to physical names. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted Info logs to Debug and set SilenceUsage to true. Integrated CLI Bridge: if --code is provided, output is captured and sent to the bridge orchestrator for chat insertion. Added debug logging to trace the bridge code received from the CLI arguments.
  * Language: Go
- * Created-at: 2026-02-08T19:35:06.507Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v3.0.0), GLM-4.7 (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.7 (v3.3.0), Gemini 3 Flash (v3.4.0), Gemini 3 Flash (v3.5.0), Gemini 3 Flash (v3.6.0), Gemini 3 Flash (v3.7.0), Gemini 3 Flash (v3.8.0), Gemini 3 Flash (v3.9.0), Gemini 3 Flash (v3.9.1), Gemini 3 Flash (v4.0.0), Gemini 3 Flash (v4.0.1), Gemini 3 Flash (v4.1.0), GLM-4.7 (v4.2.0), Gemini 3 Flash (v4.3.0), GLM-4.7 (v4.3.1)
+ * Created-at: 2026-02-09T02:49:16.740Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v3.0.0), GLM-4.7 (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.7 (v3.3.0), Gemini 3 Flash (v3.4.0), Gemini 3 Flash (v3.5.0), Gemini 3 Flash (v3.6.0), Gemini 3 Flash (v3.7.0), Gemini 3 Flash (v3.8.0), Gemini 3 Flash (v3.9.0), Gemini 3 Flash (v3.9.1), Gemini 3 Flash (v4.0.0), Gemini 3 Flash (v4.0.1), Gemini 3 Flash (v4.1.0), GLM-4.7 (v4.2.0), Gemini 3 Flash (v4.3.0), GLM-4.7 (v4.3.1), Gemini 3 Flash (v4.4.0)
  */
 
 
@@ -71,6 +71,13 @@ Filtering:
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		pattern := args[0]
+
+		// 0. Early Validation for Bridge
+		if bridgeCode != "" {
+			if err := bridge.ValidateCode(bridgeCode, bridge.StageDiscovery); err != nil {
+				return err
+			}
+		}
 		
 		// Check for common typo: --field instead of --fields
 		if cmd.Flags().Changed("field") {

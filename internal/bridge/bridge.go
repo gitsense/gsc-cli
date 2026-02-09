@@ -1,12 +1,12 @@
 /**
  * Component: CLI Bridge Orchestrator
- * Block-UUID: 683dcaff-d2da-47ee-b619-ab88c0899e36
- * Parent-UUID: 988e3eee-f244-49a4-85ea-48f6244e7e44
- * Version: 1.4.0
- * Description: Orchestrates the CLI Bridge lifecycle, including handshake file management, terminal prompts, signal handling, and database integration. Added the main Execute entry point with signal handling for SIGINT/SIGTERM and terminal prompt logic for user confirmation. Implemented bloat protection for the handshake file by truncating the output preview if it exceeds 100KB. Added debug logging to trace GSC_HOME resolution and handshake file path construction. Added helpful error message when GSC_HOME is not set and the handshake file is not found. Added spacing before insertion prompts and validation to ensure handshake file exists and is not already finished before database insertion.
+ * Block-UUID: e199447b-efa6-4317-8950-81021425300c
+ * Parent-UUID: 683dcaff-d2da-47ee-b619-ab88c0899e36
+ * Version: 1.5.0
+ * Description: Orchestrates the CLI Bridge lifecycle. Added stage-based validation (Discovery, Execution, Insertion) to handle long-running tasks and prevent race conditions. ValidateCode now enforces strict state checks (e.g., StartedAt must be nil for new tasks) and ensures codes haven't expired or been invalidated during execution.
  * Language: Go
- * Created-at: 2026-02-08T19:06:26.138Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), Gemini 3 Flash (v1.3.1), GLM-4.7 (v1.4.0)
+ * Created-at: 2026-02-09T02:43:34.123Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), Gemini 3 Flash (v1.3.1), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.5.0)
  */
 
 
@@ -28,6 +28,18 @@ import (
 	"github.com/yourusername/gsc-cli/internal/output"
 	"github.com/yourusername/gsc-cli/pkg/logger"
 	"github.com/yourusername/gsc-cli/pkg/settings"
+)
+
+// BridgeStage defines the lifecycle point for validation
+type BridgeStage int
+
+const (
+	// StageDiscovery is the initial check by the CLI before any work starts.
+	StageDiscovery BridgeStage = iota
+	// StageExecution is the check performed when bridge.Execute begins.
+	StageExecution
+	// StageInsertion is the final check after work is done, before DB insertion.
+	StageInsertion
 )
 
 // BridgeError represents an error that occurred during bridge execution
@@ -77,7 +89,6 @@ type Result struct {
 }
 
 // Execute is the main entry point for the CLI Bridge.
-// It handles the entire lifecycle from loading the handshake to final insertion.
 func Execute(code string, rawOutput string, format string, cmdStr string, duration time.Duration, dbName string, force bool) error {
 	// 1. Resolve GSC_HOME and Load Handshake
 	gscHome, err := resolveGSCHome()
@@ -85,7 +96,8 @@ func Execute(code string, rawOutput string, format string, cmdStr string, durati
 		return fmt.Errorf("failed to resolve GSC_HOME: %w", err)
 	}
 
-	h, err := LoadHandshake(gscHome, code)
+	// Use StageExecution for the initial load
+	h, err := LoadHandshake(gscHome, code, StageExecution)
 	if err != nil {
 		return err
 	}
@@ -95,7 +107,6 @@ func Execute(code string, rawOutput string, format string, cmdStr string, durati
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		<-sigChan
-		// Hard 500ms timeout for cleanup write
 		done := make(chan bool, 1)
 		go func() {
 			h.UpdateStatus("error", &Error{Code: "USER_ABORTED", Message: "Process interrupted by user"})
@@ -105,7 +116,7 @@ func Execute(code string, rawOutput string, format string, cmdStr string, durati
 		case <-done:
 		case <-time.After(500 * time.Millisecond):
 		}
-		os.Exit(2) // Standardized exit code for User Abort
+		os.Exit(2)
 	}()
 
 	// 3. Update Status to Running
@@ -129,7 +140,6 @@ func Execute(code string, rawOutput string, format string, cmdStr string, durati
 		}
 	} else if !force {
 		h.UpdateStatus("awaiting-confirmation", nil)
-		// Show hint for JSON format if in human mode
 		if strings.ToLower(format) == "human" {
 			fmt.Fprintln(os.Stderr, "\nHint: For better AI analysis, use '--format json' to provide structured data.")
 		}
@@ -143,13 +153,9 @@ func Execute(code string, rawOutput string, format string, cmdStr string, durati
 		}
 	}
 
-	// 6. Validation: Ensure handshake file exists and is not already finished
-	handshakePath := filepath.Join(h.GSCHome, settings.BridgeHandshakeDir, h.Code+".json")
-	if _, err := os.Stat(handshakePath); os.IsNotExist(err) {
-		return &BridgeError{ExitCode: 2, Message: "bridge code file no longer exists"}
-	}
-	if h.StartedAt != nil {
-		return &BridgeError{ExitCode: 2, Message: "bridge code already processed"}
+	// 6. Final Validation: Ensure code is still valid after potentially long execution/wait
+	if err := ValidateCode(code, StageInsertion); err != nil {
+		return &BridgeError{ExitCode: 2, Message: err.Error()}
 	}
 
 	// 7. Database Insertion
@@ -163,7 +169,6 @@ func Execute(code string, rawOutput string, format string, cmdStr string, durati
 	h.Result.MessageID = &msgID
 	h.Result.OutputSize = &outputSize
 	
-	// Bloat Protection: Truncate output in JSON if > 100KB
 	preview := markdown
 	if outputSize > 102400 {
 		preview = markdown[:102400] + "\n\n[Output truncated in handshake file. Full content is in the chat database.]"
@@ -180,41 +185,86 @@ func Execute(code string, rawOutput string, format string, cmdStr string, durati
 	return nil
 }
 
-// LoadHandshake reads and validates the handshake file for a given code.
-func LoadHandshake(gscHome, code string) (*Handshake, error) {
-	logger.Debug("Loading handshake", "gscHome", gscHome, "code", "code")
-	
+// ValidateCode checks if a bridge code is valid for a specific lifecycle stage.
+func ValidateCode(code string, stage BridgeStage) error {
+	gscHome, err := resolveGSCHome()
+	if err != nil {
+		return fmt.Errorf("failed to resolve GSC_HOME: %w", err)
+	}
+
 	path := filepath.Join(gscHome, settings.BridgeHandshakeDir, code+".json")
-	logger.Debug("Handshake file path", "path", path, "dir", settings.BridgeHandshakeDir)
-	
+
+	// 1. Check if file exists
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		msg := fmt.Sprintf("bridge code %s not found or expired", code)
+		if os.Getenv("GSC_HOME") == "" {
+			msg += fmt.Sprintf(".\n\nHint: GSC_HOME is not set. The CLI looked in: %s", path)
+		}
+		return fmt.Errorf(msg)
+	}
+
+	// 2. Read and Parse
 	data, err := os.ReadFile(path)
 	if err != nil {
-		if os.IsNotExist(err) {
-			// Check if GSC_HOME is set to provide a helpful hint
-			if os.Getenv("GSC_HOME") == "" {
-				return nil, fmt.Errorf("bridge code %s not found or expired.\n\nHint: GSC_HOME is not set. The CLI looked in the default location: %s", code, path)
-			}
-			return nil, fmt.Errorf("bridge code %s not found or expired", code)
-		}
-		return nil, fmt.Errorf("failed to read handshake file: %w", err)
+		return fmt.Errorf("failed to read handshake file: %w", err)
 	}
 
 	var h Handshake
 	if err := json.Unmarshal(data, &h); err != nil {
-		return nil, fmt.Errorf("failed to parse handshake file: %w", err)
+		return fmt.Errorf("failed to parse handshake file: %w", err)
 	}
 
-	// Validate expiration
+	// 3. Common Validations
+	if h.Consumer != "gsc" {
+		return fmt.Errorf("invalid consumer: %s", h.Consumer)
+	}
+
 	now := time.Now().UnixNano() / 1e6
 	if h.ExpiresAt < now {
-		return nil, fmt.Errorf("bridge code %s has expired", code)
+		return fmt.Errorf("bridge code %s has expired", code)
 	}
 
-	// Validate consumer
-	if h.Consumer != "gsc" {
-		return nil, fmt.Errorf("invalid consumer: %s", h.Consumer)
+	// 4. Stage-Specific Validations
+	switch stage {
+	case StageDiscovery, StageExecution:
+		// Code must be fresh and unclaimed
+		if h.Status != "pending" {
+			return fmt.Errorf("bridge code %s is already in state: %s", code, h.Status)
+		}
+		if h.StartedAt != nil {
+			return fmt.Errorf("bridge code %s was already started at %d", code, *h.StartedAt)
+		}
+
+	case StageInsertion:
+		// Code must be in an active state and not finished
+		if h.FinishedAt != nil {
+			return fmt.Errorf("bridge code %s was already finished", code)
+		}
+		if h.StartedAt == nil {
+			return fmt.Errorf("bridge code %s was never started", code)
+		}
+		// Ensure it wasn't marked as error by an external process/timeout
+		if h.Status == "error" {
+			return fmt.Errorf("bridge code %s was invalidated (status: error)", code)
+		}
 	}
 
+	return nil
+}
+
+// LoadHandshake reads and validates the handshake file for a given code.
+func LoadHandshake(gscHome, code string, stage BridgeStage) (*Handshake, error) {
+	logger.Debug("Loading handshake", "gscHome", gscHome, "code", code)
+	
+	if err := ValidateCode(code, stage); err != nil {
+		return nil, err
+	}
+
+	path := filepath.Join(gscHome, settings.BridgeHandshakeDir, code+".json")
+	data, _ := os.ReadFile(path) // Already validated by ValidateCode
+	
+	var h Handshake
+	json.Unmarshal(data, &h)
 	return &h, nil
 }
 
@@ -259,13 +309,11 @@ func (h *Handshake) InsertToChat(markdown string) (int64, error) {
 	}
 	defer sqliteDB.Close()
 
-	// 1. Validate Parent and fetch level
 	parent, err := db.GetMessage(sqliteDB, h.ParentMessageID)
 	if err != nil {
 		return 0, fmt.Errorf("parent validation failed: %w", err)
 	}
 
-	// 2. Verify Leaf Node
 	isLeaf, err := db.IsLeafNode(sqliteDB, h.ParentMessageID)
 	if err != nil {
 		return 0, err
@@ -274,7 +322,6 @@ func (h *Handshake) InsertToChat(markdown string) (int64, error) {
 		return 0, fmt.Errorf("cannot reply to message %d: it already has replies", h.ParentMessageID)
 	}
 
-	// 3. Prepare Message
 	msg := &db.Message{
 		Type:       "gsc-cli-output",
 		Deleted:    0,
@@ -288,7 +335,6 @@ func (h *Handshake) InsertToChat(markdown string) (int64, error) {
 		Message:    sql.NullString{String: markdown, Valid: true},
 	}
 
-	// 4. Insert
 	msgID, err := db.InsertMessage(sqliteDB, msg)
 	if err != nil {
 		return 0, err

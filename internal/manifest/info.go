@@ -1,12 +1,12 @@
 /**
  * Component: Workspace Info Logic
- * Block-UUID: 8c267277-ad7b-48d0-a394-4a5a3a40953e
- * Parent-UUID: 80793b68-5814-44f7-b37b-dbd9a507d88c
- * Version: 1.6.0
- * Description: Logic to gather and format workspace information for the 'gsc info' command, including active profiles and available databases. Added 'gsc config active' to Quick Actions for consistency with the new command name. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support CLI Bridge: added noColor parameter to formatting functions to ensure clean output without ANSI escape sequences.
+ * Block-UUID: 94604752-7799-4aeb-a15b-72631c2e8294
+ * Parent-UUID: 8c267277-ad7b-48d0-a394-4a5a3a40953e
+ * Version: 1.7.0
+ * Description: Logic to gather and format workspace information for the 'gsc info' command, including active profiles, available profiles, and available databases. Added 'AvailableProfiles' to WorkspaceInfo struct and updated GetWorkspaceInfo to populate it via ListProfiles. Updated formatInfoTable to display the list of available profiles, marking the active one with an asterisk. Added 'gsc config active' to Quick Actions for consistency with the new command name. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support CLI Bridge: added noColor parameter to formatting functions to ensure ensure clean output without ANSI escape sequences.
  * Language: Go
  * Created-at: 2026-02-05T05:24:58.365Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0)
  */
 
 
@@ -26,11 +26,12 @@ import (
 
 // WorkspaceInfo represents the complete state of the GitSense workspace.
 type WorkspaceInfo struct {
-	ActiveProfile   *Profile       `json:"active_profile,omitempty"`
-	AvailableDBs    []DatabaseInfo `json:"available_databases"`
-	ProjectRoot     string         `json:"project_root"`
-	GitSenseDir     string         `json:"gitsense_dir"`
-	RegistryPath    string         `json:"registry_path"`
+	ActiveProfile    *Profile       `json:"active_profile,omitempty"`
+	AvailableProfiles []Profile     `json:"available_profiles"` // List of all available profiles
+	AvailableDBs     []DatabaseInfo `json:"available_databases"`
+	ProjectRoot      string         `json:"project_root"`
+	GitSenseDir      string         `json:"gitsense_dir"`
+	RegistryPath     string         `json:"registry_path"`
 }
 
 // GetWorkspaceInfo gathers all relevant information about the current workspace.
@@ -59,7 +60,15 @@ func GetWorkspaceInfo(ctx context.Context) (*WorkspaceInfo, error) {
 		}
 	}
 
-	// 3. List Available Databases
+	// 3. List Available Profiles
+	profiles, err := ListProfiles()
+	if err != nil {
+		logger.Warning("Failed to list profiles", "error", err)
+	} else {
+		info.AvailableProfiles = profiles
+	}
+
+	// 4. List Available Databases
 	dbs, err := ListDatabases(ctx)
 	if err != nil {
 		logger.Warning("Failed to list databases", "error", err)
@@ -75,6 +84,7 @@ func FormatWorkspaceInfo(info *WorkspaceInfo, format string, verbose bool, noCol
 	switch strings.ToLower(format) {
 	case "json":
 		return formatInfoJSON(info)
+
 	case "table":
 		return formatInfoTable(info, verbose, noColor)
 	default:
@@ -109,6 +119,30 @@ func formatInfoTable(info *WorkspaceInfo, verbose bool, noColor bool) string {
 		sb.WriteString(FormatWorkspaceHeader(config, noColor))
 	}
 
+	// Available Profiles Section
+	sb.WriteString("Available Profiles:\n")
+	if len(info.AvailableProfiles) == 0 {
+		sb.WriteString("  (none)\n")
+	} else {
+		for _, profile := range info.AvailableProfiles {
+			marker := " "
+			if info.ActiveProfile != nil && info.ActiveProfile.Name == profile.Name {
+				marker = "*"
+			}
+
+			sb.WriteString(fmt.Sprintf("├─ %s %-16s", marker, profile.Name))
+
+			if verbose {
+				sb.WriteString(fmt.Sprintf("\n│  Description: %s", profile.Description))
+				if len(profile.Aliases) > 0 {
+					sb.WriteString(fmt.Sprintf("\n│  Aliases:     [%s]", strings.Join(profile.Aliases, ", ")))
+				}
+			}
+			sb.WriteString("\n")
+		}
+	}
+	sb.WriteString("\n")
+
 	// Available Databases Section
 	sb.WriteString("Available Databases:\n")
 	if len(info.AvailableDBs) == 0 {
@@ -119,9 +153,9 @@ func formatInfoTable(info *WorkspaceInfo, verbose bool, noColor bool) string {
 			if info.ActiveProfile != nil && info.ActiveProfile.Settings.Global.DefaultDatabase == db.Name {
 				marker = "*"
 			}
-			
+
 			sb.WriteString(fmt.Sprintf("├─ %s %-16s (%d files)", marker, db.Name, db.EntryCount))
-			
+
 			if verbose {
 				sb.WriteString(fmt.Sprintf("\n│  Description: %s", db.Description))
 				if len(db.Tags) > 0 {
