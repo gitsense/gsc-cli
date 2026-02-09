@@ -1,12 +1,12 @@
 /**
  * Component: CLI Bridge Orchestrator
- * Block-UUID: 988e3eee-f244-49a4-85ea-48f6244e7e44
- * Parent-UUID: f77d7e2d-db29-41b1-8bb1-e00a933c9495
- * Version: 1.3.1
- * Description: Orchestrates the CLI Bridge lifecycle, including handshake file management, terminal prompts, signal handling, and database integration. Added the main Execute entry point with signal handling for SIGINT/SIGTERM and terminal prompt logic for user confirmation. Implemented bloat protection for the handshake file by truncating the output preview if it exceeds 100KB. Added debug logging to trace GSC_HOME resolution and handshake file path construction. Added helpful error message when GSC_HOME is not set and the handshake file is not found.
+ * Block-UUID: 683dcaff-d2da-47ee-b619-ab88c0899e36
+ * Parent-UUID: 988e3eee-f244-49a4-85ea-48f6244e7e44
+ * Version: 1.4.0
+ * Description: Orchestrates the CLI Bridge lifecycle, including handshake file management, terminal prompts, signal handling, and database integration. Added the main Execute entry point with signal handling for SIGINT/SIGTERM and terminal prompt logic for user confirmation. Implemented bloat protection for the handshake file by truncating the output preview if it exceeds 100KB. Added debug logging to trace GSC_HOME resolution and handshake file path construction. Added helpful error message when GSC_HOME is not set and the handshake file is not found. Added spacing before insertion prompts and validation to ensure handshake file exists and is not already finished before database insertion.
  * Language: Go
  * Created-at: 2026-02-08T19:06:26.138Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), Gemini 3 Flash (v1.3.1)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), Gemini 3 Flash (v1.3.1), GLM-4.7 (v1.4.0)
  */
 
 
@@ -87,7 +87,7 @@ func Execute(code string, rawOutput string, format string, cmdStr string, durati
 
 	h, err := LoadHandshake(gscHome, code)
 	if err != nil {
-		return err // Already formatted
+		return err
 	}
 
 	// 2. Setup Signal Handling (SIGINT/SIGTERM)
@@ -134,7 +134,7 @@ func Execute(code string, rawOutput string, format string, cmdStr string, durati
 			fmt.Fprintln(os.Stderr, "\nHint: For better AI analysis, use '--format json' to provide structured data.")
 		}
 
-		fmt.Fprintf(os.Stderr, "Insert into chat \"%s\" (%.2f MB)? [Y/n] ", 
+		fmt.Fprintf(os.Stderr, "\n\nInsert into chat \"%s\" (%.2f MB)? [Y/n] ", 
 			h.ChatTitle, float64(outputSize)/1024/1024)
 		
 		if !askConfirmation(true) {
@@ -143,14 +143,23 @@ func Execute(code string, rawOutput string, format string, cmdStr string, durati
 		}
 	}
 
-	// 6. Database Insertion
+	// 6. Validation: Ensure handshake file exists and is not already finished
+	handshakePath := filepath.Join(h.GSCHome, settings.BridgeHandshakeDir, h.Code+".json")
+	if _, err := os.Stat(handshakePath); os.IsNotExist(err) {
+		return &BridgeError{ExitCode: 2, Message: "bridge code file no longer exists"}
+	}
+	if h.StartedAt != nil {
+		return &BridgeError{ExitCode: 2, Message: "bridge code already processed"}
+	}
+
+	// 7. Database Insertion
 	msgID, err := h.InsertToChat(markdown)
 	if err != nil {
 		h.UpdateStatus("error", &Error{Code: "ERR_DB_INSERT", Message: err.Error()})
 		return &BridgeError{ExitCode: 3, Message: err.Error(), Err: err}
 	}
 
-	// 7. Success & Cleanup
+	// 8. Success & Cleanup
 	h.Result.MessageID = &msgID
 	h.Result.OutputSize = &outputSize
 	

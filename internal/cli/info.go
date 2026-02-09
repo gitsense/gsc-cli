@@ -1,12 +1,12 @@
 /**
  * Component: Info Command
- * Block-UUID: 1dc4eb6b-2a29-4f0b-adba-9a95abe54779
- * Parent-UUID: aa749e28-6941-4a69-8176-f281bc04d2cd
- * Version: 1.0.3
- * Description: CLI command definition for 'gsc info', displaying the current workspace context, active profile, and available databases. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted Info logs to Debug, removed redundant Error logs, and set SilenceUsage to true.
+ * Block-UUID: de10aac0-9d2f-4721-a207-ddfa657c1a8c
+ * Parent-UUID: 1dc4eb6b-2a29-4f0b-adba-9a95abe54779
+ * Version: 1.0.4
+ * Description: CLI command definition for 'gsc info', displaying the current workspace context, active profile, and available databases. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted Info logs to Debug, removed redundant Error logs, and set SilenceUsage to true. Integrated CLI Bridge: if --code is provided, output is captured and sent to the bridge orchestrator for chat insertion.
  * Language: Go
  * Created-at: 2026-02-03T03:16:25.331Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.1.0 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), Gemini 3 Flash (v1.0.4)
  */
 
 
@@ -14,7 +14,13 @@ package cli
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
 	"github.com/spf13/cobra"
+	"github.com/yourusername/gsc-cli/internal/bridge"
 	"github.com/yourusername/gsc-cli/internal/manifest"
 	"github.com/yourusername/gsc-cli/pkg/logger"
 )
@@ -40,6 +46,7 @@ your current context without needing to run multiple commands.`,
   # Output as JSON for scripts
   gsc info --format json`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		startTime := time.Now()
 		ctx := cmd.Context()
 
 		// 1. Gather Workspace Information
@@ -51,7 +58,22 @@ your current context without needing to run multiple commands.`,
 		}
 
 		// 2. Format and Output
-		output := manifest.FormatWorkspaceInfo(info, infoFormat, infoVerbose)
+		// If bridgeCode is present, we enforce noColor to ensure clean output for the chat
+		noColor := bridgeCode != ""
+		output := manifest.FormatWorkspaceInfo(info, infoFormat, infoVerbose, noColor)
+
+		// 3. CLI Bridge Integration
+		if bridgeCode != "" {
+			// Print to stdout (as per spec: "display output as we normally would")
+			fmt.Print(output)
+
+			// Hand off to bridge orchestrator
+			cmdStr := filepath.Base(os.Args[0]) + " " + strings.Join(os.Args[1:], " ")
+			// info command does not target a specific database, so dbName is empty
+			return bridge.Execute(bridgeCode, output, infoFormat, cmdStr, time.Since(startTime), "", forceInsert)
+		}
+
+		// Standard Output Mode
 		print(output)
 
 		return nil

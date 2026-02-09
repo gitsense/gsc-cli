@@ -1,12 +1,12 @@
 /**
  * Component: Query Output Formatter
- * Block-UUID: 7b39e9d6-8b0a-4535-89d7-88ab244795a2
- * Parent-UUID: d48baf27-0599-4ca2-91dd-d2853b3269d0
- * Version: 2.9.1
+ * Block-UUID: dbe56bd5-3a80-42f8-abe1-2c003970a03f
+ * Parent-UUID: 7b39e9d6-8b0a-4535-89d7-88ab244795a2
+ * Version: 2.9.2
  * Description: Formats query results, list results, and status views. Added FormatCoverageReport to support Phase 3 Scout Layer coverage analysis, including ASCII progress bars and detailed language/directory breakdowns. Added FormatInsightsReport and FormatReport to support Phase 2 Scout Layer features, providing JSON metadata aggregation and ASCII dashboard visualization. Fixed unused variable 'withoutMeta' in formatReportTable.
  * Language: Go
- * Created-at: 2026-02-05T19:35:01.175Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), Gemini 3 Flash (v2.3.0), GLM-4.7 (v2.4.0), GLM-4.7 (v2.5.0), GLM-4.7 (v2.5.1), Gemini 3 Flash (v2.6.0), Gemini 3 Flash (v2.7.0), GLM-4.7 (v2.7.1), Claude Haiku 4.5 (v2.8.0), Gemini 3 Flash (v2.9.0), Gemini 3 Flash (v2.9.1)
+ * Created-at: 2026-02-09T00:36:02.868Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), Gemini 3 Flash (v2.3.0), GLM-4.7 (v2.4.0), GLM-4.7 (v2.5.0), GLM-4.7 (v2.5.1), Gemini 3 Flash (v2.6.0), Gemini 3 Flash (v2.7.0), GLM-4.7 (v2.7.1), Claude Haiku 4.5 (v2.8.0), Gemini 3 Flash (v2.9.0), Gemini 3 Flash (v2.9.1), Gemini 3 Flash (v2.9.2)
  */
 
 
@@ -65,7 +65,7 @@ func formatQueryResultsTable(response *QueryResponse, quiet bool, config *QueryC
 
 	// Check if we are in a terminal
 	if output.IsTerminal() {
-		sb.WriteString(FormatWorkspaceHeader(config))
+		sb.WriteString(FormatWorkspaceHeader(config, quiet))
 		sb.WriteString(fmt.Sprintf("Database: %s\n", response.Summary.Database))
 		sb.WriteString(fmt.Sprintf("   Query: %s = %s\n\n", response.Query.MatchField, response.Query.MatchValue))
 	} else {
@@ -119,7 +119,7 @@ func formatListResultTable(listResult *ListResult, quiet bool, config *QueryConf
 
 	// Add Workspace Header if TTY and not quiet
 	if !quiet && output.IsTerminal() {
-		sb.WriteString(FormatWorkspaceHeader(config))
+		sb.WriteString(FormatWorkspaceHeader(config, quiet))
 	}
 
 	var headers []string
@@ -189,7 +189,7 @@ func FormatStatusView(config *QueryConfig, quiet bool) string {
 	var sb strings.Builder
 
 	sb.WriteString("Find files by metadata value or analyze codebase coverage and insights.\n\n")
-	sb.WriteString(FormatWorkspaceHeader(config))
+	sb.WriteString(FormatWorkspaceHeader(config, quiet))
 
 	sb.WriteString("Primary Flags:\n")
 	sb.WriteString("  -v, --value <val>  Match metadata value (comma-separated for OR)\n")

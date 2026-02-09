@@ -1,12 +1,12 @@
 /**
  * Component: Workspace Info Logic
- * Block-UUID: 80793b68-5814-44f7-b37b-dbd9a507d88c
- * Parent-UUID: 6ac72f9c-1ee8-445c-8865-06e0175b762d
- * Version: 1.5.0
- * Description: Logic to gather and format workspace information for the 'gsc info' command, including active profiles and available databases. Added 'gsc config active' to Quick Actions for consistency with the new command name. Refactored all logger calls to use structured Key-Value pairs instead of format strings.
+ * Block-UUID: 8c267277-ad7b-48d0-a394-4a5a3a40953e
+ * Parent-UUID: 80793b68-5814-44f7-b37b-dbd9a507d88c
+ * Version: 1.6.0
+ * Description: Logic to gather and format workspace information for the 'gsc info' command, including active profiles and available databases. Added 'gsc config active' to Quick Actions for consistency with the new command name. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support CLI Bridge: added noColor parameter to formatting functions to ensure clean output without ANSI escape sequences.
  * Language: Go
  * Created-at: 2026-02-05T05:24:58.365Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0)
  */
 
 
@@ -71,14 +71,14 @@ func GetWorkspaceInfo(ctx context.Context) (*WorkspaceInfo, error) {
 }
 
 // FormatWorkspaceInfo formats the workspace info for display.
-func FormatWorkspaceInfo(info *WorkspaceInfo, format string, verbose bool) string {
+func FormatWorkspaceInfo(info *WorkspaceInfo, format string, verbose bool, noColor bool) string {
 	switch strings.ToLower(format) {
 	case "json":
 		return formatInfoJSON(info)
 	case "table":
-		return formatInfoTable(info, verbose)
+		return formatInfoTable(info, verbose, noColor)
 	default:
-		return formatInfoTable(info, verbose)
+		return formatInfoTable(info, verbose, noColor)
 	}
 }
 
@@ -92,7 +92,7 @@ func formatInfoJSON(info *WorkspaceInfo) string {
 }
 
 // formatInfoTable returns the workspace info as a formatted text table.
-func formatInfoTable(info *WorkspaceInfo, verbose bool) string {
+func formatInfoTable(info *WorkspaceInfo, verbose bool, noColor bool) string {
 	var sb strings.Builder
 
 	// Use the extracted header function
@@ -106,7 +106,7 @@ func formatInfoTable(info *WorkspaceInfo, verbose bool) string {
 		sb.WriteString("\n")
 		sb.WriteString("Active Profile:  (unknown)\n")
 	} else {
-		sb.WriteString(FormatWorkspaceHeader(config))
+		sb.WriteString(FormatWorkspaceHeader(config, noColor))
 	}
 
 	// Available Databases Section
@@ -133,13 +133,6 @@ func formatInfoTable(info *WorkspaceInfo, verbose bool) string {
 	}
 	sb.WriteString("\n")
 
-	// Quick Actions
-	sb.WriteString("Quick Actions:\n")
-	sb.WriteString("  • Switch context:  gsc config use <name>\n")
-	sb.WriteString("  • Show active:     gsc config active\n")
-	sb.WriteString("  • List all:        gsc config context list\n")
-	sb.WriteString("  • Query:           gsc query --value <val>\n")
-
 	// Verbose Details
 	if verbose {
 		sb.WriteString("\n")
@@ -154,7 +147,7 @@ func formatInfoTable(info *WorkspaceInfo, verbose bool) string {
 
 // FormatWorkspaceHeader returns the prominent workspace header box.
 // This is reused by query and rg commands to show context.
-func FormatWorkspaceHeader(config *QueryConfig) string {
+func FormatWorkspaceHeader(config *QueryConfig, noColor bool) string {
 	var sb strings.Builder
 
 	sb.WriteString("╔════════════════════════════════════════════════════════════════╗\n")
@@ -178,7 +171,6 @@ func FormatWorkspaceHeader(config *QueryConfig) string {
 	} else {
 		sb.WriteString("Active Profile:  (none)\n")
 		sb.WriteString("  Run 'gsc config use <name>' to activate a profile.\n")
-		sb.WriteString("  Run 'gsc config context list' to list available profiles.\n")
 	}
 	sb.WriteString("\n")
 
