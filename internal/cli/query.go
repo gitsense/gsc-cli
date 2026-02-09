@@ -1,12 +1,12 @@
 /**
  * Component: Query Command
- * Block-UUID: aff82dd6-f244-4e35-95ae-29389ad9013e
- * Parent-UUID: 8a4d235b-a9d3-44b8-9c08-47b3678ba1b8
- * Version: 3.0.0
- * Description: Major refactor of 'gsc query' to promote --list, --insights, and --coverage flags to subcommands. This improves ergonomics and prepares the CLI for the 'gsc scout' orchestrator. Top-level 'query' now focuses on direct value matching or status display.
+ * Block-UUID: 6a320e3d-ebb4-4d70-a04c-1a385198046c
+ * Parent-UUID: aff82dd6-f244-4e35-95ae-29389ad9013e
+ * Version: 3.1.0
+ * Description: Updated the 'query list' subcommand to support the '--all' flag. This flag enables the "Intelligence Map" view, which provides a complete hierarchical listing of all databases and their fields, optimized for AI agents like 'scout' to perform initial reconnaissance in a single turn.
  * Language: Go
  * Created-at: 2026-02-05T19:30:15.160Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), Claude Haiku 4.5 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), Gemini 3 Flash (v1.0.5), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), Gemini 3 Flash (v2.5.0), GLM-4.7 (v2.6.0), Gemini 3 Flash (v2.7.0), Gemini 3 Flash (v3.0.0)
+ * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.0.0), Gemini 3 Flash (v3.1.0)
  */
 
 
@@ -33,6 +33,7 @@ var (
 	queryScopeOverride string
 	queryInsightsLimit int
 	queryListDB        bool
+	queryListAll       bool
 	queryReport        bool
 )
 
@@ -60,8 +61,12 @@ var queryListCmd = &cobra.Command{
 	Long: `Hierarchical discovery of the intelligence hub.
 1. No arguments: Lists fields in the default/active database.
 2. With [field]: Lists unique values for that specific field.
-3. With --dbs: Lists all available databases.`,
-	Example: `  # List all available databases
+3. With --all: Lists all databases and their fields (Intelligence Map).
+4. With --dbs: Lists all available databases.`,
+	Example: `  # List the full intelligence map (all DBs and fields)
+  gsc query list --all
+
+  # List all available databases
   gsc query list --dbs
 
   # List fields in the active database
@@ -79,7 +84,7 @@ var queryListCmd = &cobra.Command{
 			if err != nil {
 				return fmt.Errorf("failed to load config: %w", err)
 			}
-			return handleList(ctx, "", "", queryFormat, queryQuiet, config)
+			return handleList(ctx, "", "", queryFormat, queryQuiet, config, queryListAll)
 		}
 
 		fieldName := ""
@@ -87,7 +92,7 @@ var queryListCmd = &cobra.Command{
 			fieldName = args[0]
 		}
 
-		return handleHierarchicalList(ctx, queryDB, fieldName, queryFormat, queryQuiet)
+		return handleHierarchicalList(ctx, queryDB, fieldName, queryFormat, queryQuiet, queryListAll)
 	},
 }
 
@@ -133,6 +138,7 @@ func init() {
 
 	// List Subcommand Flags
 	queryListCmd.Flags().BoolVar(&queryListDB, "dbs", false, "List all available databases")
+	queryListCmd.Flags().BoolVar(&queryListAll, "all", false, "Show all databases and their fields (Intelligence Map)")
 	queryListCmd.Flags().StringVarP(&queryDB, "db", "d", "", "Database to list fields from")
 	queryListCmd.Flags().StringVarP(&queryFormat, "format", "o", "table", "Output format")
 	queryListCmd.Flags().BoolVar(&queryQuiet, "quiet", false, "Suppress headers and hints")
@@ -264,7 +270,7 @@ func handleInsights(ctx context.Context, dbName string, fieldsStr string, limit 
 }
 
 // handleHierarchicalList resolves the database from defaults if not provided.
-func handleHierarchicalList(ctx context.Context, dbName string, fieldName string, format string, quiet bool) error {
+func handleHierarchicalList(ctx context.Context, dbName string, fieldName string, format string, quiet bool, all bool) error {
 	config, err := manifest.GetEffectiveConfig()
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
@@ -288,11 +294,11 @@ func handleHierarchicalList(ctx context.Context, dbName string, fieldName string
 		resolvedField = config.Query.DefaultField
 	}
 
-	return handleList(ctx, resolvedDB, resolvedField, format, quiet, config)
+	return handleList(ctx, resolvedDB, resolvedField, format, quiet, config, all)
 }
 
 // handleList performs the actual discovery call.
-func handleList(ctx context.Context, dbName string, fieldName string, format string, quiet bool, config *manifest.QueryConfig) error {
+func handleList(ctx context.Context, dbName string, fieldName string, format string, quiet bool, config *manifest.QueryConfig, all bool) error {
 	// Resolve database name if provided (might be a display name)
 	if dbName != "" {
 		var err error
@@ -302,9 +308,9 @@ func handleList(ctx context.Context, dbName string, fieldName string, format str
 		}
 	}
 
-	logger.Debug("Listing items", "database", dbName, "field", fieldName)
+	logger.Debug("Listing items", "database", dbName, "field", fieldName, "all", all)
 
-	result, err := manifest.GetListResult(ctx, dbName, fieldName)
+	result, err := manifest.GetListResult(ctx, dbName, fieldName, all)
 	if err != nil {
 		return err
 	}

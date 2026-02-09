@@ -1,12 +1,12 @@
 /**
  * Component: Simple Query Executor
- * Block-UUID: 01f3aded-e327-4002-8ba9-e29e1ce2181e
- * Parent-UUID: 04687c2a-5156-4a15-8daf-e1ce8430fd2d
- * Version: 1.6.0
- * Description: Executes simple value-matching queries and hierarchical list operations. Refactored GetListResult to implement the "Discovery Dashboard" logic, combining database and field listings when no specific field is requested. Added context-aware hints to the ListResult to guide users and AI agents (Scout) through the discovery workflow.
+ * Block-UUID: 44ce2ed3-f0b7-4611-b15e-157ab7c7366b
+ * Parent-UUID: 01f3aded-e327-4002-8ba9-e29e1ce2181e
+ * Version: 1.7.0
+ * Description: Executes simple value-matching queries and hierarchical list operations. Updated GetListResult to support the '--all' flag, which populates a nested hierarchy of databases and their fields. Refactored listAllDatabases to correctly map command-line slugs (Name) and human-friendly display names (Label) for improved ergonomics.
  * Language: Go
  * Created-at: 2026-02-05T18:11:17.686Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.4.1), Gemini 3 Flash (v1.5.0), Gemini 3 Flash (v1.6.0)
+ * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0)
  */
 
 
@@ -132,7 +132,8 @@ func ExecuteSimpleQuery(ctx context.Context, dbName string, fieldName string, va
 // It implements the "Discovery Dashboard" logic:
 // - If fieldName is empty: Returns both Databases and Fields (if dbName is set).
 // - If fieldName is set: Returns unique values for that field.
-func GetListResult(ctx context.Context, dbName string, fieldName string) (*ListResult, error) {
+// - If all is true: Returns a full map of all databases and their fields.
+func GetListResult(ctx context.Context, dbName string, fieldName string, all bool) (*ListResult, error) {
 	result := &ListResult{
 		ActiveDatabase: dbName,
 		Hints:          []string{},
@@ -149,7 +150,22 @@ func GetListResult(ctx context.Context, dbName string, fieldName string) (*ListR
 		}
 		result.Databases = dbs
 
-		// If a database is active, also get its fields
+		// Handle --all flag: Populate fields for every database
+		if all {
+			for i := range result.Databases {
+				fields, err := listFieldsInDatabase(ctx, result.Databases[i].Name)
+				if err != nil {
+					logger.Warning("Failed to list fields for database in --all view", "db", result.Databases[i].Name, "error", err)
+					continue
+				}
+				result.Databases[i].Fields = fields
+			}
+			result.Hints = append(result.Hints, "Use 'gsc query list <field>' to see unique values for a specific field.")
+			result.Hints = append(result.Hints, "Use 'gsc query list --db <name>' to see fields for a specific database.")
+			return result, nil
+		}
+
+		// Standard Discovery Dashboard: If a database is active, also get its fields
 		if dbName != "" {
 			fields, err := listFieldsInDatabase(ctx, dbName)
 			if err != nil {
@@ -159,6 +175,7 @@ func GetListResult(ctx context.Context, dbName string, fieldName string) (*ListR
 			result.Hints = append(result.Hints, "Use 'gsc query list <field>' to see unique values for a specific field.")
 			result.Hints = append(result.Hints, "Use 'gsc query list --db <name>' to see fields for a different database.")
 		} else {
+			result.Hints = append(result.Hints, "Use 'gsc query list --all' to see the full intelligence map.")
 			result.Hints = append(result.Hints, "Use 'gsc query list --db <name>' to see available fields, or 'gsc config use <name>' to set a default database.")
 		}
 
@@ -187,8 +204,12 @@ func listAllDatabases(ctx context.Context) ([]ListItem, error) {
 
 	var items []ListItem
 	for _, dbInfo := range dbs {
+		// Derive the slug (Name) from the physical filename
+		slug := strings.TrimSuffix(filepath.Base(dbInfo.DBPath), ".db")
+
 		items = append(items, ListItem{
-			Name:        dbInfo.Name,
+			Name:        slug,        // The easy-to-type identifier (e.g., "security")
+			Label:       dbInfo.Name, // The human-friendly display name (e.g., "Security Analysis")
 			Description: dbInfo.Description,
 			Source:      filepath.Base(dbInfo.DBPath),
 			Count:       dbInfo.EntryCount,

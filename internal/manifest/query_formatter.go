@@ -1,12 +1,12 @@
-/**
+/*
  * Component: Query Output Formatter
- * Block-UUID: 5230e782-4d2b-434a-9376-04a3eab279a3
- * Parent-UUID: 586fd9dd-dbe8-43a4-8ef2-4e4b4ba979c0
- * Version: 3.2.0
- * Description: Refactored the list result formatter to implement the "Discovery Dashboard" as a clean, bulleted text view instead of ASCII tables. This matches the ergonomic "Map" vision, reducing noise and highlighting the active database. Ensured that hints are clearly separated and formatted for both human and AI consumers.
+ * Block-UUID: d95f7059-049a-4542-9b5a-e2dc92b8b955
+ * Parent-UUID: 5230e782-4d2b-434a-9376-04a3eab279a3
+ * Version: 3.3.0
+ * Description: Refactored the list result formatter to implement the hierarchical "Intelligence Map" for both the standard Discovery Dashboard and the new '--all' view. Updated the text output to use a bulleted, indented format that clearly distinguishes between database slugs (for commands) and labels (for reading).
  * Language: Go
  * Created-at: 2026-02-09T00:36:02.868Z
- * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.1.0), Gemini 3 Flash (v3.2.0)
+ * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.2.0), Gemini 3 Flash (v3.3.0)
  */
 
 
@@ -112,45 +112,60 @@ func formatListResultTable(listResult *ListResult, quiet bool, config *QueryConf
 
 	switch listResult.Level {
 	case "discovery":
-		sb.WriteString("GitSense Intelligence Map\n")
-		sb.WriteString("=========================\n\n")
+		// Check if this is the --all view (databases have nested fields)
+		isAllView := false
+		if len(listResult.Databases) > 0 && len(listResult.Databases[0].Fields) > 0 {
+			isAllView = true
+		}
+
+		if isAllView {
+			sb.WriteString("GitSense Intelligence Map (All Databases)\n")
+			sb.WriteString("=========================================\n\n")
+		} else {
+			sb.WriteString("GitSense Intelligence Map\n")
+			sb.WriteString("=========================\n\n")
+		}
 
 		// 1. Render Databases
 		if len(listResult.Databases) > 0 {
-			sb.WriteString("Available Databases:\n")
-			sb.WriteString("-------------------\n")
-			
-			// Find max name width for alignment
-			maxNameWidth := 0
-			for _, item := range listResult.Databases {
-				name := item.Name
-				if item.Name == listResult.ActiveDatabase {
-					name = "* " + name + " (active)"
-				}
-				if len(name) > maxNameWidth {
-					maxNameWidth = len(name)
-				}
+			if !isAllView {
+				sb.WriteString("Available Databases:\n")
+				sb.WriteString("-------------------\n")
 			}
 
-			for _, item := range listResult.Databases {
-				name := item.Name
-				prefix := "    "
-				if item.Name == listResult.ActiveDatabase {
+			for _, dbItem := range listResult.Databases {
+				name := dbItem.Name
+				if dbItem.Name == listResult.ActiveDatabase {
 					name = name + " (active)"
-					prefix = "  * "
 				}
 				
-				sb.WriteString(fmt.Sprintf("%s%-*s - %s\n", 
-					prefix, 
-					maxNameWidth, 
-					name, 
-					truncate(item.Description, 80)))
+				sb.WriteString(fmt.Sprintf("[DB] %s\n", name))
+				sb.WriteString(fmt.Sprintf("Label: %s\n", dbItem.Label))
+				sb.WriteString(fmt.Sprintf("Description: %s\n", dbItem.Description))
+				sb.WriteString("\n")
+
+				// If --all view, render fields immediately under the database
+				if isAllView && len(dbItem.Fields) > 0 {
+					maxFieldWidth := 0
+					for _, f := range dbItem.Fields {
+						if len(f.Name) > maxFieldWidth {
+							maxFieldWidth = len(f.Name)
+						}
+					}
+
+					for _, f := range dbItem.Fields {
+						sb.WriteString(fmt.Sprintf("    %-*s - %s\n", 
+							maxFieldWidth, 
+							f.Name, 
+							truncate(f.Description, 80)))
+					}
+					sb.WriteString("\n")
+				}
 			}
-			sb.WriteString("\n")
 		}
 
-		// 2. Render Fields
-		if len(listResult.Fields) > 0 {
+		// 2. Render Fields (Standard Dashboard only)
+		if !isAllView && len(listResult.Fields) > 0 {
 			sb.WriteString(fmt.Sprintf("Available Fields (in '%s'):\n", listResult.ActiveDatabase))
 			sb.WriteString("--------------------------------\n")
 			
@@ -168,8 +183,6 @@ func formatListResultTable(listResult *ListResult, quiet bool, config *QueryConf
 					truncate(item.Description, 80)))
 			}
 			sb.WriteString("\n")
-		} else if listResult.ActiveDatabase == "" {
-			// Update to show a message if it makes sense
 		}
 
 	case "value":

@@ -1,12 +1,12 @@
 /**
  * Component: Query Models
- * Block-UUID: 9b4ca889-7327-4340-be28-11f8d449ceb1
- * Parent-UUID: d2b3efb1-31c4-4fd0-b884-8ba29765cbb5
- * Version: 1.5.0
- * Description: Defines the Go structs for query operations, configuration, and list results. Refactored ListResult to support the "Discovery Dashboard" view, allowing it to hold multiple lists (Databases, Fields, Values) and context-aware hints for both human and AI (Scout) consumers.
+ * Block-UUID: 9295988b-1f7d-4bbe-a7ce-16b81ce5fa17
+ * Parent-UUID: 9b4ca889-7327-4340-be28-11f8d449ceb1
+ * Version: 1.6.0
+ * Description: Defines the Go structs for query operations, configuration, and list results. Enhanced ListItem to support hierarchical nesting and the distinction between command-line names (slugs) and human-friendly labels for the "Discovery Dashboard" and '--all' views.
  * Language: Go
  * Created-at: 2026-02-05T19:28:09.139Z
- * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v1.4.0), Gemini 3 Flash (v1.5.0)
+ * Authors: GLM-4.7 (v1.0.0), Gemini 3 Flash (v1.4.0), Gemini 3 Flash (v1.5.0), Gemini 3 Flash (v1.6.0)
  */
 
 
@@ -55,11 +55,13 @@ type ListResult struct {
 
 // ListItem represents a single item in a list result.
 type ListItem struct {
-	Name        string `json:"name"`                  // The name of the item (db, field, or value)
-	Description string `json:"description,omitempty"` // Optional description
-	Source      string `json:"source,omitempty"`      // Optional source (e.g., physical filename)
-	Type        string `json:"type,omitempty"`        // Optional type (for fields)
-	Count       int    `json:"count,omitempty"`       // Optional count (for values)
+	Name        string     `json:"name"`                  // The name of the item (db slug, field name, or value)
+	Label       string     `json:"label,omitempty"`       // Human-friendly display name (e.g., for databases)
+	Description string     `json:"description,omitempty"` // Optional description
+	Source      string     `json:"source,omitempty"`      // Optional source (e.g., physical filename)
+	Type        string     `json:"type,omitempty"`        // Optional type (for fields)
+	Count       int        `json:"count,omitempty"`       // Optional count (for values)
+	Fields      []ListItem `json:"fields,omitempty"`      // Nested fields for the hierarchical --all view
 }
 
 // QueryAlias represents a saved query alias.
