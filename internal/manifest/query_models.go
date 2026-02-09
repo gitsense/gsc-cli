@@ -1,12 +1,12 @@
 /**
  * Component: Query Models
- * Block-UUID: c7e07dd0-70b7-406f-8af3-b63c1f77db51
+ * Block-UUID: 9b4ca889-7327-4340-be28-11f8d449ceb1
  * Parent-UUID: d2b3efb1-31c4-4fd0-b884-8ba29765cbb5
  * Version: 1.5.0
- * Description: Defines the Go structs for query operations, configuration, and list results. Added CoverageReport and supporting structs to implement the Phase 3 Scout Layer coverage analysis feature. Added InsightsReport, InsightsContext, FieldInsight, and InsightsSummary to support Phase 2 Scout Layer insights and reporting features.
+ * Description: Defines the Go structs for query operations, configuration, and list results. Refactored ListResult to support the "Discovery Dashboard" view, allowing it to hold multiple lists (Databases, Fields, Values) and context-aware hints for both human and AI (Scout) consumers.
  * Language: Go
- * Created-at: 2026-02-09T04:19:42.189Z
- * Authors: GLM-4.7 (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0), Gemini 3 Flash (v1.4.0), Gemini 3 Flash (v1.5.0)
+ * Created-at: 2026-02-05T19:28:09.139Z
+ * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v1.4.0), Gemini 3 Flash (v1.5.0)
  */
 
 
@@ -42,15 +42,15 @@ type QuerySummary struct {
 	Database        string  `json:"database"`
 }
 
-// ListResult represents the result of a --list operation.
-// It can represent a list of databases, fields within a database, or values within a field.
+// ListResult represents the result of a discovery operation.
+// It can represent a combined "Discovery Dashboard" or a specific list of values.
 type ListResult struct {
-	Level          string     `json:"level"` // "discovery", "database", "field", or "value"
-	ActiveDatabase string     `json:"active_database,omitempty"`
+	Level          string     `json:"level"`           // "discovery" or "value"
+	ActiveDatabase string     `json:"active_database"` // The database currently in focus
 	Databases      []ListItem `json:"databases,omitempty"`
 	Fields         []ListItem `json:"fields,omitempty"`
 	Values         []ListItem `json:"values,omitempty"`
-	Hints          []string   `json:"hints,omitempty"`
+	Hints          []string   `json:"hints"` // Context-aware hints for users and AI (Scout)
 }
 
 // ListItem represents a single item in a list result.
@@ -58,7 +58,7 @@ type ListItem struct {
 	Name        string `json:"name"`                  // The name of the item (db, field, or value)
 	Description string `json:"description,omitempty"` // Optional description
 	Source      string `json:"source,omitempty"`      // Optional source (e.g., physical filename)
-	Type        string `json:"type,omitempty"`        // Optional type (for fields
+	Type        string `json:"type,omitempty"`        // Optional type (for fields)
 	Count       int    `json:"count,omitempty"`       // Optional count (for values)
 }
 

@@ -1,12 +1,12 @@
 /**
  * Component: Query Output Formatter
- * Block-UUID: 586fd9dd-dbe8-43a4-8ef2-4e4b4ba979c0
- * Parent-UUID: cd3b09e8-2e43-4212-aad6-c58fab6c1fc2
- * Version: 3.1.0
- * Description: Updated the list result formatter to support the "Discovery Dashboard" view, which combines database and field listings. Refined table headers for better ergonomics (e.g., 'Database' instead of 'DB Name') and ensured that context-aware hints are displayed for both human and AI (JSON) consumers.
+ * Block-UUID: 5230e782-4d2b-434a-9376-04a3eab279a3
+ * Parent-UUID: 586fd9dd-dbe8-43a4-8ef2-4e4b4ba979c0
+ * Version: 3.2.0
+ * Description: Refactored the list result formatter to implement the "Discovery Dashboard" as a clean, bulleted text view instead of ASCII tables. This matches the ergonomic "Map" vision, reducing noise and highlighting the active database. Ensured that hints are clearly separated and formatted for both human and AI consumers.
  * Language: Go
  * Created-at: 2026-02-09T00:36:02.868Z
- * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.0.0), Gemini 3 Flash (v3.1.0)
+ * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.1.0), Gemini 3 Flash (v3.2.0)
  */
 
 
@@ -110,30 +110,42 @@ func formatListResultJSON(listResult *ListResult) string {
 func formatListResultTable(listResult *ListResult, quiet bool, config *QueryConfig) string {
 	var sb strings.Builder
 
-	if !quiet && output.IsTerminal() {
-		sb.WriteString(FormatWorkspaceHeader(config, quiet))
-	}
-
 	switch listResult.Level {
 	case "discovery":
+		sb.WriteString("GitSense Intelligence Map\n")
+		sb.WriteString("=========================\n\n")
+
 		// 1. Render Databases
 		if len(listResult.Databases) > 0 {
 			sb.WriteString("Available Databases:\n")
 			sb.WriteString("-------------------\n")
-			headers := []string{"Database", "Summary", "Files"}
-			var rows [][]string
+			
+			// Find max name width for alignment
+			maxNameWidth := 0
 			for _, item := range listResult.Databases {
 				name := item.Name
 				if item.Name == listResult.ActiveDatabase {
 					name = "* " + name + " (active)"
 				}
-				rows = append(rows, []string{
-					name,
-					truncate(item.Description, 60),
-					fmt.Sprintf("%d", item.Count),
-				})
+				if len(name) > maxNameWidth {
+					maxNameWidth = len(name)
+				}
 			}
-			sb.WriteString(output.FormatTable(headers, rows))
+
+			for _, item := range listResult.Databases {
+				name := item.Name
+				prefix := "    "
+				if item.Name == listResult.ActiveDatabase {
+					name = name + " (active)"
+					prefix = "  * "
+				}
+				
+				sb.WriteString(fmt.Sprintf("%s%-*s - %s\n", 
+					prefix, 
+					maxNameWidth, 
+					name, 
+					truncate(item.Description, 80)))
+			}
 			sb.WriteString("\n")
 		}
 
@@ -141,19 +153,23 @@ func formatListResultTable(listResult *ListResult, quiet bool, config *QueryConf
 		if len(listResult.Fields) > 0 {
 			sb.WriteString(fmt.Sprintf("Available Fields (in '%s'):\n", listResult.ActiveDatabase))
 			sb.WriteString("--------------------------------\n")
-			headers := []string{"Field", "Type", "Description"}
-			var rows [][]string
+			
+			maxNameWidth := 0
 			for _, item := range listResult.Fields {
-				rows = append(rows, []string{
-					item.Name,
-					item.Type,
-					truncate(item.Description, 80),
-				})
+				if len(item.Name) > maxNameWidth {
+					maxNameWidth = len(item.Name)
+				}
 			}
-			sb.WriteString(output.FormatTable(headers, rows))
+
+			for _, item := range listResult.Fields {
+				sb.WriteString(fmt.Sprintf("    %-*s - %s\n", 
+					maxNameWidth, 
+					item.Name, 
+					truncate(item.Description, 80)))
+			}
 			sb.WriteString("\n")
 		} else if listResult.ActiveDatabase == "" {
-			sb.WriteString("No active database. Use '--db <name>' to see available fields.\n\n")
+			// Update to show a message if it makes sense
 		}
 
 	case "value":
@@ -174,8 +190,12 @@ func formatListResultTable(listResult *ListResult, quiet bool, config *QueryConf
 
 	// Render Hints
 	if !quiet && len(listResult.Hints) > 0 {
-		for _, hint := range listResult.Hints {
-			sb.WriteString(fmt.Sprintf("Hint: %s\n", hint))
+		for i, hint := range listResult.Hints {
+			prefix := "Hint: "
+			if i > 0 {
+				prefix = "      "
+			}
+			sb.WriteString(fmt.Sprintf("%s%s\n", prefix, hint))
 		}
 	}
 
