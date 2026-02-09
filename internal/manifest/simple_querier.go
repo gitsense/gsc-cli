@@ -1,12 +1,12 @@
 /**
  * Component: Simple Query Executor
- * Block-UUID: 44ce2ed3-f0b7-4611-b15e-157ab7c7366b
- * Parent-UUID: 01f3aded-e327-4002-8ba9-e29e1ce2181e
- * Version: 1.7.0
+ * Block-UUID: 9cedb10e-a34c-451d-b25d-9d97ab56c2eb
+ * Parent-UUID: 44ce2ed3-f0b7-4611-b15e-157ab7c7366b
+ * Version: 1.7.1
  * Description: Executes simple value-matching queries and hierarchical list operations. Updated GetListResult to support the '--all' flag, which populates a nested hierarchy of databases and their fields. Refactored listAllDatabases to correctly map command-line slugs (Name) and human-friendly display names (Label) for improved ergonomics.
  * Language: Go
  * Created-at: 2026-02-05T18:11:17.686Z
- * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0)
+ * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), GLM-4.7 (v1.7.1)
  */
 
 
@@ -160,8 +160,8 @@ func GetListResult(ctx context.Context, dbName string, fieldName string, all boo
 				}
 				result.Databases[i].Fields = fields
 			}
-			result.Hints = append(result.Hints, "Use 'gsc query list <field>' to see unique values for a specific field.")
 			result.Hints = append(result.Hints, "Use 'gsc query list --db <name>' to see fields for a specific database.")
+			result.Hints = append(result.Hints, "Use 'gsc query list --db <name> <field>' to see unique values for a specific field.")
 			return result, nil
 		}
 
