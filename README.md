@@ -33,7 +33,10 @@ Before searching for code, you need to understand the landscape. `gsc query` all
 ### 2. `gsc grep`: Enriched Pattern Matching
 `gsc grep` provides high-speed search (powered by `ripgrep`) that is enriched with metadata in real-time. This allows for semantic filtering (e.g., `topic=security`) that can prune results before they are ever sent to an LLM.
 
-### 3. The Two-Phase Agent Workflow
+### 3. `gsc tree`: The Visual Map
+`gsc tree` provides a hierarchical view of the filesystem structure enriched with metadata. It respects `.gitignore` and allows you to visualize the "purpose" or "risk" of files directly in the directory structure. It is context-aware, starting from your current working directory.
+
+### 4. The Two-Phase Agent Workflow
 `gsc` introduces a decision gate that can significantly reduce agent token consumption:
 *   **Phase 1: The Scout (`--summary`):** The agent runs a cheap query to see the metadata distribution.
 *   **Phase 2: The Surgeon (`--filter`):** The agent applies metadata filters to retrieve only matching lines and context lines for high-signal files.
@@ -57,14 +60,7 @@ gsc manifest init
 gsc manifest import path/to/manifest.json
 ```
 
-### 4. Set and Clear Context
-**Available Commands:**
-*   `gsc config context create <name>`: Create a new profile.
-*   `gsc config use <name>`: Activate a profile.
-*   `gsc config clear`: Deactivate the current profile.
-*   `gsc config active`: Show the currently active profile.
-
-### 5. Discover (The Map)
+### 4. Discover (The Map)
 ```bash
 # List available metadata fields in the active database
 gsc query list
@@ -77,6 +73,18 @@ gsc query insights --field risk_level --report
 
 # Check analysis coverage
 gsc query coverage
+```
+
+### 5. Visualize (The Structure)
+```bash
+# Show the tree structure with 'purpose' metadata
+gsc tree --db overview --fields purpose
+
+# Show only analyzed files (prune unmapped branches)
+gsc tree --db overview --fields purpose --prune
+
+# Generate a JSON map for AI agents
+gsc tree --db overview --fields purpose --format json
 ```
 
 ### 6. Search (The Territory)
@@ -110,14 +118,16 @@ Search with metadata enrichment.
 *   `--filter "field=value"`: Filter results by metadata fields.
 *   `--analyzed [true|false]`: Filter by analysis status.
 
-### `gsc config`
-Management of context profiles and workspace settings.
-*   `use <profile>`: Activate a context profile.
-*   `context create <name>`: Create a new profile.
-*   `clear`: Deactivate the current profile.
+### `gsc tree`
+Visualize the filesystem structure with metadata.
+*   `--fields <list>`: Metadata fields to display (e.g., `purpose,risk`).
+*   `--prune`: Hide files/directories that lack the requested metadata.
+*   `--format [human|json]`: Output format (default: human).
+*   `--indent <n>`: Indentation width in spaces (default: 4).
+*   `--truncate <n>`: Max length for metadata values (default: 60).
 
 ### `gsc info`
-Display current workspace context, active profile, and database status.
+Display current workspace context and database status.
 
 ## Architecture
 `gsc` is built on a modular architecture designed for performance and tool-agnosticism.
@@ -126,9 +136,6 @@ Display current workspace context, active profile, and database status.
 
 ### `gsc scout`
 An automated orchestrator that translates natural language intent into multi-phase `query` and `grep` loops.
-
-### `gsc ls`
-An enhanced filesystem listing command that brings domain-specific intelligence to the command line.
 
 ## Requirements
 *   **Ripgrep:** Required in PATH for search functionality.

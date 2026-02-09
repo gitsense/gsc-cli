@@ -1,12 +1,12 @@
 /**
  * Component: Root CLI Command
- * Block-UUID: ac245d37-3a21-4bb2-b4ac-d01ca0a47dcf
- * Parent-UUID: f3633d2e-b8a5-46e8-8d33-83eb211c5536
- * Version: 1.19.0
+ * Block-UUID: 0b8a80d7-9ca8-41f4-ac6a-6a66e6ca7e6c
+ * Parent-UUID: ac245d37-3a21-4bb2-b4ac-d01ca0a47dcf
+ * Version: 1.20.0
  * Description: Updated the root command's long description to remove references to the 'config' command and profiles. The 'config' command registration has been commented out to hide the feature from the user interface while retaining the implementation code for internal use.
  * Language: Go
- * Created-at: 2026-02-08T07:30:01.169Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), ..., Claude Haiku 4.5 (v1.16.0), Gemini 3 Flash (v1.17.0), Gemini 3 Flash (v1.18.0), GLM-4.7 (v1.19.0)
+ * Created-at: 2026-02-09T20:46:15.556Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), ..., GLM-4.7 (v1.19.0), Gemini 3 Flash (v1.20.0)
  */
 
 
@@ -42,6 +42,7 @@ Top-Level Commands:
   info        Show current workspace information
   query       Find files and discover codebase intelligence (list, insights, coverage)
   grep        Search code with metadata enrichment
+  tree        Display a hierarchical view of tracked files with metadata
 
 Management Commands:
   manifest     Initialize, import, and query metadata manifests`,
@@ -100,6 +101,7 @@ func init() {
 	rootCmd.AddCommand(queryCmd)
 	// Replaced rgCmd with grepCmd
 	RegisterGrepCommand(rootCmd)
+	RegisterTreeCommand(rootCmd)
 
 	// INTERNAL: Config command is hidden from users to reduce complexity
 	// RegisterConfigCommand(rootCmd)
