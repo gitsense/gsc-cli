@@ -143,7 +143,7 @@ func FormatDatabaseTable(databases []interface{}, format string) {
 	case "json":
 		FormatJSON(databases)
 	case "csv":
-		headers := []string{"Name", "Description", "Tags", "DB Name", "Entry Count"}
+		headers := []string{"Name", "Description", "Tags", "DB", "Entry Count"}
 		rows := make([][]string, len(databases))
 		for i, db := range databases {
 			dbInfo := db.(map[string]interface{})
@@ -161,7 +161,7 @@ func FormatDatabaseTable(databases []interface{}, format string) {
 		}
 		FormatCSV(headers, rows)
 	case "table":
-		headers := []string{"Name", "Description", "Tags", "DB Name", "Entry Count"}
+		headers := []string{"Name", "Description", "Tags", "DB", "Entry Count"}
 		rows := make([][]string, len(databases))
 		for i, db := range databases {
 			dbInfo := db.(map[string]interface{})
