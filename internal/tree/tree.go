@@ -1,12 +1,12 @@
 /**
  * Component: Tree Logic
- * Block-UUID: c44f8bfa-ee25-4c3d-b8ce-72d86acc978d
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: b633fa98-cf1d-49aa-ab8f-e8a5ef9801a7
+ * Parent-UUID: c44f8bfa-ee25-4c3d-b8ce-72d86acc978d
+ * Version: 1.0.1
  * Description: Core logic for building, enriching, pruning, and rendering the filesystem tree for gsc tree. Supports CWD-aware construction, metadata enrichment, and coverage reporting.
  * Language: Go
- * Created-at: 2026-02-09T20:00:38.042Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Created-at: 2026-02-09T20:55:02.759Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1)
  */
 
 
@@ -18,6 +18,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/yourusername/gsc-cli/internal/search"
 )
 
 // Node represents a single entry (file or directory) in the filesystem tree.
@@ -92,10 +94,7 @@ func BuildTree(files []string, cwdOffset string) *Node {
 
 // EnrichTree populates the tree nodes with metadata from the provided map.
 // The map key should be the full path relative to the repo root.
-func EnrichTree(node *Node, currentPath string, metadataMap map[string]struct {
-	ChatID int
-	Fields map[string]interface{}
-}) {
+func EnrichTree(node *Node, currentPath string, metadataMap map[string]search.FileMetadata) {
 	// Calculate full path for metadata lookup
 	fullPath := node.Name
 	if currentPath != "" && currentPath != "." {
