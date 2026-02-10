@@ -34,9 +34,9 @@ You now have a map of the repository including the purpose for every file and th
 
 Is this code better than what a Go expert would write? Probably not. But it solves a real requirement. We needed a way to provide portable binaries without forcing users to manage complex dependencies. Go was chosen because its long history provides a vast amount of training data, allowing AI to better assist in generating reliable code.
 
-Can this code be maintained and evolved? We see no reason why not and we have the receipts to prove it. Every file is 100% traceable with a Block-UUID and version history. View the source and the version information to see what human guided AI can do. There is no guessing. We explicitly document which LLM generated each version of the code. 
+Can this code be maintained and evolved? We see no reason why not and we have the receipts to prove it. Every file is 100% traceable with a Block-UUID and version history. View the source and the version information to see what human guided AI can do. There is no guessing. We explicitly document which LLM generated each "LLM version" of the code. 
 
-For this initial release, we are not including the Git history that led to this version. Moving forward, our goal is to ensure that every feature and the conversations that created it can be easily reviewed.
+For this initial release, we are not including the Git history that led to this "LLM version". Moving forward, our goal is to ensure that every feature and the conversations that created it can be easily reviewed.
 
 ### Installation
 Download a pre-compiled binary for Linux, macOS, or Windows from the releases page. Alternatively, build from source using the Go toolchain (version 1.21 or later required).
