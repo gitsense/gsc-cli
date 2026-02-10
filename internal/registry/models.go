@@ -1,12 +1,12 @@
 /*
  * Component: Registry Models
- * Block-UUID: eb77ea0b-7f02-4764-8b65-64b3c759e163
- * Parent-UUID: e416d612-0822-41bb-a3eb-d4f6e98cd2f2
- * Version: 1.2.0
- * Description: Defines the data structures for the GitSense registry file (.gitsense/manifest.json). Added UpdatedAt field, UpsertEntry method for idempotent updates, and FindEntryByDBName for existence checks.
+ * Block-UUID: 01dcd51f-2758-4229-a15e-1c760931260c
+ * Parent-UUID: eb77ea0b-7f02-4764-8b65-64b3c759e163
+ * Version: 1.3.0
+ * Description: Defines the data structures for the GitSense registry file (.gitsense/manifest.json). Added UpdatedAt field, UpsertEntry method for idempotent updates, FindEntryByDBName for existence checks, and RemoveEntryByDBName for deletion by physical filename.
  * Language: Go
  * Created-at: 2026-02-02T05:30:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
  */
 
 
@@ -89,6 +89,18 @@ func (r *Registry) FindEntryByDBName(dbName string) (*RegistryEntry, bool) {
 func (r *Registry) RemoveEntry(name string) bool {
 	for i, entry := range r.Databases {
 		if entry.Name == name {
+			r.Databases = append(r.Databases[:i], r.Databases[i+1:]...)
+			return true
+		}
+	}
+	return false
+}
+
+// RemoveEntryByDBName removes a database entry by its physical database name (slug).
+// Returns true if an entry was removed, false if it wasn't found.
+func (r *Registry) RemoveEntryByDBName(dbName string) bool {
+	for i, entry := range r.Databases {
+		if entry.DatabaseName == dbName {
 			r.Databases = append(r.Databases[:i], r.Databases[i+1:]...)
 			return true
 		}

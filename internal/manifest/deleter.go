@@ -1,0 +1,72 @@
+/*
+ * Component: Manifest Deleter
+ * Block-UUID: 125e1da2-e099-430d-a88e-5ec69d5a5166
+ * Parent-UUID: N/A
+ * Version: 1.0.0
+ * Description: Logic to delete a manifest database file and remove its entry from the registry.
+ * Language: Go
+ * Created-at: 2026-02-10T17:20:00.000Z
+ * Authors: GLM-4.7 (v1.0.0)
+ */
+
+
+package manifest
+
+import (
+	"fmt"
+	"os"
+
+	"github.com/yourusername/gsc-cli/internal/registry"
+	"github.com/yourusername/gsc-cli/pkg/logger"
+)
+
+// DeleteManifest removes the database file and the registry entry for the given database name.
+// It performs the following steps:
+// 1. Loads the registry to verify the database exists.
+// 2. Resolves the physical path of the database file.
+// 3. Deletes the physical .db file from the filesystem.
+// 4. Removes the entry from the registry.
+// 5. Saves the updated registry.
+func DeleteManifest(dbName string) error {
+	// 1. Load Registry
+	reg, err := registry.LoadRegistry()
+	if err != nil {
+		return fmt.Errorf("failed to load registry: %w", err)
+	}
+
+	// 2. Check if entry exists
+	entry, exists := reg.FindEntryByDBName(dbName)
+	if !exists {
+		return fmt.Errorf("database '%s' not found in registry", dbName)
+	}
+
+	// 3. Resolve DB Path
+	dbPath, err := ResolveDBPath(dbName)
+	if err != nil {
+		return fmt.Errorf("failed to resolve database path: %w", err)
+	}
+
+	// 4. Delete Physical File
+	if err := os.Remove(dbPath); err != nil {
+		// Check if it's a "no such file" error - maybe it was already deleted manually?
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("failed to delete database file: %w", err)
+		}
+		logger.Warning("Database file not found on disk, removing from registry only", "path", dbPath)
+	}
+
+	// 5. Remove from Registry
+	if !reg.RemoveEntryByDBName(dbName) {
+		// This should theoretically not happen since we checked existence above,
+		// but good to be defensive.
+		return fmt.Errorf("failed to remove entry from registry (logic error)")
+	}
+
+	// 6. Save Registry
+	if err := registry.SaveRegistry(reg); err != nil {
+		return fmt.Errorf("failed to save registry: %w", err)
+	}
+
+	logger.Success("Successfully deleted manifest", "name", entry.Name, "db", dbName)
+	return nil
+}
