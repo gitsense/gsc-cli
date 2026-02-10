@@ -1,12 +1,12 @@
 /**
  * Component: Tree Command
- * Block-UUID: be91509e-f36e-44af-8b35-716b9bc76fbb
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 409f46d5-c435-45d5-aaac-e771b7caa691
+ * Parent-UUID: be91509e-f36e-44af-8b35-716b9bc76fbb
+ * Version: 1.1.0
  * Description: CLI command definition for 'gsc tree'. Supports hierarchical visualization of tracked files with metadata enrichment, CWD-awareness, and CLI Bridge integration.
  * Language: Go
- * Created-at: 2026-02-09T20:01:20.286Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Created-at: 2026-02-10T17:10:32.846Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0)
  */
 
 
@@ -60,8 +60,8 @@ directory. Use --fields to include specific metadata like 'purpose' or 'risk'.`,
 
 		// Validate format
 		treeFormat = strings.ToLower(treeFormat)
-		if treeFormat != "human" && treeFormat != "json" {
-			return fmt.Errorf("invalid format: %s. Supported formats: human, json", treeFormat)
+		if treeFormat != "human" && treeFormat != "json" && treeFormat != "ai-portable" {
+			return fmt.Errorf("invalid format: %s. Supported formats: human, json, ai-portable", treeFormat)
 		}
 
 		// 1. Get Repository Context
@@ -125,6 +125,11 @@ directory. Use --fields to include specific metadata like 'purpose' or 'risk'.`,
 			if err != nil {
 				return fmt.Errorf("failed to render JSON: %w", err)
 			}
+		} else if treeFormat == "ai-portable" {
+			outputStr, err = tree.RenderPortableJSON(rootNode, stats, treeFields, treePrune, cwdOffset)
+			if err != nil {
+				return fmt.Errorf("failed to render Portable JSON: %w", err)
+			}
 		} else {
 			outputStr = tree.RenderHuman(rootNode, treeIndent, treeTruncate, treeFields)
 			
@@ -146,7 +151,7 @@ directory. Use --fields to include specific metadata like 'purpose' or 'risk'.`,
 			
 			// Check size and provide hints if needed
 			if len(outputStr) > 1024*1024 { // 1MB limit
-				fmt.Fprintf(os.Stderr, "Hint: Output is large. Try reducing --indent, increasing --truncate, or narrowing your directory.\n")
+				fmt.Fprintf(os.Stderr, "Hint: Output is large. Try reducing --indent, increasing --truncate, or your directory.\n")
 			}
 
 			fmt.Print(outputStr)
@@ -164,7 +169,7 @@ func init() {
 	treeCmd.Flags().StringSliceVar(&treeFields, "fields", []string{}, "Metadata fields to display (comma-separated)")
 	treeCmd.Flags().IntVar(&treeIndent, "indent", 4, "Indentation width in spaces")
 	treeCmd.Flags().IntVar(&treeTruncate, "truncate", 60, "Maximum length for metadata values (0 for no truncation)")
-	treeCmd.Flags().StringVar(&treeFormat, "format", "human", "Output format: human or json")
+	treeCmd.Flags().StringVar(&treeFormat, "format", "human", "Output format: human, json, or ai-portable")
 	treeCmd.Flags().BoolVar(&treePrune, "prune", false, "Hide files/dirs that lack the requested metadata")
 }
 

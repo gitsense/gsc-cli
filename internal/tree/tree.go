@@ -1,12 +1,12 @@
 /**
  * Component: Tree Logic
- * Block-UUID: b633fa98-cf1d-49aa-ab8f-e8a5ef9801a7
- * Parent-UUID: c44f8bfa-ee25-4c3d-b8ce-72d86acc978d
- * Version: 1.0.1
+ * Block-UUID: c5c28b85-3a71-4a0f-9341-546a6bbcf91c
+ * Parent-UUID: b633fa98-cf1d-49aa-ab8f-e8a5ef9801a7
+ * Version: 1.1.0
  * Description: Core logic for building, enriching, pruning, and rendering the filesystem tree for gsc tree. Supports CWD-aware construction, metadata enrichment, and coverage reporting.
  * Language: Go
- * Created-at: 2026-02-09T20:55:02.759Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1)
+ * Created-at: 2026-02-10T17:09:20.938Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.1.0)
  */
 
 
@@ -25,7 +25,7 @@ import (
 // Node represents a single entry (file or directory) in the filesystem tree.
 type Node struct {
 	Name     string                 `json:"name"`
-	IsDir    bool                   `json:"type"` // true for directory, false for file
+	IsDir    bool                   `json:"is_dir"` // true for directory, false for file
 	ChatID   int                    `json:"chat_id,omitempty"`
 	Analyzed bool                   `json:"analyzed"`
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
@@ -37,6 +37,14 @@ type TreeStats struct {
 	TotalFiles    int     `json:"total_files"`
 	AnalyzedFiles int     `json:"analyzed_files"`
 	Coverage      float64 `json:"coverage_percent"`
+}
+
+// PortableNode represents a simplified node for the ai-portable format.
+type PortableNode struct {
+	Name     string                   `json:"name"`
+	IsDir    bool                   `json:"is_dir"`
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
+	Children []*PortableNode        `json:"children,omitempty"`
 }
 
 // BuildTree constructs a hierarchical tree from a list of file paths relative to the repo root.
@@ -167,6 +175,45 @@ func RenderJSON(node *Node, stats TreeStats, dbName string, fields []string, pru
 	}
 	bytes, err := json.MarshalIndent(output, "", "  ")
 	return string(bytes), err
+}
+
+// RenderPortableJSON generates the AI-Portable JSON representation.
+func RenderPortableJSON(node *Node, stats TreeStats, fields []string, pruned bool, cwd string) (string, error) {
+	portableTree := convertToPortableNode(node)
+
+	output := map[string]interface{}{
+		"context": map[string]interface{}{
+			"about": "This JSON represents a hierarchical Git tree. Each node represents a file or directory. Metadata is included for files where available to provide additional context for analysis.",
+			"cwd":   cwd,
+			"fields": fields,
+			"pruned": pruned,
+		},
+		"stats": map[string]interface{}{
+			"total_files":               stats.TotalFiles,
+			"files_with_metadata":       stats.AnalyzedFiles,
+			"metadata_coverage_percent": stats.Coverage,
+		},
+		"tree": portableTree,
+	}
+
+	bytes, err := json.MarshalIndent(output, "", "  ")
+	return string(bytes), err
+}
+
+// convertToPortableNode recursively converts a standard Node to a PortableNode.
+func convertToPortableNode(node *Node) *PortableNode {
+	if node == nil {
+		return nil
+	}
+	pn := &PortableNode{
+		Name:     node.Name,
+		IsDir:    node.IsDir,
+		Metadata: node.Metadata,
+	}
+	for _, child := range node.Children {
+		pn.Children = append(pn.Children, convertToPortableNode(child))
+	}
+	return pn
 }
 
 // Internal helpers
