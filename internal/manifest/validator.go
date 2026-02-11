@@ -32,8 +32,8 @@ func ValidateManifest(m *ManifestFile) error {
 	}
 
 	// Check Manifest Info
-	if m.Manifest.DatabaseLabel == "" {
-		return fmt.Errorf("manifest.database_label is required")
+	if m.Manifest.ManifestName == "" {
+		return fmt.Errorf("manifest.name is required")
 	}
 	if m.Manifest.DatabaseName == "" {
 		return fmt.Errorf("manifest.database_name is required")

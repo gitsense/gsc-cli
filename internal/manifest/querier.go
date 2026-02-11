@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Manifest Querier
- * Block-UUID: 25a66526-34d1-401d-83e7-ff4469ee538c
- * Parent-UUID: 988bbe7d-ad2b-4be6-98be-2361ab2f7815
- * Version: 1.6.0
+ * Block-UUID: 9b8c7d6e-5f4a-4b3c-9d2e-1f3a4b5c6d7e
+ * Parent-UUID: 25a66526-34d1-401d-83e7-ff4469ee538c
+ * Version: 1.7.0
  * Description: Logic to query the manifest registry and list available databases. Updated DatabaseInfo struct to use DatabaseName and DatabaseLabel. Updated mapping logic to populate these fields correctly from the registry entry.
  * Language: Go
- * Created-at: 2026-02-11T01:55:12.345Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0)
+ * Created-at: 2026-02-11T03:18:10.918Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0)
  */
 
 
@@ -25,7 +25,7 @@ import (
 // DatabaseInfo represents summary information about a manifest database
 type DatabaseInfo struct {
 	DatabaseName  string   `json:"database_name"`  // The physical slug/ID
-	DatabaseLabel string   `json:"database_label"` // The human-readable label
+	ManifestName  string   `json:"name"`           // The human-readable manifest name
 	Description   string   `json:"description"`
 	Tags          []string `json:"tags"`
 	DBPath        string   `json:"db_path"`
@@ -72,7 +72,7 @@ func ListDatabases(ctx context.Context) ([]DatabaseInfo, error) {
 
 		databases = append(databases, DatabaseInfo{
 			DatabaseName:  entry.DatabaseName,
-			DatabaseLabel: entry.DatabaseLabel,
+			ManifestName:  entry.ManifestName,
 			Description:   entry.Description,
 			Tags:          entry.Tags,
 			DBPath:        dbPath,

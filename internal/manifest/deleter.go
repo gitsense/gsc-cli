@@ -67,7 +67,7 @@ func DeleteManifest(dbName string) error {
 		return fmt.Errorf("failed to save registry: %w", err)
 	}
 
-	logger.Success("Successfully deleted manifest", "label", entry.DatabaseLabel, "db", dbName)
+	logger.Success("Successfully deleted manifest", "manifest", entry.ManifestName, "db", dbName)
 	return nil
 }
 

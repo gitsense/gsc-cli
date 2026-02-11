@@ -51,7 +51,7 @@ func CreateProfileInteractive(ctx context.Context, name string) error {
 	var dbOptions []string
 	dbOptions = append(dbOptions, "(Skip - No Default Database)") // NEW: Allow skipping
 	for _, db := range reg.Databases {
-		dbOptions = append(dbOptions, db.DatabaseLabel)
+		dbOptions = append(dbOptions, db.ManifestName)
 	}
 
 	var selectedDB string
@@ -255,9 +255,9 @@ func UpdateProfileInteractive(ctx context.Context, name string) error {
 	}
 
 	var dbOptions []string
-	dbOptions = append(dbOptions, "(Skip - No Default Database)") // NEW: Allow skipping
+	dbOptions = append(dbOptions, "(Skip - No Default Database)")
 	for _, db := range reg.Databases {
-		dbOptions = append(dbOptions, db.DatabaseLabel)
+		dbOptions = append(dbOptions, db.ManifestName)
 	}
 
 	var selectedDB string

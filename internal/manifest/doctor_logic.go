@@ -115,7 +115,7 @@ func RunDoctor(ctx context.Context, fix bool) (*DoctorReport, error) {
 		if _, err := os.Stat(dbPath); os.IsNotExist(err) {
 			report.IsHealthy = false
 			report.Checks = append(report.Checks, CheckResult{
-				Name:    fmt.Sprintf("Database: %s", entry.DatabaseLabel),
+				Name:    fmt.Sprintf("Database: %s", entry.DatabaseName),
 				Status:  "error",
 				Message: "Database file missing",
 			})
@@ -127,7 +127,7 @@ func RunDoctor(ctx context.Context, fix bool) (*DoctorReport, error) {
 		if err != nil {
 			report.IsHealthy = false
 			report.Checks = append(report.Checks, CheckResult{
-				Name:    fmt.Sprintf("Database: %s", entry.DatabaseLabel),
+				Name:    fmt.Sprintf("Database: %s", entry.DatabaseName),
 				Status:  "error",
 				Message: fmt.Sprintf("Failed to connect: %v", err),
 			})
@@ -136,7 +136,7 @@ func RunDoctor(ctx context.Context, fix bool) (*DoctorReport, error) {
 		db.CloseDB(database)
 
 		report.Checks = append(report.Checks, CheckResult{
-			Name:    fmt.Sprintf("Database: %s", entry.DatabaseLabel),
+			Name:    fmt.Sprintf("Database: %s", entry.DatabaseName),
 			Status:  "ok",
 			Message: "Connection successful",
 		})

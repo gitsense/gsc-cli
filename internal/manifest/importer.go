@@ -1,12 +1,12 @@
 /**
  * Component: Manifest Importer
- * Block-UUID: 785d85d4-e9fb-4d3c-a01b-e628eb6562a7
- * Parent-UUID: 15e5a8f6-6786-4289-b357-779fe86e72aa
- * Version: 1.11.0
- * Description: Logic to parse a JSON manifest file and import its data into a SQLite database. Implemented atomic import workflow: temp file creation, backup rotation, atomic swap, and registry upsert. Added --force and --no-backup support. Added file-based locking to prevent concurrent imports and strict error handling for backup failures. Updated to support professional CLI output: demoted routine Info logs to Debug level to enable quiet-by-default behavior. Updated to store array metadata fields as JSON strings to preserve structure and enable accurate querying. Updated RegistryEntry initialization to use DatabaseLabel field.
+ * Block-UUID: 8a4d2b1c-9e3f-4a5d-8b6c-7d8e9f0a1b2c
+ * Parent-UUID: 785d85d4-e9fb-4d3c-a01b-e628eb6562a7
+ * Version: 1.13.0
+ * Description: Logic to parse a JSON manifest file and import its data into a SQLite database.
  * Language: Go
- * Created-at: 2026-02-11T00:42:45.221Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.6.1), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), Gemini 3 Flash (v1.10.0), Gemini 3 Flash (v1.11.0)
+ * Created-at: 2026-02-11T03:20:06.219Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.6.1), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), Gemini 3 Flash (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0)
  */
 
 
@@ -187,7 +187,7 @@ func ImportManifest(ctx context.Context, jsonPath string, dbName string, force b
 	// 17. Update Registry
 	// Use the resolved dbName to support CLI overrides (--name flag).
 	entry := registry.RegistryEntry{
-		DatabaseLabel: manifestFile.Manifest.DatabaseLabel,
+		ManifestName : manifestFile.Manifest.ManifestName,
 		DatabaseName:  dbName,
 		Description:   manifestFile.Manifest.Description,
 		Tags:          manifestFile.Manifest.Tags,
@@ -202,7 +202,7 @@ func ImportManifest(ctx context.Context, jsonPath string, dbName string, force b
 		// Non-fatal error, data is imported
 	}
 
-	logger.Success("Successfully imported manifest", "label", manifestFile.Manifest.DatabaseLabel, "db", dbName)
+	logger.Success("Successfully imported manifest", "manifest", manifestFile.Manifest.ManifestName, "db", dbName)
 	return nil
 }
 
@@ -216,7 +216,7 @@ func insertManifestInfo(tx *sql.Tx, manifestFile *ManifestFile, sourceFile strin
 	tagsJSON, _ := json.Marshal(manifestFile.Manifest.Tags)
 
 	_, err := tx.Exec(query,
-		manifestFile.Manifest.DatabaseLabel,
+		manifestFile.Manifest.ManifestName,
 		manifestFile.Manifest.Description,
 		string(tagsJSON),
 		manifestFile.SchemaVersion,

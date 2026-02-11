@@ -1,12 +1,12 @@
 /**
  * Component: Manifest Models
- * Block-UUID: 96d398be-6587-443e-b9ad-9da882de0afa
- * Parent-UUID: 95223007-1aff-47a7-b0a0-ac778a02a151
- * Version: 1.1.0
+ * Block-UUID: 1a2b3c4d-5e6f-7890-abcd-ef1234567890
+ * Parent-UUID: 96d398be-6587-443e-b9ad-9da882de0afa
+ * Version: 1.2.0
  * Description: Defines the Go structs that map to the JSON manifest schema.
  * Language: Go
- * Created-at: 2026-02-11T00:29:14.847Z
- * Authors: GLM-4.7 (v1.0.0), Gemini 3 Flash (v1.1.0)
+ * Created-at: 2026-02-11T03:19:08.509Z
+ * Authors: GLM-4.7 (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -28,7 +28,7 @@ type ManifestFile struct {
 
 // ManifestInfo contains metadata about the manifest itself.
 type ManifestInfo struct {
-	DatabaseLabel string  `json:"database_label"`
+	ManifestName  string  `json:"name"`
 	DatabaseName string   `json:"database_name"`
 	Description  string   `json:"description"`
 	Tags         []string `json:"tags"`
@@ -74,4 +74,3 @@ type DataEntry struct {
 	ChatID    int                    `json:"chat_id"`
 	Fields    map[string]interface{} `json:"fields"`
 }
-

@@ -134,7 +134,7 @@ func formatInfoTable(info *WorkspaceInfo, verbose bool, noColor bool) string {
 		for _, db := range info.AvailableDBs {
 			marker := " "
 			// INTERNAL: We still mark the active DB internally, but don't show the profile name
-			if info.ActiveProfile != nil && info.ActiveProfile.Settings.Global.DefaultDatabase == db.DatabaseLabel {
+			if info.ActiveProfile != nil && info.ActiveProfile.Settings.Global.DefaultDatabase == db.DatabaseName {
 				marker = "*"
 			}
 
