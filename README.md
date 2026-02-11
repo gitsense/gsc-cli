@@ -25,7 +25,7 @@ gsc tree --db gsc --fields purpose
 gsc grep "validate" --filter "topic=security"
 ```
 
-You now have a map of the repository including the purpose for every file and the ability to search using semantic insights. Try achieving that with a README or a standard grep. You can explore the intent and purpose of the code before you read a single line of syntax.
+You now have a map of the repository including the purpose for analyzed files and the ability to search using semantic insights. Try achieving that with a README or a standard grep. You can explore the intent and purpose of the code before you read a single line of syntax.
 
 > **DO NOT MAKE THIS README PUBILC UNTIL WE HAVE  GOOD EXAMPLE USING REAL CODE FROM THE GSC-CLI REPOSITORY**
 
