@@ -1,12 +1,12 @@
 /**
  * Component: Query Command
- * Block-UUID: acbceab1-4861-4770-9c05-dc54f4a1db30
- * Parent-UUID: c68951ae-c60f-4060-aca2-3893f01a19ba
- * Version: 3.4.0
+ * Block-UUID: 67952923-51d5-4d79-b59a-7080ea3087f3
+ * Parent-UUID: acbceab1-4861-4770-9c05-dc54f4a1db30
+ * Version: 3.5.0
  * Description: Updated the 'query' command and its subcommands (list, insights, coverage) to remove references to profiles and config features from help text and error messages. The underlying logic for loading effective config (which includes profiles) is retained internally but hidden from the user interface. Updated to support the '--code' flag for CLI Bridge integration. Refactored handler functions to return output strings instead of printing directly to stdout, enabling the bridge orchestrator to capture and insert results into the chat.
  * Language: Go
- * Created-at: 2026-02-09T07:09:43.817Z
- * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.7 (v3.3.0), GLM-4.7 (v3.4.0)
+ * Created-at: 2026-02-11T07:37:03.120Z
+ * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.4.7 (v3.3.0), GLM-4.7 (v3.4.0), Gemini 3 Flash (v3.5.0)
  */
 
 
@@ -46,9 +46,13 @@ var queryCmd = &cobra.Command{
 	Use:   "query",
 	Short: "Find files by metadata value",
 	Long: `Find files in a database by matching a metadata field value.
+Supports exact matching and glob-style pattern matching (e.g., *connection*).
 If no value is provided, it displays the current workspace context.`,
 	Example: `  # Query using defaults (efficient!)
   gsc query --value critical
+
+  # Use wildcards for pattern matching
+  gsc query --field intent_triggers --value "*connection*"
 
   # Override defaults
   gsc query --db security --field risk_level --value high`,
@@ -336,7 +340,7 @@ func handleInsights(ctx context.Context, dbName string, fieldsStr string, limit 
 		return "", "", err
 	}
 
-	// Parse fields
+	// Parse fieldscy fields
 	if fieldsStr == "" {
 		return "", "", fmt.Errorf("--field is required for insights/report mode")
 	}

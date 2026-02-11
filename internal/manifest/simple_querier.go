@@ -1,12 +1,12 @@
 /**
  * Component: Simple Query Executor
- * Block-UUID: cec62867-448b-4f54-acd4-f8a10af853fc
- * Parent-UUID: 9cedb10e-a34c-451d-b25d-9d97ab56c2eb
- * Version: 1.7.2
+ * Block-UUID: 0de5c5a0-21f2-4aca-af00-2a7185139326
+ * Parent-UUID: cec62867-448b-4f54-acd4-f8a10af853fc
+ * Version: 1.8.0
  * Description: Executes simple value-matching queries and hierarchical list operations. Updated GetListResult to support the '--all' flag, which populates a nested hierarchy of databases and their fields. Refactored listAllDatabases to correctly map command-line slugs (Name) and human-friendly display names (Label) for improved ergonomics.
  * Language: Go
- * Created-at: 2026-02-09T06:14:38.161Z
- * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), GLM-4.7 (v1.7.1), GLM-4.7 (v1.7.2)
+ * Created-at: 2026-02-11T07:35:30.010Z
+ * Authors: GLM-4.7 (v1.0.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), GLM-4.7 (v1.7.1), GLM-4.7 (v1.7.2), Gemini 3 Flash (v1.8.0)
  */
 
 
@@ -74,35 +74,34 @@ func ExecuteSimpleQuery(ctx context.Context, dbName string, fieldName string, va
 	args := make([]interface{}, 0, len(values)+1)
 	args = append(args, fieldID)
 
-	var query string
-	placeholders := strings.Repeat("?,", len(values))
-	placeholders = placeholders[:len(placeholders)-1] // Remove trailing comma
-
-	if fieldType == "array" || fieldType == "list" {
-		// JSON Array Query: Check if any of the target values exist in the JSON array
-		query = fmt.Sprintf(`
-			SELECT f.file_path, f.chat_id
-			FROM files f
-			INNER JOIN file_metadata fm ON f.file_path = fm.file_path
-			WHERE fm.field_id = ?
-			  AND EXISTS (
-				  SELECT 1 FROM json_each(fm.field_value)
-				  WHERE json_each.value IN (%s)
-			  )
-		`, placeholders)
-	} else {
-		// Scalar Query: Standard exact match
-		query = fmt.Sprintf(`
-			SELECT f.file_path, f.chat_id
-			FROM files f
-			INNER JOIN file_metadata fm ON f.file_path = fm.file_path
-			WHERE fm.field_id = ?
-			  AND fm.field_value IN (%s)
-		`, placeholders)
+	var conditions []string
+	for _, v := range values {
+		v = strings.TrimSpace(v)
+		if strings.Contains(v, "*") {
+			pattern := strings.ReplaceAll(v, "*", "%")
+			if fieldType == "array" || fieldType == "list" {
+				conditions = append(conditions, "json_each.value LIKE ?")
+			} else {
+				conditions = append(conditions, "fm.field_value LIKE ?")
+			}
+			args = append(args, pattern)
+		} else {
+			if fieldType == "array" || fieldType == "list" {
+				conditions = append(conditions, "json_each.value = ?")
+			} else {
+				conditions = append(conditions, "fm.field_value = ?")
+			}
+			args = append(args, v)
+		}
 	}
 
-	for _, v := range values {
-		args = append(args, strings.TrimSpace(v))
+	whereClause := strings.Join(conditions, " OR ")
+	var query string
+
+	if fieldType == "array" || fieldType == "list" {
+		query = fmt.Sprintf("SELECT f.file_path, f.chat_id FROM files f INNER JOIN file_metadata fm ON f.file_path = fm.file_path WHERE fm.field_id = ? AND EXISTS (SELECT 1 FROM json_each(fm.field_value) WHERE %s)", whereClause)
+	} else {
+		query = fmt.Sprintf("SELECT f.file_path, f.chat_id FROM files f INNER JOIN file_metadata fm ON f.file_path = fm.file_path WHERE fm.field_id = ? AND (%s)", whereClause)
 	}
 
 	rows, err := database.QueryContext(ctx, query, args...)
@@ -698,3 +697,4 @@ func ExecuteInsightsAnalysis(ctx context.Context, dbName string, fields []string
 
 	return report, nil
 }
+

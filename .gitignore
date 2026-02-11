@@ -5,8 +5,9 @@
 *.so
 *.dylib
 
-# GitSense directory
-.gitsense/
+# .gitsense directory files to ignore
+.gitsense/manifest.json
+.gitsense/backups/*.*
 
 # Dist directory
 dist/

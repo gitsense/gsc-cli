@@ -1,12 +1,12 @@
 <!--
 Component: System Architecture Reference
-Block-UUID: b993d779-c21f-482d-8ff9-c82b91ae5630
-Parent-UUID: 8daf1ea9-0b14-4fe4-816d-5d2994dd03cc
-Version: 1.2.0
+Block-UUID: 7746e4b2-77ec-40d3-8b1c-dd9c9cca9cbe
+Parent-UUID: b993d779-c21f-482d-8ff9-c82b91ae5630
+Version: 1.3.0
 Description: Definitive architectural specification for gsc-cli. Includes structural mapping, data flow patterns, layer interaction guardrails, and critical abstraction definitions.
 Language: Markdown
-Created-at: 2026-02-10T15:05:00.000Z
-Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0)
+Created-at: 2026-02-11T07:41:15.996Z
+Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0), Gemini 3 Flash (v1.3.0)
 -->
 
 
@@ -93,7 +93,13 @@ This document is the definitive "Source of Truth" for the `gsc-cli` architecture
 | :--- | :--- |
 | **Array Fields** | Stored as JSON strings in SQLite. Must be queried using `json_each()`. |
 | **Scalar Fields** | Stored as TEXT. Queried with standard `=`, `!=`, or `LIKE` operators. |
-| **Chat ID** | Integer primary key linking files to GitSense Chat. `NULL` or `0` indicates unanalyzed. |
+
+### Pattern Matching
+The `gsc query` command supports glob-style wildcards (`*`) in the `--value` argument to enable fuzzy discovery.
+*   **Syntax:** `*` matches any sequence of characters.
+*   **Translation:** The CLI translates `*` to the SQL `%` wildcard before execution.
+*   **Example:** `--value "*connection*` translates to `LIKE '%connection%'`.
+*   **Scope:** Applies to both scalar fields and array fields (via `json_each`).
 
 ### Intent Triggers (High-Signal Queries)
 *   "How does the CLI Bridge insert messages into the SQLite chat database?"
@@ -117,3 +123,4 @@ This document is the definitive "Source of Truth" for the `gsc-cli` architecture
 ## 8. Internal & Hidden Features
 
 **Note on Profiles:** The profile system (`internal/manifest/profile_manager.go`) is **RETAINED INTERNAL LOGIC**. While the implementation for context switching and aliases exists, the corresponding CLI flags are currently hidden from the user interface to reduce complexity. AI analyzers should recognize this code as "dormant/internal" rather than "active user-facing."
+
