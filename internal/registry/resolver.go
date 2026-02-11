@@ -1,12 +1,12 @@
 /**
  * Component: Database Resolver
- * Block-UUID: b249e58d-0270-4f48-a689-68cc3633a320
- * Parent-UUID: 4865ec7d-fe54-4375-817c-a8a8ab367c72
- * Version: 1.1.0
- * Description: Provides logic to resolve user-provided database names or display names to their canonical physical DatabaseName.
+ * Block-UUID: 7e859382-cf4b-4301-8585-785190053bc8
+ * Parent-UUID: b249e58d-0270-4f48-a689-68cc3633a320
+ * Version: 1.2.0
+ * Description: Provides logic to resolve user-provided database names or display names to their canonical physical DatabaseName. Updated references to use DatabaseLabel instead of Name to align with the manifest schema.
  * Language: Go
  * Created-at: 2026-02-05T07:25:33.531Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0)
  */
 
 
@@ -42,9 +42,9 @@ func ResolveDatabase(input string) (string, error) {
 		}
 	}
 
-	// 2. Try case-insensitive match on Name (the display label)
+	// 2. Try case-insensitive match on DatabaseLabel (the display label)
 	for _, db := range reg.Databases {
-		if strings.EqualFold(db.Name, cleanInput) {
+		if strings.EqualFold(db.DatabaseLabel, cleanInput) {
 			return db.DatabaseName, nil
 		}
 	}

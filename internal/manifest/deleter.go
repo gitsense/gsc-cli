@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Manifest Deleter
- * Block-UUID: 125e1da2-e099-430d-a88e-5ec69d5a5166
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 3b9c1d2e-5f6a-4b7c-8d9e-0a1b2c3d4e5f
+ * Parent-UUID: 125e1da2-e099-430d-a88e-5ec69d5a5166
+ * Version: 1.1.0
  * Description: Logic to delete a manifest database file and remove its entry from the registry.
  * Language: Go
- * Created-at: 2026-02-10T17:20:00.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Created-at: 2026-02-11T01:52:28.163Z
+ * Authors: GLM-4.7 (v1.0.0), Gemini 3 Flash (v1.1.0)
  */
 
 
@@ -67,6 +67,7 @@ func DeleteManifest(dbName string) error {
 		return fmt.Errorf("failed to save registry: %w", err)
 	}
 
-	logger.Success("Successfully deleted manifest", "name", entry.Name, "db", dbName)
+	logger.Success("Successfully deleted manifest", "label", entry.DatabaseLabel, "db", dbName)
 	return nil
 }
+

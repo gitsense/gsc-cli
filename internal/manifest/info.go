@@ -28,7 +28,7 @@ import (
 // INTERNAL: Profile fields are retained for internal logic but hidden from UI.
 type WorkspaceInfo struct {
 	ActiveProfile    *Profile       `json:"active_profile,omitempty"`
-	AvailableProfiles []Profile     `json:"available_profiles"` // List of all available profiles
+	AvailableProfiles []Profile     `json:"available_profiles"`
 	AvailableDBs     []DatabaseInfo `json:"available_databases"`
 	ProjectRoot      string         `json:"project_root"`
 	GitSenseDir      string         `json:"gitsense_dir"`
@@ -134,11 +134,11 @@ func formatInfoTable(info *WorkspaceInfo, verbose bool, noColor bool) string {
 		for _, db := range info.AvailableDBs {
 			marker := " "
 			// INTERNAL: We still mark the active DB internally, but don't show the profile name
-			if info.ActiveProfile != nil && info.ActiveProfile.Settings.Global.DefaultDatabase == db.Name {
+			if info.ActiveProfile != nil && info.ActiveProfile.Settings.Global.DefaultDatabase == db.DatabaseLabel {
 				marker = "*"
 			}
 
-			sb.WriteString(fmt.Sprintf("├─ %s %-16s (%d files)", marker, db.Name, db.EntryCount))
+			sb.WriteString(fmt.Sprintf("├─ %s %-16s (%d files)", marker, db.DatabaseName, db.EntryCount))
 
 			if verbose {
 				sb.WriteString(fmt.Sprintf("\n│  Description: %s", db.Description))

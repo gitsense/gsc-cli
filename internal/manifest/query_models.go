@@ -1,12 +1,12 @@
 /**
  * Component: Query Models
- * Block-UUID: 9295988b-1f7d-4bbe-a7ce-16b81ce5fa17
- * Parent-UUID: 9b4ca889-7327-4340-be28-11f8d449ceb1
- * Version: 1.6.0
- * Description: Defines the Go structs for query operations, configuration, and list results. Enhanced ListItem to support hierarchical nesting and the distinction between command-line names (slugs) and human-friendly labels for the "Discovery Dashboard" and '--all' views.
+ * Block-UUID: 377e39ae-0d62-4caa-940a-01a914ab8d01
+ * Parent-UUID: 9295988b-1f7d-4bbe-a7ce-16b81ce5fa17
+ * Version: 1.7.0
+ * Description: Defines the Go structs for query operations, configuration, and list results. Enhanced ListItem to support hierarchical nesting and the distinction between command-line names (slugs) and human-friendly labels for the "Discovery Dashboard" and '--all' views. Updated comments to explicitly distinguish between Name (DatabaseName) and Label (DatabaseLabel).
  * Language: Go
  * Created-at: 2026-02-05T19:28:09.139Z
- * Authors: GLM-4.7 (v1.0.0), Gemini 3 Flash (v1.4.0), Gemini 3 Flash (v1.5.0), Gemini 3 Flash (v1.6.0)
+ * Authors: GLM-4.7 (v1.0.0), Gemini 3 Flash (v1.4.0), Gemini 3 Flash (v1.5.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0)
  */
 
 
@@ -55,8 +55,8 @@ type ListResult struct {
 
 // ListItem represents a single item in a list result.
 type ListItem struct {
-	Name        string     `json:"name"`                  // The name of the item (db slug, field name, or value)
-	Label       string     `json:"label,omitempty"`       // Human-friendly display name (e.g., for databases)
+	Name        string     `json:"name"`                  // The identifier (e.g., database_name slug, field name, or value)
+	Label       string     `json:"label,omitempty"`       // The human-friendly label (e.g., database_label for databases)
 	Description string     `json:"description,omitempty"` // Optional description
 	Source      string     `json:"source,omitempty"`      // Optional source (e.g., physical filename)
 	Type        string     `json:"type,omitempty"`        // Optional type (for fields)

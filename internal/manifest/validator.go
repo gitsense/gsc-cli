@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Manifest Validator
- * Block-UUID: 9533e908-8615-4ae9-aab6-72c7da54561a
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 8a7f9c12-3d45-4e8a-9b10-1c2d3e4f5a6b
+ * Parent-UUID: 9533e908-8615-4ae9-aab6-72c7da54561a
+ * Version: 1.1.0
  * Description: Validates the structure and content of a loaded ManifestFile.
  * Language: Go
- * Created-at: 2026-02-02T05:30:00.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Created-at: 2026-02-11T00:46:23.231Z
+ * Authors: GLM-4.7 (v1.0.0), Gemini 3 Flash (v1.1.0)
  */
 
 
@@ -32,8 +32,8 @@ func ValidateManifest(m *ManifestFile) error {
 	}
 
 	// Check Manifest Info
-	if m.Manifest.Name == "" {
-		return fmt.Errorf("manifest.name is required")
+	if m.Manifest.DatabaseLabel == "" {
+		return fmt.Errorf("manifest.database_label is required")
 	}
 	if m.Manifest.DatabaseName == "" {
 		return fmt.Errorf("manifest.database_name is required")

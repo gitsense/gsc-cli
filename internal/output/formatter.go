@@ -17,7 +17,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -143,7 +142,7 @@ func FormatDatabaseTable(databases []interface{}, format string) {
 	case "json":
 		FormatJSON(databases)
 	case "csv":
-		headers := []string{"Name", "Description", "Tags", "DB", "Entry Count"}
+		headers := []string{"DB", "Description", "Tags", "Files"}
 		rows := make([][]string, len(databases))
 		for i, db := range databases {
 			dbInfo := db.(map[string]interface{})
@@ -152,16 +151,15 @@ func FormatDatabaseTable(databases []interface{}, format string) {
 				tags = strings.Join(tagList, ", ")
 			}
 			rows[i] = []string{
-				fmt.Sprintf("%v", dbInfo["name"]),
+				fmt.Sprintf("%v", dbInfo["database_name"]),
 				truncate(fmt.Sprintf("%v", dbInfo["description"]), 60), // Truncate description to 60 chars
 				tags,
-				filepath.Base(fmt.Sprintf("%v", dbInfo["db_path"])),
 				fmt.Sprintf("%v", dbInfo["entry_count"]),
 			}
 		}
 		FormatCSV(headers, rows)
 	case "table":
-		headers := []string{"Name", "Description", "Tags", "DB", "Entry Count"}
+		headers := []string{"DB", "Description", "Tags", "Files"}
 		rows := make([][]string, len(databases))
 		for i, db := range databases {
 			dbInfo := db.(map[string]interface{})
@@ -170,10 +168,9 @@ func FormatDatabaseTable(databases []interface{}, format string) {
 				tags = strings.Join(tagList, ", ")
 			}
 			rows[i] = []string{
-				fmt.Sprintf("%v", dbInfo["name"]),
+				fmt.Sprintf("%v", dbInfo["database_name"]),
 				truncate(fmt.Sprintf("%v", dbInfo["description"]), 60), // Truncate description to 60 chars
 				tags,
-				filepath.Base(fmt.Sprintf("%v", dbInfo["db_path"])),
 				fmt.Sprintf("%v", dbInfo["entry_count"]),
 			}
 		}

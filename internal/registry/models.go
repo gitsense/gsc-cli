@@ -1,12 +1,12 @@
 /*
  * Component: Registry Models
- * Block-UUID: 01dcd51f-2758-4229-a15e-1c760931260c
- * Parent-UUID: eb77ea0b-7f02-4764-8b65-64b3c759e163
- * Version: 1.3.0
- * Description: Defines the data structures for the GitSense registry file (.gitsense/manifest.json). Added UpdatedAt field, UpsertEntry method for idempotent updates, FindEntryByDBName for existence checks, and RemoveEntryByDBName for deletion by physical filename.
+ * Block-UUID: b3278380-41a1-4ed6-a24c-f88422c54be5
+ * Parent-UUID: b0fa04c2-6e74-4b0f-8a68-4004572847dc
+ * Version: 1.5.0
+ * Description: Defines the data structures for the GitSense registry file (.gitsense/manifest.json). Updated method signatures and logic to explicitly use 'databaseLabel' instead of 'name' to align with the manifest schema and clarify the distinction between the human-readable label and the physical database name.
  * Language: Go
  * Created-at: 2026-02-02T05:30:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), Gemini 3 Flash (v1.4.0), Gemini 3 Flash (v1.5.0)
  */
 
 
@@ -24,14 +24,14 @@ type Registry struct {
 // RegistryEntry represents a single manifest database entry in the registry.
 // It provides metadata about the database so agents and users can discover and select the right one.
 type RegistryEntry struct {
-	Name         string    `json:"name"`          // The human-readable display name for the database, typically 2-3 capitalized words (e.g., "Secure Payments Architecture").
-	DatabaseName string    `json:"database_name"` // The physical filename of the database (e.g., "secure-payments")
-	Description  string    `json:"description"`   // Human-readable description of the database's purpose
-	Tags         []string  `json:"tags"`          // Keywords for categorization (e.g., ["security", "javascript"])
-	Version      string    `json:"version"`       // Version of the manifest data
-	CreatedAt    time.Time `json:"created_at"`    // Timestamp when the database was created
-	UpdatedAt    time.Time `json:"updated_at"`    // Timestamp when the database was last updated
-	SourceFile   string    `json:"source_file"`   // The original JSON file used to import this database
+	DatabaseLabel string    `json:"database_label"` // The human-readable display name for the database, typically 2-3 capitalized words (e.g., "Secure Payments Architecture").
+	DatabaseName  string    `json:"database_name"`  // The physical filename of the database (e.g., "secure-payments")
+	Description   string    `json:"description"`    // Human-readable description of the database's purpose
+	Tags          []string  `json:"tags"`           // Keywords for categorization (e.g., ["security", "javascript"])
+	Version       string    `json:"version"`        // Version of the manifest data
+	CreatedAt     time.Time `json:"created_at"`     // Timestamp when the database was created
+	UpdatedAt     time.Time `json:"updated_at"`     // Timestamp when the database was last updated
+	SourceFile    string    `json:"source_file"`    // The original JSON file used to import this database
 }
 
 // NewRegistry creates a new, empty Registry with the current schema version.
@@ -62,11 +62,11 @@ func (r *Registry) UpsertEntry(entry RegistryEntry) {
 	r.Databases = append(r.Databases, entry)
 }
 
-// FindEntry searches for a database entry by human-readable name.
+// FindEntry searches for a database entry by human-readable label.
 // Returns the entry and true if found, nil and false otherwise.
-func (r *Registry) FindEntry(name string) (*RegistryEntry, bool) {
+func (r *Registry) FindEntry(databaseLabel string) (*RegistryEntry, bool) {
 	for i := range r.Databases {
-		if r.Databases[i].Name == name {
+		if r.Databases[i].DatabaseLabel == databaseLabel {
 			return &r.Databases[i], true
 		}
 	}
@@ -84,11 +84,11 @@ func (r *Registry) FindEntryByDBName(dbName string) (*RegistryEntry, bool) {
 	return nil, false
 }
 
-// RemoveEntry removes a database entry by human-readable name.
+// RemoveEntry removes a database entry by human-readable label.
 // Returns true if an entry was removed, false if it wasn't found.
-func (r *Registry) RemoveEntry(name string) bool {
+func (r *Registry) RemoveEntry(databaseLabel string) bool {
 	for i, entry := range r.Databases {
-		if entry.Name == name {
+		if entry.DatabaseLabel == databaseLabel {
 			r.Databases = append(r.Databases[:i], r.Databases[i+1:]...)
 			return true
 		}

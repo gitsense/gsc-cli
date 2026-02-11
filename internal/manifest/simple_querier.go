@@ -209,7 +209,7 @@ func listAllDatabases(ctx context.Context) ([]ListItem, error) {
 
 		items = append(items, ListItem{
 			Name:        slug,        // The easy-to-type identifier (e.g., "security")
-			Label:       dbInfo.Name, // The human-friendly display name (e.g., "Security Analysis")
+			Label:       dbInfo.DatabaseName, // The human-friendly display name (e.g., "Security Analysis")
 			Description: dbInfo.Description,
 			Source:      filepath.Base(dbInfo.DBPath),
 			Count:       dbInfo.EntryCount,

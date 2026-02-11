@@ -1,12 +1,12 @@
 /*
  * Component: Manifest List Command
- * Block-UUID: d1622670-df1a-4dbe-b095-5029820987ef
- * Parent-UUID: 093c618c-3ddc-4bae-86c3-3771e6c49925
- * Version: 1.5.0
- * Description: CLI command for listing available manifest databases. Added context nil check for robustness. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: removed redundant logger.Error calls in RunE and set SilenceUsage to true to prevent usage spam on logic errors.
+ * Block-UUID: a527e3e4-c2e9-4685-8f70-b9ab0dd470c8
+ * Parent-UUID: d1622670-df1a-4dbe-b095-5029820987ef
+ * Version: 1.6.0
+ * Description: CLI command for listing available manifest databases. Updated output map keys to explicitly separate 'database_name' (slug) and 'database_label' (human-readable) to align with the new schema terminology.
  * Language: Go
  * Created-at: 2026-02-02T05:35:00Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), Claude Haiku 4.5 (v1.2.0), Claude Haiku 4.5 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), Claude Haiku 4.5 (v1.2.0), Claude Haiku 4.5 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0)
  */
 
 
@@ -54,11 +54,10 @@ information about each database, including its name, description, and tags.`,
 		var dbInterfaces []interface{}
 		for _, db := range databases {
 			dbMap := map[string]interface{}{
-				"name":        db.Name,
-				"description": db.Description,
-				"tags":        db.Tags,
-				"db_path":     db.DBPath,
-				"entry_count": db.EntryCount,
+				"database_name":  db.DatabaseName,  // The physical slug/ID
+				"description":    db.Description,
+				"tags":           db.Tags,
+				"entry_count":    db.EntryCount,
 			}
 			dbInterfaces = append(dbInterfaces, dbMap)
 		}

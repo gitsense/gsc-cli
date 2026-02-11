@@ -1,12 +1,12 @@
 /**
  * Component: Doctor Logic
- * Block-UUID: 2f5bd155-1923-4143-81f7-7d709bf69b54
- * Parent-UUID: 9cd2ccfc-4328-41e0-b33e-6c99dcde32c7
- * Version: 1.1.2
+ * Block-UUID: 8c1a2b3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
+ * Parent-UUID: 2f5bd155-1923-4143-81f7-7d709bf69b54
+ * Version: 1.2.0
  * Description: Logic to perform health checks on the .gitsense environment, including directory, registry, and database validation. Removed unused ValidateRegistryJSON function.
  * Language: Go
- * Created-at: 2026-02-02T08:37:58.918Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), Claude Haiku 4.5 (v1.1.1), GLM-4.7 (v1.1.2)
+ * Created-at: 2026-02-11T01:54:04.519Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), Claude Haiku 4.5 (v1.1.1), GLM-4.7 (v1.1.2), Gemini 3 Flash (v1.2.0)
  */
 
 
@@ -27,8 +27,8 @@ import (
 
 // DoctorReport represents the result of a health check.
 type DoctorReport struct {
-	IsHealthy bool           `json:"is_healthy"`
-	Checks    []CheckResult  `json:"checks"`
+	IsHealthy bool          `json:"is_healthy"`
+	Checks    []CheckResult `json:"checks"`
 }
 
 // CheckResult represents the result of a single health check.
@@ -111,11 +111,11 @@ func RunDoctor(ctx context.Context, fix bool) (*DoctorReport, error) {
 
 	// 4. Check Database Connectivity
 	for _, entry := range reg.Databases {
-		dbPath := filepath.Join(gitsenseDir, entry.Name+".db")
+		dbPath := filepath.Join(gitsenseDir, entry.DatabaseName+".db")
 		if _, err := os.Stat(dbPath); os.IsNotExist(err) {
 			report.IsHealthy = false
 			report.Checks = append(report.Checks, CheckResult{
-				Name:    fmt.Sprintf("Database: %s", entry.Name),
+				Name:    fmt.Sprintf("Database: %s", entry.DatabaseLabel),
 				Status:  "error",
 				Message: "Database file missing",
 			})
@@ -127,7 +127,7 @@ func RunDoctor(ctx context.Context, fix bool) (*DoctorReport, error) {
 		if err != nil {
 			report.IsHealthy = false
 			report.Checks = append(report.Checks, CheckResult{
-				Name:    fmt.Sprintf("Database: %s", entry.Name),
+				Name:    fmt.Sprintf("Database: %s", entry.DatabaseLabel),
 				Status:  "error",
 				Message: fmt.Sprintf("Failed to connect: %v", err),
 			})
@@ -136,7 +136,7 @@ func RunDoctor(ctx context.Context, fix bool) (*DoctorReport, error) {
 		db.CloseDB(database)
 
 		report.Checks = append(report.Checks, CheckResult{
-			Name:    fmt.Sprintf("Database: %s", entry.Name),
+			Name:    fmt.Sprintf("Database: %s", entry.DatabaseLabel),
 			Status:  "ok",
 			Message: "Connection successful",
 		})
@@ -161,12 +161,12 @@ func RunDoctor(ctx context.Context, fix bool) (*DoctorReport, error) {
 			name := entry.Name()
 			// Check if it's a .db file
 			if strings.HasSuffix(name, ".db") {
-				dbName := strings.TrimSuffix(name, ".db")
+				dbSlug := strings.TrimSuffix(name, ".db")
 
 				// Check if it's in the registry
 				found := false
 				for _, regEntry := range reg.Databases {
-					if regEntry.Name == dbName {
+					if regEntry.DatabaseName == dbSlug {
 						found = true
 						break
 					}
@@ -176,9 +176,9 @@ func RunDoctor(ctx context.Context, fix bool) (*DoctorReport, error) {
 					orphanCount++
 					report.IsHealthy = false
 					report.Checks = append(report.Checks, CheckResult{
-						Name:    "Orphaned Database",
+						Name:    fmt.Sprintf("Orphaned Database: %s", dbSlug),
 						Status:  "warning",
-						Message: fmt.Sprintf("Found unregistered database: %s", name),
+						Message: fmt.Sprintf("Found unregistered database file: %s", name),
 					})
 				}
 			}

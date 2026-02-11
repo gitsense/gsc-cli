@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Interactive Profile Wizard
- * Block-UUID: eea72eed-99c5-4b58-81ea-fd50121f020d
- * Parent-UUID: e8fa0910-ca7b-4764-9d00-6d43078d474d
- * Version: 1.4.0
+ * Block-UUID: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+ * Parent-UUID: eea72eed-99c5-4b58-81ea-fd50121f020d
+ * Version: 1.5.0
  * Description: Interactive wizards for creating, updating, and selecting context profiles using the survey library. Handles user prompts, validation, and confirmation steps. Added prompts for Focus Scope configuration (include/exclude patterns) in create and update workflows.
  * Language: Go
- * Created-at: 2026-02-03T05:45:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
+ * Created-at: 2026-02-11T01:57:34.369Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.5.0)
  */
 
 
@@ -51,7 +51,7 @@ func CreateProfileInteractive(ctx context.Context, name string) error {
 	var dbOptions []string
 	dbOptions = append(dbOptions, "(Skip - No Default Database)") // NEW: Allow skipping
 	for _, db := range reg.Databases {
-		dbOptions = append(dbOptions, db.Name)
+		dbOptions = append(dbOptions, db.DatabaseLabel)
 	}
 
 	var selectedDB string
@@ -68,7 +68,7 @@ func CreateProfileInteractive(ctx context.Context, name string) error {
 		selectedDB = ""
 	} else {
 		// Resolve the display name to the physical database name
-		resolvedDB, err := registry.ResolveDatabase(selectedDB)
+		resolvedDB, err := registry.ResolveDatabase(selectedDB) // ResolveDatabase handles matching by Label now
 		if err != nil {
 			return fmt.Errorf("failed to resolve database '%s': %w", selectedDB, err)
 		}
@@ -185,7 +185,7 @@ func CreateProfileInteractive(ctx context.Context, name string) error {
 	if dbDisplay == "" {
 		dbDisplay = "(none)"
 	}
-	fmt.Printf("  Database:    %s\n", dbDisplay)
+	fmt.Printf("  Database:    %s\n", dbDisplay) // dbDisplay is the slug (DatabaseName)
 
 	fieldDisplay := selectedField
 	if fieldDisplay == "" {
@@ -219,7 +219,7 @@ func CreateProfileInteractive(ctx context.Context, name string) error {
 	// 7. Create Profile
 	settings := ProfileSettings{
 		Global: GlobalSettings{
-			DefaultDatabase: selectedDB,
+			DefaultDatabase: selectedDB, // selectedDB is the slug (DatabaseName)
 			Scope:           scope,
 		},
 		Query:  QuerySettings{DefaultField: selectedField, DefaultFormat: "table"},
@@ -257,7 +257,7 @@ func UpdateProfileInteractive(ctx context.Context, name string) error {
 	var dbOptions []string
 	dbOptions = append(dbOptions, "(Skip - No Default Database)") // NEW: Allow skipping
 	for _, db := range reg.Databases {
-		dbOptions = append(dbOptions, db.Name)
+		dbOptions = append(dbOptions, db.DatabaseLabel)
 	}
 
 	var selectedDB string
@@ -275,7 +275,7 @@ func UpdateProfileInteractive(ctx context.Context, name string) error {
 		selectedDB = ""
 	} else {
 		// Resolve the display name to the physical database name
-		resolvedDB, err := registry.ResolveDatabase(selectedDB)
+		resolvedDB, err := registry.ResolveDatabase(selectedDB) // ResolveDatabase handles matching by Label now
 		if err != nil {
 			return fmt.Errorf("failed to resolve database '%s': %w", selectedDB, err)
 		}
@@ -439,7 +439,7 @@ func UpdateProfileInteractive(ctx context.Context, name string) error {
 
 	// 8. Update Profile
 	profile.Description = description
-	profile.Settings.Global.DefaultDatabase = selectedDB
+	profile.Settings.Global.DefaultDatabase = selectedDB // selectedDB is the slug (DatabaseName)
 	profile.Settings.Query.DefaultField = selectedField
 	profile.Settings.Global.Scope = scope
 	profile.Aliases = aliases
@@ -467,7 +467,7 @@ func SelectProfileInteractive() (*Profile, error) {
 			label += fmt.Sprintf(" (%s)", strings.Join(profiles[i].Aliases, ", "))
 		}
 		options = append(options, label)
-		profileMap[label] = &profiles[i]
+		profileMap[label] = &profiles[i] // profiles[i].Name is the profile name, not the DB name
 	}
 
 	var selected string
