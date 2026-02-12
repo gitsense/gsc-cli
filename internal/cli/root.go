@@ -1,12 +1,12 @@
 /**
  * Component: Root CLI Command
- * Block-UUID: e22a134d-477f-45b9-ab60-edc4956e1138
- * Parent-UUID: 0b8a80d7-9ca8-41f4-ac6a-6a66e6ca7e6c
- * Version: 1.21.0
- * Description: Updated the root command's long description to remove references to the 'config' command and profiles. The 'config' command registration has been commented out to hide the feature from the user interface while retaining the implementation code for internal use.
+ * Block-UUID: ff0231c0-9527-4c65-8f3f-65e5a174373e
+ * Parent-UUID: e22a134d-477f-45b9-ab60-edc4956e1138
+ * Version: 1.22.0
+ * Description: Registered the 'FieldsCmd' at the root level to provide a shortcut for 'gsc query list --all'. Updated the root command's long description to include 'fields' in the list of top-level commands.
  * Language: Go
  * Created-at: 2026-02-12T03:41:20.844Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.19.0), Gemini 3 Flash (v1.20.0), Gemini 3 Flash (v1.21.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.19.0), Gemini 3 Flash (v1.20.0), Gemini 3 Flash (v1.21.0), GLM-4.7 (v1.22.0)
  */
 
 
@@ -41,6 +41,7 @@ It enables AI agents and developers to interact with structured metadata extract
 Top-Level Commands:
   info        Show current workspace information
   query       Find files and discover codebase intelligence (list, insights, coverage)
+  fields      List all available databases and their fields
   insights    Analyze metadata distribution and completeness
   coverage    Analyze analysis coverage and identify blind spots
   grep        Search code with metadata enrichment
@@ -101,6 +102,7 @@ func init() {
 
 	// Register top-level usage commands
 	rootCmd.AddCommand(queryCmd)
+	rootCmd.AddCommand(FieldsCmd)
 	rootCmd.AddCommand(InsightsCmd)
 	rootCmd.AddCommand(CoverageCmd)
 	// Replaced rgCmd with grepCmd

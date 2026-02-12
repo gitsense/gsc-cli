@@ -1,12 +1,12 @@
 /**
  * Component: Query Command
- * Block-UUID: 55a02fb6-e92f-4b5b-ad96-ff9933d3104c
- * Parent-UUID: 67952923-51d5-4d79-b59a-7080ea3087f3
- * Version: 3.6.0
- * Description: Updated the 'query' command and its subcommands (list, insights, coverage) to remove references to profiles and config features from help text and error messages. The underlying logic for loading effective config (which includes profiles) is retained internally but hidden from the user interface. Updated to support the '--code' flag for CLI Bridge integration. Refactored handler functions to return output strings instead of printing directly to stdout, enabling the bridge orchestrator to capture and insert results into the chat.
+ * Block-UUID: 33beb471-b551-4006-aa7d-aaa42230fd45
+ * Parent-UUID: 55a02fb6-e92f-4b5b-ad96-ff9933d3104c
+ * Version: 3.7.0
+ * Description: Added the 'FieldsCmd' to provide a root-level shortcut for 'gsc query list --all'. This improves discovery UX by making the full intelligence map more accessible.
  * Language: Go
  * Created-at: 2026-02-12T03:36:15.116Z
- * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.4.7 (v3.3.0), GLM-4.7 (v3.4.0), Gemini 3 Flash (v3.5.0), Gemini 3 Flash (v3.6.0)
+ * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.4.7 (v3.3.0), GLM-4.7 (v3.4.0), Gemini 3 Flash (v3.5.0), Gemini 3 Flash (v3.6.0), GLM-4.7 (v3.7.0)
  */
 
 
@@ -250,6 +250,51 @@ files that have not yet been analyzed within the current focus scope.`,
 	},
 }
 
+// FieldsCmd represents the command to list all databases and their fields.
+// It is registered as both a root command and a subcommand of 'query'.
+var FieldsCmd = &cobra.Command{
+	Use:   "fields",
+	Short: "List all available databases and their fields",
+	Long: `Displays the full intelligence map, showing all registered databases 
+and the metadata fields available in each. This is equivalent to running 
+'gsc query list --all'.`,
+	Example: `  # Show the full intelligence map
+  gsc fields
+
+  # Also available as a query subcommand
+  gsc query list --all`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		startTime := time.Now()
+
+		// Early Validation for Bridge
+		if bridgeCode != "" {
+			if err := bridge.ValidateCode(bridgeCode, bridge.StageDiscovery); err != nil {
+				cmd.SilenceUsage = true
+				return err
+			}
+		}
+
+		// Call handleHierarchicalList with all=true to get the full map
+		outputStr, resolvedDB, err := handleHierarchicalList(cmd.Context(), "", "", queryFormat, queryQuiet, true)
+		if err != nil {
+			return err
+		}
+
+		if bridgeCode != "" {
+			// 1. Print to stdout
+			fmt.Print(outputStr)
+
+			// 2. Hand off to bridge orchestrator
+			cmdStr := filepath.Base(os.Args[0]) + " " + strings.Join(os.Args[1:], " ")
+			return bridge.Execute(bridgeCode, outputStr, queryFormat, cmdStr, time.Since(startTime), resolvedDB, forceInsert)
+		}
+
+		// Standard Output Mode
+		fmt.Println(outputStr)
+		return nil
+	},
+}
+
 func init() {
 	// Top-level Query Flags
 	queryCmd.Flags().StringVarP(&queryDB, "db", "d", "", "Database name (or use default)")
@@ -279,6 +324,10 @@ func init() {
 	CoverageCmd.Flags().StringVarP(&queryDB, "db", "d", "", "Database override")
 	CoverageCmd.Flags().StringVarP(&queryFormat, "format", "o", "table", "Output format")
 	CoverageCmd.Flags().BoolVar(&queryQuiet, "quiet", false, "Suppress headers")
+
+	// Fields Subcommand Flags
+	FieldsCmd.Flags().StringVarP(&queryFormat, "format", "o", "table", "Output format")
+	FieldsCmd.Flags().BoolVar(&queryQuiet, "quiet", false, "Suppress headers and hints")
 
 	// Register Subcommands
 	queryCmd.AddCommand(queryListCmd)

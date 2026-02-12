@@ -1,12 +1,12 @@
 /*
  * Component: Query Output Formatter
- * Block-UUID: d95f7059-049a-4542-9b5a-e2dc92b8b955
- * Parent-UUID: 5230e782-4d2b-434a-9376-04a3eab279a3
- * Version: 3.3.0
- * Description: Refactored the list result formatter to implement the hierarchical "Intelligence Map" for both the standard Discovery Dashboard and the new '--all' view. Updated the text output to use a bulleted, indented format that clearly distinguishes between database slugs (for commands) and labels (for reading).
+ * Block-UUID: 6674aff8-9720-4b0d-a519-45ad202b7f10
+ * Parent-UUID: d95f7059-049a-4542-9b5a-e2dc92b8b955
+ * Version: 3.4.0
+ * Description: Updated the list result formatter to change the database header from '[DB]' to 'DB:' and removed the 'Label:' line for a cleaner 'Intelligence Map' display.
  * Language: Go
  * Created-at: 2026-02-09T00:36:02.868Z
- * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.2.0), Gemini 3 Flash (v3.3.0)
+ * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.2.0), Gemini 3 Flash (v3.3.0), GLM-4.7 (v3.4.0)
  */
 
 
@@ -139,8 +139,7 @@ func formatListResultTable(listResult *ListResult, quiet bool, config *QueryConf
 					name = name + " (active)"
 				}
 				
-				sb.WriteString(fmt.Sprintf("[DB] %s\n", name))
-				sb.WriteString(fmt.Sprintf("Label: %s\n", dbItem.Label))
+				sb.WriteString(fmt.Sprintf("Database: %s\n", name))
 				sb.WriteString(fmt.Sprintf("Description: %s\n", dbItem.Description))
 				sb.WriteString("\n")
 
@@ -159,6 +158,7 @@ func formatListResultTable(listResult *ListResult, quiet bool, config *QueryConf
 							f.Name, 
 							truncate(f.Description, 80)))
 					}
+					// Add a blank line after fields for readability
 					sb.WriteString("\n")
 				}
 			}
