@@ -1,12 +1,12 @@
 /**
  * Component: Tree Command
- * Block-UUID: 91d2049a-51dd-4d7b-8cf5-1b6ac8038300
- * Parent-UUID: 409f46d5-c435-45d5-aaac-e771b7caa691
- * Version: 1.2.0
- * Description: Updated 'gsc tree' to support semantic filtering (--filter), structural focus (--focus), and the "Semantic Heat Map" visualization (--no-compact). Integrated search.ParseFilters for metadata evaluation and updated the tree construction flow to handle multi-path focus pruning.
+ * Block-UUID: 493a3569-9291-4f0f-a212-7be085d37d51
+ * Parent-UUID: 91d2049a-51dd-4d7b-8cf5-1b6ac8038300
+ * Version: 1.3.0
+ * Description: Added a guard clause to prevent empty tree output when no database or --no-compact flag is provided. This reinforces the "Intelligence Layer" identity by requiring explicit intent for raw structural views.
  * Language: Go
- * Created-at: 2026-02-10T17:10:32.846Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0)
+ * Created-at: 2026-02-12T02:02:39.994Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), Gemini 3 Flash (v1.3.0)
  */
 
 
@@ -66,42 +66,62 @@ Filtering & Focus:
 			}
 		}
 
-		// Validate format
-		treeFormat = strings.ToLower(treeFormat)
-		if treeFormat != "human" && treeFormat != "json" && treeFormat != "ai-portable" {
-			return fmt.Errorf("invalid format: %s. Supported formats: human, json, ai-portable", treeFormat)
-		}
-
-		// 1. Get Repository Context
-		repoRoot, cwdOffset, err := git.GetRepoContext()
-		if err != nil {
-			return fmt.Errorf("failed to get repository context: %w", err)
-		}
-
-		// 2. Get Tracked Files
-		files, err := git.GetTrackedFiles(cmd.Context(), repoRoot)
-		if err != nil {
-			return fmt.Errorf("failed to get tracked files: %w", err)
-		}
-
-		// 3. Build Initial Tree (with Structural Focus)
-		rootNode := tree.BuildTree(files, cwdOffset, treeFocus)
-
-		// 4. Resolve Database
+		// 1. Resolve Database (Check if we have a signal source)
 		dbName := treeDB
 		if dbName == "" {
 			config, _ := manifest.GetEffectiveConfig()
 			dbName = config.Global.DefaultDatabase
 		}
 
+		// 2. Guard Clause: Prevent empty/confusing output
+		// If no DB is provided and the user hasn't explicitly asked for a raw tree (--no-compact),
+		// we provide guidance instead of an empty tree.
+		if dbName == "" && !treeNoCompact && treeFormat == "human" {
+			fmt.Println("No manifest database specified.")
+			fmt.Println("\n'gsc tree' is designed to visualize your repository's intelligence layer.")
+			fmt.Println("To proceed, choose one of the following:")
+			fmt.Println("\n1. View the Intelligence Map (Recommended):")
+			fmt.Println("   Specify a database to see purpose, risk, and other metadata.")
+			fmt.Println("   $ gsc tree --db <name> --fields purpose")
+			fmt.Println("\n2. View the Raw File Tree:")
+			fmt.Println("   Show all tracked files without metadata enrichment.")
+			fmt.Println("   $ gsc tree --no-compact")
+			fmt.Println("\nRun 'gsc manifest list' to see available databases in this workspace.")
+			
+			// We return nil here because this is a helpful guidance state, not a binary failure.
+			return nil
+		}
+
+		// Validate format
+		treeFormat = strings.ToLower(treeFormat)
+		if treeFormat != "human" && treeFormat != "json" && treeFormat != "ai-portable" {
+			return fmt.Errorf("invalid format: %s. Supported formats: human, json, ai-portable", treeFormat)
+		}
+
+		// 3. Get Repository Context
+		repoRoot, cwdOffset, err := git.GetRepoContext()
+		if err != nil {
+			return fmt.Errorf("failed to get repository context: %w", err)
+		}
+
+		// 4. Get Tracked Files
+		files, err := git.GetTrackedFiles(cmd.Context(), repoRoot)
+		if err != nil {
+			return fmt.Errorf("failed to get tracked files: %w", err)
+		}
+
+		// 5. Build Initial Tree (with Structural Focus)
+		rootNode := tree.BuildTree(files, cwdOffset, treeFocus)
+
 		var filters []search.FilterCondition
 		if dbName != "" {
+			// Resolve DB Name
 			dbName, err = registry.ResolveDatabase(dbName)
 			if err != nil {
 				return err
 			}
 
-			// 5. Parse Semantic Filters
+			// 6. Parse Semantic Filters
 			filters, err = search.ParseFilters(cmd.Context(), treeFilters, dbName)
 			if err != nil {
 				return fmt.Errorf("failed to parse filters: %w", err)
@@ -113,30 +133,30 @@ Filtering & Focus:
 				return err
 			}
 
-			// 6. Fetch Metadata
+			// 7. Fetch Metadata
 			metadataMap, _, err := search.FetchMetadataMap(cmd.Context(), dbPath, files, "all", nil, treeFields, filters)
 			if err != nil {
 				logger.Debug("Failed to fetch metadata for tree", "error", err)
 			} else {
-				// 7. Enrich Tree & Evaluate Filters
+				// 8. Enrich Tree & Evaluate Filters
 				tree.EnrichTree(rootNode, "", metadataMap, filters)
 			}
 		} else if len(treeFilters) > 0 {
 			return fmt.Errorf("database (--db) is required when using --filter")
 		}
 
-		// 8. Calculate Visibility (Propagate match status up the tree)
+		// 9. Calculate Visibility (Propagate match status up the tree)
 		tree.CalculateVisibility(rootNode)
 
-		// 9. Prune if requested
+		// 10. Prune if requested
 		if treePrune {
 			tree.PruneTree(rootNode)
 		}
 
-		// 10. Calculate Stats
+		// 11. Calculate Stats
 		stats := tree.CalculateStats(rootNode)
 
-		// 11. Render Output
+		// 12. Render Output
 		var outputStr string
 		if treeFormat == "json" {
 			outputStr, err = tree.RenderJSON(rootNode, stats, dbName, treeFields, filters, treeFocus, treePrune, cwdOffset)
@@ -163,7 +183,7 @@ Filtering & Focus:
 			}
 		}
 
-		// 12. CLI Bridge Integration
+		// 13. CLI Bridge Integration
 		if bridgeCode != "" {
 			cmdStr := filepath.Base(os.Args[0]) + " " + strings.Join(os.Args[1:], " ")
 			

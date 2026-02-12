@@ -17,13 +17,9 @@ Now instead of searching for text, you search for meaning. This is how you make 
 ### The World's First Intelligent Repository?
 **No really!**
 
-We believe this is the world's first intelligent repository, one that ships with its own intelligence manifest. We see metadata as the new documentation. It is queryable, multi-dimensional, and serves both humans and AI agents simultaneously.
+We believe this is the world's first intelligent repository, one that ships with its own intelligence manifest.  For humans, this means they get a high-level map of intent. For AI agents, it is a high-fidelity sensory layer that enables zero-shot discovery. In the age of coding agents, we feel our manifest directory `.gitsense`, is as essential as a `README.md`. It can turn text into intent, allowing agents to operate at scale.
 
-For humans, this metadata provides a high-level map of intent. For AI agents, it is a high-fidelity sensory layer that enables zero-shot discovery. In the age of coding agents, we feel a `.gitsense` directory is as essential as a `README.md`. It can turn text into intent, allowing agents to operate at scale.
-
-The included "Brain Dump" (i.e. manifest) was created by a GitSense Chat "Brain" designed to focus on project architecture. You can see how it thinks in `.gitsense/analyzers/gsc-architect.md`. This is the core of our "world's first" claim: the repository doesn't just store code, it stores the expertise required to understand it. You can create your own Brains for onboarding, security, or team ownership by simply chatting with AI in GitSense Chat.
-
-**Quick Example**
+The included "Brain Dump" (`.gitsense/analyzers/gsc-architect.md`) was was created by a GitSense Chat and is  designed to focus on project architecture. This is the core of our "world's first" claim: the repository doesn't just store code, it stores the expertise required to understand it. Take a look at the example below to understand how:
 
 Imagine you are an open source maintainer tired of answering the same questions repeatedly. You create a FAQ "Brain" by dumping your GitHub issues into a repository, import them into GitSense Chat, and have it analyze the patterns to create a queryable FAQ. This process can be automated to include new issues. As part of your contribution guidelines, you tell users that for the quickest response, they should try:
 
