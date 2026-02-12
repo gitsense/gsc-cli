@@ -1,12 +1,12 @@
 /**
  * Component: Tree Command
- * Block-UUID: 409f46d5-c435-45d5-aaac-e771b7caa691
- * Parent-UUID: be91509e-f36e-44af-8b35-716b9bc76fbb
- * Version: 1.1.0
- * Description: CLI command definition for 'gsc tree'. Supports hierarchical visualization of tracked files with metadata enrichment, CWD-awareness, and CLI Bridge integration.
+ * Block-UUID: 91d2049a-51dd-4d7b-8cf5-1b6ac8038300
+ * Parent-UUID: 409f46d5-c435-45d5-aaac-e771b7caa691
+ * Version: 1.2.0
+ * Description: Updated 'gsc tree' to support semantic filtering (--filter), structural focus (--focus), and the "Semantic Heat Map" visualization (--no-compact). Integrated search.ParseFilters for metadata evaluation and updated the tree construction flow to handle multi-path focus pruning.
  * Language: Go
  * Created-at: 2026-02-10T17:10:32.846Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0)
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0)
  */
 
 
@@ -30,12 +30,15 @@ import (
 )
 
 var (
-	treeDB       string
-	treeFields   []string
-	treeIndent   int
-	treeTruncate int
-	treeFormat   string
-	treePrune    bool
+	treeDB        string
+	treeFields    []string
+	treeIndent    int
+	treeTruncate  int
+	treeFormat    string
+	treePrune     bool
+	treeFilters   []string
+	treeFocus     []string
+	treeNoCompact bool
 )
 
 // treeCmd represents the tree command
@@ -47,7 +50,12 @@ manifest database. Unlike the standard 'tree' command, this respects .gitignore
 and focuses on the repository's intelligence map.
 
 The command is context-aware and will start the tree from your current working 
-directory. Use --fields to include specific metadata like 'purpose' or 'risk'.`,
+directory. Use --fields to include specific metadata like 'purpose' or 'risk'.
+
+Filtering & Focus:
+  --filter "field=value"    Filter files by metadata (e.g., layer=api)
+  --focus "path/**"         Restrict the tree to specific paths or globs
+  --no-compact              Show filenames for non-matching files in the heat map`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		startTime := time.Now()
 
@@ -76,20 +84,27 @@ directory. Use --fields to include specific metadata like 'purpose' or 'risk'.`,
 			return fmt.Errorf("failed to get tracked files: %w", err)
 		}
 
-		// 3. Build Initial Tree
-		rootNode := tree.BuildTree(files, cwdOffset)
+		// 3. Build Initial Tree (with Structural Focus)
+		rootNode := tree.BuildTree(files, cwdOffset, treeFocus)
 
-		// 4. Resolve Database and Fetch Metadata if requested
+		// 4. Resolve Database
 		dbName := treeDB
 		if dbName == "" {
 			config, _ := manifest.GetEffectiveConfig()
 			dbName = config.Global.DefaultDatabase
 		}
 
+		var filters []search.FilterCondition
 		if dbName != "" {
 			dbName, err = registry.ResolveDatabase(dbName)
 			if err != nil {
 				return err
+			}
+
+			// 5. Parse Semantic Filters
+			filters, err = search.ParseFilters(cmd.Context(), treeFilters, dbName)
+			if err != nil {
+				return fmt.Errorf("failed to parse filters: %w", err)
 			}
 
 			// Resolve DB Path and Open
@@ -98,30 +113,33 @@ directory. Use --fields to include specific metadata like 'purpose' or 'risk'.`,
 				return err
 			}
 
-			// We use the search package's internal logic to fetch metadata in batch.
-			// Note: We assume fetchMetadataMap will be exported as FetchMetadataMap 
-			// or wrapped in a public function in the next step.
-			metadataMap, _, err := search.FetchMetadataMap(cmd.Context(), dbPath, files, "all", nil, treeFields, nil)
+			// 6. Fetch Metadata
+			metadataMap, _, err := search.FetchMetadataMap(cmd.Context(), dbPath, files, "all", nil, treeFields, filters)
 			if err != nil {
 				logger.Debug("Failed to fetch metadata for tree", "error", err)
 			} else {
-				// 5. Enrich Tree
-				tree.EnrichTree(rootNode, "", metadataMap)
+				// 7. Enrich Tree & Evaluate Filters
+				tree.EnrichTree(rootNode, "", metadataMap, filters)
 			}
+		} else if len(treeFilters) > 0 {
+			return fmt.Errorf("database (--db) is required when using --filter")
 		}
 
-		// 6. Prune if requested
+		// 8. Calculate Visibility (Propagate match status up the tree)
+		tree.CalculateVisibility(rootNode)
+
+		// 9. Prune if requested
 		if treePrune {
 			tree.PruneTree(rootNode)
 		}
 
-		// 7. Calculate Stats
+		// 10. Calculate Stats
 		stats := tree.CalculateStats(rootNode)
 
-		// 8. Render Output
+		// 11. Render Output
 		var outputStr string
 		if treeFormat == "json" {
-			outputStr, err = tree.RenderJSON(rootNode, stats, dbName, treeFields, treePrune, cwdOffset)
+			outputStr, err = tree.RenderJSON(rootNode, stats, dbName, treeFields, filters, treeFocus, treePrune, cwdOffset)
 			if err != nil {
 				return fmt.Errorf("failed to render JSON: %w", err)
 			}
@@ -131,13 +149,13 @@ directory. Use --fields to include specific metadata like 'purpose' or 'risk'.`,
 				return fmt.Errorf("failed to render Portable JSON: %w", err)
 			}
 		} else {
-			outputStr = tree.RenderHuman(rootNode, treeIndent, treeTruncate, treeFields)
+			outputStr = tree.RenderHuman(rootNode, treeIndent, treeTruncate, treeFields, treeNoCompact)
 			
 			// Append Summary Report
 			outputStr += fmt.Sprintf("\nTree Coverage Summary:\n")
 			outputStr += fmt.Sprintf("  Total Tracked Files: %d\n", stats.TotalFiles)
 			outputStr += fmt.Sprintf("  Analyzed:            %d (%.1f%%)\n", stats.AnalyzedFiles, stats.Coverage)
-			outputStr += fmt.Sprintf("  Unmapped:            %d\n", stats.TotalFiles-stats.AnalyzedFiles)
+			outputStr += fmt.Sprintf("  Matched:             %d\n", stats.MatchedFiles)
 			outputStr += fmt.Sprintf("\nNote: This tree only includes files tracked by Git.\n")
 
 			if dbName == "" && len(treeFields) == 0 {
@@ -145,7 +163,7 @@ directory. Use --fields to include specific metadata like 'purpose' or 'risk'.`,
 			}
 		}
 
-		// 9. CLI Bridge Integration
+		// 12. CLI Bridge Integration
 		if bridgeCode != "" {
 			cmdStr := filepath.Base(os.Args[0]) + " " + strings.Join(os.Args[1:], " ")
 			
@@ -171,6 +189,11 @@ func init() {
 	treeCmd.Flags().IntVar(&treeTruncate, "truncate", 60, "Maximum length for metadata values (0 for no truncation)")
 	treeCmd.Flags().StringVar(&treeFormat, "format", "human", "Output format: human, json, or ai-portable")
 	treeCmd.Flags().BoolVar(&treePrune, "prune", false, "Hide files/dirs that lack the requested metadata")
+	
+	// New Filter & Focus Flags
+	treeCmd.Flags().StringArrayVarP(&treeFilters, "filter", "F", []string{}, "Filter by metadata field (e.g., 'layer=api')")
+	treeCmd.Flags().StringArrayVarP(&treeFocus, "focus", "f", []string{}, "Restrict tree to specific paths or globs")
+	treeCmd.Flags().BoolVar(&treeNoCompact, "no-compact", false, "Show filenames for non-matching files in the heat map")
 }
 
 // RegisterTreeCommand registers the tree command with the root command.

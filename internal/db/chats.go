@@ -1,12 +1,12 @@
 /**
  * Component: Chat Database Operations
- * Block-UUID: f3c83cb7-fbf3-4c19-a8c2-5530e4eb77d0
- * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: Library methods for interacting with the GitSense Chat database, including message insertion and validation.
+ * Block-UUID: b307fcec-1757-4ade-83f2-a71dd56382ca
+ * Parent-UUID: , f3c83cb7-fbf3-4c19-a8c2-5530e4eb77d0
+ * Version: 1.1.0
+ * Description: Library methods for interacting with the GitSense Chat database, including message insertion and validation. Updated timestamp generation to use UTC ISO 8601 format with 3-digit milliseconds to match JavaScript's toISOString().
  * Language: Go
  * Created-at: 2026-02-08T04:14:23.936Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0)
  */
 
 
@@ -66,7 +66,8 @@ func InsertMessage(db *sql.DB, msg *Message) (int64, error) {
 			?, ?, ?, ?, ?, ?
 		)`
 
-	now := time.Now()
+	// Format time to match JavaScript's toISOString(): UTC, ISO 8601, 3-digit milliseconds, 'Z' suffix
+	now := time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
 	
 	result, err := db.Exec(
 		query,

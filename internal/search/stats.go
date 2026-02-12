@@ -1,12 +1,12 @@
 /**
  * Component: Search Statistics Recorder
- * Block-UUID: 7dfc80eb-66b8-43b3-b93c-b39aa4b017d0
- * Parent-UUID: f8a38d2b-ab4c-47de-9849-92fd4a27fd47
- * Version: 1.2.0
- * Description: Records search execution details to a local SQLite database for analytics and Scout intelligence. Refactored all logger calls to use structured Key-Value pairs instead of format strings.
+ * Block-UUID: 240f6828-d42a-4cd2-9f53-905e9b238338
+ * Parent-UUID: 7dfc80eb-66b8-43b3-b93c-b39aa4b017d0
+ * Version: 1.3.0
+ * Description: Records search execution details to a local SQLite database for analytics and Scout intelligence. Updated timestamp generation to use UTC ISO 8601 format with 3-digit milliseconds to match JavaScript's toISOString().
  * Language: Go
  * Created-at: 2026-02-05T20:12:15.422Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0)
  */
 
 
@@ -57,8 +57,11 @@ func RecordSearch(ctx context.Context, searchInfo SearchRecord) error {
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
+	// Format time to match JavaScript's toISOString(): UTC, ISO 8601, 3-digit milliseconds, 'Z' suffix
+	timestamp := searchInfo.Timestamp.UTC().Format("2006-01-02T15:04:05.000Z")
+
 	_, err = database.ExecContext(ctx, query,
-		searchInfo.Timestamp,
+		timestamp,
 		searchInfo.Pattern,
 		searchInfo.ToolName,
 		searchInfo.ToolVersion,

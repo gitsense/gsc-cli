@@ -1,12 +1,12 @@
 /*
  * Component: Search Result Enricher
- * Block-UUID: 0a67a839-0cca-4cd5-b7e8-00e8966af4ea
- * Parent-UUID: 8f7c2a1d-5e9b-4c3f-a8d2-1b6e9f4c7a2d
- * Version: 2.9.0
- * Description: Exported FetchMetadataMap and FileMetadata to support batch metadata retrieval for the 'gsc tree' command.
+ * Block-UUID: 43230cdc-8c3d-4725-9019-65a86693ece9
+ * Parent-UUID: 0a67a839-0cca-4cd5-b7e8-00e8966af4ea
+ * Version: 3.0.0
+ * Description: Exported CheckFilters, CheckSingleCondition, and CheckArrayCondition to support semantic filtering in the 'gsc tree' command.
  * Language: Go
  * Created-at: 2026-02-09T20:03:10.592Z
- * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v2.8.0), Gemini 3 Flash (v2.9.0)
+ * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v2.9.0), Gemini 3 Flash (v3.0.0)
  */
 
 
@@ -92,7 +92,7 @@ func EnrichMatches(ctx context.Context, matches []RawMatch, dbName string, filte
 
 			// Apply metadata filters
 			if len(filters) > 0 {
-				if !checkFilters(meta.Fields, filters) {
+				if !CheckFilters(meta.Fields, filters) {
 					// Filtered out by metadata conditions
 					continue
 				}
@@ -260,18 +260,18 @@ func fetchMetadataMap(ctx context.Context, database *sql.DB, filePaths []string,
 	return result, availableFields, nil
 }
 
-// checkFilters verifies if a file's metadata satisfies all filter conditions.
-func checkFilters(metadata map[string]interface{}, conditions []FilterCondition) bool {
+// CheckFilters verifies if a file's metadata satisfies all filter conditions.
+func CheckFilters(metadata map[string]interface{}, conditions []FilterCondition) bool {
 	for _, cond := range conditions {
-		if !checkSingleCondition(metadata, cond) {
+		if !CheckSingleCondition(metadata, cond) {
 			return false
 		}
 	}
 	return true
 }
 
-// checkSingleCondition verifies a single filter condition against metadata.
-func checkSingleCondition(metadata map[string]interface{}, cond FilterCondition) bool {
+// CheckSingleCondition verifies a single filter condition against metadata.
+func CheckSingleCondition(metadata map[string]interface{}, cond FilterCondition) bool {
 	value, exists := metadata[cond.Field]
 	
 	if cond.Operator == "exists" {
@@ -291,7 +291,7 @@ func checkSingleCondition(metadata map[string]interface{}, cond FilterCondition)
 
 	var jsonArray []interface{}
 	if err := json.Unmarshal([]byte(fmt.Sprintf("%v", value)), &jsonArray); err == nil {
-		return checkArrayCondition(jsonArray, cond)
+		return CheckArrayCondition(jsonArray, cond)
 	}
 
 	switch cond.Operator {
@@ -352,8 +352,8 @@ func checkSingleCondition(metadata map[string]interface{}, cond FilterCondition)
 	return false
 }
 
-// checkArrayCondition handles comparison logic for JSON array fields.
-func checkArrayCondition(array []interface{}, cond FilterCondition) bool {
+// CheckArrayCondition handles comparison logic for JSON array fields.
+func CheckArrayCondition(array []interface{}, cond FilterCondition) bool {
 	condValue := strings.ToLower(cond.Value)
 
 	switch cond.Operator {
