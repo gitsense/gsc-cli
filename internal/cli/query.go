@@ -1,12 +1,12 @@
 /**
  * Component: Query Command
- * Block-UUID: 67952923-51d5-4d79-b59a-7080ea3087f3
- * Parent-UUID: acbceab1-4861-4770-9c05-dc54f4a1db30
- * Version: 3.5.0
+ * Block-UUID: 55a02fb6-e92f-4b5b-ad96-ff9933d3104c
+ * Parent-UUID: 67952923-51d5-4d79-b59a-7080ea3087f3
+ * Version: 3.6.0
  * Description: Updated the 'query' command and its subcommands (list, insights, coverage) to remove references to profiles and config features from help text and error messages. The underlying logic for loading effective config (which includes profiles) is retained internally but hidden from the user interface. Updated to support the '--code' flag for CLI Bridge integration. Refactored handler functions to return output strings instead of printing directly to stdout, enabling the bridge orchestrator to capture and insert results into the chat.
  * Language: Go
- * Created-at: 2026-02-11T07:37:03.120Z
- * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.4.7 (v3.3.0), GLM-4.7 (v3.4.0), Gemini 3 Flash (v3.5.0)
+ * Created-at: 2026-02-12T03:36:15.116Z
+ * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.4.7 (v3.3.0), GLM-4.7 (v3.4.0), Gemini 3 Flash (v3.5.0), Gemini 3 Flash (v3.6.0)
  */
 
 
@@ -158,15 +158,18 @@ var queryListCmd = &cobra.Command{
 	},
 }
 
-// queryInsightsCmd represents the metadata distribution analysis subcommand
-var queryInsightsCmd = &cobra.Command{
+// InsightsCmd represents the metadata distribution analysis command.
+// It is registered as both a root command and a subcommand of 'query'.
+var InsightsCmd = &cobra.Command{
 	Use:   "insights",
 	Short: "Analyze metadata distribution and completeness",
 	Long: `Provides a high-level overview of how metadata is distributed across the codebase.
 Useful for identifying common patterns or unanalyzed areas.`,
 	Example: `  # Get insights for specific fields
-  gsc query insights --db security --field risk_level,topic`,
+  gsc insights --db security --field risk_level,topic
 
+  # Also available as a query subcommand
+  gsc query insights --db security --field risk_level,topic`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		startTime := time.Now()
 
@@ -198,20 +201,24 @@ Useful for identifying common patterns or unanalyzed areas.`,
 	},
 }
 
-// queryCoverageCmd represents the analysis coverage subcommand
-var queryCoverageCmd = &cobra.Command{
+// CoverageCmd represents the analysis coverage command.
+// It is registered as both a root command and a subcommand of 'query'.
+var CoverageCmd = &cobra.Command{
 	Use:   "coverage",
 	Short: "Analyze analysis coverage and identify blind spots",
 	Long: `Compares Git tracked files against the manifest database to identify 
 files that have not yet been analyzed within the current focus scope.`,
 	Example: `  # Check coverage for the active database
-  gsc query coverage
+  gsc coverage
 
   # Check coverage for the security database
-  gsc query coverage --db security
+  gsc coverage --db security
 
   # Check coverage with a temporary scope override
-  gsc query coverage --db security --scope-override "include=src/**"`,
+  gsc coverage --db security --scope-override "include=src/**"
+
+  # Also available as a query subcommand
+  gsc query coverage`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		startTime := time.Now()
 
@@ -259,24 +266,24 @@ func init() {
 	queryListCmd.Flags().BoolVar(&queryQuiet, "quiet", false, "Suppress headers and hints")
 
 	// Insights Subcommand Flags
-	queryInsightsCmd.Flags().StringVarP(&queryField, "field", "f", "", "Field(s) to analyze (required, comma-separated)")
-	queryInsightsCmd.Flags().BoolVar(&queryReport, "report", false, "Generate ASCII dashboard report")
-	queryInsightsCmd.Flags().IntVar(&queryInsightsLimit, "limit", 10, "Limit top values (1-1000)")
-	queryInsightsCmd.Flags().StringVar(&queryScopeOverride, "scope-override", "", "Temporary scope override")
-	queryInsightsCmd.Flags().StringVarP(&queryDB, "db", "d", "", "Database override")
-	queryInsightsCmd.Flags().StringVarP(&queryFormat, "format", "o", "", "Output format (json/table)")
-	queryInsightsCmd.Flags().BoolVar(&queryQuiet, "quiet", false, "Suppress headers")
+	InsightsCmd.Flags().StringVarP(&queryField, "field", "f", "", "Field(s) to analyze (required, comma-separated)")
+	InsightsCmd.Flags().BoolVar(&queryReport, "report", false, "Generate ASCII dashboard report")
+	InsightsCmd.Flags().IntVar(&queryInsightsLimit, "limit", 10, "Limit top values (1-1000)")
+	InsightsCmd.Flags().StringVar(&queryScopeOverride, "scope-override", "", "Temporary scope override")
+	InsightsCmd.Flags().StringVarP(&queryDB, "db", "d", "", "Database override")
+	InsightsCmd.Flags().StringVarP(&queryFormat, "format", "o", "", "Output format (json/table)")
+	InsightsCmd.Flags().BoolVar(&queryQuiet, "quiet", false, "Suppress headers")
 
 	// Coverage Subcommand Flags
-	queryCoverageCmd.Flags().StringVar(&queryScopeOverride, "scope-override", "", "Temporary scope override")
-	queryCoverageCmd.Flags().StringVarP(&queryDB, "db", "d", "", "Database override")
-	queryCoverageCmd.Flags().StringVarP(&queryFormat, "format", "o", "table", "Output format")
-	queryCoverageCmd.Flags().BoolVar(&queryQuiet, "quiet", false, "Suppress headers")
+	CoverageCmd.Flags().StringVar(&queryScopeOverride, "scope-override", "", "Temporary scope override")
+	CoverageCmd.Flags().StringVarP(&queryDB, "db", "d", "", "Database override")
+	CoverageCmd.Flags().StringVarP(&queryFormat, "format", "o", "table", "Output format")
+	CoverageCmd.Flags().BoolVar(&queryQuiet, "quiet", false, "Suppress headers")
 
 	// Register Subcommands
 	queryCmd.AddCommand(queryListCmd)
-	queryCmd.AddCommand(queryInsightsCmd)
-	queryCmd.AddCommand(queryCoverageCmd)
+	queryCmd.AddCommand(InsightsCmd)
+	queryCmd.AddCommand(CoverageCmd)
 }
 
 // handleCoverage orchestrates the coverage analysis process.
