@@ -1,12 +1,12 @@
 <!--
 Component: System Architecture Reference
-Block-UUID: 7746e4b2-77ec-40d3-8b1c-dd9c9cca9cbe
-Parent-UUID: b993d779-c21f-482d-8ff9-c82b91ae5630
-Version: 1.3.0
+Block-UUID: 891965fc-b43e-4c8b-bf4d-9b40e8d10fd9
+Parent-UUID: 7746e4b2-77ec-40d3-8b1c-dd9c9cca9cbe
+Version: 1.4.0
 Description: Definitive architectural specification for gsc-cli. Includes structural mapping, data flow patterns, layer interaction guardrails, and critical abstraction definitions.
 Language: Markdown
-Created-at: 2026-02-11T07:41:15.996Z
-Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0), Gemini 3 Flash (v1.3.0)
+Created-at: 2026-02-12T04:27:26.111Z
+Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0), Gemini 3 Flash (v1.3.0), GLM-4.7 (v1.4.0)
 -->
 
 
@@ -32,7 +32,7 @@ This document is the definitive "Source of Truth" for the `gsc-cli` architecture
 | **Search Flow** | CLI (grep) → RipgrepEngine → Enricher → Formatter → Output | Find code with metadata context |
 | **Import Flow** | CLI (manifest import) → Importer → Validator → AtomicSwap → Registry | Load intelligence into workspace |
 | **Query Flow** | CLI (query) → SimpleQuerier → SQLite → Formatter → Output | Discover files by metadata |
-| **Tree Flow** | CLI (tree) → TreeBuilder → Enricher → Renderer → Output | Visualize file hierarchy with metadata |
+| **Tree Flow** | CLI (tree) → TreeBuilder → FilterParser → Enricher (with Filters) → Renderer → Output | Visualize file hierarchy with metadata and semantic filtering |
 
 ### Enrichment Pipeline (Sub-Flow)
 `Raw System Output (Files/Grep)` → `Metadata Lookup (SQLite)` → `Field Projection` → `Formatter` → `Output`
@@ -56,7 +56,7 @@ This document is the definitive "Source of Truth" for the `gsc-cli` architecture
 *   `git-integration`: Discovery of project roots and retrieval of tracked files (`ls-files`).
 *   `manifest-management`: Lifecycle of importing, exporting, and validating metadata.
 *   `focus-scope`: Glob-based inclusion/exclusion filtering for targeted analysis.
-*   `tree-visualization`: Hierarchical rendering of files enriched with metadata.
+*   `tree-visualization`: Hierarchical rendering of files enriched with metadata, supporting semantic filtering to generate a "Heat Map" of relevant files.
 *   `interactive-wizard`: Survey-based CLI prompts for profile and manifest setup.
 
 ### Architectural Patterns
@@ -108,6 +108,7 @@ The `gsc query` command supports glob-style wildcards (`*`) in the `--value` arg
 *   "Where is the logic for rotating compressed database backups?"
 *   "How does the tree command calculate analysis coverage percentages?"
 *   "How are JSON array fields (like topics) queried differently from scalar fields?"
+*   "How does the tree command apply semantic filters to generate the heat map?"
 
 ## 7. Project Glossary
 
@@ -123,4 +124,3 @@ The `gsc query` command supports glob-style wildcards (`*`) in the `--value` arg
 ## 8. Internal & Hidden Features
 
 **Note on Profiles:** The profile system (`internal/manifest/profile_manager.go`) is **RETAINED INTERNAL LOGIC**. While the implementation for context switching and aliases exists, the corresponding CLI flags are currently hidden from the user interface to reduce complexity. AI analyzers should recognize this code as "dormant/internal" rather than "active user-facing."
-

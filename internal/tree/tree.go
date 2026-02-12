@@ -1,12 +1,12 @@
 /**
  * Component: Tree Logic
- * Block-UUID: 8c8d1c1a-e9b0-45d5-b768-d64894efac9a
- * Parent-UUID: c5c28b85-3a71-4a0f-9341-546a6bbcf91c
- * Version: 1.2.0
+ * Block-UUID: b173275f-24c3-4aa2-b437-cea29e24b901
+ * Parent-UUID: 8c8d1c1a-e9b0-45d5-b768-d64894efac9a
+ * Version: 1.2.1
  * Description: Enhanced tree logic to support semantic filtering and structural focus. Added 'Matched' and 'Visible' states to Node to enable the "Semantic Heat Map" visualization. Updated rendering to support name-hiding for non-matching files and multi-path focus pruning.
  * Language: Go
- * Created-at: 2026-02-10T17:09:20.938Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0)
+ * Created-at: 2026-02-12T04:22:17.605Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.2.1)
  */
 
 
@@ -365,8 +365,8 @@ func renderNode(sb *strings.Builder, node *Node, prefix string, isLast bool, ind
 	}
 
 	for i, child := range node.Children {
-		// Only render if visible
-		if child.Visible {
+		// Render if visible, OR if noCompact is true (show full context)
+		if child.Visible || noCompact {
 			renderNode(sb, child, newPrefix, i == len(node.Children)-1, indentWidth, truncateLen, fields, noCompact)
 		}
 	}
