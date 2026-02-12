@@ -228,17 +228,17 @@ func getIntelligenceHeader(ctx QueryContext, summary GrepSummary, useColor bool)
 
 func getHintFooter(outsideCount int, useColor bool) string {
 	var sb strings.Builder
-	divider := "# ──────────────────────────────────────────────────────────────────────────────"
-	hint := "Hint:"
-	if useColor {
-		divider = logger.ColorWhite + divider + logger.ColorReset
-		hint = logger.ColorYellow + hint + logger.ColorReset
-	}
+	//divider := "# ──────────────────────────────────────────────────────────────────────────────"
+	//hint := "Hint:"
+	//if useColor {
+	//	divider = logger.ColorWhite + divider + logger.ColorReset
+	//	hint = logger.ColorYellow + hint + logger.ColorReset
+	//}
 
-	sb.WriteString(divider + "\n")
-	sb.WriteString(fmt.Sprintf("# %s %d matches found outside of current Focus Scope. \n", hint, outsideCount))
-	sb.WriteString("# Run 'gsc config scope clear' to see all results.\n")
-	sb.WriteString(divider + "\n")
+	//sb.WriteString(divider + "\n")
+	//sb.WriteString(fmt.Sprintf("# %s %d matches found outside of current Focus Scope. \n", hint, outsideCount))
+	//sb.WriteString("# Run 'gsc config scope clear' to see all results.\n")
+	//sb.WriteString(divider + "\n")
 	return sb.String()
 }
 
