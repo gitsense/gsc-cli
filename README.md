@@ -10,9 +10,9 @@ Without context, tools can only find what is written in a file, not what that fi
 ### The Solution
 gsc makes your codebase smarter by applying intelligence created in GitSense Chat.
 
-Domain experts use GitSense Chat to encode their expertise into specialized analyzers called Brains. These Brains can capture any metadata an expert deems important. This could be high-level business impact, security risks, or even mapping specific files to different documentation sets based on the target audience.
+Domain experts encode their expertise into specialized analyzers called Brains. You use these Brains to analyze your code and generate portable intelligence (manifest files). gsc imports these manifests and transforms your repository into a queryable intelligence hub. The more Brain Dumps you add, the smarter it becomes.
 
-gsc imports this metadata and applies it to what are otherwise dumb text files. This transforms your repository into a queryable intelligence hub where you search for the specific insights an expert has defined. Instead of searching for text, you search for meaning.
+Now instead of searching for text, you search for meaning. This is how you make your repository self-aware.
 
 ### The World's First Intelligent Repository?
 **No really!**
@@ -21,7 +21,9 @@ We believe this is the world's first intelligent repository, one that ships with
 
 For humans, this metadata provides a high-level map of intent. For AI agents, it is a high-fidelity sensory layer that enables zero-shot discovery. In the age of coding agents, we feel a `.gitsense` directory is as essential as a `README.md`. It can turn text into intent, allowing agents to operate at scale.
 
-The included manifest was created by a GitSense Chat "Brain" designed to focus on project architecture. You can see exactly how this Brain thinks in `.gitsense/analyzers/gsc-architect.md`. This is the core of our "world's first" claim: the repository doesn't just store code, it stores the expertise required to understand it. You can create your own Brains for onboarding, security, or team ownership. Each one adds a new dimension of intelligence, and you can create and ship as many as you need.
+The included "Brain Dump" (i.e. manifest) was created by a GitSense Chat "Brain" designed to focus on project architecture. You can see how it thinks in `.gitsense/analyzers/gsc-architect.md`. This is the core of our "world's first" claim: the repository doesn't just store code, it stores the expertise required to understand it. You can create your own Brains for onboarding, security, or team ownership by simply chatting with AI in GitSense Chat.
+
+**Quick Example**
 
 Imagine you are an open source maintainer tired of answering the same questions repeatedly. You create a FAQ "Brain" by dumping your GitHub issues into a repository, import them into GitSense Chat, and have it analyze the patterns to create a queryable FAQ. This process can be automated to include new issues. As part of your contribution guidelines, you tell users that for the quickest response, they should try:
 
@@ -32,7 +34,7 @@ gsc query --db faq --field topics --insights --json
 Feed the results into a chat and see if the FAQ guides can help. No human needed. No documentation to maintain. Just expertise, queryable and alive.
 
 ### Installation
-Download a pre-compiled binary for Linux, macOS, or Windows from the releases page. Alternatively, build from source using the Go toolchain (version 1.21 or later required).
+Download a pre-compiled binary for Linux, macOS, or Windows from the releases page. Or if you prefer, you can build from source using the Go toolchain (version 1.21 or later required).
 
 ```bash
 git clone https://github.com/gitsense/gsc-cli
@@ -96,17 +98,34 @@ This partnership allows humans to handle the high-level discovery while the AI f
 ### Core Features
 Query the landscape, grep with semantic filters, and visualize the tree with metadata. These are the building blocks for smarter workflows.
 
-### The Roadmap
-**gsc scout**: An automated orchestrator that translates natural language intent into discovery loops. This will allow AI agents to find the exact files needed for a task without manual grepping, significantly reducing token waste.
+### The Vision
+**gsc scout** 
 
-**Smarter Tools**: A framework for custom, isolated commands. Imagine a version of rm that refuses to delete critical infrastructure files based on their metadata.
+The end of blind grepping. While tools like `claude code` are powerful, they often rely on brute-force indexing and probabilistic guessing. Scout uses the intelligence layer to translate natural language intent into precise discovery loops. This saves money, improves context, and allows agents to work at scale without the token tax of guessing. 
 
-### Extensibility
-Companies can build their own repository of commands. A single make build makes custom, metadata-driven tools available to the entire team.
+Note: Scout is not about implementing code changes. Its sole purpose is to deliver the *right context* to AI agents as fast and as cheap as possible. We find the files; humans and AI coding agents does the work.
+
+**Tool Calling 2.0** 
+
+We are moving from static metadata to executable intelligence. This is Tool Calling 2.0. Unlike traditional tool schemas (like MCP or Claude Tools) which are defined outside the codebase, `gsc` embeds tools and knowledge directly in your repository as queryable metadata. This makes `gsc` a perfect complement to MCP: while MCP standardizes the *how* of tool calling, `gsc` provides the *what* and *why* directly from the source of truth.
+
+An agent can discover exactly what it is allowed to do by running:
+```bash
+gsc run --examples --format json
+```
+
+This returns a structured list of commands with descriptions and examples. The agent simply maps your natural language request to the best available command. This is discovery in its simplest form. You get the speed of an agent with the safety of a reviewed, deterministic contract, like a safeguarded delete:
+```bash
+gsc run guard-rm --db infrastructure --filter "protection=high"
+```
+
+This is still an idea, but we believe it's the future of agentic interaction. If you have a strong opinion on how metadata can make discovery easier and safer for AI, create an issue.
+
+**Architected Generation**: This project is 99.9% AI generated, but it is not "vibe coding." It is human-architected. We are refining the codebase to ensure that AI can follow strictly defined patterns. If you understand programming logic, you do not need to be a Go expert to add the features you need. We want to make it so that any domain expert can use AI to extend `gsc`, making their daily tasks easier and their agents smarter.
 
 ### The Philosophy
 Code is the how. Metadata is the why. Domain experts in GitSense Chat encode their tell-tale signs and domain knowledge into Brains. gsc applies that intelligence to make your tools smarter and your decisions safer.
 
 ### Requirements
-*   **Ripgrep:** Required in PATH for search functionality.
+*   **Ripgrep:** Required in PATH for search functionality. You can ignore this if you don't plan on using `gsc grep`.
 *   **Git:** Required for repository info and finding the project root.
