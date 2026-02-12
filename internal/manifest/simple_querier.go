@@ -188,8 +188,6 @@ func GetListResult(ctx context.Context, dbName string, fieldName string, all boo
 		return nil, err
 	}
 	result.Values = values
-	result.Hints = append(result.Hints, "Use 'gsc query --value <val>' to find matching files.")
-	result.Hints = append(result.Hints, "Use 'gsc query list' to go back to the field map.")
 
 	return result, nil
 }
