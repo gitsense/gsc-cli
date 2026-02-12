@@ -1,16 +1,16 @@
 # GitSense Chat CLI (gsc)
 
-**The Intelligence Layer for Codebase Discovery and Smarter Tools**
+**The Intelligence Layer for Git: Turn any text file into a smart one.**
 
-An execution engine for applying portable intelligence and a foundation for building smarter command line tools designed for humans and AI.
+A CLI for querying repository intelligence and a framework for building AI-ready developer tools. Designed for humans and AI.
 
 ### The Problem
 Without context, tools can only find what is written in a file, not what that file represents. Searching for text is not the same as searching for purpose, risk, or impact.
 
 ### The Solution
-gsc makes your codebase smarter by applying intelligence created in GitSense Chat.
+gsc makes your repository smarter by applying intelligence created in GitSense Chat.
 
-Domain experts encode their expertise into specialized analyzers called Brains. You use these Brains to analyze your code and generate portable intelligence (manifest files). gsc imports these manifests and transforms your repository into a queryable intelligence hub. The more Brain Dumps you add, the smarter it becomes.
+Domain experts encode their expertise into specialized analyzers (the "Brains"). These Brains analyze your files and generate portable intelligence (manifest files). gsc imports these manifests and transforms your repository into a queryable intelligence hub. The more manifests you add, the smarter your repository becomes.
 
 Now instead of searching for text, you search for meaning. This is how you make your repository self-aware.
 
