@@ -1,12 +1,12 @@
-/*
+/**
  * Component: CLI Examples Registry
- * Block-UUID: 5f82a390-3c7f-4432-9082-dcac558984a5
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: de6e0582-2023-4b14-ad40-da52ae272064
+ * Parent-UUID: 5f82a390-3c7f-4432-9082-dcac558984a5
+ * Version: 1.1.0
  * Description: Central registry for gsc usage examples. Uses real-world patterns from the gsc-architect manifest to demonstrate discovery ergonomics.
  * Language: Go
- * Created-at: 2026-02-12T04:45:00.000Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Created-at: 2026-02-13T06:21:05.847Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0)
  */
 
 
@@ -38,6 +38,14 @@ func GetExamples() []Example {
 			Command:     "gsc fields",
 			Description: "Lists all fields across all databases. Use this to see if you can filter by 'risk', 'topic', or 'layer'.",
 			AITip:       "Run this first to understand the schema before constructing complex filters.",
+		},
+		{
+			ID:          "discovery-brains",
+			Category:    "Discovery",
+			Intent:      "List available brains or inspect their schemas",
+			Command:     "gsc brains",
+			Description: "Lists all loaded brains (databases) or shows the schema for a specific brain.",
+			AITip:       "Use this to verify which analyzers are active before querying.",
 		},
 		{
 			ID:          "discovery-insights",

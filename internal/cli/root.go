@@ -1,12 +1,12 @@
 /**
  * Component: Root CLI Command
- * Block-UUID: 16b4f580-492b-4c21-b093-c85bac8eb350
- * Parent-UUID: 78146467-00e9-45a0-a8f6-ffd14eeb8666
- * Version: 1.25.0
+ * Block-UUID: 7dcf1d25-4d5d-439a-b599-62740ce913f4
+ * Parent-UUID: 16b4f580-492b-4c21-b093-c85bac8eb350
+ * Version: 1.26.0
  * Description: Registered the new 'databases' command as a top-level shortcut for manifest discovery and schema inspection.
  * Language: Go
- * Created-at: 2026-02-12T05:08:11.702Z
- * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v1.24.0), Gemini 3 Flash (v1.25.0)
+ * Created-at: 2026-02-13T06:17:35.067Z
+ * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v1.25.0), Gemini 3 Flash (v1.26.0)
  */
 
 
@@ -111,7 +111,7 @@ func init() {
 	rootCmd.AddCommand(FieldsCmd)
 	rootCmd.AddCommand(InsightsCmd)
 	rootCmd.AddCommand(CoverageCmd)
-	rootCmd.AddCommand(DatabasesCmd)
+	rootCmd.AddCommand(BrainsCmd)
 	RegisterGrepCommand(rootCmd)
 	RegisterTreeCommand(rootCmd)
 	RegisterInfoCommand(rootCmd)

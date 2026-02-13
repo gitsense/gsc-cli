@@ -1,12 +1,12 @@
 /**
  * Component: Query Command
- * Block-UUID: 47298171-4aaf-4826-93d5-1569a7cd6a20
- * Parent-UUID: ab7de828-1deb-4418-a82f-9b520bf66f7b
- * Version: 3.9.0
+ * Block-UUID: 2c1c2989-d17d-471e-8940-a7b9fd498d28
+ * Parent-UUID: 47298171-4aaf-4826-93d5-1569a7cd6a20
+ * Version: 3.10.0
  * Description: Added the 'DatabasesCmd' as a root-level convenience command. It supports listing all databases, inspecting a specific database schema via positional argument, or dumping all schemas using the --schema flag.
  * Language: Go
- * Created-at: 2026-02-13T05:23:27.277Z
- * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.4.7 (v3.3.0), GLM-4.7 (v3.4.0), Gemini 3 Flash (v3.5.0), Gemini 3 Flash (v3.6.0), GLM-4.7 (v3.7.0), GLM-4.7 (v3.8.0), Gemini 3 Flash (v3.9.0)
+ * Created-at: 2026-02-13T06:38:29.128Z
+ * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.9.0), Gemini 3 Flash (v3.10.0)
  */
 
 
@@ -41,7 +41,7 @@ var (
 	queryReport        bool
 	queryFields        []string
 	queryFieldSingular []string
-	databasesSchema    bool
+	brainsSchema       bool
 )
 
 // queryCmd represents the base query command
@@ -299,22 +299,22 @@ and the metadata fields available in each. This is equivalent to running
 	},
 }
 
-// DatabasesCmd represents the command to list databases or inspect schemas.
-var DatabasesCmd = &cobra.Command{
-	Use:   "databases [database]",
-	Short: "List available databases or inspect their schemas",
+// BrainsCmd represents the command to list brains or inspect schemas.
+var BrainsCmd = &cobra.Command{
+	Use:   "brains [brain]",
+	Short: "List available brains or inspect their schemas",
 	Long: `Provides a high-level overview of the intelligence hub.
-1. No arguments: Lists all registered manifest databases.
-2. With [database]: Shows the schema for that specific database.
-3. With --schema: Shows the schema for every registered database.`,
-	Example: `  # List all databases
-  gsc databases
+1. No arguments: Lists all registered manifest brains (databases).
+2. With [brain]: Shows the schema for that specific brain.
+3. With --schema: Shows the schema for every registered brain.`,
+	Example: `  # List all brains
+  gsc brains
 
-  # Show schema for the 'arch' database
-  gsc databases arch
+  # Show schema for the 'arch' brain
+  gsc brains arch
 
-  # Show schemas for all databases
-  gsc databases --schema`,
+  # Show schemas for all brains
+  gsc brains --schema`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		startTime := time.Now()
@@ -327,7 +327,7 @@ var DatabasesCmd = &cobra.Command{
 			}
 		}
 
-		outputStr, resolvedDB, err := handleDatabases(cmd.Context(), args, databasesSchema, queryFormat, queryQuiet)
+		outputStr, resolvedDB, err := handleBrains(cmd.Context(), args, brainsSchema, queryFormat, queryQuiet)
 		if err != nil {
 			return err
 		}
@@ -381,20 +381,21 @@ func init() {
 	FieldsCmd.Flags().StringVarP(&queryFormat, "format", "o", "table", "Output format")
 	FieldsCmd.Flags().BoolVar(&queryQuiet, "quiet", false, "Suppress headers and hints")
 
-	// Databases Subcommand Flags
-	DatabasesCmd.Flags().BoolVar(&databasesSchema, "schema", false, "Show schema information")
-	DatabasesCmd.Flags().StringVarP(&queryFormat, "format", "o", "table", "Output format")
-	DatabasesCmd.Flags().BoolVar(&queryQuiet, "quiet", false, "Suppress headers and hints")
+	// Brains Subcommand Flags
+	BrainsCmd.Flags().BoolVar(&brainsSchema, "schema", false, "Show schema information")
+	BrainsCmd.Flags().StringVarP(&queryFormat, "format", "o", "table", "Output format")
+	BrainsCmd.Flags().BoolVar(&queryQuiet, "quiet", false, "Suppress headers and hints")
 
 	// Register Subcommands
 	queryCmd.AddCommand(queryListCmd)
 	queryCmd.AddCommand(InsightsCmd)
 	queryCmd.AddCommand(CoverageCmd)
 	queryCmd.AddCommand(FieldsCmd)
+	queryCmd.AddCommand(BrainsCmd)
 }
 
-// handleDatabases orchestrates the database listing and schema inspection.
-func handleDatabases(ctx context.Context, args []string, showSchema bool, format string, quiet bool) (string, string, error) {
+// handleBrains orchestrates the brain listing and schema inspection.
+func handleBrains(ctx context.Context, args []string, showSchema bool, format string, quiet bool) (string, string, error) {
 	config, err := manifest.GetEffectiveConfig()
 	if err != nil {
 		return "", "", fmt.Errorf("failed to load config: %w", err)
@@ -426,7 +427,12 @@ func handleDatabases(ctx context.Context, args []string, showSchema bool, format
 				logger.Warning("Failed to get schema for database", "db", dbInfo.DatabaseName, "error", err)
 				continue
 			}
-			outputs = append(outputs, manifest.FormatSchema(schema, format, quiet, config))
+			output := manifest.FormatSchema(schema, format, quiet, config)
+			if quiet {
+				outputs = append(outputs, output)
+			} else {
+				outputs = append(outputs, fmt.Sprintf("--- Brain: %s ---\n%s", dbInfo.DatabaseName, output))
+			}
 		}
 		return strings.Join(outputs, "\n\n"), "", nil
 	}

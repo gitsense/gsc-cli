@@ -138,9 +138,9 @@ func formatListResultTable(listResult *ListResult, quiet bool, config *QueryConf
 					name = name + " (active)"
 				}
 				
-				sb.WriteString(fmt.Sprintf("Manifest: %s\n", dbItem.ManifestName))
-				sb.WriteString(fmt.Sprintf("Database: %s\n", name))
-				sb.WriteString(fmt.Sprintf("Description: %s\n", dbItem.Description))
+				sb.WriteString(fmt.Sprintf("%s\n", name))
+				sb.WriteString(fmt.Sprintf("    Manifest: %s\n", dbItem.ManifestName))
+				sb.WriteString(fmt.Sprintf("    Description: %s\n", dbItem.Description))
 				sb.WriteString("\n")
 
 				// If --all view, render fields immediately under the database
