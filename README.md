@@ -10,17 +10,18 @@ Without context, tools can only find what is written in a file, not what that fi
 ### The Solution
 `gsc` is the bridge that brings GitSense Chat intelligence to your local environment. It imports specialized metadata (manifests) created by domain experts, transforming your repository from a collection of files into a queryable knowledge base.
 
-### The World's First
+This is the newly updated section.  Thoughts on it?
+
+### The World's First?
 Most repositories are passive containers. They store the "how" (the code) but lose the "why" (the intent). The reasoning behind the architecture often remains trapped in documentation or the developer's head.
 
-`gsc` makes your repository self-aware. By publishing an intelligence manifest (see `.gitsense` directory), we believe this is the world's first intelligent repository. We are also the first to openly attribute AI and show traceable AI-generated code in the wild. See [Code Provenance & Auditability](#code-provenance--auditability) for details.
+`gsc` makes your repository self-aware. By publishing an intelligence manifest (see `.gitsense` directory), we believe this is the world's first intelligent repository. We are also the first to show traceable AI-generated code in the wild. See [Code Provenance & Auditability](#code-provenance--auditability) for details.  Moving forward, every line change from AI and humans can be accounted for.
 
-By chatting with an AI in GitSense Chat, you create specialized analyzers called "Brains." These Brains extract domain knowledge from your code and store it as manifest files directly in your repository. This transforms your codebase into a queryable intelligence hub.
+By simply chatting with an AI in GitSense Chat, you create specialized analyzers called "Brains." These Brains extract domain knowledge from your code and store it as manifest files directly in your repository. This transforms your codebase into a queryable intelligence hub.
 
 **What this means**
 *   **For humans:** You stop guessing. Run `gsc brains` to see exactly what the repository knows.
 *   **For AI:** A sensory layer that eliminates blind spots. Use `gsc tree` to generate a metadata-enriched project map. This provides the agent with high-signal context while significantly reducing token usage.
-
 
 ### Installation
 Download a pre-compiled binary for Linux, macOS, or Windows from the releases page. Or if you prefer, you can build from source using the Go toolchain (version 1.21 or later required).
@@ -33,7 +34,7 @@ alias gsc="$(pwd)/dist/gsc"
 ```
 
 ### Quick Start
-[Clone this repository](https://github.com/gitsense/gsc-cli) if you have not already done so and run these commands to experience the "worlds first?" self-aware codebase.
+Clone this repository if you have not already done so and run these commands to experience the "world's first?" self-aware codebase.
 
 #### 1. Load the "Architect Brain"
 Import the architectural intent of this project. 
@@ -41,7 +42,7 @@ Import the architectural intent of this project.
 gsc manifest import .gitsense/manifests/gsc-architect.json --name arch
 ```
 
-**How it Thinks:** What to see how the brain thinks, take a look at `.gitsense/analyzers/gsc-architect.md`
+**How it Thinks:** Want to see how the brain thinks, take a look at `.gitsense/analyzers/gsc-architect.md`
 
 #### 2. Discover Available Intelligence
 List all available databases and fields to understand what intelligence is loaded in your workspace.
@@ -56,7 +57,7 @@ Stop guessing where logic lives. Use the `tree` command to see the repository's 
 # Show the purpose of files in the CLI and Logic layers, hiding everything else
 gsc tree --db arch --fields purpose,layer --filter "layer in cli,internal-logic" --prune
 ```
-**Massive Monorepos:**  Notice how `--prune` and `--filter` can be used to easily prune a 10,000+ files monorepo. 
+**Massive Monorepos:**  Notice how `--prune` and `--filter` can be used to easily prune a 10,000+ file monorepo. 
 
 #### 4. Search by Intent (Not Just Text)
 Standard `grep` finds strings. `gsc grep` finds **context**. Find where "Execute" is called, but only within files the Architect Brain has tagged with the "bridge" topic.
@@ -74,15 +75,15 @@ If you're unsure what questions you can ask, query the repository's own intellig
 # First, list every metadata field from all imported Brains
 gsc brains
 
-# Then get a distribution of the top 20 (or more) values to better understand the repos purpose
+# Then get a distribution of the top 20 (or more) values to better understand the repo's purpose
 gsc insights --db arch --fields layer,topics --limit 20
 ```
 
-**Ask AI:** Change limit to `1000` and add `--format json --code <gitsense chat code>` to the `insights` command to add the ouptput to your GitSense Chat session.
+**Ask AI:** Change limit to `1000` and add `--format json --code <gitsense chat code>` to the `insights` command to add the output to your GitSense Chat session.
 
 #### Next Steps
 
-Run `gsc --examples`to view more examples
+Run `gsc --examples` to view more examples.
 
 ### Built with AI, Designed by Humans
 99.9% AI generated. 90% human architected with 0% Go knowledge. 
