@@ -1,12 +1,12 @@
 /**
  * Component: Tree Command
- * Block-UUID: d62bae43-1883-4fd9-9c01-5a3b63b3c2f2
- * Parent-UUID: 493a3569-9291-4f0f-a212-7be085d37d51
- * Version: 1.3.1
+ * Block-UUID: 1a9d66c9-6df4-459d-8732-d365cc507350
+ * Parent-UUID: d62bae43-1883-4fd9-9c01-5a3b63b3c2f2
+ * Version: 1.4.0
  * Description: Added a guard clause to prevent empty tree output when no database or --no-compact flag is provided. This reinforces the "Intelligence Layer" identity by requiring explicit intent for raw structural views.
  * Language: Go
- * Created-at: 2026-02-12T07:23:24.477Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), Gemini 3 Flash (v1.3.0), Gemini 3 Flash (v1.3.1)
+ * Created-at: 2026-02-13T01:24:44.962Z
+ * Authors: Gemini并发 Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), Gemini 3 Flash (v1.3.0), Gemini 3 Flash (v1.3.1), GLM-4.7 (v1.4.0)
  */
 
 
@@ -39,6 +39,7 @@ var (
 	treeFilters   []string
 	treeFocus     []string
 	treeNoCompact bool
+	treeFieldSingular []string
 )
 
 // treeCmd represents the tree command
@@ -65,6 +66,11 @@ Filtering & Pruning:
 			if err := bridge.ValidateCode(bridgeCode, bridge.StageDiscovery); err != nil {
 				return err
 			}
+		}
+
+		// Check for common typo: --field instead of --fields
+		if cmd.Flags().Changed("field") {
+			return fmt.Errorf("unknown flag: --field. Did you mean --fields?")
 		}
 
 		// 1. Resolve Database (Check if we have a signal source)
@@ -206,6 +212,7 @@ Filtering & Pruning:
 func init() {
 	treeCmd.Flags().StringVarP(&treeDB, "db", "d", "", "Database name for metadata enrichment")
 	treeCmd.Flags().StringSliceVar(&treeFields, "fields", []string{}, "Metadata fields to display (comma-separated)")
+	treeCmd.Flags().StringSliceVar(&treeFieldSingular, "field", []string{}, "Did you mean --fields?")
 	treeCmd.Flags().IntVar(&treeIndent, "indent", 4, "Indentation width in spaces")
 	treeCmd.Flags().IntVar(&treeTruncate, "truncate", 60, "Maximum length for metadata values (0 for no truncation)")
 	treeCmd.Flags().StringVar(&treeFormat, "format", "human", "Output format: human, json, or ai-portable")

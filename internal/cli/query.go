@@ -1,12 +1,12 @@
 /**
  * Component: Query Command
- * Block-UUID: 33beb471-b551-4006-aa7d-aaa42230fd45
- * Parent-UUID: 55a02fb6-e92f-4b5b-ad96-ff9933d3104c
- * Version: 3.7.0
+ * Block-UUID: ab7de828-1deb-4418-a82f-9b520bf66f7b
+ * Parent-UUID: 33beb471-b551-4006-aa7d-aaa42230fd45
+ * Version: 3.8.0
  * Description: Added the 'FieldsCmd' to provide a root-level shortcut for 'gsc query list --all'. This improves discovery UX by making the full intelligence map more accessible.
  * Language: Go
- * Created-at: 2026-02-12T03:36:15.116Z
- * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.4.7 (v3.3.0), GLM-4.7 (v3.4.0), Gemini 3 Flash (v3.5.0), Gemini 3 Flash (v3.6.0), GLM-4.7 (v3.7.0)
+ * Created-at: 2026-02-13T01:23:43.006Z
+ * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.4.7 (v3.3.0), GLM-4.7 (v3.4.0), Gemini 3 Flash (v3.5.0), Gemini 3 Flash (v3.6.0), GLM-4.7 (v3.7.0), GLM-4.7 (v3.8.0)
  */
 
 
@@ -39,6 +39,8 @@ var (
 	queryListDB        bool
 	queryListAll       bool
 	queryReport        bool
+	queryFields        []string
+	queryFieldSingular []string
 )
 
 // queryCmd represents the base query command
@@ -181,7 +183,11 @@ Useful for identifying common patterns or unanalyzed areas.`,
 			}
 		}
 
-		outputStr, resolvedDB, err := handleInsights(cmd.Context(), queryDB, queryField, queryInsightsLimit, queryScopeOverride, queryFormat, queryQuiet, queryReport)
+		if cmd.Flags().Changed("field") {
+			return fmt.Errorf("unknown flag: --field. Did you mean --fields?")
+		}
+
+		outputStr, resolvedDB, err := handleInsights(cmd.Context(), queryDB, queryFields, queryInsightsLimit, queryScopeOverride, queryFormat, queryQuiet, queryReport)
 		if err != nil {
 			return err
 		}
@@ -311,8 +317,8 @@ func init() {
 	queryListCmd.Flags().BoolVar(&queryQuiet, "quiet", false, "Suppress headers and hints")
 
 	// Insights Subcommand Flags
-	InsightsCmd.Flags().StringVarP(&queryField, "field", "f", "", "Field(s) to analyze (required, comma-separated)")
-	InsightsCmd.Flags().BoolVar(&queryReport, "report", false, "Generate ASCII dashboard report")
+	InsightsCmd.Flags().StringSliceVar(&queryFields, "fields", []string{}, "Field(s) to analyze (required, comma-separated or repeated)")
+	InsightsCmd.Flags().StringSliceVar(&queryFieldSingular, "field", []string{}, "Did you mean --fields?")
 	InsightsCmd.Flags().IntVar(&queryInsightsLimit, "limit", 10, "Limit top values (1-1000)")
 	InsightsCmd.Flags().StringVar(&queryScopeOverride, "scope-override", "", "Temporary scope override")
 	InsightsCmd.Flags().StringVarP(&queryDB, "db", "d", "", "Database override")
@@ -333,6 +339,7 @@ func init() {
 	queryCmd.AddCommand(queryListCmd)
 	queryCmd.AddCommand(InsightsCmd)
 	queryCmd.AddCommand(CoverageCmd)
+	queryCmd.AddCommand(FieldsCmd)
 }
 
 // handleCoverage orchestrates the coverage analysis process.
@@ -375,7 +382,7 @@ func handleCoverage(ctx context.Context, dbName string, scopeOverride string, fo
 }
 
  // handleInsights orchestrates the insights and report generation process.
-func handleInsights(ctx context.Context, dbName string, fieldsStr string, limit int, scopeOverride string, format string, quiet bool, isReport bool) (string, string, error) {
+func handleInsights(ctx context.Context, dbName string, fields []string, limit int, scopeOverride string, format string, quiet bool, isReport bool) (string, string, error) {
 	config, err := manifest.GetEffectiveConfig()
 	if err != nil {
 		return "", "", fmt.Errorf("failed to load config: %w", err)
@@ -397,10 +404,9 @@ func handleInsights(ctx context.Context, dbName string, fieldsStr string, limit 
 	}
 
 	// Parse fieldscy fields
-	if fieldsStr == "" {
-		return "", "", fmt.Errorf("--field is required for insights/report mode")
+	if len(fields) == 0 {
+		return "", "", fmt.Errorf("--fields is required for insights/report mode")
 	}
-	fields := strings.Split(fieldsStr, ",")
 
 	// Validate limit
 	if limit < 1 || limit > 1000 {
