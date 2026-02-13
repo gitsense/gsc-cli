@@ -1,12 +1,12 @@
 /**
  * Component: Query Command
- * Block-UUID: ab7de828-1deb-4418-a82f-9b520bf66f7b
- * Parent-UUID: 33beb471-b551-4006-aa7d-aaa42230fd45
- * Version: 3.8.0
- * Description: Added the 'FieldsCmd' to provide a root-level shortcut for 'gsc query list --all'. This improves discovery UX by making the full intelligence map more accessible.
+ * Block-UUID: 47298171-4aaf-4826-93d5-1569a7cd6a20
+ * Parent-UUID: ab7de828-1deb-4418-a82f-9b520bf66f7b
+ * Version: 3.9.0
+ * Description: Added the 'DatabasesCmd' as a root-level convenience command. It supports listing all databases, inspecting a specific database schema via positional argument, or dumping all schemas using the --schema flag.
  * Language: Go
- * Created-at: 2026-02-13T01:23:43.006Z
- * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.4.7 (v3.3.0), GLM-4.7 (v3.4.0), Gemini 3 Flash (v3.5.0), Gemini 3 Flash (v3.6.0), GLM-4.7 (v3.7.0), GLM-4.7 (v3.8.0)
+ * Created-at: 2026-02-13T05:23:27.277Z
+ * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.4.7 (v3.3.0), GLM-4.7 (v3.4.0), Gemini 3 Flash (v3.5.0), Gemini 3 Flash (v3.6.0), GLM-4.7 (v3.7.0), GLM-4.7 (v3.8.0), Gemini 3 Flash (v3.9.0)
  */
 
 
@@ -41,6 +41,7 @@ var (
 	queryReport        bool
 	queryFields        []string
 	queryFieldSingular []string
+	databasesSchema    bool
 )
 
 // queryCmd represents the base query command
@@ -161,7 +162,6 @@ var queryListCmd = &cobra.Command{
 }
 
 // InsightsCmd represents the metadata distribution analysis command.
-// It is registered as both a root command and a subcommand of 'query'.
 var InsightsCmd = &cobra.Command{
 	Use:   "insights",
 	Short: "Analyze metadata distribution and completeness",
@@ -208,7 +208,6 @@ Useful for identifying common patterns or unanalyzed areas.`,
 }
 
 // CoverageCmd represents the analysis coverage command.
-// It is registered as both a root command and a subcommand of 'query'.
 var CoverageCmd = &cobra.Command{
 	Use:   "coverage",
 	Short: "Analyze analysis coverage and identify blind spots",
@@ -257,7 +256,6 @@ files that have not yet been analyzed within the current focus scope.`,
 }
 
 // FieldsCmd represents the command to list all databases and their fields.
-// It is registered as both a root command and a subcommand of 'query'.
 var FieldsCmd = &cobra.Command{
 	Use:   "fields",
 	Short: "List all available databases and their fields",
@@ -282,6 +280,54 @@ and the metadata fields available in each. This is equivalent to running
 
 		// Call handleHierarchicalList with all=true to get the full map
 		outputStr, resolvedDB, err := handleHierarchicalList(cmd.Context(), "", "", queryFormat, queryQuiet, true)
+		if err != nil {
+			return err
+		}
+
+		if bridgeCode != "" {
+			// 1. Print to stdout
+			fmt.Print(outputStr)
+
+			// 2. Hand off to bridge orchestrator
+			cmdStr := filepath.Base(os.Args[0]) + " " + strings.Join(os.Args[1:], " ")
+			return bridge.Execute(bridgeCode, outputStr, queryFormat, cmdStr, time.Since(startTime), resolvedDB, forceInsert)
+		}
+
+		// Standard Output Mode
+		fmt.Println(outputStr)
+		return nil
+	},
+}
+
+// DatabasesCmd represents the command to list databases or inspect schemas.
+var DatabasesCmd = &cobra.Command{
+	Use:   "databases [database]",
+	Short: "List available databases or inspect their schemas",
+	Long: `Provides a high-level overview of the intelligence hub.
+1. No arguments: Lists all registered manifest databases.
+2. With [database]: Shows the schema for that specific database.
+3. With --schema: Shows the schema for every registered database.`,
+	Example: `  # List all databases
+  gsc databases
+
+  # Show schema for the 'arch' database
+  gsc databases arch
+
+  # Show schemas for all databases
+  gsc databases --schema`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		startTime := time.Now()
+
+		// Early Validation for Bridge
+		if bridgeCode != "" {
+			if err := bridge.ValidateCode(bridgeCode, bridge.StageDiscovery); err != nil {
+				cmd.SilenceUsage = true
+				return err
+			}
+		}
+
+		outputStr, resolvedDB, err := handleDatabases(cmd.Context(), args, databasesSchema, queryFormat, queryQuiet)
 		if err != nil {
 			return err
 		}
@@ -328,18 +374,65 @@ func init() {
 	// Coverage Subcommand Flags
 	CoverageCmd.Flags().StringVar(&queryScopeOverride, "scope-override", "", "Temporary scope override")
 	CoverageCmd.Flags().StringVarP(&queryDB, "db", "d", "", "Database override")
-	CoverageCmd.Flags().StringVarP(&queryFormat, "format", "o", "table", "Output format")
+	CoverageCmd.Flags().StringVarP(&queryFormat, "format(o)", "o", "table", "Output format")
 	CoverageCmd.Flags().BoolVar(&queryQuiet, "quiet", false, "Suppress headers")
 
 	// Fields Subcommand Flags
 	FieldsCmd.Flags().StringVarP(&queryFormat, "format", "o", "table", "Output format")
 	FieldsCmd.Flags().BoolVar(&queryQuiet, "quiet", false, "Suppress headers and hints")
 
+	// Databases Subcommand Flags
+	DatabasesCmd.Flags().BoolVar(&databasesSchema, "schema", false, "Show schema information")
+	DatabasesCmd.Flags().StringVarP(&queryFormat, "format", "o", "table", "Output format")
+	DatabasesCmd.Flags().BoolVar(&queryQuiet, "quiet", false, "Suppress headers and hints")
+
 	// Register Subcommands
 	queryCmd.AddCommand(queryListCmd)
 	queryCmd.AddCommand(InsightsCmd)
 	queryCmd.AddCommand(CoverageCmd)
 	queryCmd.AddCommand(FieldsCmd)
+}
+
+// handleDatabases orchestrates the database listing and schema inspection.
+func handleDatabases(ctx context.Context, args []string, showSchema bool, format string, quiet bool) (string, string, error) {
+	config, err := manifest.GetEffectiveConfig()
+	if err != nil {
+		return "", "", fmt.Errorf("failed to load config: %w", err)
+	}
+
+	// Case 1: Positional argument provided (Show schema for specific DB)
+	if len(args) > 0 {
+		resolvedDB, err := registry.ResolveDatabase(args[0])
+		if err != nil {
+			return "", "", err
+		}
+		schema, err := manifest.GetSchema(ctx, resolvedDB)
+		if err != nil {
+			return "", "", err
+		}
+		return manifest.FormatSchema(schema, format, quiet, config), resolvedDB, nil
+	}
+
+	// Case 2: --schema flag provided (Show schema for all DBs)
+	if showSchema {
+		databases, err := manifest.ListDatabases(ctx)
+		if err != nil {
+			return "", "", err
+		}
+		var outputs []string
+		for _, dbInfo := range databases {
+			schema, err := manifest.GetSchema(ctx, dbInfo.DatabaseName)
+			if err != nil {
+				logger.Warning("Failed to get schema for database", "db", dbInfo.DatabaseName, "error", err)
+				continue
+			}
+			outputs = append(outputs, manifest.FormatSchema(schema, format, quiet, config))
+		}
+		return strings.Join(outputs, "\n\n"), "", nil
+	}
+
+	// Case 3: Default (List all databases)
+	return handleList(ctx, "", "", format, quiet, config, false)
 }
 
 // handleCoverage orchestrates the coverage analysis process.
@@ -370,13 +463,11 @@ func handleCoverage(ctx context.Context, dbName string, scopeOverride string, fo
 	}
 
 	logger.Debug("Executing coverage analysis", "database", resolvedDB, "scope_override", scopeOverride)
-	// INTERNAL: We pass the active profile internally, but it's not exposed to the user
 	report, err := manifest.ExecuteCoverageAnalysis(ctx, resolvedDB, scopeOverride, repoRoot, config.ActiveProfile)
 	if err != nil {
 		return "", "", err
 	}
 
-	// Pass config to formatter to enable workspace headers
 	output := manifest.FormatCoverageReport(report, format, quiet, config)
 	return output, resolvedDB, nil
 }
@@ -403,12 +494,10 @@ func handleInsights(ctx context.Context, dbName string, fields []string, limit i
 		return "", "", err
 	}
 
-	// Parse fieldscy fields
 	if len(fields) == 0 {
 		return "", "", fmt.Errorf("--fields is required for insights/report mode")
 	}
 
-	// Validate limit
 	if limit < 1 || limit > 1000 {
 		return "", "", fmt.Errorf("--limit must be between 1 and 1000")
 	}
@@ -419,14 +508,11 @@ func handleInsights(ctx context.Context, dbName string, fields []string, limit i
 	}
 
 	logger.Debug("Executing insights analysis", "database", resolvedDB, "fields", fields, "limit", limit, "scope_override", scopeOverride)
-	// INTERNAL: We pass the active profile internally, but it's not exposed to the user
 	report, err := manifest.ExecuteInsightsAnalysis(ctx, resolvedDB, fields, limit, scopeOverride, repoRoot, config.ActiveProfile)
 	if err != nil {
 		return "", "", err
 	}
 
-	// Determine output format
-	// --insights defaults to JSON, --report defaults to Table
 	outputFormat := format
 	if outputFormat == "" {
 		if isReport {
@@ -458,7 +544,6 @@ func handleHierarchicalList(ctx context.Context, dbName string, fieldName string
 		resolvedDB = config.Global.DefaultDatabase
 	}
 
-	// Resolve database name to physical name
 	if resolvedDB != "" {
 		resolvedDB, err = registry.ResolveDatabase(resolvedDB)
 		if err != nil {
@@ -476,7 +561,6 @@ func handleHierarchicalList(ctx context.Context, dbName string, fieldName string
 
 // handleList performs the actual discovery call.
 func handleList(ctx context.Context, dbName string, fieldName string, format string, quiet bool, config *manifest.QueryConfig, all bool) (string, string, error) {
-	// Resolve database name if provided (might be a display name)
 	if dbName != "" {
 		var err error
 		dbName, err = registry.ResolveDatabase(dbName)
@@ -513,7 +597,6 @@ func handleQueryOrStatus(ctx context.Context, dbName string, fieldName string, v
 		resolvedDB = config.Global.DefaultDatabase
 	}
 
-	// Resolve database name to physical name
 	if resolvedDB != "" {
 		resolvedDB, err = registry.ResolveDatabase(resolvedDB)
 		if err != nil {
@@ -544,24 +627,20 @@ func handleQueryOrStatus(ctx context.Context, dbName string, fieldName string, v
 		return "", "", err
 	}
 
-	// Perform Coverage Analysis for the enriched response
 	repoRoot, err := git.FindGitRoot()
 	if err != nil {
 		return "", "", fmt.Errorf("failed to find git root for coverage analysis: %w", err)
 	}
 
-	// INTERNAL: We pass the active profile internally, but it's not exposed to the user
 	coverageReport, err := manifest.ExecuteCoverageAnalysis(ctx, resolvedDB, "", repoRoot, config.ActiveProfile)
 	if err != nil {
 		logger.Warning("Failed to execute coverage analysis", "error", err)
-		// Create a dummy report to avoid nil pointer issues
 		coverageReport = &manifest.CoverageReport{
 			Percentages:    manifest.CoveragePercentages{FocusCoverage: 0},
 			AnalysisStatus: "Unknown",
 		}
 	}
 
-	// Construct the enriched response
 	response := &manifest.QueryResponse{
 		Query: manifest.SimpleQuery{
 			Database:   resolvedDB,
@@ -577,7 +656,6 @@ func handleQueryOrStatus(ctx context.Context, dbName string, fieldName string, v
 		},
 	}
 
-	// Pass config to formatter to enable workspace headers
 	output := manifest.FormatQueryResults(response, resolvedFormat, quiet, config)
 	return output, resolvedDB, nil
 }

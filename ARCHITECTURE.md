@@ -1,16 +1,16 @@
 <!--
 Component: System Architecture Reference
-Block-UUID: 891965fc-b43e-4c8b-bf4d-9b40e8d10fd9
-Parent-UUID: 7746e4b2-77ec-40d3-8b1c-dd9c9cca9cbe
-Version: 1.4.0
-Description: Definitive architectural specification for gsc-cli. Includes structural mapping, data flow patterns, layer interaction guardrails, and critical abstraction definitions.
+Block-UUID: cffe345d-60d0-46b1-8d05-fbce479a51bd
+Parent-UUID: 891965fc-b43e-4c8b-bf4d-9b40e8d10fd9
+Version: 1.5.0
+Description: Updated architectural specification to include the "Convenience Command" pattern. This pattern provides root-level shortcuts (e.g., databases, fields, insights) for complex hierarchical queries to improve discovery UX for both humans and AI agents.
 Language: Markdown
 Created-at: 2026-02-12T04:27:26.111Z
-Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0), Gemini 3 Flash (v1.3.0), GLM-4.7 (v1.4.0)
+Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0), Gemini 3 Flash (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.5.0)
 -->
 
 
-# GSC-CLI System Architecture Reference (v1.2.0)
+# GSC-CLI System Architecture Reference (v1.5.0)
 
 This document is the definitive "Source of Truth" for the `gsc-cli` architecture. It provides unambiguous rules for file categorization, logic interpretation, and architectural guardrails for AI analysis.
 
@@ -33,6 +33,7 @@ This document is the definitive "Source of Truth" for the `gsc-cli` architecture
 | **Import Flow** | CLI (manifest import) → Importer → Validator → AtomicSwap → Registry | Load intelligence into workspace |
 | **Query Flow** | CLI (query) → SimpleQuerier → SQLite → Formatter → Output | Discover files by metadata |
 | **Tree Flow** | CLI (tree) → TreeBuilder → FilterParser → Enricher (with Filters) → Renderer → Output | Visualize file hierarchy with metadata and semantic filtering |
+| **Discovery Flow** | CLI (databases/fields/insights) → Querier/SchemaReader → Formatter → Output | High-level intelligence discovery via convenience shortcuts |
 
 ### Enrichment Pipeline (Sub-Flow)
 `Raw System Output (Files/Grep)` → `Metadata Lookup (SQLite)` → `Field Projection` → `Formatter` → `Output`
@@ -58,6 +59,7 @@ This document is the definitive "Source of Truth" for the `gsc-cli` architecture
 *   `focus-scope`: Glob-based inclusion/exclusion filtering for targeted analysis.
 *   `tree-visualization`: Hierarchical rendering of files enriched with metadata, supporting semantic filtering to generate a "Heat Map" of relevant files.
 *   `interactive-wizard`: Survey-based CLI prompts for profile and manifest setup.
+*   `convenience-commands`: Root-level shortcuts (`databases`, `fields`, `insights`, `coverage`) for rapid intelligence discovery.
 
 ### Architectural Patterns
 *   `atomic-import`: "Temp-Build -> Backup -> Rename" workflow for database safety.
@@ -109,6 +111,7 @@ The `gsc query` command supports glob-style wildcards (`*`) in the `--value` arg
 *   "How does the tree command calculate analysis coverage percentages?"
 *   "How are JSON array fields (like topics) queried differently from scalar fields?"
 *   "How does the tree command apply semantic filters to generate the heat map?"
+*   "How do convenience commands like 'databases' or 'fields' map to the underlying query logic?"
 
 ## 7. Project Glossary
 

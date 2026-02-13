@@ -1,12 +1,12 @@
 /**
  * Component: Root CLI Command
- * Block-UUID: 78146467-00e9-45a0-a8f6-ffd14eeb8666
- * Parent-UUID: cb398da7-0eaf-471e-8314-7d0c0400384f
- * Version: 1.24.0
- * Description: Registered the new 'values' command as a top-level shortcut for metadata discovery.
+ * Block-UUID: 16b4f580-492b-4c21-b093-c85bac8eb350
+ * Parent-UUID: 78146467-00e9-45a0-a8f6-ffd14eeb8666
+ * Version: 1.25.0
+ * Description: Registered the new 'databases' command as a top-level shortcut for manifest discovery and schema inspection.
  * Language: Go
  * Created-at: 2026-02-12T05:08:11.702Z
- * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v1.23.0), Gemini 3 Flash (v1.24.0)
+ * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v1.24.0), Gemini 3 Flash (v1.25.0)
  */
 
 
@@ -111,6 +111,7 @@ func init() {
 	rootCmd.AddCommand(FieldsCmd)
 	rootCmd.AddCommand(InsightsCmd)
 	rootCmd.AddCommand(CoverageCmd)
+	rootCmd.AddCommand(DatabasesCmd)
 	RegisterGrepCommand(rootCmd)
 	RegisterTreeCommand(rootCmd)
 	RegisterInfoCommand(rootCmd)

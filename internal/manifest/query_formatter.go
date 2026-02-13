@@ -1,12 +1,12 @@
 /**
  * Component: Query Output Formatter
- * Block-UUID: 5586e99d-b8ef-434e-9cb4-0b894efd46a1
- * Parent-UUID: 93129abe-c74a-4c9d-a21c-7e07e0c2f341
- * Version: 3.6.0
- * Description: Updated the list result formatter to change the database header from '[DB]' to 'DB:' and removed the 'Label:' line for a cleaner 'Intelligence Map' display.
+ * Block-UUID: 8dcb54b2-c07b-422b-b641-4164b44bab49
+ * Parent-UUID: 5586e99d-b8ef-434e-9cb4-0b894efd46a1
+ * Version: 3.7.0
+ * Description: Centralized schema formatting logic by adding 'FormatSchema'. This supports the new 'databases' convenience command and allows for consistent schema output (JSON, Table, CSV) across the CLI.
  * Language: Go
- * Created-at: 2026-02-13T04:38:28.316Z
- * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.2.0), Gemini 3 Flash (v3.3.0), GLM-4.7 (v3.4.0), Gemini 3 Flash (v3.5.0), GLM-4.7 (v3.6.0)
+ * Created-at: 2026-02-13T05:21:13.664Z
+ * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v3.6.0), Gemini 3 Flash (v3.7.0)
  */
 
 
@@ -139,7 +139,7 @@ func formatListResultTable(listResult *ListResult, quiet bool, config *QueryConf
 				}
 				
 				sb.WriteString(fmt.Sprintf("Manifest: %s\n", dbItem.ManifestName))
-				sb.WriteString(fmt.Sprintf("DB: %s\n", name))
+				sb.WriteString(fmt.Sprintf("Database: %s\n", name))
 				sb.WriteString(fmt.Sprintf("Description: %s\n", dbItem.Description))
 				sb.WriteString("\n")
 
@@ -213,6 +213,94 @@ func formatListResultTable(listResult *ListResult, quiet bool, config *QueryConf
 	}
 
 	return sb.String()
+}
+
+// FormatSchema formats a SchemaInfo into the specified format.
+func FormatSchema(schema *SchemaInfo, format string, quiet bool, config *QueryConfig) string {
+	switch strings.ToLower(format) {
+	case "json":
+		return formatSchemaJSON(schema)
+	case "table":
+		return formatSchemaTable(schema, quiet, config)
+	case "csv":
+		return formatSchemaCSV(schema)
+	default:
+		return fmt.Sprintf("Unsupported format: %s", format)
+	}
+}
+
+func formatSchemaJSON(schema *SchemaInfo) string {
+	bytes, err := json.MarshalIndent(schema, "", "  ")
+	if err != nil {
+		return fmt.Sprintf("Error formatting JSON: %v", err)
+	}
+	return string(bytes)
+}
+
+func formatSchemaTable(schema *SchemaInfo, quiet bool, config *QueryConfig) string {
+	var sb strings.Builder
+
+	if !quiet {
+		sb.WriteString(fmt.Sprintf("Schema for Database: %s\n", schema.DatabaseName))
+		sb.WriteString(strings.Repeat("-", 21+len(schema.DatabaseName)) + "\n")
+	}
+
+	if len(schema.Analyzers) == 0 {
+		sb.WriteString("No analyzers found in database.\n")
+		return sb.String()
+	}
+
+	headers := []string{"Analyzer Ref", "Analyzer Name", "Field Ref", "Field Name", "Type"}
+	var rows [][]string
+
+	for _, analyzer := range schema.Analyzers {
+		if len(analyzer.Fields) == 0 {
+			rows = append(rows, []string{analyzer.Ref, analyzer.Name, "", "", ""})
+		} else {
+			for _, field := range analyzer.Fields {
+				rows = append(rows, []string{
+					analyzer.Ref,
+					analyzer.Name,
+					field.Ref,
+					field.Name,
+					field.Type,
+				})
+			}
+		}
+	}
+
+	sb.WriteString(output.FormatTable(headers, rows))
+	return sb.String()
+}
+
+func formatSchemaCSV(schema *SchemaInfo) string {
+	if len(schema.Analyzers) == 0 {
+		return ""
+	}
+
+	headers := []string{"Analyzer Ref", "Analyzer Name", "Field Ref", "Field Name", "Type"}
+	var rows [][]string
+
+	for _, analyzer := range schema.Analyzers {
+		if len(analyzer.Fields) == 0 {
+			rows = append(rows, []string{analyzer.Ref, analyzer.Name, "", "", ""})
+		} else {
+			for _, field := range analyzer.Fields {
+				rows = append(rows, []string{
+					analyzer.Ref,
+					analyzer.Name,
+					field.Ref,
+					field.Name,
+					field.Type,
+				})
+			}
+		}
+	}
+
+	// Note: output.FormatCSV prints directly. We might want to refactor it to return a string.
+	// For now, we'll use a temporary capture or just call it.
+	output.FormatCSV(headers, rows)
+	return "" // CSV is printed directly by the utility
 }
 
 // FormatStatusView formats the current query context as a status view.

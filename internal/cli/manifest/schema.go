@@ -1,12 +1,12 @@
 /*
  * Component: Schema Command
- * Block-UUID: cfb006e1-eee4-48db-9208-fe8c3da8289a
- * Parent-UUID: 7e1adf49-269f-42f2-b22b-83f8dd3ea8bb
- * Version: 1.4.0
- * Description: CLI command for inspecting the schema of a manifest database, listing analyzers and their fields. Removed unused getter function. Updated to resolve database names from user input to physical names. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted Info logs to Debug, removed redundant Error logs, and set SilenceUsage to true.
+ * Block-UUID: 951dd825-025d-4abd-a951-0012647bf30c
+ * Parent-UUID: cfb006e1-eee4-48db-9208-fe8c3da8289a
+ * Version: 1.5.0
+ * Description: Refactored the schema command to use the centralized 'manifest.FormatSchema' function. Removed local table and CSV formatting logic to ensure consistency across all commands that display schema information.
  * Language: Go
  * Created-at: 2026-02-02T07:56:00.000Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
+ * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.5.0)
  */
 
 
@@ -17,7 +17,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/yourusername/gsc-cli/internal/manifest"
-	"github.com/yourusername/gsc-cli/internal/output"
 	"github.com/yourusername/gsc-cli/internal/registry"
 	"github.com/yourusername/gsc-cli/pkg/logger"
 )
@@ -49,83 +48,24 @@ for querying.`,
 			return err
 		}
 
-		// Format and output the results
-		switch schemaFormat {
-		case "json":
-			output.FormatJSON(schema)
-		case "table":
-			printSchemaTable(schema)
-		case "csv":
-			printSchemaCSV(schema)
-		default:
-			return fmt.Errorf("unsupported format: %s", schemaFormat)
+		// Get config for the formatter
+		config, err := manifest.GetEffectiveConfig()
+		if err != nil {
+			return fmt.Errorf("failed to load config: %w", err)
+		}
+
+		// Format and output the results using the centralized formatter
+		outputStr := manifest.FormatSchema(schema, schemaFormat, false, config)
+		if outputStr != "" {
+			fmt.Print(outputStr)
 		}
 
 		return nil
 	},
-	SilenceUsage: true, // Silence usage output on logic errors (e.g., DB not found)
+	SilenceUsage: true,
 }
 
 func init() {
 	// Add flags
 	schemaCmd.Flags().StringVarP(&schemaFormat, "format", "f", "table", "Output format (json, table, csv)")
-}
-
-// printSchemaTable formats the schema as a text table
-func printSchemaTable(schema *manifest.SchemaInfo) {
-	if len(schema.Analyzers) == 0 {
-		fmt.Println("No analyzers found in database.")
-		return
-	}
-
-	headers := []string{"Analyzer Ref", "Analyzer Name", "Field Ref", "Field Name", "Type"}
-	var rows [][]string
-
-	for _, analyzer := range schema.Analyzers {
-		if len(analyzer.Fields) == 0 {
-			// Add a row for the analyzer even if it has no fields
-			rows = append(rows, []string{analyzer.Ref, analyzer.Name, "", "", ""})
-		} else {
-			for _, field := range analyzer.Fields {
-				rows = append(rows, []string{
-					analyzer.Ref,
-					analyzer.Name,
-					field.Ref,
-					field.Name,
-					field.Type,
-				})
-			}
-		}
-	}
-
-	fmt.Print(output.FormatTable(headers, rows))
-}
-
-// printSchemaCSV formats the schema as CSV
-func printSchemaCSV(schema *manifest.SchemaInfo) {
-	if len(schema.Analyzers) == 0 {
-		fmt.Println("No analyzers found in database.")
-		return
-	}
-
-	headers := []string{"Analyzer Ref", "Analyzer Name", "Field Ref", "Field Name", "Type"}
-	var rows [][]string
-
-	for _, analyzer := range schema.Analyzers {
-		if len(analyzer.Fields) == 0 {
-			rows = append(rows, []string{analyzer.Ref, analyzer.Name, "", "", ""})
-		} else {
-			for _, field := range analyzer.Fields {
-				rows = append(rows, []string{
-					analyzer.Ref,
-					analyzer.Name,
-					field.Ref,
-					field.Name,
-					field.Type,
-				})
-			}
-		}
-	}
-
-	output.FormatCSV(headers, rows)
 }

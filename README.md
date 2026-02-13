@@ -22,7 +22,7 @@ Most repositories are passive containers. They store the "how" (the code) but lo
 By chatting with an AI in GitSense Chat, you create specialized analyzers called "Brains." These Brains extract domain knowledge from your code and store it as manifest files directly in your repository. This transforms your codebase into a queryable intelligence hub.
 
 **What this means**
-*   **For humans:** You stop guessing. Run `gsc fields` to see exactly what the repository knows, or `gsc values arch topics` to understand the landscape in seconds.
+*   **For humans:** You stop guessing. Run `gsc fields` to see exactly what the repository knows.
 *   **For AI:** A sensory layer that eliminates blind spots. Use `gsc tree` to generate a metadata-enriched project map. This provides the agent with high-signal context while significantly reducing token usage.
 
 This claim is demonstrable. Follow the Quick Start to import the included "Architect Brain" and see how `gsc` serves both humans and AI.
@@ -48,7 +48,13 @@ gsc manifest import .gitsense/manifests/gsc-architect.json --name arch
 
 **The Brain:** What to see how the brain thinks, take a look at `.gitsense/analyzers/gsc-architect.md`
 
-#### 2. Visualize the Intelligence Map
+#### 2. Discover Available Intelligence
+List all available databases and fields to understand what intelligence is loaded in your workspace.
+```bash
+gsc fields
+```
+
+#### 3. Visualize the Intelligence Map
 Stop guessing where logic lives. Use the `tree` command to see the repository's structure enriched with the "Why" behind every file.
 
 ```bash
@@ -57,7 +63,7 @@ gsc tree --db arch --fields purpose,layer --filter "layer in cli,internal-logic"
 ```
 **Massive Monorepos:**  Notice how `--prune` and `--filter` can be used to easily prune a 10,000+ files monorepo. 
 
-#### 3. Search by Intent (Not Just Text)
+#### 4. Search by Intent (Not Just Text)
 Standard `grep` finds strings. `gsc grep` finds **context**. Find where "Execute" is called, but only within files the Architect Brain has tagged with the "bridge" topic.
 
 ```bash
@@ -66,7 +72,7 @@ gsc grep "Execute" --db arch --filter "topics=bridge" --fields purpose,topics
 
 **Form Connections:** Define as many fields as you need to help identify connections and to refine/expand your search.
 
-#### 4. Discover What the Repository Knows
+#### 5. Discover What the Repository Knows
 If you're unsure what questions you can ask, query the repository's own intelligence schema.
 
 ```bash
@@ -81,7 +87,7 @@ gsc insights --db arch --fields layer,topics --limit 20
 
 #### Next Steps
 
-Run `gsc --examples`to learn more.
+Run `gsc --examples`to view more examples
 
 ### Built with AI, Designed by Humans
 99.9% AI generated. 90% human architected with 0% Go knowledge. 
@@ -106,7 +112,7 @@ gsc query list --all --code 123456
 This partnership allows humans to handle the high-level discovery while the AI focuses on implementation. While top models are capable, autonomous discovery often fails. gsc puts the human in control of the discovery loop, ensuring the AI always has the right context at the lowest possible cost.
 
 ### Core Features
-Query the landscape, grep with semantic filters, and visualize the tree with metadata. These are the building blocks for smarter workflows.
+Query the landscape, grep with semantic filters, visualize the tree with metadata, and discover available databases and schemas. These are the building blocks for smarter workflows.
 
 ### The Vision
 **gsc scout** 
