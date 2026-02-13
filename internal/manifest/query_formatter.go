@@ -1,12 +1,12 @@
 /**
  * Component: Query Output Formatter
- * Block-UUID: 93129abe-c74a-4c9d-a21c-7e07e0c2f341
- * Parent-UUID: 6674aff8-9720-4b0d-a519-45ad202b7f10
- * Version: 3.5.0
+ * Block-UUID: 5586e99d-b8ef-434e-9cb4-0b894efd46a1
+ * Parent-UUID: 93129abe-c74a-4c9d-a21c-7e07e0c2f341
+ * Version: 3.6.0
  * Description: Updated the list result formatter to change the database header from '[DB]' to 'DB:' and removed the 'Label:' line for a cleaner 'Intelligence Map' display.
  * Language: Go
- * Created-at: 2026-02-13T04:13:20.381Z
- * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.2.0), Gemini 3 Flash (v3.3.0), GLM-4.7 (v3.4.0), Gemini 3 Flash (v3.5.0)
+ * Created-at: 2026-02-13T04:38:28.316Z
+ * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.2.0), Gemini 3 Flash (v3.3.0), GLM-4.7 (v3.4.0), Gemini 3 Flash (v3.5.0), GLM-4.7 (v3.6.0)
  */
 
 
@@ -139,7 +139,7 @@ func formatListResultTable(listResult *ListResult, quiet bool, config *QueryConf
 				}
 				
 				sb.WriteString(fmt.Sprintf("Manifest: %s\n", dbItem.ManifestName))
-				sb.WriteString(fmt.Sprintf("Database: %s\n", name))
+				sb.WriteString(fmt.Sprintf("DB: %s\n", name))
 				sb.WriteString(fmt.Sprintf("Description: %s\n", dbItem.Description))
 				sb.WriteString("\n")
 
@@ -525,4 +525,67 @@ func getActiveProfileName() string {
 		return "default"
 	}
 	return config.ActiveProfile
+}
+
+// FormatManifestList formats a slice of DatabaseInfo into the specified format.
+// This replaces the generic map-based formatting in the output package.
+func FormatManifestList(databases []DatabaseInfo, format string) string {
+	if len(databases) == 0 {
+		return "No manifest databases found."
+	}
+
+	switch strings.ToLower(format) {
+	case "json":
+		return formatManifestListJSON(databases)
+	case "table":
+		return formatManifestListTable(databases)
+	case "human":
+		return formatManifestListHuman(databases)
+	default:
+		return fmt.Sprintf("Unsupported format: %s", format)
+	}
+}
+
+func formatManifestListJSON(databases []DatabaseInfo) string {
+	bytes, err := json.MarshalIndent(databases, "", "  ")
+	if err != nil {
+		return fmt.Sprintf("Error formatting JSON: %v", err)
+	}
+	return string(bytes)
+}
+
+func formatManifestListTable(databases []DatabaseInfo) string {
+	headers := []string{"DB", "Description", "Tags", "Files"}
+	rows := make([][]string, len(databases))
+	for i, db := range databases {
+		tags := strings.Join(db.Tags, ", ")
+		rows[i] = []string{
+			db.DatabaseName,
+			truncate(db.Description, 60), // Truncate description to 60 chars
+			tags,
+			fmt.Sprintf("%d", db.EntryCount),
+		}
+	}
+	return output.FormatTable(headers, rows)
+}
+
+func formatManifestListHuman(databases []DatabaseInfo) string {
+	var sb strings.Builder
+
+	for _, db := range databases {
+		sb.WriteString(fmt.Sprintf("%s\n", db.ManifestName))
+		sb.WriteString(fmt.Sprintf("   Database: %s\n", db.DatabaseName))
+		sb.WriteString(fmt.Sprintf("   Description: %s\n", db.Description))
+		
+		if len(db.Tags) > 0 {
+			sb.WriteString(fmt.Sprintf("   Tag: %s\n", strings.Join(db.Tags, ", ")))
+		} else {
+			sb.WriteString("   Tag: (none)\n")
+		}
+		
+		sb.WriteString(fmt.Sprintf("   Files: %d\n", db.EntryCount))
+		sb.WriteString("\n")
+	}
+
+	return sb.String()
 }

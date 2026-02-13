@@ -1,12 +1,12 @@
 /**
  * Component: Manifest Root Command
- * Block-UUID: 62834949-e5fa-4002-a389-15c2886e1698
- * Parent-UUID: e4240862-3e06-407c-a9d1-99e4c2e8e664
- * Version: 1.6.0
+ * Block-UUID: d7a8e30f-790a-4898-8e11-2525080a1fe7
+ * Parent-UUID: 62834949-e5fa-4002-a389-15c2886e1698
+ * Version: 1.7.0
  * Description: Defines the root command for the 'manifest' subcommand group, serving as the parent for init, import, list, and delete.
  * Language: Go
- * Created-at: 2026-02-09T18:02:23.590Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.4.5 (v1.1.0), GLM-4.7 (v1.2.0), Claude Haiku 4.4.5 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0)
+ * Created-at: 2026-02-13T04:59:45.865Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.4.5 (v1.1.0), GLM-4.7 (v1.2.0), Claude Haiku 4.4.5 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0)
  */
 
 
@@ -52,8 +52,13 @@ func init() {
 	Cmd.AddCommand(initCmd)
 	Cmd.AddCommand(importCmd)
 	Cmd.AddCommand(listCmd)
-	Cmd.AddCommand(exportCmd)
-	Cmd.AddCommand(bundleCmd)
+
+	// Temporarily hidden commands due to lack of time for validation.
+	// The code logic remains in bundle.go and export.go.
+	// Uncomment these lines when ready to re-enable.
+	// Cmd.AddCommand(exportCmd)
+	// Cmd.AddCommand(bundleCmd)
+
 	Cmd.AddCommand(schemaCmd)
 	Cmd.AddCommand(doctorCmd)
 	Cmd.AddCommand(deleteCmd)
