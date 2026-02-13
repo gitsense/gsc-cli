@@ -1,4 +1,4 @@
-module github.com/yourusername/gsc-cli
+module github.com/gitsense/gsc-cli
 
 go 1.21
 
