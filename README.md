@@ -10,7 +10,7 @@ Without context, tools can only find what is written in a file, not what that fi
 ### The Solution
 `gsc` is the bridge that brings GitSense Chat intelligence to your local environment. It imports specialized metadata (manifests) created by domain experts, transforming your repository from a collection of files into a queryable knowledge base.
 
-By shifting from text-based search to intent-based discovery, you move beyond "what" is in a file to "why" it exists. This is the foundation for a self-aware codebase.
+With `gsc`, you can turn "what" into "why" for any text file in Git.
 
 ### The World's First Intelligent Repository?
 **No really!**
@@ -25,7 +25,7 @@ By chatting with an AI in GitSense Chat, you create specialized analyzers called
 *   **For humans:** You stop guessing. Run `gsc brains` to see exactly what the repository knows.
 *   **For AI:** A sensory layer that eliminates blind spots. Use `gsc tree` to generate a metadata-enriched project map. This provides the agent with high-signal context while significantly reducing token usage.
 
-This claim is demonstrable. Follow the Quick Start to import the included "Architect Brain" and see how `gsc` serves both humans and AI.
+Follow the Quick Start to import the included "Architect Brain" to learn how the `.gitsense` directory is the new README in the age of AI coding.
 
 ### Installation
 Download a pre-compiled binary for Linux, macOS, or Windows from the releases page. Or if you prefer, you can build from source using the Go toolchain (version 1.21 or later required).
@@ -46,7 +46,7 @@ Import the architectural intent of this project.
 gsc manifest import .gitsense/manifests/gsc-architect.json --name arch
 ```
 
-**The Brain:** What to see how the brain thinks, take a look at `.gitsense/analyzers/gsc-architect.md`
+**How it Thinks:** What to see how the brain thinks, take a look at `.gitsense/analyzers/gsc-architect.md`
 
 #### 2. Discover Available Intelligence
 List all available databases and fields to understand what intelligence is loaded in your workspace.
