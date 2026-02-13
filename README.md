@@ -12,21 +12,6 @@ Without context, tools can only find what is written in a file, not what that fi
 
 By shifting from text-based search to intent-based discovery, you move beyond "what" is in a file to "why" it exists. This is the foundation for a self-aware codebase.
 
-### Code Provenance & Auditability
-
-This codebase is 99.9% AI-generated. To make AI-assisted development maintainable, every source file embeds complete generation metadata:
-
-**Dual-Versioning System:**
-- **Product Version (e.g., v0.1.0):** Tracks functional releases.
-- **LLM Version (e.g., v1.6.0):** Tracks iterative generation of each component.
-
-**Traceability Fields:**
-- `Block-UUID`: Unique identifier for the code block
-- `Parent-UUID`: Chain of inheritance from previous versions
-- `Authors`: Chronological record of LLM contributors with version numbers
-
-This metadata provides deterministic traceability for AI-generated code, answering "what generated this, when, and why?"-a prerequisite for reviewing, debugging, and evolving AI-assisted systems. To learn more, try the interactive Traceable Code Demo in GitSense Chat.
-
 ### The World's First Intelligent Repository?
 **No really!**
 
@@ -112,6 +97,21 @@ Is this code better than what a Go expert would write? Absolutely not. But it so
 Can this code be maintained and evolved? We see no reason why not and we have the receipts to prove it. Every file is 100% traceable with a Block-UUID and version history. View the source and the version information to see what human guided AI can do. There is no guessing. We explicitly document which LLM generated each version of the code. 
 
 For this initial release, we are not including the Git history that led to this "LLM version". Moving forward, our goal is to ensure that every feature and the conversations that created it can be easily reviewed.
+
+### Code Provenance & Auditability
+
+To truly make AI-assisted development maintainable, every source file embeds complete generation metadata:
+
+**Dual-Versioning System:**
+- **Product Version (e.g., v0.1.0):** Tracks functional releases.
+- **LLM Version (e.g., v1.6.0):** Tracks iterative generation of each component.
+
+**Traceability Fields:**
+- `Block-UUID`: Unique identifier for the code block
+- `Parent-UUID`: Chain of inheritance from previous versions
+- `Authors`: Chronological record of LLM contributors with version numbers
+
+This metadata provides deterministic traceability for AI-generated code, answering "what generated this, when, and why?"-a prerequisite for reviewing, debugging, and evolving AI-assisted systems. To learn more, try the interactive Traceable Code Demo in GitSense Chat.
 
 ### The CLI Bridge (Human-AI Partnership)
 gsc was built to solve a specific problem: bringing high-signal codebase intelligence into the chat window. By using the --code flag, you can instantly bridge your terminal output to GitSense Chat.
