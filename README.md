@@ -22,7 +22,7 @@ Most repositories are passive containers. They store the "how" (the code) but lo
 By chatting with an AI in GitSense Chat, you create specialized analyzers called "Brains." These Brains extract domain knowledge from your code and store it as manifest files directly in your repository. This transforms your codebase into a queryable intelligence hub.
 
 **What this means**
-*   **For humans:** You stop guessing. Run `gsc fields` to see exactly what the repository knows.
+*   **For humans:** You stop guessing. Run `gsc brains` to see exactly what the repository knows.
 *   **For AI:** A sensory layer that eliminates blind spots. Use `gsc tree` to generate a metadata-enriched project map. This provides the agent with high-signal context while significantly reducing token usage.
 
 This claim is demonstrable. Follow the Quick Start to import the included "Architect Brain" and see how `gsc` serves both humans and AI.
@@ -51,7 +51,7 @@ gsc manifest import .gitsense/manifests/gsc-architect.json --name arch
 #### 2. Discover Available Intelligence
 List all available databases and fields to understand what intelligence is loaded in your workspace.
 ```bash
-gsc fields
+gsc brains
 ```
 
 #### 3. Visualize the Intelligence Map
@@ -76,10 +76,10 @@ gsc grep "Execute" --db arch --filter "topics=bridge" --fields purpose,topics
 If you're unsure what questions you can ask, query the repository's own intelligence schema.
 
 ```bash
-# List every metadata field from all imported Brains
-gsc fields
+# First, list every metadata field from all imported Brains
+gsc brains
 
-# Getting a distribution of the top 20 values to better understand the repos purpose
+# Then get a distribution of the top 20 (or more) values to better understand the repos purpose
 gsc insights --db arch --fields layer,topics --limit 20
 ```
 

@@ -108,7 +108,6 @@ func init() {
 	rootCmd.AddCommand(manifest.Cmd)
 	rootCmd.AddCommand(queryCmd)
 	rootCmd.AddCommand(valuesCmd)
-	rootCmd.AddCommand(FieldsCmd)
 	rootCmd.AddCommand(InsightsCmd)
 	rootCmd.AddCommand(CoverageCmd)
 	rootCmd.AddCommand(BrainsCmd)

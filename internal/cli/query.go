@@ -438,7 +438,7 @@ func handleBrains(ctx context.Context, args []string, showSchema bool, format st
 	}
 
 	// Case 3: Default (List all databases)
-	return handleList(ctx, "", "", format, quiet, config, false)
+	return handleList(ctx, "", "", format, quiet, config, true)
 }
 
 // handleCoverage orchestrates the coverage analysis process.
