@@ -10,12 +10,10 @@ Without context, tools can only find what is written in a file, not what that fi
 ### The Solution
 `gsc` is the bridge that brings GitSense Chat intelligence to your local environment. It imports specialized metadata (manifests) created by domain experts, transforming your repository from a collection of files into a queryable knowledge base.
 
-### The World's First Intelligent Repository?
-**No really!**
+### The World's First
+Most repositories are passive containers. They store the "how" (the code) but lose the "why" (the intent). The reasoning behind the architecture often remains trapped in documentation or the developer's head.
 
-Most repositories are passive containers. They store the "how" (the code) but lose the "why" (the intent). The reasoning behind the architecture often remains trapped in documentation or the developer's head. 
-
-`gsc` makes your repository self-aware.
+`gsc` makes your repository self-aware. By publishing an intelligence manifest (see `.gitsense` directory), we believe this is the world's first intelligent repository. We are also the first to openly attribute AI and show traceable AI-generated code in the wild. See [Code Provenance & Auditability](#code-provenance--auditability) for details.
 
 By chatting with an AI in GitSense Chat, you create specialized analyzers called "Brains." These Brains extract domain knowledge from your code and store it as manifest files directly in your repository. This transforms your codebase into a queryable intelligence hub.
 
@@ -23,7 +21,6 @@ By chatting with an AI in GitSense Chat, you create specialized analyzers called
 *   **For humans:** You stop guessing. Run `gsc brains` to see exactly what the repository knows.
 *   **For AI:** A sensory layer that eliminates blind spots. Use `gsc tree` to generate a metadata-enriched project map. This provides the agent with high-signal context while significantly reducing token usage.
 
-Follow the Quick Start to import the included "Architect Brain" to learn how the `.gitsense` directory is the new README in the age of AI coding.
 
 ### Installation
 Download a pre-compiled binary for Linux, macOS, or Windows from the releases page. Or if you prefer, you can build from source using the Go toolchain (version 1.21 or later required).
