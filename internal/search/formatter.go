@@ -162,7 +162,7 @@ func formatHumanResponseToString(context QueryContext, summary GrepSummary, matc
 					matchCount++
 				}
 			}
-			sb.WriteString(fmt.Sprintf("  ; matches: %d\n", matchCount))
+			sb.WriteString(fmt.Sprintf("Matches: %d\n", matchCount))
 		} else {
 			for _, m := range file.Matches {
 				lineNum := fmt.Sprintf("%d", m.LineNumber)
