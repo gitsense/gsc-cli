@@ -12,6 +12,21 @@ Without context, tools can only find what is written in a file, not what that fi
 
 By shifting from text-based search to intent-based discovery, you move beyond "what" is in a file to "why" it exists. This is the foundation for a self-aware codebase.
 
+### Code Provenance & Auditability
+
+This codebase is 99.9% AI-generated. To make AI-assisted development maintainable, every source file embeds complete generation metadata:
+
+**Dual-Versioning System:**
+- **Product Version (e.g., v0.1.0):** Tracks functional releases.
+- **LLM Version (e.g., v1.6.0):** Tracks iterative generation of each component.
+
+**Traceability Fields:**
+- `Block-UUID`: Unique identifier for the code block
+- `Parent-UUID`: Chain of inheritance from previous versions
+- `Authors`: Chronological record of LLM contributors with version numbers
+
+This metadata provides deterministic traceability for AI-generated code, answering "what generated this, when, and why?"-a prerequisite for reviewing, debugging, and evolving AI-assisted systems. To learn more, try the interactive Traceable Code Demo in GitSense Chat.
+
 ### The World's First Intelligent Repository?
 **No really!**
 
