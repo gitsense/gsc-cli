@@ -1,16 +1,16 @@
 <!--
 Component: System Architecture Reference
-Block-UUID: 58e15703-9b6e-4884-865a-66d1642ad8d5
-Parent-UUID: cffe345d-60d0-46b1-8d05-fbce479a51bd
-Version: 1.6.0
-Description: Updated architectural specification to include the "Convenience Command" pattern. This pattern provides root-level shortcuts (e.g., databases, fields, insights) for complex hierarchical queries to improve discovery UX for both humans and AI agents.
+Block-UUID: 8e74c6d0-2948-4d2a-9acf-92816f06aa70
+Parent-UUID: 58e15703-9b6e-4884-865a-66d1642ad8d5
+Version: 1.7.0
+Description: Updated architectural specification to include the "AI Traceability & Versioning Philosophy" section, defining the distinction between Product and LLM versions.
 Language: Markdown
-Created-at: 2026-02-13T06:19:32.196Z
-Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0), Gemini 3 Flash (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.5.0), Gemini 3 Flash (v1.6.0)
+Created-at: 2026-02-13T07:17:07.729Z
+Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0), Gemini 3 Flash (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.5.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0)
 -->
 
 
-# GSC-CLI System Architecture Reference (v1.6.0)
+# GSC-CLI System Architecture Reference (v1.7.0)
 
 This document is the definitive "Source of Truth" for the `gsc-cli` architecture. It provides unambiguous rules for file categorization, logic interpretation, and architectural guardrails for AI analysis.
 
@@ -127,3 +127,16 @@ The `gsc query` command supports glob-style wildcards (`*`) in the `--value` arg
 ## 8. Internal & Hidden Features
 
 **Note on Profiles:** The profile system (`internal/manifest/profile_manager.go`) is **RETAINED INTERNAL LOGIC**. While the implementation for context switching and aliases exists, the corresponding CLI flags are currently hidden from the user interface to reduce complexity. AI analyzers should recognize this code as "dormant/internal" rather than "active user-facing."
+
+## 9. AI Traceability & Versioning Philosophy
+
+This project distinguishes between the **Product Version** and the **LLM Version**.
+
+*   **Product Version:** (e.g., v0.1.0) Tracks the release maturity and feature set of the CLI tool as a whole.
+*   **LLM Version:** (e.g., v1.2.0 in file headers) Tracks the iterative generation and refinement of a specific code component by an AI.
+
+### Metadata Attribution
+Every file contains a metadata header to ensure 100% traceability:
+*   **Block-UUID:** A unique identifier for the current state of the code block.
+*   **Parent-UUID:** The UUID of the preceding version, creating an unbroken inheritance chain.
+*   **Authors:** A chronological log of every AI model (and version) that contributed to the file. This ensures that even in forks, the original architectural intent and AI contribution history remain intact.
