@@ -10,8 +10,6 @@ Without context, tools can only find what is written in a file, not what that fi
 ### The Solution
 `gsc` is the bridge that brings GitSense Chat intelligence to your local environment. It imports specialized metadata (manifests) created by domain experts, transforming your repository from a collection of files into a queryable knowledge base.
 
-With `gsc`, you can turn "what" into "why" for any text file in Git.
-
 ### The World's First Intelligent Repository?
 **No really!**
 
