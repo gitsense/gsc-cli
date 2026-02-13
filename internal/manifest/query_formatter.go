@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Query Output Formatter
- * Block-UUID: 6674aff8-9720-4b0d-a519-45ad202b7f10
- * Parent-UUID: d95f7059-049a-4542-9b5a-e2dc92b8b955
- * Version: 3.4.0
+ * Block-UUID: 93129abe-c74a-4c9d-a21c-7e07e0c2f341
+ * Parent-UUID: 6674aff8-9720-4b0d-a519-45ad202b7f10
+ * Version: 3.5.0
  * Description: Updated the list result formatter to change the database header from '[DB]' to 'DB:' and removed the 'Label:' line for a cleaner 'Intelligence Map' display.
  * Language: Go
- * Created-at: 2026-02-09T00:36:02.868Z
- * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.2.0), Gemini 3 Flash (v3.3.0), GLM-4.7 (v3.4.0)
+ * Created-at: 2026-02-13T04:13:20.381Z
+ * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.2.0), Gemini 3 Flash (v3.3.0), GLM-4.7 (v3.4.0), Gemini 3 Flash (v3.5.0)
  */
 
 
@@ -80,8 +80,7 @@ func formatQueryResultsTable(response *QueryResponse, quiet bool, config *QueryC
 			renderProgressBar(response.Summary.CoveragePercent), 
 			response.Summary.CoveragePercent, 
 			response.Summary.TotalResults))
-		sb.WriteString("Hint: Run 'gsc query coverage' for a detailed breakdown of blind spots.\n\n")
-		sb.WriteString(fmt.Sprintf("[Context: %s] | Switch: gsc config use <name>", getActiveProfileName()))
+		sb.WriteString("Hint: Run 'gsc query coverage' for a detailed breakdown of blind spots.\n")
 	}
 
 	return sb.String()
@@ -139,6 +138,7 @@ func formatListResultTable(listResult *ListResult, quiet bool, config *QueryConf
 					name = name + " (active)"
 				}
 				
+				sb.WriteString(fmt.Sprintf("Manifest: %s\n", dbItem.ManifestName))
 				sb.WriteString(fmt.Sprintf("Database: %s\n", name))
 				sb.WriteString(fmt.Sprintf("Description: %s\n", dbItem.Description))
 				sb.WriteString("\n")

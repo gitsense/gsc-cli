@@ -3,7 +3,7 @@
  * Block-UUID: 0de5c5a0-21f2-4aca-af00-2a7185139326
  * Parent-UUID: cec62867-448b-4f54-acd4-f8a10af853fc
  * Version: 1.8.0
- * Description: Executes simple value-matching queries and hierarchical list operations. Updated GetListResult to support the '--all' flag, which populates a nested hierarchy of databases and their fields. Refactored listAllDatabases to correctly map command-line slugs (Name) and human-friendly display names (Label) for improved ergonomics.
+ * Description: Executes simple value-matching queries and hierarchical list operations.
  * Language: Go
  * Created-at: 2026-02-11T07:35:30.010Z
  * Authors: GLM-4.7 (v1.0.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), GLM-4.7 (v1.7.1), GLM-4.7 (v1.7.2), Gemini 3 Flash (v1.8.0)
@@ -201,12 +201,9 @@ func listAllDatabases(ctx context.Context) ([]ListItem, error) {
 
 	var items []ListItem
 	for _, dbInfo := range dbs {
-		// Derive the slug (Name) from the physical filename
-		slug := strings.TrimSuffix(filepath.Base(dbInfo.DBPath), ".db")
-
 		items = append(items, ListItem{
-			Name:        slug,        // The easy-to-type identifier (e.g., "security")
-			Label:       dbInfo.DatabaseName, // The human-friendly display name (e.g., "Security Analysis")
+			Name:         dbInfo.DatabaseName,
+			ManifestName: dbInfo.ManifestName,
 			Description: dbInfo.Description,
 			Source:      filepath.Base(dbInfo.DBPath),
 			Count:       dbInfo.EntryCount,

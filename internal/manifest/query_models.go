@@ -1,12 +1,12 @@
 /**
  * Component: Query Models
- * Block-UUID: 377e39ae-0d62-4caa-940a-01a914ab8d01
- * Parent-UUID: 9295988b-1f7d-4bbe-a7ce-16b81ce5fa17
- * Version: 1.7.0
+ * Block-UUID: f2ad304a-9e4e-4860-b684-8eaeec2e8e27
+ * Parent-UUID: 377e39ae-0d62-4caa-940a-01a914ab8d01
+ * Version: 1.8.0
  * Description: Defines the Go structs for query operations, configuration, and list results. Enhanced ListItem to support hierarchical nesting and the distinction between command-line names (slugs) and human-friendly labels for the "Discovery Dashboard" and '--all' views. Updated comments to explicitly distinguish between Name (DatabaseName) and Label (DatabaseLabel).
  * Language: Go
- * Created-at: 2026-02-05T19:28:09.139Z
- * Authors: GLM-4.7 (v1.0.0), Gemini 3 Flash (v1.4.0), Gemini 3 Flash (v1.5.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0)
+ * Created-at: 2026-02-13T04:11:28.807Z
+ * Authors: GLM-4.7 (v1.0.0), Gemini 3 Flash (v1.4.0), Gemini 3 Flash (v1.5.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), Gemini 3 Flash (v1.8.0)
  */
 
 
@@ -56,7 +56,7 @@ type ListResult struct {
 // ListItem represents a single item in a list result.
 type ListItem struct {
 	Name        string     `json:"name"`                  // The identifier (e.g., database_name slug, field name, or value)
-	Label       string     `json:"label,omitempty"`       // The human-friendly label (e.g., database_label for databases)
+	ManifestName string    `json:"manifest_name,omitempty"` // The human-friendly name of the manifest
 	Description string     `json:"description,omitempty"` // Optional description
 	Source      string     `json:"source,omitempty"`      // Optional source (e.g., physical filename)
 	Type        string     `json:"type,omitempty"`        // Optional type (for fields)
