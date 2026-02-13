@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/yourusername/gsc-cli/internal/db"
-	"github.com/yourusername/gsc-cli/pkg/logger"
+	"github.com/gitsense/gsc-cli/internal/db"
+	"github.com/gitsense/gsc-cli/pkg/logger"
 )
 
 // CreateBundle executes a SQL query and formats the results as a context bundle.

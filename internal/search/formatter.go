@@ -18,8 +18,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/yourusername/gsc-cli/internal/output"
-	"github.com/yourusername/gsc-cli/pkg/logger"
+	"github.com/gitsense/gsc-cli/internal/output"
+	"github.com/gitsense/gsc-cli/pkg/logger"
 )
 
 // FormatOptions holds configuration for the output formatter.

@@ -20,13 +20,13 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/yourusername/gsc-cli/internal/bridge"
-	"github.com/yourusername/gsc-cli/internal/git"
-	"github.com/yourusername/gsc-cli/internal/manifest"
-	"github.com/yourusername/gsc-cli/internal/registry"
-	"github.com/yourusername/gsc-cli/internal/search"
-	"github.com/yourusername/gsc-cli/internal/tree"
-	"github.com/yourusername/gsc-cli/pkg/logger"
+	"github.com/gitsense/gsc-cli/internal/bridge"
+	"github.com/gitsense/gsc-cli/internal/git"
+	"github.com/gitsense/gsc-cli/internal/manifest"
+	"github.com/gitsense/gsc-cli/internal/registry"
+	"github.com/gitsense/gsc-cli/internal/search"
+	"github.com/gitsense/gsc-cli/internal/tree"
+	"github.com/gitsense/gsc-cli/pkg/logger"
 )
 
 var (

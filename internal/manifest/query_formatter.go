@@ -19,7 +19,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yourusername/gsc-cli/internal/output"
+	"github.com/gitsense/gsc-cli/internal/output"
 )
 
 // FormatQueryResults formats a slice of QueryResult into the specified format.

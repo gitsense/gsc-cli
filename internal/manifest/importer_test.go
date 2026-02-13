@@ -21,8 +21,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yourusername/gsc-cli/internal/registry"
-	"github.com/yourusername/gsc-cli/pkg/settings"
+	"github.com/gitsense/gsc-cli/internal/registry"
+	"github.com/gitsense/gsc-cli/pkg/settings"
 )
 
 // setupTestEnv creates a temporary directory structure for testing

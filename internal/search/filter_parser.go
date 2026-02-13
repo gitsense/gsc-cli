@@ -18,7 +18,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/yourusername/gsc-cli/internal/manifest"
+	"github.com/gitsense/gsc-cli/internal/manifest"
 )
 
 // ParseFilters parses a list of filter strings into FilterCondition objects.

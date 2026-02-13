@@ -20,8 +20,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/yourusername/gsc-cli/internal/db"
-	"github.com/yourusername/gsc-cli/pkg/logger"
+	"github.com/gitsense/gsc-cli/internal/db"
+	"github.com/gitsense/gsc-cli/pkg/logger"
 	"gopkg.in/yaml.v3"
 )
 

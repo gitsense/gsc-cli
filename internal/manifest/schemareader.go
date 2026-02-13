@@ -15,8 +15,8 @@ package manifest
 import (
 	"context"
 
-	"github.com/yourusername/gsc-cli/internal/db"
-	"github.com/yourusername/gsc-cli/pkg/logger"
+	"github.com/gitsense/gsc-cli/internal/db"
+	"github.com/gitsense/gsc-cli/pkg/logger"
 )
 
 // SchemaInfo represents the complete schema structure of a manifest database.

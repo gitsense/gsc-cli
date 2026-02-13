@@ -24,10 +24,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/yourusername/gsc-cli/internal/db"
-	"github.com/yourusername/gsc-cli/internal/output"
-	"github.com/yourusername/gsc-cli/pkg/logger"
-	"github.com/yourusername/gsc-cli/pkg/settings"
+	"github.com/gitsense/gsc-cli/internal/db"
+	"github.com/gitsense/gsc-cli/internal/output"
+	"github.com/gitsense/gsc-cli/pkg/logger"
+	"github.com/gitsense/gsc-cli/pkg/settings"
 )
 
 // BridgeStage defines the lifecycle point for validation

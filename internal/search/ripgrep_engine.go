@@ -22,7 +22,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yourusername/gsc-cli/pkg/logger"
+	"github.com/gitsense/gsc-cli/pkg/logger"
 )
 
 // RipgrepEngine implements SearchEngine using the ripgrep (rg) binary.

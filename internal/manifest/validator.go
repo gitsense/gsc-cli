@@ -16,7 +16,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/yourusername/gsc-cli/pkg/logger"
+	"github.com/gitsense/gsc-cli/pkg/logger"
 )
 
 // ValidateManifest checks if the manifest file contains all required fields

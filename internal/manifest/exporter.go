@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/yourusername/gsc-cli/internal/db"
+	"github.com/gitsense/gsc-cli/internal/db"
 )
 
 // ExportDatabase exports the database content to the specified format.

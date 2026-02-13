@@ -19,10 +19,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/yourusername/gsc-cli/internal/db"
-	"github.com/yourusername/gsc-cli/internal/git"
-	"github.com/yourusername/gsc-cli/internal/registry"
-	"github.com/yourusername/gsc-cli/pkg/settings"
+	"github.com/gitsense/gsc-cli/internal/db"
+	"github.com/gitsense/gsc-cli/internal/git"
+	"github.com/gitsense/gsc-cli/internal/registry"
+	"github.com/gitsense/gsc-cli/pkg/settings"
 )
 
 // DoctorReport represents the result of a health check.

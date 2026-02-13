@@ -16,8 +16,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/yourusername/gsc-cli/internal/registry"
-	"github.com/yourusername/gsc-cli/pkg/logger"
+	"github.com/gitsense/gsc-cli/internal/registry"
+	"github.com/gitsense/gsc-cli/pkg/logger"
 )
 
 // DeleteManifest removes the database file and the registry entry for the given database name.

@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/yourusername/gsc-cli/internal/bridge"
+	"github.com/gitsense/gsc-cli/internal/bridge"
 )
 
 var (

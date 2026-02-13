@@ -20,7 +20,7 @@ import (
 	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
-	"github.com/yourusername/gsc-cli/internal/search"
+	"github.com/gitsense/gsc-cli/internal/search"
 )
 
 // Node represents a single entry (file or directory) in the filesystem tree.

@@ -18,7 +18,7 @@ import (
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/yourusername/gsc-cli/internal/registry"
+	"github.com/gitsense/gsc-cli/internal/registry"
 )
 
 // CreateProfileInteractive guides the user through creating a profile using survey prompts.

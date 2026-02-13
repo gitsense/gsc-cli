@@ -19,7 +19,7 @@ import (
 
 	_ "modernc.org/sqlite" // Pure Go SQLite driver
 
-	"github.com/yourusername/gsc-cli/pkg/logger"
+	"github.com/gitsense/gsc-cli/pkg/logger"
 )
 
 // OpenDB opens a SQLite database connection with optimized settings for the CLI.

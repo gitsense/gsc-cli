@@ -75,7 +75,7 @@ func GetRepositoryInfo() (*RepositoryInfo, error) {
 	}
 
 	// 4. Extract Repo Name from URL
-	// e.g., "https://github.com/yourusername/gsc-cli.git" -> "gsc-cli"
+	// e.g., "https://github.com/gitsense/gsc-cli.git" -> "gsc-cli"
 	name := filepath.Base(url)
 	name = strings.TrimSuffix(name, ".git")
 

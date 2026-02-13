@@ -19,9 +19,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/yourusername/gsc-cli/internal/git"
-	"github.com/yourusername/gsc-cli/pkg/logger"
-	"github.com/yourusername/gsc-cli/pkg/settings"
+	"github.com/gitsense/gsc-cli/internal/git"
+	"github.com/gitsense/gsc-cli/pkg/logger"
+	"github.com/gitsense/gsc-cli/pkg/settings"
 )
 
 // WorkspaceInfo represents the complete state of the GitSense Chat workspace.

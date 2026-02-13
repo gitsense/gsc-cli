@@ -19,9 +19,9 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/spf13/cobra"
-	"github.com/yourusername/gsc-cli/internal/git"
-	"github.com/yourusername/gsc-cli/internal/manifest"
-	"github.com/yourusername/gsc-cli/internal/output"
+	"github.com/gitsense/gsc-cli/internal/git"
+	"github.com/gitsense/gsc-cli/internal/manifest"
+	"github.com/gitsense/gsc-cli/internal/output"
 )
 
 // INTERNAL FEATURE: The 'config' command and its subcommands are currently hidden from the user

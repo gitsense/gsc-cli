@@ -16,7 +16,7 @@ import (
 	"database/sql"
 	"strings"
 
-	"github.com/yourusername/gsc-cli/pkg/logger"
+	"github.com/gitsense/gsc-cli/pkg/logger"
 )
 
 // CreateSchema creates all necessary tables in the database if they don't exist.

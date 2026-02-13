@@ -13,7 +13,7 @@
 package main
 
 import (
-	"github.com/yourusername/gsc-cli/internal/cli"
+	"github.com/gitsense/gsc-cli/internal/cli"
 )
 
 func main() {

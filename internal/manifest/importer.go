@@ -27,11 +27,11 @@ import (
 	"time"
 
 	"github.com/src-d/enry/v2"
-	"github.com/yourusername/gsc-cli/internal/db"
-	"github.com/yourusername/gsc-cli/internal/git"
-	"github.com/yourusername/gsc-cli/internal/registry"
-	"github.com/yourusername/gsc-cli/pkg/logger"
-	"github.com/yourusername/gsc-cli/pkg/settings"
+	"github.com/gitsense/gsc-cli/internal/db"
+	"github.com/gitsense/gsc-cli/internal/git"
+	"github.com/gitsense/gsc-cli/internal/registry"
+	"github.com/gitsense/gsc-cli/pkg/logger"
+	"github.com/gitsense/gsc-cli/pkg/settings"
 )
 
 // ImportManifest reads a JSON manifest file and imports it into the specified SQLite database.

@@ -17,9 +17,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/yourusername/gsc-cli/internal/git"
-	"github.com/yourusername/gsc-cli/pkg/logger"
-	"github.com/yourusername/gsc-cli/pkg/settings"
+	"github.com/gitsense/gsc-cli/internal/git"
+	"github.com/gitsense/gsc-cli/pkg/logger"
+	"github.com/gitsense/gsc-cli/pkg/settings"
 )
 
 // ResolveDBPath constructs the absolute path to a database file within the .gitsense directory.
