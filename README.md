@@ -8,26 +8,24 @@ A CLI for querying repository intelligence and a framework for building AI-ready
 Without context, tools can only find what is written in a file, not what that file represents. Searching for text is not the same as searching for purpose, risk, or impact.
 
 ### The Solution
-gsc makes your repository smarter by applying intelligence created in GitSense Chat.
+`gsc` is the bridge that brings GitSense Chat intelligence to your local environment. It imports specialized metadata (manifests) created by domain experts, transforming your repository from a collection of files into a queryable knowledge base.
 
-Domain experts encode their expertise into specialized analyzers (the "Brains"). These Brains analyze your files and generate portable intelligence (manifest files). gsc imports these manifests and transforms your repository into a queryable intelligence hub. The more manifests you add, the smarter your repository becomes.
-
-Now instead of searching for text, you search for meaning. This is how you make your repository self-aware.
+By shifting from text-based search to intent-based discovery, you move beyond "what" is in a file to "why" it exists. This is the foundation for a self-aware codebase.
 
 ### The World's First Intelligent Repository?
 **No really!**
 
-We believe this is the world's first intelligent repository, one that ships with its own intelligence manifest.  For humans, this means they get a high-level map of intent. For AI agents, it is a high-fidelity sensory layer that enables zero-shot discovery. In the age of coding agents, we feel our manifest directory `.gitsense`, is as essential as a `README.md`. It can turn text into intent, allowing agents to operate at scale.
+Most repositories are passive containers. They store the "how" (the code) but lose the "why" (the intent). The reasoning behind the architecture often remains trapped in documentation or the developer's head. 
 
-The included "Brain Dump" (`.gitsense/analyzers/gsc-architect.md`) was was created by a GitSense Chat and is  designed to focus on project architecture. This is the core of our "world's first" claim: the repository doesn't just store code, it stores the expertise required to understand it. Take a look at the example below to understand how:
+`gsc` makes your repository self-aware.
 
-Imagine you are an open source maintainer tired of answering the same questions repeatedly. You create a FAQ "Brain" by dumping your GitHub issues into a repository, import them into GitSense Chat, and have it analyze the patterns to create a queryable FAQ. This process can be automated to include new issues. As part of your contribution guidelines, you tell users that for the quickest response, they should try:
+By chatting with an AI in GitSense Chat, you create specialized analyzers called "Brains." These Brains extract domain knowledge from your code and store it as manifest files directly in your repository. This transforms your codebase into a queryable intelligence hub.
 
-```bash
-gsc query --db faq --field topics --insights --json
-```
+**What this means**
+*   **For humans:** You stop guessing. Run `gsc fields` to see exactly what the repository knows, or `gsc values arch topics` to understand the landscape in seconds.
+*   **For AI:** A sensory layer that eliminates blind spots. Use `gsc tree` to generate a metadata-enriched project map. This provides the agent with high-signal context while significantly reducing token usage.
 
-Feed the results into a chat and see if the FAQ guides can help. No human needed. No documentation to maintain. Just expertise, queryable and alive.
+This claim is demonstrable. Follow the Quick Start to import the included "Architect Brain" and see how `gsc` serves both humans and AI.
 
 ### Installation
 Download a pre-compiled binary for Linux, macOS, or Windows from the releases page. Or if you prefer, you can build from source using the Go toolchain (version 1.21 or later required).
@@ -40,34 +38,50 @@ alias gsc="$(pwd)/dist/gsc"
 ```
 
 ### Quick Start
+[Clone this repository](https://github.com/gitsense/gsc-cli) if you have not already done so and run these commands to experience the "worlds first?" self-aware codebase.
 
-Clone this repository, and try the following:
-
-**Load the Lead Architect's Brain**
-You are not just importing data. You are loading the architectural intent of the project as defined by a domain expert.
+#### 1. Load the "Architect Brain"
+Import the architectural intent of this project. 
 ```bash
-gsc manifest import .gitsense/manifests/gsc.json --name lead-architect
+gsc manifest import .gitsense/manifests/gsc-architect.json --name arch
 ```
 
-**Generate a High-Signal/Low-Token Map**
-AI agents do not need to read 100 files to understand a project. This provides a structured JSON map of purpose and layer for every file, giving the agent instant context at a fraction of the token cost.
+**The Brain:** What to see how the brain thinks, take a look at `.gitsense/analyzers/gsc-architect.md`
+
+#### 2. Visualize the Intelligence Map
+Stop guessing where logic lives. Use the `tree` command to see the repository's structure enriched with the "Why" behind every file.
+
 ```bash
-gsc tree --db lead-architect --fields purpose,layer --format json
+# Show the purpose of files in the CLI and Logic layers, hiding everything else
+gsc tree --db arch --fields purpose,layer --filter "layer in cli,internal-logic" --prune
+```
+**Massive Monorepos:**  Notice how `--prune` and `--filter` can be used to easily prune a 10,000+ files monorepo. 
+
+#### 3. Search by Intent (Not Just Text)
+Standard `grep` finds strings. `gsc grep` finds **context**. Find where "Execute" is called, but only within files the Architect Brain has tagged with the "bridge" topic.
+
+```bash
+gsc grep "Execute" --db arch --filter "topics=bridge" --fields purpose,topics
 ```
 
-**Semantic Discovery**
-Stop guessing keywords. Find logic by its functional topic, such as persistence, to see exactly how the Lead Architect categorized the implementation.
+**Form Connections:** Define as many fields as you need to help identify connections and to refine/expand your search.
+
+#### 4. Discover What the Repository Knows
+If you're unsure what questions you can ask, query the repository's own intelligence schema.
+
 ```bash
-gsc grep "sqlite" --filter "topic=persistence"
+# List every metadata field from all imported Brains
+gsc fields
+
+# Getting a distribution of the top 20 values to better understand the repos purpose
+gsc insights --db arch --fields layer,topics --limit 20
 ```
 
-**The AI Bridge**
-Seamlessly pipe this structured intelligence directly into your GitSense Chat session to ground your AI agent in deterministic facts.
-```bash
-gsc tree --db lead-architect --fields purpose --format json --code <your-6-digit-code>
-```
+**Ask AI:** Change limit to `1000` and add `--format json --code <gitsense chat code>` to the `insights` command to add the ouptput to your GitSense Chat session.
 
-This gives you a map of your repository's purpose and intent. Try achieving that with a README or standard grep. You can explore the meaning of the code before reading a single line of syntax.
+#### Next Steps
+
+Run `gsc --examples`to learn more.
 
 ### Built with AI, Designed by Humans
 99.9% AI generated. 90% human architected with 0% Go knowledge. 
@@ -123,5 +137,5 @@ This is still an idea, but we believe it's the future of agentic interaction. If
 Code is the how. Metadata is the why. Domain experts in GitSense Chat encode their tell-tale signs and domain knowledge into Brains. gsc applies that intelligence to make your tools smarter and your decisions safer.
 
 ### Requirements
-*   **Ripgrep:** Required in PATH for search functionality. You can ignore this if you don't plan on using `gsc grep`.
 *   **Git:** Required for repository info and finding the project root.
+*   **Ripgrep:** Required in PATH for `gsc grep`. Ignore if not interested.

@@ -1,12 +1,12 @@
 /**
  * Component: Tree Command
- * Block-UUID: 493a3569-9291-4f0f-a212-7be085d37d51
- * Parent-UUID: 91d2049a-51dd-4d7b-8cf5-1b6ac8038300
- * Version: 1.3.0
+ * Block-UUID: d62bae43-1883-4fd9-9c01-5a3b63b3c2f2
+ * Parent-UUID: 493a3569-9291-4f0f-a212-7be085d37d51
+ * Version: 1.3.1
  * Description: Added a guard clause to prevent empty tree output when no database or --no-compact flag is provided. This reinforces the "Intelligence Layer" identity by requiring explicit intent for raw structural views.
  * Language: Go
- * Created-at: 2026-02-12T02:02:39.994Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), Gemini 3 Flash (v1.3.0)
+ * Created-at: 2026-02-12T07:23:24.477Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), Gemini 3 Flash (v1.3.0), Gemini 3 Flash (v1.3.1)
  */
 
 
@@ -50,10 +50,11 @@ manifest database. Unlike the standard 'tree' command, this respects .gitignore
 and focuses on the repository's intelligence map.
 
 The command is context-aware and will start the tree from your current working 
-directory. Use --fields to include specific metadata like 'purpose' or 'risk'.
+directory. Use --fields to include specific metadata like 'purpose' or 'layer'.
 
-Filtering & Focus:
-  --filter "field=value"    Filter files by metadata (e.g., layer=api)
+Filtering & Pruning:
+  --filter "field=val"      Filter by metadata. Supports 'in' for multiple values (e.g., layer in cli,logic)
+  --prune                   Hide non-matching files to create a condensed context map
   --focus "path/**"         Restrict the tree to specific paths or globs
   --no-compact              Show filenames for non-matching files in the heat map`,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -208,10 +209,10 @@ func init() {
 	treeCmd.Flags().IntVar(&treeIndent, "indent", 4, "Indentation width in spaces")
 	treeCmd.Flags().IntVar(&treeTruncate, "truncate", 60, "Maximum length for metadata values (0 for no truncation)")
 	treeCmd.Flags().StringVar(&treeFormat, "format", "human", "Output format: human, json, or ai-portable")
-	treeCmd.Flags().BoolVar(&treePrune, "prune", false, "Hide files/dirs that lack the requested metadata")
+	treeCmd.Flags().BoolVar(&treePrune, "prune", false, "Hide files/dirs that don't match the filters to create a condensed map")
 	
 	// New Filter & Focus Flags
-	treeCmd.Flags().StringArrayVarP(&treeFilters, "filter", "F", []string{}, "Filter by metadata field (e.g., 'layer=api')")
+	treeCmd.Flags().StringArrayVarP(&treeFilters, "filter", "F", []string{}, "Filter by metadata field. Supports 'in' (e.g., 'layer in cli,logic')")
 	treeCmd.Flags().StringArrayVarP(&treeFocus, "focus", "f", []string{}, "Restrict tree to specific paths or globs")
 	treeCmd.Flags().BoolVar(&treeNoCompact, "no-compact", false, "Show filenames for non-matching files in the heat map")
 }
