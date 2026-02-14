@@ -44,7 +44,7 @@ Import the architectural intent of this project.
 gsc manifest import .gitsense/manifests/gsc-architect.json --name arch
 ```
 
-**How it Thinks:** Want to see how the brain thinks, take a look at `.gitsense/analyzers/gsc-architect.md`
+Want to see how the brain thinks, take a look at `.gitsense/analyzers/gsc-architect.md`
 
 #### 2. Discover Available Intelligence
 List all available databases and fields to understand what intelligence is loaded in your workspace.
@@ -59,7 +59,8 @@ Stop guessing where logic lives. Use the `tree` command to see the repository's 
 # Show the purpose of files in the CLI and Logic layers, hiding everything else
 gsc tree --db arch --fields purpose,layer --filter "layer in cli,internal-logic" --prune
 ```
-**Massive Monorepos:**  Notice how `--prune` and `--filter` can be used to easily prune a 10,000+ file monorepo. 
+
+Notice how `--prune` and `--filter` can be used to easily prune a 10,000+ file monorepo. 
 
 #### 4. Search by Intent (Not Just Text)
 Standard `grep` finds strings. `gsc grep` finds **context**. Find where "Execute" is called, but only within files the Architect Brain has tagged with the "bridge" topic.
@@ -68,7 +69,7 @@ Standard `grep` finds strings. `gsc grep` finds **context**. Find where "Execute
 gsc grep "Execute" --db arch --filter "topics=bridge" --fields purpose,topics
 ```
 
-**Form Connections:** Define as many fields as you need to help identify connections and to refine/expand your search.
+Define as many fields as you need to help identify connections and to refine/expand your search.
 
 #### 5. Discover What the Repository Knows
 If you're unsure what questions you can ask, query the repository's own intelligence schema.
@@ -81,7 +82,7 @@ gsc brains
 gsc insights --db arch --fields layer,topics --limit 20
 ```
 
-**Ask AI:** Change limit to `1000` and add `--format json --code <gitsense chat code>` to the `insights` command to add the output to your GitSense Chat session.
+Change limit to `1000` and add `--format json --code <gitsense chat code>` to seamlessly add the output to your GitSense Chat session.
 
 #### Next Steps
 
@@ -133,6 +134,17 @@ Query the landscape, grep with semantic filters, visualize the tree with metadat
 The end of blind grepping. While tools like `claude code` are powerful, they often rely on brute-force indexing and probabilistic guessing. Scout uses the intelligence layer to translate natural language intent into precise discovery loops. This saves money, improves context, and allows agents to work at scale without the token tax of guessing. 
 
 Note: Scout is not about implementing code changes. Its sole purpose is to deliver the *right context* to AI agents as fast and as cheap as possible. We find the files; humans and AI coding agents does the work.
+
+**gsc review**
+
+The logical successor to discovery. Once `gsc scout` identifies the right context and changes are made, `gsc review` validates those changes against the repository's encoded intent. Most AI review tools are "diff-blind" - they see the code changes but don't understand the architectural impact. By leveraging the Brains imported via `gsc`, `gsc review` can answer: "Does this change violate the architectural layer definitions?" or "How does this modification affect the 'bridge' logic defined by the Architect Brain?" 
+
+It transforms code review from a syntax check into an intent validation loop:
+
+1. **Scout:** Find the context and intent.
+2. **Change:** Human or AI implements the logic.
+3. **Review:** Validate the change against the intent.
+4. **Iterate:** Refine based on the architectural feedback,
 
 **Tool Calling 2.0** 
 
