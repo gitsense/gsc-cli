@@ -10,7 +10,7 @@ Without context, tools can only find what is written in a file, not what that fi
 ### The Solution
 `gsc` is the bridge that brings GitSense Chat intelligence to your local environment. It imports specialized metadata (manifests) created by domain experts, transforming your repository from a collection of files into a queryable knowledge base.
 
-**The World's First**
+### The World's First
 
 We believe this is the world's first intelligent, AI-auditable code repository. By publishing this repository with pre-built intelligence, we are providing a template for how every repository can be made more human and AI friendly. Our `.gitsense` directory is the "new README", and we can demonstrate how it transforms a static codebase into a queryable knowledge base today.
 
