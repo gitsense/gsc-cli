@@ -14,7 +14,7 @@ Most repositories are passive containers. They store the "how" (the code) but lo
 
 `gsc` makes your repository self-aware.
 
-By simply chatting with an AI in GitSense Chat, you create specialized analyzers called "Brains." These Brains extract domain knowledge from your code and store it as manifest files directly in your repository. This transforms your codebase into a queryable intelligence hub.
+By simply chatting with an AI in [GitSense Chat](https://github.com/gitsense/chat), you create specialized analyzers called "Brains." These Brains extract domain knowledge from your code for use in manifest files that are stored directly in your repository. This transforms your codebase into a queryable intelligence hub.
 
 *   **For Humans:** No more guessing. Run `gsc brains` to see exactly what the repository knows.
 *   **For AI:** No more blind spots. Use `gsc tree` to generate a metadata-enriched project map. This provides the agent with high-signal context while significantly reducing token usage.
@@ -23,7 +23,7 @@ This transformation is made possible by the `.gitsense` directory. This reposito
 
 **AI Auditable**
 
-99.9% of the code in this repository was **AI-generated**, and every line generated (both used and unused) can be traced to a conversation and "LLM Version". This is not a "**vibe-coded**" repository**, and** we have the receipts to prove it.
+99.9% of the code in this repository was **AI-generated**, and every line generated (both used and unused) can be traced to a conversation and "LLM Version". This is not a "**vibe-coded**" repository, **and** we have the receipts to prove it.
 
 To learn more, please refer to the "Built with AI, Designed by Humans" and "Code Provenance & Auditability" sections in this README.
 
@@ -46,7 +46,7 @@ Import the architectural intent of this project.
 gsc manifest import .gitsense/manifests/gsc-architect.json --name arch
 ```
 
-Want to see how the brain thinks, take a look at `.gitsense/analyzers/gsc-architect.md`
+Want to see how the brain was trained to think, take a look at `.gitsense/analyzers/gsc-architect.md`
 
 #### 2. Discover Available Intelligence
 List all available databases and fields to understand what intelligence is loaded in your workspace.
@@ -71,20 +71,16 @@ Standard `grep` finds strings. `gsc grep` finds **context**. Find where "Execute
 gsc grep "Execute" --db arch --filter "topics=bridge" --fields purpose,topics
 ```
 
-Define as many fields as you need to help identify connections and to refine/expand your search.
+Note: You can define as many fields as you need to help identify connections and to refine/expand your search.
 
 #### 5. Discover What the Repository Knows
-If you're unsure what questions you can ask, query the repository's own intelligence schema.
+If you're unsure what questions you can ask, get a distribution of the top values.
 
 ```bash
-# First, list every metadata field from all imported Brains
-gsc brains
-
-# Then get a distribution of the top 20 (or more) values to better understand the repo's purpose
 gsc insights --db arch --fields layer,topics --limit 20
 ```
 
-Change limit to `1000` and add `--format json --code <gitsense chat code>` to seamlessly add the output to your GitSense Chat session.
+Increase the limit to `1000` and add `--format json --code <gitsense chat code>` to send the output directly to GitSense Chat for AI-assisted analysis.
 
 #### Next Steps
 
@@ -97,7 +93,7 @@ Is this code better than what a Go expert would write? Absolutely not. But it so
 
 Can this code be maintained and evolved? We see no reason why not and we have the receipts to prove it. Every file is 100% traceable with a Block-UUID and version history. View the source and the version information to see what human guided AI can do. There is no guessing. We explicitly document which LLM generated each version of the code. 
 
-For this initial release, we are not including the Git history that led to this "LLM version". Moving forward, our goal is to ensure that every feature and the conversations that created it can be easily reviewed.
+For this initial release, we are not including the Git history and conversations that led to this "LLM version". Moving forward, our goal is to ensure that every feature and the conversations that created it can be easily reviewed.
 
 ### Code Provenance & Auditability
 
@@ -113,22 +109,6 @@ To truly make AI-assisted development maintainable, every source file embeds com
 - `Authors`: Chronological record of LLM contributors with version numbers
 
 This metadata provides deterministic traceability for AI-generated code, answering "what generated this, when, and why?"-a prerequisite for reviewing, debugging, and evolving AI-assisted systems. To learn more, try the interactive Traceable Code Demo in GitSense Chat.
-
-### The CLI Bridge (Human-AI Partnership)
-gsc was built to solve a specific problem: bringing high-signal codebase intelligence into the chat window. By using the --code flag, you can instantly bridge your terminal output to GitSense Chat.
-
-```bash
-# Send a JSON tree map to your chat session
-gsc tree --code 123456 --db gsc --fields purpose --format json
-
-# If the AI needs more context, send the full intelligence map
-gsc query list --all --code 123456
-```
-
-This partnership allows humans to handle the high-level discovery while the AI focuses on implementation. While top models are capable, autonomous discovery often fails. gsc puts the human in control of the discovery loop, ensuring the AI always has the right context at the lowest possible cost.
-
-### Core Features
-Query the landscape, grep with semantic filters, visualize the tree with metadata, and discover available databases and schemas. These are the building blocks for smarter workflows.
 
 ### The Vision
 **gsc scout** 
@@ -163,8 +143,6 @@ gsc run guard-rm --db infrastructure --filter "protection=high"
 ```
 
 This is still an idea, but we believe it's the future of agentic interaction. If you have a strong opinion on how metadata can make discovery easier and safer for AI, create an issue.
-
-**Architected Generation**: This project is 99.9% AI generated, but it is not "vibe coding." It is human-architected. We are refining the codebase to ensure that AI can follow strictly defined patterns. If you understand programming logic, you do not need to be a Go expert to add the features you need. We want to make it so that any domain expert can use AI to extend `gsc`, making their daily tasks easier and their agents smarter.
 
 ### The Philosophy
 Code is the how. Metadata is the why. Domain experts in GitSense Chat encode their tell-tale signs and domain knowledge into Brains. gsc applies that intelligence to make your tools smarter and your decisions safer.
