@@ -10,7 +10,7 @@ Without context, tools can only find what is written in a file, not what that fi
 ### The Solution
 `gsc` is the bridge that brings GitSense Chat intelligence to your local environment. It imports specialized metadata (manifests) created by domain experts, transforming your repository from a collection of files into a queryable knowledge base.
 
-### The World's First?
+### The World's First Intelligent Repository?
 Most repositories are passive containers. They store the "how" (the code) but lose the "why" (the intent). The reasoning behind the architecture often remains trapped in documentation or the developer's head.
 
 `gsc` makes your repository self-aware. By publishing an intelligence manifest (see `.gitsense` directory), we believe this is the world's first intelligent repository. We are also the first to show traceable AI-generated code in the wild. See [Code Provenance & Auditability](#code-provenance--auditability) for details.  Moving forward, every line change from AI and humans can be accounted for.
