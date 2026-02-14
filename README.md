@@ -27,6 +27,10 @@ This transformation is made possible by the `.gitsense` directory. This reposito
 
 To learn more, please refer to the "Built with AI, Designed by Humans" and "Code Provenance & Auditability" sections in this README.
 
+### Requirements
+*   **Git:** Required for repository info and finding the project root.
+*   **Ripgrep:** Required in PATH for `gsc grep`. Ignore if not interested.
+
 ### Installation
 Download a pre-compiled binary for Linux, macOS, or Windows from the releases page. Or if you prefer, you can build from source using the Go toolchain (version 1.21 or later required).
 
@@ -146,7 +150,3 @@ This is still an idea, but we believe it's the future of agentic interaction. If
 
 ### The Philosophy
 Code is the how. Metadata is the why. Domain experts in GitSense Chat encode their tell-tale signs and domain knowledge into Brains. gsc applies that intelligence to make your tools smarter and your decisions safer.
-
-### Requirements
-*   **Git:** Required for repository info and finding the project root.
-*   **Ripgrep:** Required in PATH for `gsc grep`. Ignore if not interested.
