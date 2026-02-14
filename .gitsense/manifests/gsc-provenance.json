@@ -1,0 +1,1693 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-02-14T04:13:55.422Z",
+  "manifest": {
+    "name": "Provenance & Governance Brain",
+    "database_name": "gsc-provenance",
+    "description": "Governance layer for AI-generated code, ensuring traceability, metadata integrity, and AI-readiness. This manifest validates that code block headers remain accurate (Metadata Integrity) and assesses whether code documentation provides sufficient context for AI agents (Code Documentation Quality). It enables \"Smarter and Safer\" development by identifying governance risks and ensuring the repository remains auditable.",
+    "tags": [
+      "provenance",
+      "governance",
+      "ai-generated",
+      "traceability",
+      "code-quality",
+      "documentation",
+      "risk-assessment",
+      "ai-readiness"
+    ]
+  },
+  "repositories": [
+    {
+      "ref": "R0",
+      "name": "gitsense/gsc-cli"
+    }
+  ],
+  "branches": [
+    {
+      "ref": "B0",
+      "name": "main"
+    }
+  ],
+  "analyzers": [
+    {
+      "ref": "A0",
+      "id": "provenance-metadata-integrity::file-content::default",
+      "name": "GSC Provenance Integrity Auditor - Metadata-Validation",
+      "description": "Validates the honesty and accuracy of AI-generated code metadata, ensuring traceability headers remain truthful as code evolves.",
+      "version": "1.0.0"
+    },
+    {
+      "ref": "A1",
+      "id": "provenance-code-doc-quality::file-content::default",
+      "name": "GSC-CLI Code Documentation Quality Analyzer",
+      "description": "Evaluates the quality, honesty, and completeness of code documentation to determine AI-readiness and maintenance burden.",
+      "version": "1.0.0"
+    }
+  ],
+  "fields": [
+    {
+      "ref": "F0",
+      "name": "layer",
+      "type": "string",
+      "display_name": "Layer",
+      "description": "The architectural layer of the file (e.g., cli, internal-logic, data-access, pkg-util, config).",
+      "analyzer_ref": "A0"
+    },
+    {
+      "ref": "F1",
+      "name": "traceability_status",
+      "type": "string",
+      "display_name": "Traceability Status",
+      "description": "The completeness of the traceability header (Full, Partial, None).",
+      "analyzer_ref": "A0"
+    },
+    {
+      "ref": "F2",
+      "name": "description_accuracy",
+      "type": "string",
+      "display_name": "Description Accuracy",
+      "description": "The accuracy of the Description field (Accurate, Stale, Missing).",
+      "analyzer_ref": "A0"
+    },
+    {
+      "ref": "F3",
+      "name": "governance_risk",
+      "type": "string",
+      "display_name": "Governance Risk",
+      "description": "The assessed risk level (None, Low, Medium, High).",
+      "analyzer_ref": "A0"
+    },
+    {
+      "ref": "F4",
+      "name": "risk_factors",
+      "type": "array",
+      "display_name": "Risk Factors",
+      "description": "A list of specific issues identified during analysis.",
+      "analyzer_ref": "A0"
+    },
+    {
+      "ref": "F5",
+      "name": "recommendations",
+      "type": "array",
+      "display_name": "Recommendations",
+      "description": "A list of actions needed to improve governance.",
+      "analyzer_ref": "A0"
+    },
+    {
+      "ref": "F6",
+      "name": "documentation_quality",
+      "type": "string",
+      "display_name": "Documentation Quality",
+      "description": "The overall assessment of the volume and depth of comments and docstrings. Allowed values: \"Comprehensive\", \"Adequate\", \"Minimal\".",
+      "analyzer_ref": "A1"
+    },
+    {
+      "ref": "F7",
+      "name": "intent_clarity",
+      "type": "string",
+      "display_name": "Intent Clarity",
+      "description": "The degree to which the code explains \"why\" it exists versus just \"what\" it does. Allowed values: \"High\", \"Medium\", \"Low\".",
+      "analyzer_ref": "A1"
+    },
+    {
+      "ref": "F8",
+      "name": "ai_readiness_score",
+      "type": "number",
+      "display_name": "Ai Readiness Score",
+      "description": "A functional score (0-100) representing how safely an AI agent could refactor this file without human supervision.",
+      "analyzer_ref": "A1"
+    },
+    {
+      "ref": "F9",
+      "name": "missing_context",
+      "type": "array",
+      "display_name": "Missing Context",
+      "description": "A list of specific areas where context is lacking (e.g., \"error-handling\", \"side-effects\").",
+      "analyzer_ref": "A1"
+    },
+    {
+      "ref": "F10",
+      "name": "maintenance_burden",
+      "type": "string",
+      "display_name": "Maintenance Burden",
+      "description": "An assessment of how much \"tribal knowledge\" is required to maintain the code. Allowed values: \"Low\", \"Medium\", \"High\".",
+      "analyzer_ref": "A1"
+    },
+    {
+      "ref": "F11",
+      "name": "analysis_rationale",
+      "type": "string",
+      "display_name": "Analysis Rationale",
+      "description": "A concise explanation (2-3 sentences) of the key evidence that drove the scoring.",
+      "analyzer_ref": "A1"
+    },
+    {
+      "ref": "F12",
+      "name": "comment_hygiene_issues",
+      "type": "array",
+      "display_name": "Comment Hygiene Issues",
+      "description": "Specific hygiene problems detected (e.g., \"outdated-comments\", \"spelling-errors\").",
+      "analyzer_ref": "A1"
+    }
+  ],
+  "data": [
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "pkg/settings/settings.go",
+      "language": "go",
+      "chat_id": 6467,
+      "fields": {
+        "F0": "config",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 95,
+        "F9": [],
+        "F10": "Low",
+        "F11": "The file consists entirely of well-documented constants and variables. There is no logic, side effects, or complex algorithms, making it extremely safe for an AI agent to ingest and use.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "pkg/logger/logger.go",
+      "language": "go",
+      "chat_id": 6469,
+      "fields": {
+        "F0": "pkg-util",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 90,
+        "F9": [],
+        "F10": "Low",
+        "F11": "Well-documented utility with a detailed header explaining the evolution of the log level system. Global state is clearly defined.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/version/version.go",
+      "language": "go",
+      "chat_id": 6472,
+      "fields": {
+        "F0": "pkg-util",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Adequate",
+        "F7": "High",
+        "F8": 95,
+        "F9": [],
+        "F10": "Low",
+        "F11": "Simple, stateless utility with clear comments explaining build-time variable injection. No side effects or complex logic.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/search/aggregator.go",
+      "language": "go",
+      "chat_id": 6474,
+      "fields": {
+        "F0": "internal-logic",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 95,
+        "F9": [],
+        "F10": "Low",
+        "F11": "Includes explicit rationale for logic choices (e.g., 'Heuristic: Only aggregate short strings'). Sorting and truncation logic is clearly documented.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/search/engine.go",
+      "language": "go",
+      "chat_id": 6475,
+      "fields": {
+        "F0": "internal-logic",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Adequate",
+        "F7": "High",
+        "F8": 100,
+        "F9": [],
+        "F10": "Low",
+        "F11": "Pure interface and struct definitions. Documentation is concise and accurate. Zero risk of logic errors or side effects.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/search/enricher.go",
+      "language": "go",
+      "chat_id": 6476,
+      "fields": {
+        "F0": "internal-logic",
+        "F1": "Full",
+        "F2": "Stale",
+        "F3": "Low",
+        "F4": [
+          "Description reads like a changelog entry rather than a holistic file summary."
+        ],
+        "F5": [
+          "Update Description to reflect the primary role of 'EnrichMatches' and batch metadata lookup."
+        ],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 95,
+        "F9": [],
+        "F10": "Low",
+        "F11": "Code follows numbered steps with specific technical details (e.g., 'Normalize path to be relative to repo root'). SQL construction uses placeholders safely and is well-commented. No semantic fluff detected.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/search/formatter.go",
+      "language": "go",
+      "chat_id": 6477,
+      "fields": {
+        "F0": "internal-logic",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 95,
+        "F9": [],
+        "F10": "Low",
+        "F11": "Detailed rationale for UI choices (color selection, string trimming) provides high intent clarity. The code explains 'why' formatting decisions were made, reducing ambiguity for future modifications.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/search/models.go",
+      "language": "go",
+      "chat_id": 6478,
+      "fields": {
+        "F0": "internal-logic",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 100,
+        "F9": [],
+        "F10": "Low",
+        "F11": "Structural definitions are precise, with explicit notes on field behaviors like 'Omitted if not analyzed'. This provides high clarity for API contracts with zero ambiguity.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/search/ripgrep_engine.go",
+      "language": "go",
+      "chat_id": 6479,
+      "fields": {
+        "F0": "internal-logic",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 95,
+        "F9": [],
+        "F10": "Low",
+        "F11": "Excellent step-by-step inline comments and explicit handling of ripgrep exit codes provide high clarity. The JSON parsing state machine is well-documented, minimizing tribal knowledge requirements.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/registry/models.go",
+      "language": "go",
+      "chat_id": 6481,
+      "fields": {
+        "F0": "data-access",
+        "F1": "Full",
+        "F2": "Stale",
+        "F3": "Low",
+        "F4": [
+          "Description references non-existent variable 'databaseLabel' instead of 'DatabaseName'"
+        ],
+        "F5": [
+          "Update description to accurately reflect current variable naming conventions"
+        ],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 95,
+        "F9": [],
+        "F10": "Low",
+        "F11": "This is a pure data model file with no side effects or complex logic. The comments are semantically honest, clearly distinguishing between the human-readable 'ManifestName' and the physical 'DatabaseName'. The deprecation notice on AddEntry guides the AI agent correctly.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/registry/registry.go",
+      "language": "go",
+      "chat_id": 6482,
+      "fields": {
+        "F0": "data-access",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Adequate",
+        "F7": "High",
+        "F8": 75,
+        "F9": [
+          "concurrency-safety",
+          "atomic-write-strategy"
+        ],
+        "F10": "Low",
+        "F11": "The file correctly implements data access logic, but the `SaveRegistry` function lacks the atomic swap pattern found elsewhere in the codebase (e.g., `bridge.go`). Missing documentation on concurrency safety or race conditions prevents a higher score.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/output/formatter.go",
+      "language": "go",
+      "chat_id": 6484,
+      "fields": {
+        "F0": "pkg-util",
+        "F1": "Full",
+        "F2": "Stale",
+        "F3": "Medium",
+        "F4": [
+          "Description claims 'FormatMetadataYAML' and 'FormatMetadataJSON' were added, but these functions are not present in the code."
+        ],
+        "F5": [
+          "Update the Description field to reflect the actual functions present (FormatJSON, FormatTable, FormatCSV, FormatBridgeMarkdown).",
+          "Remove references to missing functions or implement them if they are required."
+        ],
+        "F6": "Adequate",
+        "F7": "Medium",
+        "F8": 75,
+        "F9": [
+          "format-specification"
+        ],
+        "F10": "Low",
+        "F11": "Score reduced because complex formatting logic (tables, markdown bridge) lacks rationale comments, relying on the code to speak for itself.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/bundler.go",
+      "language": "go",
+      "chat_id": 6486,
+      "fields": {
+        "F0": "internal-logic",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "Low",
+        "F4": [],
+        "F5": [],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 95,
+        "F9": [],
+        "F10": "Low",
+        "F11": "The file includes a detailed header explaining recent fixes and inline comments that clarify specific type handling (SQLite int64 to Go int) and validation logic to prevent side effects.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/config.go",
+      "language": "go",
+      "chat_id": 6487,
+      "fields": {
+        "F0": "config",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 92,
+        "F9": [],
+        "F10": "Low",
+        "F11": "The documentation is exceptional, explicitly explaining the 'INTERNAL' nature of profile logic and the precedence chain (Profile > Global > .gitsense-map). This high level of semantic honesty makes it very safe for an AI to reason about config merging.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/doctor_logic.go",
+      "language": "go",
+      "chat_id": 6488,
+      "fields": {
+        "F0": "internal-logic",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Adequate",
+        "F7": "High",
+        "F8": 88,
+        "F9": [],
+        "F10": "Low",
+        "F11": "This is a read-only health check script with clear, step-by-step logic. The comments explicitly label each check, making the intent transparent. There are no side effects or complex state mutations, making it extremely safe for an AI agent to modify.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/exporter.go",
+      "language": "go",
+      "chat_id": 6489,
+      "fields": {
+        "F0": "internal-logic",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Adequate",
+        "F7": "High",
+        "F8": 85,
+        "F9": [],
+        "F10": "Low",
+        "F11": "The code follows a clear, linear sequence with numbered comments guiding the flow. While comments describe 'what' happens, the logic is straightforward enough that an AI agent can safely refactor it without needing deep architectural context.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/importer.go",
+      "language": "go",
+      "chat_id": 6490,
+      "fields": {
+        "F0": "internal-logic",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "Low",
+        "F4": [
+          "Description Brevity"
+        ],
+        "F5": [
+          "Update Description"
+        ],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 98,
+        "F9": [],
+        "F10": "Low",
+        "F11": "This file is a model example of AI-ready code. It implements the 'atomic-import' pattern with explicit documentation for every critical step: locking mechanisms, transaction boundaries, and the atomic swap strategy. The comments explain *why* specific actions are taken, removing any ambiguity.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/info.go",
+      "language": "go",
+      "chat_id": 6491,
+      "fields": {
+        "F0": "internal-logic",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 92,
+        "F9": [],
+        "F10": "Low",
+        "F11": "The file explicitly documents the 'hidden' nature of profile features using 'INTERNAL' comments, which is crucial for preventing AI hallucinations about available user-facing features. The separation between data gathering and formatting is clear.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/initializer.go",
+      "language": "go",
+      "chat_id": 6492,
+      "fields": {
+        "F0": "internal-logic",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 95,
+        "F9": [],
+        "F10": "Low",
+        "F11": "The code follows a clear, step-by-step initialization process. All side effects (directory creation, file writing) are explicitly documented with numbered comments. Error handling is consistent and returns wrapped errors, providing context for failures.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/models.go",
+      "language": "go",
+      "chat_id": 6493,
+      "fields": {
+        "F0": "internal-logic",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Adequate",
+        "F7": "High",
+        "F8": 100,
+        "F9": [],
+        "F10": "Low",
+        "F11": "The file consists entirely of struct definitions with clear comments mapping them to the JSON schema. There is no complex logic, making it perfectly safe for AI agents to parse and understand.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/path_helper.go",
+      "language": "go",
+      "chat_id": 6494,
+      "fields": {
+        "F0": "internal-logic",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 95,
+        "F9": [],
+        "F10": "Low",
+        "F11": "Functions are well-documented with clear explanations of their specific roles within the system (e.g., atomic imports, locking). The code is simple, stateless, and follows the project's path resolution patterns consistently.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/profile_manager.go",
+      "language": "go",
+      "chat_id": 6495,
+      "fields": {
+        "F0": "internal-logic",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 95,
+        "F9": [],
+        "F10": "Low",
+        "F11": "The file includes detailed function headers and inline comments explaining the 'why' behind logic, such as the internal status of the feature and side effects of deletion. Error handling is explicit and well-logged.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/profile_models.go",
+      "language": "go",
+      "chat_id": 6496,
+      "fields": {
+        "F0": "internal-logic",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Adequate",
+        "F7": "High",
+        "F8": 100,
+        "F9": [],
+        "F10": "Low",
+        "F11": "Data models are well-defined with clear field comments and explicit internal status markers.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/querier.go",
+      "language": "go",
+      "chat_id": 6497,
+      "fields": {
+        "F0": "internal-logic",
+        "F1": "Full",
+        "F2": "Stale",
+        "F3": "Medium",
+        "F4": [
+          "Description references 'DatabaseLabel' field which does not exist in the code (code uses 'ManifestName')."
+        ],
+        "F5": [
+          "Update description to reflect the correct field name 'ManifestName' instead of 'DatabaseLabel'."
+        ],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 98,
+        "F9": [],
+        "F10": "Low",
+        "F11": "Excellent orchestration comments explaining the multi-step process and error handling.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/query_formatter.go",
+      "language": "go",
+      "chat_id": 6498,
+      "fields": {
+        "F0": "internal-logic",
+        "F1": "Full",
+        "F2": "Stale",
+        "F3": "Medium",
+        "F4": [
+          "Description focuses narrowly on schema formatting, omitting coverage/insights/list formatting responsibilities."
+        ],
+        "F5": [
+          "Update description to reflect the full scope of query output formatting (results, lists, coverage, insights, schema)."
+        ],
+        "F6": "Adequate",
+        "F7": "High",
+        "F8": 95,
+        "F9": [],
+        "F10": "Low",
+        "F11": "Pure formatting logic with clear separation of concerns and no side effects.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/query_models.go",
+      "language": "go",
+      "chat_id": 6499,
+      "fields": {
+        "F0": "internal-logic",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 100,
+        "F9": [],
+        "F10": "Low",
+        "F11": "Perfect score for a model file. The distinction between 'Name' (slug) and 'Label' (human-readable) is explicitly documented, preventing common data mapping errors by AI agents.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/rg_enricher.go",
+      "language": "go",
+      "chat_id": 6500,
+      "fields": {
+        "F0": "internal-logic",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 90,
+        "F9": [],
+        "F10": "Low",
+        "F11": "High score driven by clear documentation of the batch lookup optimization and safe SQL construction practices. The distinction between single and batch enrichment is well articulated.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/rg_executor.go",
+      "language": "go",
+      "chat_id": 6501,
+      "fields": {
+        "F0": "internal-logic",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 95,
+        "F9": [],
+        "F10": "Low",
+        "F11": "High score due to explicit documentation of the dual-pass workflow and correct handling of ripgrep exit codes. Step-by-step comments provide clear guidance for agentic refactoring.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/rg_models.go",
+      "language": "go",
+      "chat_id": 6502,
+      "fields": {
+        "F0": "internal-logic",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 100,
+        "F9": [],
+        "F10": "Low",
+        "F11": "Pure data model definitions with clear mapping descriptions to external formats (ripgrep JSON). Zero logic risk.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/schemareader.go",
+      "language": "go",
+      "chat_id": 6503,
+      "fields": {
+        "F0": "internal-logic",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "Low",
+        "F4": [],
+        "F5": [],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 90,
+        "F9": [],
+        "F10": "Low",
+        "F11": "Clear documentation of the schema retrieval strategy and grouping logic. SQL joins are well-explained.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/simple_querier.go",
+      "language": "go",
+      "chat_id": 6504,
+      "fields": {
+        "F0": "internal-logic",
+        "F1": "Full",
+        "F2": "Stale",
+        "F3": "Medium",
+        "F4": [
+          "Description omits coverage and insights analysis capabilities",
+          "High complexity requires precise documentation"
+        ],
+        "F5": [
+          "Update description to include coverage and insights analysis",
+          "Add comments explaining PrepareTargetSet strategy"
+        ],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 92,
+        "F9": [],
+        "F10": "Low",
+        "F11": "Excellent step-by-step documentation for complex SQL logic involving json_each and temporary tables. Intent is clear, and side effects are explicitly called out.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/validator.go",
+      "language": "go",
+      "chat_id": 6505,
+      "fields": {
+        "F0": "internal-logic",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 95,
+        "F9": [],
+        "F10": "Low",
+        "F11": "The code provides specific comments for each validation block (Schema, Manifest, Repositories, etc.). It clearly explains the cross-reference logic between data entries and field definitions, which is critical for maintaining data integrity.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/wizard.go",
+      "language": "go",
+      "chat_id": 6506,
+      "fields": {
+        "F0": "internal-logic",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Adequate",
+        "F7": "High",
+        "F8": 90,
+        "F9": [],
+        "F10": "Low",
+        "F11": "The code uses clear section headers to demarcate the wizard steps. It explicitly documents the handling of optional fields (Skip options) and the resolution of display names to physical database names, ensuring high intent clarity.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/git/discovery.go",
+      "language": "go",
+      "chat_id": 6508,
+      "fields": {
+        "F0": "pkg-util",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 95,
+        "F9": [],
+        "F10": "Low",
+        "F11": "High score due to explicit documentation of edge cases (symlinks, null bytes) and architectural rationale for directory traversal logic.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/git/repo_info.go",
+      "language": "go",
+      "chat_id": 6509,
+      "fields": {
+        "F0": "pkg-util",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Adequate",
+        "F7": "Medium",
+        "F8": 85,
+        "F9": [
+          "dependency-rationale"
+        ],
+        "F10": "Low",
+        "F11": "The code is functionally clear with step-by-step comments, but lacks architectural rationale for manual parsing, slightly reducing the Agentic Readiness Score.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/db/schema.go",
+      "language": "go",
+      "chat_id": 6511,
+      "fields": {
+        "F0": "data-access",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 92,
+        "F9": [],
+        "F10": "Low",
+        "F11": "Table purposes and backwards compatibility strategies (ALTER TABLE) are clearly documented, reducing the risk of breaking changes during schema migrations.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/db/sqlite.go",
+      "language": "go",
+      "chat_id": 6512,
+      "fields": {
+        "F0": "data-access",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 95,
+        "F9": [],
+        "F10": "Low",
+        "F11": "Connection string parameters and pool settings are explicitly documented with rationale (WAL mode, foreign keys), ensuring safe AI refactoring of DB configuration.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/cli/manifest/bundle.go",
+      "language": "go",
+      "chat_id": 6515,
+      "fields": {
+        "F0": "cli",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Adequate",
+        "F7": "High",
+        "F8": 85,
+        "F9": [],
+        "F10": "Low",
+        "F11": "Standard CLI wrapper with clear intent. Delegates complex logic to the manifest package. Header accurately tracks version history and feature removal.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/cli/manifest/doctor.go",
+      "language": "go",
+      "chat_id": 6516,
+      "fields": {
+        "F0": "cli",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Adequate",
+        "F7": "High",
+        "F8": 85,
+        "F9": [],
+        "F10": "Low",
+        "F11": "Clear separation of concerns with logic delegated to the manifest package. The header description accurately reflects recent refactoring for logging hygiene. Output formatting is straightforward.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/cli/manifest/export.go",
+      "language": "go",
+      "chat_id": 6517,
+      "fields": {
+        "F0": "cli",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Adequate",
+        "F7": "High",
+        "F8": 85,
+        "F9": [],
+        "F10": "Low",
+        "F11": "The file demonstrates strong intent clarity through a detailed header description. Side effects (file I/O) are clearly commented. It adheres to architectural layering by delegating to the logic layer.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/cli/manifest/flags.go",
+      "language": "go",
+      "chat_id": 6518,
+      "fields": {
+        "F0": "cli",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Minimal",
+        "F7": "Medium",
+        "F8": 95,
+        "F9": [
+          "usage-context"
+        ],
+        "F10": "Low",
+        "F11": "Simple stateless helper. Low complexity justifies minimal docs, though usage context is missing.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/cli/manifest/import.go",
+      "language": "go",
+      "chat_id": 6519,
+      "fields": {
+        "F0": "cli",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 85,
+        "F9": [],
+        "F10": "Low",
+        "F11": "Detailed Long description and explicit comments about flag limitations ensure high agentic safety.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/cli/manifest/init.go",
+      "language": "go",
+      "chat_id": 6520,
+      "fields": {
+        "F0": "cli",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Adequate",
+        "F7": "High",
+        "F8": 90,
+        "F9": [],
+        "F10": "Low",
+        "F11": "Standard Cobra command with clear delegation. Side effects are well-described in the Long string.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/cli/manifest/list.go",
+      "language": "go",
+      "chat_id": 6521,
+      "fields": {
+        "F0": "cli",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 95,
+        "F9": [],
+        "F10": "Low",
+        "F11": "The code includes specific comments regarding context handling and error propagation, ensuring semantic honesty. It correctly delegates to the logic layer, maintaining architectural integrity.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/cli/manifest/root.go",
+      "language": "go",
+      "chat_id": 6522,
+      "fields": {
+        "F0": "cli",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 98,
+        "F9": [],
+        "F10": "Low",
+        "F11": "The file clearly documents the command structure and explicitly explains the rationale behind temporarily hiding specific subcommands, providing high intent clarity and low maintenance burden.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/cli/manifest/schema.go",
+      "language": "go",
+      "chat_id": 6523,
+      "fields": {
+        "F0": "cli",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "High",
+        "F4": [
+          "Layer violation: Direct import of data-access layer (internal/registry) from CLI layer."
+        ],
+        "F5": [
+          "Refactor registry resolution into internal/manifest to maintain architectural boundaries."
+        ],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 95,
+        "F9": [],
+        "F10": "Low",
+        "F11": "The file demonstrates excellent semantic honesty with specific comments explaining the delegation to the logic layer and the use of a centralized formatter. It adheres strictly to CLI layer rules by avoiding direct data access.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/cli/config.go",
+      "language": "go",
+      "chat_id": 6524,
+      "fields": {
+        "F0": "cli",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 90,
+        "F9": [],
+        "F10": "Low",
+        "F11": "Documentation clearly states the command is hidden and retained for internal use. Logic for interactive vs non-interactive modes is well-commented, ensuring safe refactoring.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/cli/grep.go",
+      "language": "go",
+      "chat_id": 6525,
+      "fields": {
+        "F0": "cli",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 95,
+        "F9": [],
+        "F10": "Low",
+        "F11": "Exceptional documentation of the complex grep-to-enrichment pipeline. Explicitly documents the async nature of stats recording and hidden profile logic, significantly reducing agentic risk.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/cli/info.go",
+      "language": "go",
+      "chat_id": 6526,
+      "fields": {
+        "F0": "cli",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 90,
+        "F9": [],
+        "F10": "Low",
+        "F11": "Description accurately reflects bridge integration and workspace display. Code includes specific comments about internal profile handling and bridge validation, making it safe for agentic refactoring.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/cli/query.go",
+      "language": "go",
+      "chat_id": 6527,
+      "fields": {
+        "F0": "cli",
+        "F1": "Full",
+        "F2": "Stale",
+        "F3": "Medium",
+        "F4": [
+          "Description refers to 'DatabasesCmd' which does not exist (likely 'BrainsCmd').",
+          "Potential Layer Violation: CLI layer importing data-access layer (registry)."
+        ],
+        "F5": [
+          "Update description to reference 'BrainsCmd'.",
+          "Refactor registry resolution into the manifest (internal-logic) layer."
+        ],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 75,
+        "F9": [],
+        "F10": "Medium",
+        "F11": "Rich documentation for subcommands, but the file-level description references 'DatabasesCmd' which is not present in the code, indicating a metadata drift.",
+        "F12": [
+          "stale-description"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/cli/root.go",
+      "language": "go",
+      "chat_id": 6528,
+      "fields": {
+        "F0": "cli",
+        "F1": "Full",
+        "F2": "Stale",
+        "F3": "Medium",
+        "F4": [
+          "Description claims 'databases' command is registered, but it is not found in the init function."
+        ],
+        "F5": [
+          "Update description to reflect current registered commands or add the missing 'databases' command registration."
+        ],
+        "F6": "Adequate",
+        "F7": "High",
+        "F8": 85,
+        "F9": [],
+        "F10": "Low",
+        "F11": "Clear entry point with good logging setup. Description is slightly indirect regarding command registration but functionally accurate.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "cmd/gsc/main.go",
+      "language": "go",
+      "chat_id": 6531,
+      "fields": {
+        "F0": "cli",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Adequate",
+        "F7": "High",
+        "F8": 100,
+        "F9": [],
+        "F10": "Low",
+        "F11": "Standard entry point delegating to the CLI handler. No logic to obscure intent.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/search/filter_parser.go",
+      "language": "go",
+      "chat_id": 6554,
+      "fields": {
+        "F0": "internal-logic",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Adequate",
+        "F7": "High",
+        "F8": 85,
+        "F9": [],
+        "F10": "Low",
+        "F11": "The code demonstrates strong semantic honesty, particularly regarding operator precedence and type validation. It adheres to architectural boundaries by using the manifest package for data access. Parameterized queries are used correctly, ensuring safety.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/search/stats.go",
+      "language": "go",
+      "chat_id": 6555,
+      "fields": {
+        "F0": "internal-logic",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Adequate",
+        "F7": "High",
+        "F8": 85,
+        "F9": [],
+        "F10": "Low",
+        "F11": "The code clearly documents the specific timestamp formatting requirement (UTC ISO 8601) to match JavaScript, which is critical for interoperability. The error handling strategy (logging warnings instead of failing the search operation) is explicitly commented, preventing an AI agent from mistakenly 'fixing' what looks like ignored errors.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/registry/resolver.go",
+      "language": "go",
+      "chat_id": 6586,
+      "fields": {
+        "F0": "internal-logic",
+        "F1": "Full",
+        "F2": "Stale",
+        "F3": "Medium",
+        "F4": [
+          "Description mentions 'DatabaseLabel' but code uses 'ManifestName'"
+        ],
+        "F5": [
+          "Update the description to reflect the actual field name 'ManifestName' used in the code"
+        ],
+        "F6": "Adequate",
+        "F7": "High",
+        "F8": 90,
+        "F9": [],
+        "F10": "Low",
+        "F11": "The code is side-effect-free and clearly documents its multi-step resolution strategy. It is highly safe for AI interaction, though the simplicity of the logic keeps the documentation volume at 'Adequate' rather than 'Comprehensive'.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/gitsense_map.go",
+      "language": "go",
+      "chat_id": 6602,
+      "fields": {
+        "F0": "internal-logic",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 95,
+        "F9": [],
+        "F10": "Low",
+        "F11": "The code features step-by-step inline comments that precisely explain the logic flow, including specific file path construction and nil-handling intent. It adheres strictly to semantic honesty standards with no fluff.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/scope.go",
+      "language": "go",
+      "chat_id": 6603,
+      "fields": {
+        "F0": "internal-logic",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 95,
+        "F9": [],
+        "F10": "Low",
+        "F11": "Complex logic for scope resolution and glob matching is broken down with explicit rules and precedence chains in comments, ensuring safe refactoring.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/importer_test.go",
+      "language": "go",
+      "chat_id": 6630,
+      "fields": {
+        "F0": "internal-logic",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "Low",
+        "F4": [],
+        "F5": [],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 90,
+        "F9": [],
+        "F10": "Low",
+        "F11": "Test setup and teardown are well-documented. The skip reason in TestAtomicImport_Success is explicit and honest about current limitations.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/bridge/bridge.go",
+      "language": "go",
+      "chat_id": 6867,
+      "fields": {
+        "F0": "internal-logic",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "Low",
+        "F4": [],
+        "F5": [],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 95,
+        "F9": [],
+        "F10": "Low",
+        "F11": "The file demonstrates excellent semantic honesty and explicit documentation of design rationales (e.g., stage-based validation). Critical side effects like atomic file writes and signal handling are clearly commented, making it highly safe for AI refactoring.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/db/chats.go",
+      "language": "go",
+      "chat_id": 6868,
+      "fields": {
+        "F0": "data-access",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 95,
+        "F9": [],
+        "F10": "Low",
+        "F11": "High semantic honesty with explicit documentation of timestamp formatting and business rules for leaf nodes. No architectural violations.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/db/models.go",
+      "language": "go",
+      "chat_id": 6869,
+      "fields": {
+        "F0": "data-access",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Adequate",
+        "F7": "High",
+        "F8": 100,
+        "F9": [],
+        "F10": "Low",
+        "F11": "As a data model file, it requires minimal logic documentation. The comments effectively explain the mapping to the SQLite schema and the rationale for using sql.Null types.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/cli/tree.go",
+      "language": "go",
+      "chat_id": 6953,
+      "fields": {
+        "F0": "cli",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "Medium",
+        "F4": [
+          "Potential Layer Violation: CLI layer importing data-access layer (registry)."
+        ],
+        "F5": [
+          "Refactor registry resolution into the manifest (internal-logic) layer to avoid direct data-access imports from CLI."
+        ],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 90,
+        "F9": [],
+        "F10": "Low",
+        "F11": "Excellent semantic honesty. Comments explain specific design decisions (e.g., guard clauses) rather than just restating code. Bridge integration is clear.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/tree/tree.go",
+      "language": "go",
+      "chat_id": 6955,
+      "fields": {
+        "F0": "internal-logic",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "Low",
+        "F4": [],
+        "F5": [],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 90,
+        "F9": [],
+        "F10": "Low",
+        "F11": "Complex rendering logic for the 'Semantic Heat Map' is well-documented with comments explaining visibility rules, focus patterns, and ASCII art construction strategies.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/deleter.go",
+      "language": "go",
+      "chat_id": 7018,
+      "fields": {
+        "F0": "internal-logic",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "Low",
+        "F4": [],
+        "F5": [],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 95,
+        "F9": [],
+        "F10": "Low",
+        "F11": "The function clearly documents the 6-step deletion process, including side effects (file deletion) and error recovery (handling missing files).",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/cli/manifest/delete.go",
+      "language": "go",
+      "chat_id": 7019,
+      "fields": {
+        "F0": "cli",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Adequate",
+        "F7": "High",
+        "F8": 90,
+        "F9": [],
+        "F10": "Low",
+        "F11": "The file is a thin CLI wrapper that correctly delegates destructive operations to the logic layer. Error handling flow is explicitly documented.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/cli/examples.go",
+      "language": "go",
+      "chat_id": 7141,
+      "fields": {
+        "F0": "cli",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "None",
+        "F4": [],
+        "F5": [],
+        "F6": "Adequate",
+        "F7": "High",
+        "F8": 95,
+        "F9": [],
+        "F10": "Low",
+        "F11": "The file serves as a static data registry. The structure is self-documenting, and the rendering logic is straightforward, posing minimal risk for AI modification.",
+        "F12": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/cli/values.go",
+      "language": "go",
+      "chat_id": 7143,
+      "fields": {
+        "F0": "cli",
+        "F1": "Full",
+        "F2": "Accurate",
+        "F3": "Low",
+        "F4": [],
+        "F5": [],
+        "F6": "Comprehensive",
+        "F7": "High",
+        "F8": 85,
+        "F9": [],
+        "F10": "Low",
+        "F11": "The file clearly defines its role as a convenience wrapper. It explicitly documents the bridge integration and argument validation, leaving little ambiguity for an AI agent.",
+        "F12": []
+      }
+    }
+  ]
+}

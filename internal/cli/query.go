@@ -1,12 +1,12 @@
 /**
  * Component: Query Command
- * Block-UUID: 2c1c2989-d17d-471e-8940-a7b9fd498d28
- * Parent-UUID: 47298171-4aaf-4826-93d5-1569a7cd6a20
- * Version: 3.10.0
+ * Block-UUID: 3a029d35-546d-4e45-b016-151a935d0d0c
+ * Parent-UUID: 2c1c2989-d17d-471e-8940-a7b9fd498d28
+ * Version: 3.11.0
  * Description: Added the 'DatabasesCmd' as a root-level convenience command. It supports listing all databases, inspecting a specific database schema via positional argument, or dumping all schemas using the --schema flag.
  * Language: Go
- * Created-at: 2026-02-13T06:38:29.128Z
- * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.9.0), Gemini 3 Flash (v3.10.0)
+ * Created-at: 2026-02-14T04:28:58.816Z
+ * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.9.0), Gemini 3 Flash (v3.10.0), GLM-4.7 (v3.11.0)
  */
 
 
@@ -168,10 +168,10 @@ var InsightsCmd = &cobra.Command{
 	Long: `Provides a high-level overview of how metadata is distributed across the codebase.
 Useful for identifying common patterns or unanalyzed areas.`,
 	Example: `  # Get insights for specific fields
-  gsc insights --db security --field risk_level,topic
+  gsc insights --db security --fields risk_level,topic
 
   # Also available as a query subcommand
-  gsc query insights --db security --field risk_level,topic`,
+  gsc query insights --db security --fields risk_level,topic`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		startTime := time.Now()
 
@@ -181,10 +181,6 @@ Useful for identifying common patterns or unanalyzed areas.`,
 				cmd.SilenceUsage = true
 				return err
 			}
-		}
-
-		if cmd.Flags().Changed("field") {
-			return fmt.Errorf("unknown flag: --field. Did you mean --fields?")
 		}
 
 		outputStr, resolvedDB, err := handleInsights(cmd.Context(), queryDB, queryFields, queryInsightsLimit, queryScopeOverride, queryFormat, queryQuiet, queryReport)
@@ -363,8 +359,8 @@ func init() {
 	queryListCmd.Flags().BoolVar(&queryQuiet, "quiet", false, "Suppress headers and hints")
 
 	// Insights Subcommand Flags
-	InsightsCmd.Flags().StringSliceVar(&queryFields, "fields", []string{}, "Field(s) to analyze (required, comma-separated or repeated)")
-	InsightsCmd.Flags().StringSliceVar(&queryFieldSingular, "field", []string{}, "Did you mean --fields?")
+	InsightsCmd.Flags().StringSliceVar(&queryFields, "fields", []string{}, "Field(s) to analyze (comma-separated if more than one)")
+	InsightsCmd.Flags().BoolP("help", "h", false, "Help for insights")
 	InsightsCmd.Flags().IntVar(&queryInsightsLimit, "limit", 10, "Limit top values (1-1000)")
 	InsightsCmd.Flags().StringVar(&queryScopeOverride, "scope-override", "", "Temporary scope override")
 	InsightsCmd.Flags().StringVarP(&queryDB, "db", "d", "", "Database override")
