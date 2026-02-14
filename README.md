@@ -10,8 +10,11 @@ Without context, tools can only find what is written in a file, not what that fi
 ### The Solution
 `gsc` is the bridge that brings GitSense Chat intelligence to your local environment. It imports specialized metadata (manifests) created by domain experts, transforming your repository from a collection of files into a queryable knowledge base.
 
-### The World's First Intelligent Repository?
-**No really!**
+**The World's First**
+
+We believe this is the world's first intelligent, AI-auditable code repository. By publishing this repository with pre-built intelligence, we are providing a template for how every repository can be made more human and AI friendly. Our `.gitsense` directory is the "new README", and we can demonstrate how it transforms a static codebase into a queryable knowledge base today.
+
+**Intelligent**
 
 Most repositories are passive containers. They store the "how" (the code) but lose the "why" (the intent). The reasoning behind the architecture often remains trapped in documentation or the developer's head.
 
@@ -19,11 +22,16 @@ Most repositories are passive containers. They store the "how" (the code) but lo
 
 By simply chatting with an AI in GitSense Chat, you create specialized analyzers called "Brains." These Brains extract domain knowledge from your code and store it as manifest files directly in your repository. This transforms your codebase into a queryable intelligence hub.
 
-**What this means**
-*   **For humans:** You stop guessing. Run `gsc brains` to see exactly what the repository knows.
-*   **For AI:** A sensory layer that eliminates blind spots. Use `gsc tree` to generate a metadata-enriched project map. This provides the agent with high-signal context while significantly reducing token usage.
+*   **For Humans:** No more guessing. Run `gsc brains` to see exactly what the repository knows.
+*   **For AI:** No more blind spots. Use `gsc tree` to generate a metadata-enriched project map. This provides the agent with high-signal context while significantly reducing token usage.
 
 This transformation is made possible by the `.gitsense` directory. This repository includes its own intelligence manifest (gsc-architect.json), making it the world's first self-aware repository that can answer questions about its own architecture.
+
+**AI Auditable**
+
+99.9% of the code in this repository was **AI-generated**, and every line generated (both used and unused) can be traced to a conversation and "LLM Version". This is not a "**vibe-coded**" repository**, and** we have the receipts to prove it.
+
+To learn more, please refer to the "Built with AI, Designed by Humans" and "Code Provenance & Auditability" sections in this README.
 
 ### Installation
 Download a pre-compiled binary for Linux, macOS, or Windows from the releases page. Or if you prefer, you can build from source using the Go toolchain (version 1.21 or later required).
