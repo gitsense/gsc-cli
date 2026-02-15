@@ -14,18 +14,14 @@ Most repositories are passive containers. They store the "how" (the code) but lo
 
 `gsc` makes your repository self-aware.
 
-By simply chatting with an AI in GitSense Chat, you create specialized 'Brains' that extract domain knowledge into manifest files, turning your repository into a queryable intelligence hub.
+By simply chatting with an AI in [GitSense Chat](https://github.com/gitsense/chat), you create specialized 'Brains' that extract domain knowledge into manifest files, turning your repository into a queryable intelligence hub.
 
 *   **For Humans:** No more guessing. Run `gsc brains` to see exactly what the repository knows.
 *   **For AI:** No more blind spots. Use `gsc tree` to generate a metadata-enriched project map. This provides the agent with high-signal context while significantly reducing token usage.
 
-This transformation is made possible by the `.gitsense` directory. This repository includes its own intelligence manifest (gsc-architect.json), making it the world's first self-aware repository that can answer questions about its own architecture.
+ **AI Auditable**
 
-**AI Auditable**
-
-99.9% of the code in this repository was **AI-generated**, and every line generated (both used and unused) can be traced to a conversation and "LLM Version". This is not a "**vibe-coded**" repository, **and** we have the receipts to prove it.
-
-To learn more, please refer to the "Built with AI, Designed by Humans" and "Code Provenance & Auditability" sections in this README.
+Every line of AI-generated code that is used in `gsc` can be traced to a conversation, model and version. This repository demonstrates transparent AI development: 99.9% AI-generated, but manually guided through hundreds of messages to maintain architectural control. We have the receipts, and they are embedded directly in the code.
 
 ### Metadata is the New Document
 
