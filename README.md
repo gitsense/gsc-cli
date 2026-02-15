@@ -27,6 +27,17 @@ This transformation is made possible by the `.gitsense` directory. This reposito
 
 To learn more, please refer to the "Built with AI, Designed by Humans" and "Code Provenance & Auditability" sections in this README.
 
+### Metadata is the New Document
+
+`gsc` is betting on a future where metadata becomes the new document. We are building `gsc` to make `.gitsense` as essential as a README. It is the bridge between human expertise and AI capability. By encoding domain knowledge as queryable metadata, we enable AI agents to discover code deterministically, not probabilistically. This is the paradigm shift that makes coding agents scalable.
+
+The current building blocks are:
+*   **`gsc brains`**: Agents query metadata to discover what the repository knows, replacing the need to read and guess from text documents.
+*   **`gsc tree`**: Agents use metadata to see a heat map of the project, replacing the need to browse raw file lists.
+*   **`gsc insights`**: Agents use metadata to get a high-signal overview of the project, replacing the need to summarize long narrative documents.
+
+These tools transform a passive repository into a natively AI-ready intelligence hub. **Try the Quick Start below to see these building blocks in action.** Our vision is to expand this bridge with features like `gsc issues` and `gsc prs`, making it easier for humans to share what the repository knows with AI agents.
+
 ### Requirements
 *   **Git:** Required for repository info and finding the project root.
 *   **Ripgrep:** Required in PATH for `gsc grep`. Ignore if not interested.
@@ -147,6 +158,3 @@ gsc run guard-rm --db infrastructure --filter "protection=high"
 ```
 
 This is still an idea, but we believe it's the future of agentic interaction. If you have a strong opinion on how metadata can make discovery easier and safer for AI, create an issue.
-
-### The Philosophy
-Code is the how. Metadata is the why. Domain experts in GitSense Chat encode their tell-tale signs and domain knowledge into Brains. gsc applies that intelligence to make your tools smarter and your decisions safer.
