@@ -28,9 +28,11 @@ Every line of AI-generated code that is used in `gsc` can be traced to a convers
 `gsc` is betting on a future where metadata becomes the new document. We are building `gsc` to make `.gitsense` as essential as a README. It is the bridge between human expertise and AI capability. By encoding domain knowledge as queryable metadata, we enable AI agents to discover code deterministically, not probabilistically. This is the paradigm shift that makes coding agents scalable.
 
 The current building blocks are:
-*   **`gsc brains`**: Agents query metadata to discover what the repository knows, replacing the need to read and guess from text documents.
-*   **`gsc tree`**: Agents use metadata to see a heat map of the project, replacing the need to browse raw file lists.
-*   **`gsc insights`**: Agents use metadata to get a high-signal overview of the project, replacing the need to summarize long narrative documents.
+*   **`gsc brains`**: Loads architectural intent so agents can discover what the repository knows without reading text documents.
+*   **`gsc query`**: Enables deterministic discovery by drilling into metadata, replacing the guesswork of keyword searching.
+*   **`gsc grep`**: Finds code based on both content and intent, replacing blind grepping with context-aware search.
+*   **`gsc tree`**: Visualizes a "Heat Map" of the project, replacing the need to browse raw file lists.
+*   **`gsc insights`**: Provides a high-signal overview of the project, replacing the need to summarize long narrative documents.
 
 These tools transform a passive repository into a natively AI-ready intelligence hub. **Try the Quick Start below to see these building blocks in action.** Our vision is to expand this bridge with features like `gsc issues` and `gsc prs`, making it easier for humans to share what the repository knows with AI agents.
 
