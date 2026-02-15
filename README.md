@@ -23,7 +23,7 @@ By simply chatting with an AI in [GitSense Chat](https://github.com/gitsense/cha
 
 Every line of AI-generated code that is used in `gsc` can be traced to a conversation, model and version. This repository demonstrates transparent AI development: 99.9% AI-generated, but manually guided through hundreds of messages to maintain architectural control. We have the receipts, and they are embedded directly in the code.
 
-### Metadata is the New Document
+### The New Document
 
 `gsc` is betting on a future where metadata becomes the new document. We are building `gsc` to make `.gitsense` as essential as a README. It is the bridge between human expertise and AI capability. By encoding domain knowledge as queryable metadata, we enable AI agents to discover code deterministically, not probabilistically. This is the paradigm shift that makes coding agents scalable.
 
@@ -34,7 +34,7 @@ The current building blocks are:
 *   **`gsc tree`**: Visualizes a "Heat Map" of the project, replacing the need to browse raw file lists.
 *   **`gsc insights`**: Provides a high-signal overview of the project, replacing the need to summarize long narrative documents.
 
-These tools transform a passive repository into a natively AI-ready intelligence hub. **Try the Quick Start below to see these building blocks in action.** Our vision is to expand this bridge with features like `gsc issues` and `gsc prs`, making it easier for humans to share what the repository knows with AI agents.
+These tools transform a passive repository into a natively AI-ready intelligence hub. **Try the Quick Start below to see these building blocks in action.**
 
 ### Requirements
 *   **Git:** Required for repository info and finding the project root.
