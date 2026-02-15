@@ -1,12 +1,12 @@
 /**
  * Component: Output Formatter
- * Block-UUID: e347b3a4-25ca-433a-8fc4-e40a203f8027
- * Parent-UUID: 97fe4a86-bd11-46c5-bba2-1e0254e644b8
- * Version: 1.8.0
+ * Block-UUID: 2bc306a2-ee33-4c1e-b2d7-dc580e2201ef
+ * Parent-UUID: e347b3a4-25ca-433a-8fc4-e40a203f8027
+ * Version: 1.9.0
  * Description: Provides utility functions to format data into JSON, Table, or CSV strings. Added FormatMetadataYAML and FormatMetadataJSON to support the ripgrep metadata appendix.
  * Language: Go
- * Created-at: 2026-02-13T04:42:41.985Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), Gemini 3 Flash (v1.7.0), Gemini 3 Flash (v1.8.0)
+ * Created-at: 2026-02-15T02:49:39.077Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), Gemini 3 Flash (v1.7.0), Gemini 3 Flash (v1.8.0), GLM-4.7 (v1.9.0)
  */
 
 
@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/mattn/go-isatty"
+	"golang.org/x/term"
 )
 
 // FormatJSON marshals the provided data interface into a formatted JSON string and prints it.
@@ -129,6 +130,19 @@ func FormatCSV(headers []string, rows [][]string) {
 
 	fmt.Print(sb.String())
 }
+
+// GetTerminalWidth returns the width of the terminal, or 80 if it cannot be determined.
+func GetTerminalWidth() int {
+	if !IsTerminal() {
+		return 80 // Default for non-terminal (piped output)
+	}
+	width, _, err := term.GetSize(int(os.Stdout.Fd()))
+	if err != nil {
+		return 80
+	}
+	return width
+}
+
 // IsTerminal checks if the output is being written to a terminal (TTY).
 // This is used to determine whether to show decorative headers/footers.
 func IsTerminal() bool {

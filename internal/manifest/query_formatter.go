@@ -1,12 +1,12 @@
 /**
  * Component: Query Output Formatter
- * Block-UUID: 8dcb54b2-c07b-422b-b641-4164b44bab49
- * Parent-UUID: 5586e99d-b8ef-434e-9cb4-0b894efd46a1
- * Version: 3.7.0
+ * Block-UUID: a824a26c-72a5-47a9-970e-8d3421cd7b39
+ * Parent-UUID: 8dcb54b2-c07b-422b-b641-4164b44bab49
+ * Version: 3.8.0
  * Description: Centralized schema formatting logic by adding 'FormatSchema'. This supports the new 'databases' convenience command and allows for consistent schema output (JSON, Table, CSV) across the CLI.
  * Language: Go
- * Created-at: 2026-02-13T05:21:13.664Z
- * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v3.6.0), Gemini 3 Flash (v3.7.0)
+ * Created-at: 2026-02-15T02:50:00.486Z
+ * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v3.6.0), Gemini 3 Flash (v3.7.0), GLM-4.7 (v3.8.0)
  */
 
 
@@ -125,6 +125,9 @@ func formatListResultTable(listResult *ListResult, quiet bool, config *QueryConf
 			sb.WriteString("==============================\n\n")
 		}
 
+		// Get terminal width for dynamic truncation
+		termWidth := output.GetTerminalWidth()
+
 		// 1. Render Databases
 		if len(listResult.Databases) > 0 {
 			if !isAllView {
@@ -153,10 +156,16 @@ func formatListResultTable(listResult *ListResult, quiet bool, config *QueryConf
 					}
 
 					for _, f := range dbItem.Fields {
+						// Calculate available width for description
+						// Format: "    name - description"
+						availableDescWidth := termWidth - 4 - maxFieldWidth - 3
+						if availableDescWidth < 20 {
+							availableDescWidth = 20 // Minimum width
+						}
 						sb.WriteString(fmt.Sprintf("    %-*s - %s\n", 
 							maxFieldWidth, 
 							f.Name, 
-							truncate(f.Description, 80)))
+							truncate(f.Description, availableDescWidth)))
 					}
 					// Add a blank line after fields for readability
 					sb.WriteString("\n")
@@ -177,10 +186,15 @@ func formatListResultTable(listResult *ListResult, quiet bool, config *QueryConf
 			}
 
 			for _, item := range listResult.Fields {
+				// Calculate available width for description
+				availableDescWidth := termWidth - 4 - maxNameWidth - 3
+				if availableDescWidth < 20 {
+					availableDescWidth = 20 // Minimum width
+				}
 				sb.WriteString(fmt.Sprintf("    %-*s - %s\n", 
 					maxNameWidth, 
 					item.Name, 
-					truncate(item.Description, 80)))
+					truncate(item.Description, availableDescWidth)))
 			}
 			sb.WriteString("\n")
 		}
