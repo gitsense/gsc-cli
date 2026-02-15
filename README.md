@@ -14,7 +14,7 @@ Most repositories are passive containers. They store the "how" (the code) but lo
 
 `gsc` makes your repository self-aware.
 
-By simply chatting with an AI in [GitSense Chat](https://github.com/gitsense/chat), you create specialized analyzers called "Brains." These Brains extract domain knowledge from your code for use in manifest files that are stored directly in your repository. This transforms your codebase into a queryable intelligence hub.
+By simply chatting with an AI in GitSense Chat, you create specialized 'Brains' that extract domain knowledge into manifest files, turning your repository into a queryable intelligence hub.
 
 *   **For Humans:** No more guessing. Run `gsc brains` to see exactly what the repository knows.
 *   **For AI:** No more blind spots. Use `gsc tree` to generate a metadata-enriched project map. This provides the agent with high-signal context while significantly reducing token usage.
