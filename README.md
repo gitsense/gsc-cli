@@ -4,6 +4,31 @@
 
 A CLI for querying repository intelligence and a framework for building AI-ready developer tools. Designed for humans and AI.
 
+**This repository is self-aware.**
+
+By shipping with a `.gitsense` directory, we provide a **Discovery Interface** that enables deterministic search of architecture, history, and intent the moment you clone the code. Watch how `gsc` transforms blind grepping into context-aware discovery:
+
+[video]
+
+### How the Brain Works
+
+The `.gitsense` directory contains queryable metadata manifests we call "Brains." We ship with two by default:
+
+*   **Architect Brain:** Maps layers, public APIs, and intent triggers for zero-shot discovery.
+*   **Provenance Brain:** Audits AI-generated code for traceability, metadata integrity, and agentic readiness.
+
+These are just examples. You can replace them with your own queryable data sources, whether that is a REST API, a GraphQL endpoint, or a custom database. The `gsc` CLI does not care about the source; it only cares that the data is queryable and structured.
+
+### Beyond Text Matching
+
+Standard tools like `ripgrep` are incredible at matching text across thousands of files in milliseconds. But text matching has a ceiling: **it lacks context.** 
+
+When an AI agent (or a human) searches for "Execute", they are often met with dozens of irrelevant matches. To find the right one, you either:
+1. **Pay the Token Tax:** Shove all matches into a massive context window and hope the LLM guesses correctly.
+2. **Manual Labor:** Keep grepping and filtering by hand until you find the signal.
+
+`gsc` provides a third way: **Context-Aware Discovery.** By enriching search results with metadata like `purpose` and `topics`, you can drill into your codebase deterministically. You don't search for strings; you search for intent.
+
 ### The World's First
 
 We believe this is the world's first intelligent, AI-auditable code repository. By publishing this repository with pre-built intelligence and auditable, AI-generated code, we are providing a template for how every repository can be made more human and AI-friendly. Our `.gitsense` directory is the new README, and we can demonstrate how today.

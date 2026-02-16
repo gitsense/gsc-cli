@@ -18,7 +18,6 @@ For each provided file, perform the following steps:
 5.  Identify internal package dependencies and critical file dependencies that would cause breaking changes if modified.
 6.  Assign topics from the controlled vocabulary in `ARCHITECTURE.md`, and assign parent_topics for broad categorization.
 7.  Generate a "Developer's Cheat Sheet" Markdown overview and a validated JSON metadata block for each file.
-8.  Perform cross-batch consistency checks to ensure layer, topic, and purpose naming remains identical across the repository.
 
 ## Reference File Usage
 The following reference files, provided in the `## REFERENCE FILE CONTENT` message, MUST be used as follows:
@@ -86,6 +85,12 @@ Refer to the files provided by the user.
 ## Dependencies
 {{ANALYZER: A bulleted list of internal packages and critical files this file depends on. Exclude standard library and external third-party packages. Format as "internal/package" or "internal/package/file.go".}}
 
+### Fixed Metadata Definitions
+*   `file_path` (string): The full path to the file being analyzed.
+*   `file_name` (string): The name of the file including its extension.
+*   `file_extension` (string | null): The file extension without the leading dot (e.g., `js`, `md`), or null` if none.
+*   `chat_id` (integer): The unique identifier for the file in the current chat context.
+
 ### Custom Metadata Definitions
 *   `layer` (string): One of `cli`, `internal-logic`, `data-access`, `pkg-util`, or `config`. Assigned using the non-negotiable rules in ARCHITECTURE.md Section 6.
 *   `purpose` (string): A refined, high-level explanation of why this file exists, building upon the generic purpose from PROJECT_MAP.md.
@@ -128,9 +133,9 @@ Refer to the files provided by the user.
   "tags": ["architecture", "golang", "manifest"],
   "requires_reference_files": true,
   "extracted_metadata": {
-    "file_path": "{{ANALYZER: Full File Path}}",
-    "file_name": "{{ANALYZER: File Name}}",
-    "file_extension": "{{ANALYZER: File Extension}}",
+    "file_path": "{{ANALYZER: Full file path}}",
+    "file_name": "{{ANALYZER: File name}}",
+    "file_extension": "{{ANALYZER: File extension without the leading dot or null if none}}",
     "chat_id": {{ANALYZER: Chat ID from file context}},
     "layer": "{{ANALYZER: One of: cli, internal-logic, data-access, pkg-util, config}}",
     "purpose": "{{ANALYZER: Refined, high-level explanation of why this file exists}}",
@@ -145,13 +150,6 @@ Refer to the files provided by the user.
 ```
 
 3.  **Critical Constraint: Reference Files:** Files provided in a context message starting with `## REFERENCE FILE CONTENT` are for reference and context only and must not be treated as analysis targets. They MUST NOT be analyzed, included in the Markdown overview, or counted as part of the file processing loop. Only files from the `## FILE CONTENT` message should be processed.
-
-4.  **Cross-Batch Consistency Check:** Before finalizing your output, perform the following checks:
-    a.  **Layer Consistency:** Do all files in `internal/cli/` have `layer: cli`? Do all files in `internal/db/` have `layer: data-access`? If not, explain why.
-    b.  **Topic Consistency:** Are topics from the "Controlled Topic Taxonomy" in ARCHITECTURE.md used consistently? (e.g., if one file uses `ripgrep`, do all ripgrep-related files use it?)
-    c.  **Purpose Alignment:** Does the `purpose` field align with the generic `purpose` from PROJECT_MAP.md, or is it a meaningful refinement?
-    d.  **Public API Completeness:** Are all exported symbols listed? (Spot-check by looking at the file's `func` and `type` declarations.)
-    e.  **Flag any inconsistencies in your response before submitting the JSON.**
 
 ---
 
