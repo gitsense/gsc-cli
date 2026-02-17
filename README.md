@@ -1,7 +1,8 @@
 # GitSense Chat CLI (gsc)
 
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![GitSense Self-Aware](https://img.shields.io/badge/GitSense-Self--Aware-blue)](.gitsense)
+[![Self-Aware](https://img.shields.io/badge/Self--Aware-Yes%20✓-brightgreen)](.gitsense)
+[![AI-Ready](https://img.shields.io/badge/AI--Ready-Yes%20✓-blue)](https://github.com/gitsense/gsc-cli)
+[![AI Traceable Code](https://img.shields.io/badge/AI%20Traceable%20Code-100%25-orange)](ARCHITECTURE.md)
 
 **The Intelligence Layer for Git: Turn any text file into a smart one.**
 
