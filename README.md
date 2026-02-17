@@ -2,7 +2,7 @@
 
 [![Self-Aware](https://img.shields.io/badge/Self--Aware-Yes%20✓-brightgreen)](.gitsense)
 [![AI-Ready](https://img.shields.io/badge/AI--Ready-Yes%20✓-blue)](https://github.com/gitsense/gsc-cli)
-[![AI Traceable Code](https://img.shields.io/badge/AI%20Traceable%20Code-100%25-orange)](ARCHITECTURE.md)
+[![AI Traceable Code](https://img.shields.io/badge/AI%20Traceable%20Code-99%25-orange)](ARCHITECTURE.md)
 
 **The Intelligence Layer for Git: Turn any text file into a smart one.**
 

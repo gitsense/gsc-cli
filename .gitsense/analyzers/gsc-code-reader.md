@@ -4,44 +4,43 @@
 # Analyze - `gsc-code-reader::file-content::default`
 
 ## Role: 
-Technical Code Analyst specializing in syntactic accuracy, implementation detail extraction, and dependency mapping.
+Technical Code Analyst specializing in raw technical extraction and structural mapping.
 
-## Task:
-
+## Task: 
 For the provided file, perform the following steps:
-1.  Analyze the file content to extract raw technical facts, focusing on implementation details and logic flow.
-2.  Identify all exported APIs (functions, methods, structs, interfaces) that are visible to other packages.
-3.  Map internal package dependencies and critical file dependencies to understand the import chain.
-4.  Generate a technical Markdown overview and a validated JSON metadata block containing the extracted technical data.
+1.  Consult `PROJECT_MAP.md` to understand the file's generic purpose and its place in the project hierarchy.
+2.  Analyze the file content to extract the technical implementation summary, identify all exported APIs, and map internal dependencies.
+3.  Generate a "Technical Cheat Sheet" Markdown overview and a validated JSON metadata block.
 
 ## Reference File Usage
 The following reference files, provided in the `## REFERENCE FILE CONTENT` message, MUST be used as follows:
 
 *   **File Pattern:** `PROJECT_MAP.md`
-    *   **Usage:** Use the hierarchical tree and the generic `purpose` field to understand the file's context within the project structure.
-    *   **Missing File Behavior:** Warn. If this file is not provided, continue analysis but note that context is limited to the file content itself.
+    *   **Usage:** Use the hierarchical tree and the generic `purpose` field for each file to ensure alignment and consistency across the entire repository.
+    *   **Missing File Behavior:** Warn
 
 ---split---
 
 ## Context:
-The Markdown "Overview" provides a technical "API Snapshot" and "Implementation Notes" for developer review. The JSON `extracted_metadata` stores structured technical data (APIs, summaries, dependencies) for system indexing and code intelligence tools.
+The Markdown "Overview" for each file is a "Technical Cheat Sheet" for user display and potential editing. The JSON `extracted_metadata` will be parsed and stored by the system for filtering, sorting, and AI agent discovery. The combined information (edited overview text + extracted metadata) will be used by the search index and the target LLM to answer user questions efficiently and cost-effectively.
 
 ## Input:
-Refer to the file provided by the user.
+Refer to the files provided by the user.
 
 ## Processing Step:
 
-1.  **Verify File Existence & Generate Output Blocks:**
-    a.  Attempt to verify the existence of the current file using its `{{ANALYZER: Full File Path}}`.
-    b.  If the file **does not exist**:
-        *   Print the following line (and nothing else):
-            `File {{ANALYZER: Full File Path}} - File not found. Overview and metadata cannot be generated.`
-        *   Stop processing.
-    c.  If the file **exists**:
-        *   Print the following line:
-            `File {{ANALYZER: Full File Path}}`
-        *   **Generate Markdown Overview (REQUIRED Code Block):** Generate the human-readable overview content. This content **MUST** be enclosed within a Markdown code block, starting with ```markdown and ending with ```.
-        *   **Critical Instructions:** In the Markdown overview, the first line must start with `# GitSense Chat Analysis` and the second line must start with `## ` followed by the analyzer id.
+1.  **Process Each File:** For each file provided by the user:
+    a.  **Verify File Existence & Generate Output Blocks:**
+        i.  Attempt to verify the existence of the current file using its `{{ANALYZER: Full File Path}}`.
+        ii. If the file **does not exist**:
+            *   Print the following line (and nothing else for this file):
+                `File: {{ANALYZER: Full File Path}} - File not found. Overview and metadata cannot be generated.`
+            *   Proceed to the next file.
+        iii. If the file **exists**:
+            *   Print the following line:
+                `File: {{ANALYZER: Full File Path}}`
+            *   **Generate Markdown Overview (REQUIRED Code Block):** Generate the human-readable overview content. This content **MUST** be enclosed within a Markdown code block, starting with ```markdown and ending with ```.
+            *   **Critical Instructions:** In the Markdown overview, the first line must start with `# GitSense Chat Analysis` and the second line must start with `## ` followed by the analyzer id.
 
 ```markdown
 # GitSense Chat Analysis
@@ -51,7 +50,7 @@ Refer to the file provided by the user.
 *   **Chat ID:** {{ANALYZER: Chat ID from file context}}
 
 ## API Snapshot
-{{ANALYZER: A clean, bulleted list of all exported functions, methods, structs, and interfaces that can be called or imported from this file. If the file has no public API (e.g., main.go or test files), state "No public API".}}
+{{ANALYZER: A clean, bulleted list of all exported functions, methods, structs, and interfaces that can be called or imported from this file. If the file has no public API (e.g., main.go or test files), state "No public API" and explain why in the technical summary.}}
 
 ## Implementation Notes
 {{ANALYZER: Highlight unique patterns, critical logic, or architectural significance. Examples: "Uses Write-Ahead Logging (WAL) for SQLite", "Implements the SearchEngine interface", "Orchestrates the dual-pass ripgrep workflow", "Manages atomic database imports with backup rotation".}}
@@ -62,7 +61,7 @@ Refer to the file provided by the user.
 ### Fixed Metadata Definitions
 *   `file_path` (string): The full path to the file being analyzed.
 *   `file_name` (string): The name of the file including its extension.
-*   `file_extension` (string | null): The file extension without the leading dot (e.g., `js`, `md`), or `null` if none.
+*   `file_extension` (string | null): The file extension without the leading dot (e.g., `js`, `md`), or null` if none.
 *   `chat_id` (integer): The unique identifier for the file in the current chat context.
 
 ### Custom Metadata Definitions
@@ -96,14 +95,14 @@ Refer to the file provided by the user.
 
 ```json
 {
-  "description": "Extracts raw technical facts, implementation details, and API signatures to create a technical intelligence layer.",
+  "description": "Extracts raw technical facts (APIs, implementation details, dependencies) to create a structural intelligence layer.",
   "label": "GSC Code Reader",
   "version": "1.0.0",
-  "tags": ["technical", "api-extraction", "dependencies"],
+  "tags": ["technical", "golang", "api-discovery"],
   "requires_reference_files": false,
   "extracted_metadata": {
     "file_path": "{{ANALYZER: Full file path}}",
-    "file_name": "{{ANALYZER: File name including its extension}}",
+    "file_name": "{{ANALYZER: File name}}",
     "file_extension": "{{ANALYZER: File extension without the leading dot or null if none}}",
     "chat_id": {{ANALYZER: Chat ID from file context}},
     "technical_summary": "{{ANALYZER: 2-4 sentences explaining the implementation}}",
