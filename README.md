@@ -1,5 +1,8 @@
 # GitSense Chat CLI (gsc)
 
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![GitSense Self-Aware](https://img.shields.io/badge/GitSense-Self--Aware-blue)](.gitsense)
+
 **The Intelligence Layer for Git: Turn any text file into a smart one.**
 
 A CLI for querying repository intelligence and a framework for building AI-ready developer tools. Designed for humans and AI.
