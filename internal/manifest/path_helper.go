@@ -99,12 +99,12 @@ func ValidateWorkspace() error {
 
 	gitsenseDir := filepath.Join(root, settings.GitSenseDir)
 	if _, err := os.Stat(gitsenseDir); os.IsNotExist(err) {
-		return fmt.Errorf("GitSense workspace not found at %s. Please run 'gsc init' first to initialize the workspace", gitsenseDir)
+		return fmt.Errorf("GitSense workspace not found at %s. Please run 'gsc manifest init' first to initialize the workspace", gitsenseDir)
 	}
 
 	registryPath := filepath.Join(gitsenseDir, settings.RegistryFileName)
 	if _, err := os.Stat(registryPath); os.IsNotExist(err) {
-		return fmt.Errorf("GitSense registry not found at %s. The workspace may be corrupted. Please run 'gsc init' to repair it", registryPath)
+		return fmt.Errorf("GitSense registry not found at %s. The workspace may be corrupted. Please run 'gsc manifest init' to repair it", registryPath)
 	}
 
 	return nil
