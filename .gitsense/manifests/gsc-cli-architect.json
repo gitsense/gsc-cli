@@ -1,0 +1,3017 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-02-18T03:11:44.406Z",
+  "manifest": {
+    "name": "GitSense Chat CLI Architect",
+    "database_name": "gsc-cli-architect",
+    "description": "Architectural mapping of the gsc-cli repository to build an intelligence layer for humans and AI agents. This manifest tracks layers, public APIs, intent triggers, and dependencies to enable zero-shot discovery and automated decision-making within the codebase.",
+    "tags": [
+      "architecture",
+      "gsc-cli",
+      "go",
+      "agent-discovery",
+      "metadata"
+    ]
+  },
+  "repositories": [
+    {
+      "ref": "R0",
+      "name": "gitsense/gsc-cli"
+    }
+  ],
+  "branches": [
+    {
+      "ref": "B0",
+      "name": "main"
+    }
+  ],
+  "analyzers": [
+    {
+      "ref": "A0",
+      "id": "gsc-intent-scout::file-content::default",
+      "name": "GSC Intent Scout",
+      "description": "Extracts the 'Why' behind code files to create natural language discovery triggers for humans and AI agents.",
+      "version": "1.0.0"
+    },
+    {
+      "ref": "A1",
+      "id": "gsc-code-reader::file-content::default",
+      "name": "GSC Code Reader",
+      "description": "Extracts raw technical facts (APIs, implementation details, dependencies) to create a structural intelligence layer.",
+      "version": "1.0.0"
+    },
+    {
+      "ref": "A2",
+      "id": "gsc-architect-governance::file-content::default",
+      "name": "GSC Architect Governance",
+      "description": "Enforces architectural governance by validating layers and applying the controlled topic taxonomy based on ARCHITECTURE.md.",
+      "version": "1.0.0"
+    }
+  ],
+  "fields": [
+    {
+      "ref": "F0",
+      "name": "file_extension",
+      "type": "string",
+      "display_name": "File Extension",
+      "description": "The file extension without the leading dot (e.g., `js`, `md`), or null` if none.",
+      "analyzer_ref": "A0"
+    },
+    {
+      "ref": "F1",
+      "name": "purpose",
+      "type": "string",
+      "display_name": "Purpose",
+      "description": "A refined, high-level explanation of why this file exists, building upon the generic purpose from PROJECT_MAP.md and aligned with the project philosophy in README.md.",
+      "analyzer_ref": "A0"
+    },
+    {
+      "ref": "F2",
+      "name": "intent_triggers",
+      "type": "array",
+      "display_name": "Intent Triggers",
+      "description": "3-5 natural language phrases that should lead a user or agent to this file (e.g., \"how to open sqlite\", \"validate bridge code\").",
+      "analyzer_ref": "A0"
+    },
+    {
+      "ref": "F3",
+      "name": "technical_summary",
+      "type": "string",
+      "display_name": "Technical Summary",
+      "description": "2-4 sentences explaining the implementation, mentioning key internal logic and primary method names.",
+      "analyzer_ref": "A1"
+    },
+    {
+      "ref": "F4",
+      "name": "public_api",
+      "type": "array",
+      "display_name": "Public Api",
+      "description": "List all exported functions, methods, structs, and interfaces. This is critical for zero-shot agentic discovery. Return empty array `[]` if no public API exists.",
+      "analyzer_ref": "A1"
+    },
+    {
+      "ref": "F5",
+      "name": "dependencies",
+      "type": "array",
+      "display_name": "Dependencies",
+      "description": "List internal packages or critical files this file imports/relies on. Exclude standard library and external third-party packages.",
+      "analyzer_ref": "A1"
+    },
+    {
+      "ref": "F6",
+      "name": "layer",
+      "type": "string",
+      "display_name": "Layer",
+      "description": "One of `cli`, `internal-logic`, `data-access`, `pkg-util`, or `config`. Assigned using the non-negotiable rules in ARCHITECTURE.md Section 1.",
+      "analyzer_ref": "A2"
+    },
+    {
+      "ref": "F7",
+      "name": "topics",
+      "type": "array",
+      "display_name": "Topics",
+      "description": "Specific feature tags from the controlled vocabulary in ARCHITECTURE.md Section 4. Use ONLY the defined topics. Do not invent new ones.",
+      "analyzer_ref": "A2"
+    },
+    {
+      "ref": "F8",
+      "name": "parent_topics",
+      "type": "array",
+      "display_name": "Parent Topics",
+      "description": "Broad categories from the controlled vocabulary (e.g., `discovery`, `persistence`, `search`, `infrastructure`).",
+      "analyzer_ref": "A2"
+    }
+  ],
+  "data": [
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "pkg/settings/settings.go",
+      "language": "go",
+      "chat_id": 6467,
+      "fields": {
+        "F0": "go",
+        "F1": "Centralizes global configuration constants for the GSC CLI, defining the structural layout of the `.gitsense` directory, file naming conventions for manifests and databases, and operational limits such as backup retention and bridge payload sizes.",
+        "F2": [
+          "Where is the default `.gitsense` directory name defined?",
+          "What is the maximum number of database backups retained?",
+          "What are the file extensions used for manifest databases and JSON dumps?",
+          "Where are the CLI bridge handshake files stored?",
+          "What is the maximum size limit for bridge output messages?"
+        ],
+        "F3": "Defines global configuration constants and variables for the GSC CLI, including directory names, file extensions, backup policies, and bridge parameters. It provides a centralized location for managing default values and settings that can be overridden by CLI flags.",
+        "F4": [
+          "DefaultGitSenseDir",
+          "GitSenseDir",
+          "RegistryFileName",
+          "DefaultDBExtension",
+          "ManifestJSONExtension",
+          "BackupsDir",
+          "TempDBSuffix",
+          "MaxBackups",
+          "DefaultMaxBridgeSize",
+          "BridgeCodeLength",
+          "RealModelNotes",
+          "BridgeHandshakeDir"
+        ],
+        "F5": [],
+        "F6": "config",
+        "F7": [
+          "atomic-import",
+          "bridge",
+          "manifest-management"
+        ],
+        "F8": [
+          "infrastructure",
+          "persistence"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "pkg/logger/logger.go",
+      "language": "go",
+      "chat_id": 6469,
+      "fields": {
+        "F0": "go",
+        "F1": "Provides a centralized, configurable logging mechanism for the GSC CLI that supports severity-based filtering, structured key-value output, and color-coded terminal feedback to enhance user experience and debugging capabilities.",
+        "F2": [
+          "How do I enable debug logging?",
+          "Where is the logging utility defined?",
+          "How does the CLI handle error output?",
+          "How do I change the log verbosity?"
+        ],
+        "F3": "Provides standardized logging utilities with severity levels (Error, Warning, Info, Debug), color-coded terminal output, and structured key-value formatting. It manages a global log level threshold to control output verbosity, defaulting to Warning.",
+        "F4": [
+          "SetLogLevel",
+          "Info",
+          "Success",
+          "Warning",
+          "Error",
+          "Fatal",
+          "Debug",
+          "Level",
+          "LevelError",
+          "LevelWarning",
+          "LevelInfo",
+          "LevelDebug",
+          "ColorReset",
+          "ColorBold",
+          "ColorRed",
+          "ColorGreen",
+          "ColorYellow",
+          "ColorBlue",
+          "ColorPurple",
+          "ColorCyan",
+          "ColorWhite"
+        ],
+        "F5": [],
+        "F6": "pkg-util",
+        "F7": [],
+        "F8": [
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/version/version.go",
+      "language": "go",
+      "chat_id": 6472,
+      "fields": {
+        "F0": "go",
+        "F1": "Manages and exposes application build metadata, such as the semantic version, Git commit hash, and build timestamp, enabling users and systems to identify the exact binary state for debugging and auditability.",
+        "F2": [
+          "Where is the CLI version stored?",
+          "How do I get the current build information?",
+          "What version of gsc am I running?",
+          "How are build variables injected?"
+        ],
+        "F3": "Stores and retrieves version metadata for the application, including the semantic version, Git commit hash, and build timestamp. The variables are designed to be populated via build-time linker flags.",
+        "F4": [
+          "GetVersion",
+          "Version",
+          "GitCommit",
+          "BuildTime"
+        ],
+        "F5": [],
+        "F6": "internal-logic",
+        "F7": [],
+        "F8": [
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/search/aggregator.go",
+      "language": "go",
+      "chat_id": 6474,
+      "fields": {
+        "F0": "go",
+        "F1": "Transforms raw search matches into a structured summary by grouping results by file, calculating match statistics, and applying truncation limits to prioritize relevant files.",
+        "F2": [
+          "How are search results summarized and grouped by file?",
+          "Where is the logic to calculate match counts and statistics for search results?",
+          "How does the search system limit the number of files displayed in the output?",
+          "What handles the aggregation of categorical metadata from search matches?"
+        ],
+        "F3": "Aggregates enriched search matches into a GrepSummary by grouping results by file, calculating statistics like total matches and analyzed files, and aggregating categorical metadata fields. It sorts files by match count in descending order and applies truncation limits to manage output size.",
+        "F4": [
+          "AggregateMatches"
+        ],
+        "F5": [
+          "internal/search/models.go"
+        ],
+        "F6": "internal-logic",
+        "F7": [
+          "ripgrep",
+          "metadata-enrichment",
+          "sqlite",
+          "batch-metadata-lookup"
+        ],
+        "F8": [
+          "search",
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/search/engine.go",
+      "language": "go",
+      "chat_id": 6475,
+      "fields": {
+        "F0": "go",
+        "F1": "Defines the abstraction layer for code search, including the interface for search engines and the data structures for raw matches and search options.",
+        "F2": [
+          "What is the interface definition for a search engine?",
+          "How are search options and raw results structured?",
+          "Where do I define the contract for implementing a new search tool?",
+          "What data structures represent a raw code match before enrichment?"
+        ],
+        "F3": "Defines the SearchEngine interface and core data structures for the search subsystem. It provides the abstraction layer for implementing search tools like ripgrep, structuring raw match results with context and offsets, and defining configuration options for search execution.",
+        "F4": [
+          "SearchEngine",
+          "SearchOptions",
+          "RawMatch",
+          "SearchResult"
+        ],
+        "F5": [],
+        "F6": "internal-logic",
+        "F7": [
+          "ripgrep",
+          "git-integration",
+          "metadata-enrichment"
+        ],
+        "F8": [
+          "search",
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/search/enricher.go",
+      "language": "go",
+      "chat_id": 6476,
+      "fields": {
+        "F0": "go",
+        "F1": "Orchestrates the enrichment of raw search matches by fetching metadata from the database, applying complex semantic filters, and projecting requested fields.",
+        "F2": [
+          "How are search results enriched with metadata from the database?",
+          "Where is the logic for filtering search results by semantic fields?",
+          "How does the system apply metadata filters like 'risk=high' to search matches?",
+          "What handles the SQL queries to fetch file metadata during a search?"
+        ],
+        "F3": "Orchestrates the enrichment of raw search matches by fetching metadata from SQLite databases in batches. It applies system filters (analyzed status, file patterns) and complex metadata filters (operators, ranges, array checks) to results, supporting field projection and semantic filtering for search and tree commands.",
+        "F4": [
+          "EnrichMatches",
+          "FetchMetadataMap",
+          "CheckFilters",
+          "CheckSingleCondition",
+          "CheckArrayCondition"
+        ],
+        "F5": [
+          "internal/db",
+          "internal/manifest",
+          "pkg/logger"
+        ],
+        "F6": "internal-logic",
+        "F7": [
+          "sqlite",
+          "metadata-enrichment",
+          "batch-metadata-lookup",
+          "filter-parsing-and-validation",
+          "focus-scope"
+        ],
+        "F8": [
+          "search",
+          "persistence",
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/search/formatter.go",
+      "language": "go",
+      "chat_id": 6477,
+      "fields": {
+        "F0": "go",
+        "F1": "Serves as the presentation layer for the search subsystem, transforming raw search data and metadata into human-readable terminal output or structured JSON for agents. It bridges the gap between the intelligence layer and the user by rendering enriched search results with syntax highlighting, metadata cards, and intelligence headers.",
+        "F2": [
+          "How are search results displayed in the terminal with colors and metadata?",
+          "Where is the JSON output generated for the CLI Bridge integration?",
+          "How does the tool format the intelligence header showing context and database?",
+          "What handles the grouping of matches by file and the highlighting of search terms?"
+        ],
+        "F3": "Handles the final presentation of search results, supporting both JSON and human-readable formats with syntax highlighting. It groups raw matches by file, applies metadata filters, and manages color output for terminal interfaces.",
+        "F4": [
+          "FormatResponse",
+          "FormatResponseToString",
+          "GroupMatchesByFile",
+          "FormatOptions"
+        ],
+        "F5": [
+          "internal/output",
+          "pkg/logger"
+        ],
+        "F6": "internal-logic",
+        "F7": [
+          "ripgrep",
+          "metadata-enrichment",
+          "bridge",
+          "dual-pass-search"
+        ],
+        "F8": [
+          "search",
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/search/models.go",
+      "language": "go",
+      "chat_id": 6478,
+      "fields": {
+        "F0": "go",
+        "F1": "Defines the canonical data structures and schemas for the search subsystem, establishing the contract for how search intelligence is represented. It ensures type safety and consistency across the application by defining the JSON response format, query contexts, filter conditions, and the data models used for recording search history.",
+        "F2": [
+          "What is the JSON schema for the gsc grep search response?",
+          "Where are the data structures for search results and metadata defined?",
+          "How is search history recorded and structured in the database?",
+          "What fields are available in the QueryContext for filtering and reporting?"
+        ],
+        "F3": "Defines the core data models for the search subsystem, mapping JSON responses to Go structs. It structures query contexts, summaries, file results, and match details, including metadata for tool execution and repository state.",
+        "F4": [
+          "GrepResponse",
+          "QueryContext",
+          "ToolInfo",
+          "SearchScope",
+          "SystemInfo",
+          "RepositoryInfo",
+          "GrepSummary",
+          "FileSummary",
+          "FileResult",
+          "MatchOffset",
+          "MatchDetail",
+          "MatchResult",
+          "FilterCondition",
+          "SearchRecord"
+        ],
+        "F5": [],
+        "F6": "internal-logic",
+        "F7": [
+          "ripgrep",
+          "filter-parsing-and-validation",
+          "metadata-enrichment"
+        ],
+        "F8": [
+          "search",
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/search/ripgrep_engine.go",
+      "language": "go",
+      "chat_id": 6479,
+      "fields": {
+        "F0": "go",
+        "F1": "Acts as the high-performance execution engine for the search subsystem by wrapping the ripgrep binary. It translates abstract search options into specific command-line arguments, executes the search process, and parses the raw JSON stream output into structured internal models.",
+        "F2": [
+          "How does gsc execute the ripgrep binary for searching?",
+          "Where is the SearchEngine interface implemented?",
+          "How are ripgrep command-line arguments constructed from search options?",
+          "How does the tool parse the JSON output stream from ripgrep?"
+        ],
+        "F3": "Implements the SearchEngine interface using the ripgrep binary. It executes subprocesses, parses JSON streams for matches and context, and handles version detection and specific exit codes for no-match scenarios.",
+        "F4": [
+          "RipgrepEngine",
+          "RipgrepEngine.Search"
+        ],
+        "F5": [
+          "pkg/logger"
+        ],
+        "F6": "internal-logic",
+        "F7": [
+          "ripgrep"
+        ],
+        "F8": [
+          "search",
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/registry/models.go",
+      "language": "go",
+      "chat_id": 6481,
+      "fields": {
+        "F0": "go",
+        "F1": "Defines the data structures and in-memory logic for the GitSense registry, which acts as the central index for all manifest databases. It maps human-readable manifest names to physical database files and manages their lifecycle, ensuring the system can reliably discover and reference available intelligence sources.",
+        "F2": [
+          "How does gsc track available manifest databases?",
+          "Where is the registry data structure defined?",
+          "How are manifest names resolved to physical database files?",
+          "What methods are available for managing registry entries?"
+        ],
+        "F3": "Defines the data structures for the GitSense registry file, including Registry and RegistryEntry structs. Provides methods for managing database entries such as upserting, finding by name or database name, and removing entries.",
+        "F4": [
+          "Registry",
+          "RegistryEntry",
+          "NewRegistry",
+          "UpsertEntry",
+          "FindEntry",
+          "FindEntryByDBName",
+          "RemoveEntry",
+          "RemoveEntryByDBName"
+        ],
+        "F5": [],
+        "F6": "data-access",
+        "F7": [
+          "manifest-management"
+        ],
+        "F8": [
+          "persistence"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/registry/registry.go",
+      "language": "go",
+      "chat_id": 6482,
+      "fields": {
+        "F0": "go",
+        "F1": "This file serves as the persistence layer for the GitSense manifest registry. It is responsible for loading, saving, and updating the `.gitsense/manifest.json` file, which acts as the central index for all available 'Brains' (metadata databases) in the workspace. By handling file I/O operations and ensuring atomic updates, it guarantees that the system's knowledge of available intelligence sources remains consistent and reliable.",
+        "F2": [
+          "How does the CLI load the list of available manifest databases?",
+          "Where is the manifest registry file stored and how is it updated?",
+          "What handles the persistence of database entries in the `.gitsense` directory?",
+          "How are new brains registered in the manifest system?"
+        ],
+        "F3": "Handles the persistence layer for the manifest registry, including loading, saving, and upserting database entries. It resolves the registry path using the Git project root and handles JSON marshaling with indentation.",
+        "F4": [
+          "LoadRegistry",
+          "SaveRegistry",
+          "AddEntry"
+        ],
+        "F5": [
+          "internal/git",
+          "pkg/logger",
+          "pkg/settings"
+        ],
+        "F6": "data-access",
+        "F7": [
+          "manifest-management"
+        ],
+        "F8": [
+          "persistence"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/output/formatter.go",
+      "language": "go",
+      "chat_id": 6484,
+      "fields": {
+        "F0": "go",
+        "F1": "Standardizes the presentation of CLI data across multiple formats (JSON, Table, CSV, Markdown), ensuring readability for humans and compatibility with the CLI Bridge for AI agents.",
+        "F2": [
+          "How does the CLI format search results into a table?",
+          "Where is the logic for generating JSON output for the CLI Bridge?",
+          "How does gsc determine the terminal width for display?",
+          "What function converts command output into Markdown format?",
+          "How are CSV exports generated from query results?"
+        ],
+        "F3": "Provides utility functions to format data into JSON, Table, or CSV strings. It includes logic for dynamic table width calculation, CSV generation using the standard library, and terminal detection. It also constructs Markdown messages for the CLI Bridge, wrapping command output in a standardized format.",
+        "F4": [
+          "FormatJSON",
+          "FormatTable",
+          "FormatCSV",
+          "IsTerminal",
+          "FormatBridgeMarkdown"
+        ],
+        "F5": [],
+        "F6": "pkg-util",
+        "F7": [
+          "bridge"
+        ],
+        "F8": [
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/bundler.go",
+      "language": "go",
+      "chat_id": 6486,
+      "fields": {
+        "F0": "go",
+        "F1": "Transforms raw SQL query results from a manifest database into structured context bundles (JSON or lists), handling type conversions and database validation to bridge data storage and presentation layers.",
+        "F2": [
+          "How are context bundles generated from the manifest database?",
+          "Where is the SQL query execution logic for the manifest system?",
+          "How does the CLI convert database rows into JSON or list formats?",
+          "What handles the validation of database existence before querying?"
+        ],
+        "F3": "Executes SQL queries against manifest databases to generate context bundles. Handles database validation, connection management, and result formatting into lists or JSON, including specific type handling for SQLite integers.",
+        "F4": [
+          "CreateBundle",
+          "BundleFile"
+        ],
+        "F5": [
+          "internal/db",
+          "pkg/logger"
+        ],
+        "F6": "internal-logic",
+        "F7": [
+          "manifest-management",
+          "sqlite",
+          "metadata-enrichment"
+        ],
+        "F8": [
+          "persistence",
+          "discovery"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/config.go",
+      "language": "go",
+      "chat_id": 6487,
+      "fields": {
+        "F0": "go",
+        "F1": "This file serves as the central configuration manager for the GitSense CLI, responsible for loading, saving, and merging user preferences and workspace settings. It implements a hierarchical precedence chain—prioritizing active profiles over global defaults and project-level maps—to ensure that commands like `gsc query` and `gsc grep` execute with the correct context, database, and scope settings. By managing the 'Focus Scope' and database aliases, it ensures that the intelligence layer is applied consistently according to the user's or team's defined intent.",
+        "F2": [
+          "How does gsc determine which database to use by default?",
+          "Where are user profiles and workspace settings stored?",
+          "How do I configure a default scope for my project queries?",
+          "What is the precedence order for configuration settings in gsc?",
+          "How do I manage context profiles for different workspaces?"
+        ],
+        "F3": "Manages the loading, saving, and merging of query configurations and profiles. Implements a precedence chain where profile settings override global settings, which in turn override .gitsense-map defaults. Handles persistence of configuration state to JSON.",
+        "F4": [
+          "LoadConfig",
+          "SaveConfig",
+          "GetEffectiveConfig",
+          "LoadProfile",
+          "SaveProfile",
+          "NewQueryConfig",
+          "SetDefault",
+          "ClearDefault"
+        ],
+        "F5": [
+          "internal/git",
+          "pkg/logger",
+          "pkg/settings",
+          "internal/manifest/gitsense_map.go"
+        ],
+        "F6": "config",
+        "F7": [
+          "profile-based-configuration",
+          "scope-resolution-precedence"
+        ],
+        "F8": [
+          "infrastructure",
+          "discovery"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/doctor_logic.go",
+      "language": "go",
+      "chat_id": 6488,
+      "fields": {
+        "F0": "go",
+        "F1": "This file implements the diagnostic logic for the `gsc manifest doctor` command, designed to validate the structural integrity and health of the `.gitsense` environment. It performs a series of checks—verifying the project root, directory structure, registry file validity, and database connectivity—to ensure the intelligence layer is functional. Additionally, it identifies orphaned database files that are registered in the file system but missing from the registry, helping maintain consistency and preventing errors during metadata operations.",
+        "F2": [
+          "How do I check if my .gitsense environment is set up correctly?",
+          "Why is gsc unable to connect to my manifest database?",
+          "How can I find orphaned or unregistered database files?",
+          "What diagnostics are available to troubleshoot gsc configuration issues?",
+          "How to validate the integrity of the manifest registry?"
+        ],
+        "F3": "Performs health checks on the .gitsense environment, validating the Git repository root, directory structure, registry file integrity, and database connectivity. Identifies orphaned database files that are not registered in the manifest registry.",
+        "F4": [
+          "RunDoctor"
+        ],
+        "F5": [
+          "internal/db",
+          "internal/git",
+          "internal/registry",
+          "pkg/settings"
+        ],
+        "F6": "internal-logic",
+        "F7": [
+          "manifest-management",
+          "sqlite"
+        ],
+        "F8": [
+          "persistence",
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/exporter.go",
+      "language": "go",
+      "chat_id": 6489,
+      "fields": {
+        "F0": "go",
+        "F1": "This file provides the functionality to serialize and extract the raw intelligence data stored in SQLite manifest databases into human-readable or machine-parsable formats. It enables users to export the complete contents of a 'Brain'—including repositories, branches, analyzers, fields, and file metadata—to Markdown or JSON. This capability is essential for auditing the intelligence layer, creating backups, sharing context with external tools, or reviewing the structured data outside of the CLI interface.",
+        "F2": [
+          "How do I export my manifest database to a JSON file?",
+          "Can I generate a readable Markdown report of my project's metadata?",
+          "How do I backup the intelligence data stored in .gitsense?",
+          "Where can I see a full dump of the files and metadata in my database?",
+          "How to convert the internal SQLite database to a portable format?"
+        ],
+        "F3": "Exports the contents of a manifest database to Markdown or JSON formats. Validates database existence, queries all relevant tables (repositories, branches, files, etc.), and formats the results using dynamic row scanning and string building.",
+        "F4": [
+          "ExportDatabase"
+        ],
+        "F5": [
+          "internal/db",
+          "internal/manifest/path_helper.go",
+          "internal/manifest/validator.go"
+        ],
+        "F6": "internal-logic",
+        "F7": [
+          "manifest-management",
+          "sqlite"
+        ],
+        "F8": [
+          "persistence"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/importer.go",
+      "language": "go",
+      "chat_id": 6490,
+      "fields": {
+        "F0": "go",
+        "F1": "This file serves as the ingestion engine for the GitSense intelligence layer. It is responsible for parsing JSON manifest files (Brains) and atomically importing them into SQLite databases. The core problem it solves is ensuring data integrity and consistency during the import process by utilizing atomic swaps, file locking for concurrency control, and automatic backup rotation. Additionally, it enriches the incoming data by detecting programming languages for files where metadata is missing, ensuring the repository is fully self-aware immediately after import.",
+        "F2": [
+          "How does gsc load a JSON manifest into the database?",
+          "Where is the logic for atomic database updates and backups?",
+          "What handles the parsing and validation of manifest files?",
+          "How are file languages detected during the import process?",
+          "Where is the file locking mechanism to prevent concurrent import corruption?"
+        ],
+        "F3": "Parses JSON manifests and imports data into SQLite using an atomic swap strategy. Implements file locking, backup rotation with gzip compression, and language detection via enry. Manages transactional insertion of repositories, branches, analyzers, and file metadata.",
+        "F4": [
+          "ImportManifest",
+          "insertManifestInfo",
+          "insertReferenceData",
+          "insertFileData",
+          "detectLanguage",
+          "backupDatabase",
+          "compressFile",
+          "rotateBackups"
+        ],
+        "F5": [
+          "internal/db",
+          "internal/git",
+          "internal/registry",
+          "pkg/logger",
+          "pkg/settings"
+        ],
+        "F6": "internal-logic",
+        "F7": [
+          "manifest-management",
+          "atomic-import",
+          "sqlite",
+          "stage-based-validation"
+        ],
+        "F8": [
+          "persistence",
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/info.go",
+      "language": "go",
+      "chat_id": 6491,
+      "fields": {
+        "F0": "go",
+        "F1": "This file acts as the status dashboard for the GitSense workspace. Its primary function is to aggregate and present the current state of the environment, specifically identifying which intelligence databases (Brains) are currently loaded and available for querying. It abstracts away internal complexity, such as profile management, to provide a clean, user-centric view of the project's context. This enables users and agents to quickly verify if the necessary intelligence is present before executing discovery or analysis commands.",
+        "F2": [
+          "How do I check which databases are currently loaded?",
+          "Where is the logic for the 'gsc info' command?",
+          "What displays the current workspace status and context?",
+          "How does gsc format the list of available manifest databases?",
+          "Where is the workspace header information generated?"
+        ],
+        "F3": "Gathers and formats workspace information including project root, available databases, and internal profile states. Formats output as JSON or tables, explicitly hiding profile details from the user interface while retaining them for internal logic.",
+        "F4": [
+          "GetWorkspaceInfo",
+          "FormatWorkspaceInfo",
+          "FormatWorkspaceHeader"
+        ],
+        "F5": [
+          "internal/git",
+          "internal/manifest",
+          "pkg/logger",
+          "pkg/settings"
+        ],
+        "F6": "internal-logic",
+        "F7": [
+          "manifest-management",
+          "convenience-commands",
+          "profile-based-configuration"
+        ],
+        "F8": [
+          "discovery",
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/initializer.go",
+      "language": "go",
+      "chat_id": 6492,
+      "fields": {
+        "F0": "go",
+        "F1": "This file is responsible for bootstrapping the GitSense environment. It ensures that the necessary directory structure (.gitsense) and the manifest registry file exist before any intelligence operations can occur. By validating that the workspace is within a Git repository and creating the initial storage layer, it solves the cold start problem, preparing the repository to receive and manage metadata brains. It essentially wakes up the repository's intelligence layer.",
+        "F2": [
+          "How does gsc set up the initial workspace?",
+          "Where is the .gitsense directory created?",
+          "What initializes the manifest registry file?",
+          "How does the CLI prepare the environment for the first time?",
+          "Where is the logic for the 'gsc manifest init' command?"
+        ],
+        "F3": "Initializes the GitSense workspace by locating the project root, creating the .gitsense directory structure, and generating the initial manifest registry and .gitignore files. Ensures idempotency by checking for existing initialization.",
+        "F4": [
+          "InitializeGitSense"
+        ],
+        "F5": [
+          "internal/git",
+          "pkg/logger",
+          "pkg/settings"
+        ],
+        "F6": "internal-logic",
+        "F7": [
+          "manifest-management",
+          "git-integration"
+        ],
+        "F8": [
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/models.go",
+      "language": "go",
+      "chat_id": 6493,
+      "fields": {
+        "F0": "go",
+        "F1": "Defines the core data structures (Go structs) that map to the JSON manifest schema, serving as the data contract for the repository's 'Brains' and enabling the deserialization of intelligence metadata.",
+        "F2": [
+          "What is the structure of a manifest file?",
+          "How is metadata stored in the database?",
+          "Where are the data models for the JSON schema defined?"
+        ],
+        "F3": "Defines the core data structures for the manifest system, mapping JSON schema elements like repositories, branches, analyzers, and file metadata to Go structs.",
+        "F4": [
+          "ManifestFile",
+          "ManifestInfo",
+          "Repository",
+          "Branch",
+          "Analyzer",
+          "Field",
+          "DataEntry"
+        ],
+        "F5": [],
+        "F6": "internal-logic",
+        "F7": [
+          "manifest-management"
+        ],
+        "F8": [
+          "persistence",
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/path_helper.go",
+      "language": "go",
+      "chat_id": 6494,
+      "fields": {
+        "F0": "go",
+        "F1": "Centralizes file system path resolution for the `.gitsense` workspace, ensuring consistent access to databases, backups, and lock files while validating workspace integrity.",
+        "F2": [
+          "Where are the manifest databases stored?",
+          "How does the CLI find the .gitsense directory?",
+          "Where are backup files located?"
+        ],
+        "F3": "Provides utility functions to resolve absolute paths for databases, backups, and lock files within the `.gitsense` workspace, ensuring atomic import support and concurrency control.",
+        "F4": [
+          "ResolveDBPath",
+          "ResolveTempDBPath",
+          "ResolveBackupDir",
+          "ResolveLockPath",
+          "ResolveJSONPath",
+          "ValidateDBExists"
+        ],
+        "F5": [
+          "internal/git",
+          "pkg/logger",
+          "pkg/settings"
+        ],
+        "F6": "internal-logic",
+        "F7": [
+          "manifest-management",
+          "atomic-import"
+        ],
+        "F8": [
+          "infrastructure",
+          "persistence"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/profile_manager.go",
+      "language": "go",
+      "chat_id": 6495,
+      "fields": {
+        "F0": "go",
+        "F1": "Manages the lifecycle and configuration of Context Profiles (currently internal), allowing users to save and switch between different workspace configurations (databases, scopes) via aliases.",
+        "F2": [
+          "How do I switch between different workspace configurations?",
+          "Where are context profiles stored and managed?",
+          "How are profile aliases resolved?"
+        ],
+        "F3": "Manages the lifecycle of Context Profiles, including creation, deletion, activation, and alias resolution. It handles file persistence for profiles and updates the active profile configuration.",
+        "F4": [
+          "ListProfiles",
+          "CreateProfile",
+          "DeleteProfile",
+          "ShowProfile",
+          "SetActiveProfile",
+          "DeactivateProfile",
+          "GetActiveProfileName",
+          "ValidateAliasUniqueness",
+          "ResolveProfile"
+        ],
+        "F5": [
+          "internal/git",
+          "pkg/logger",
+          "pkg/settings"
+        ],
+        "F6": "internal-logic",
+        "F7": [
+          "profile-based-configuration"
+        ],
+        "F8": [
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/profile_models.go",
+      "language": "go",
+      "chat_id": 6496,
+      "fields": {
+        "F0": "go",
+        "F1": "Defines the data structures for Context Profiles, enabling users to save and switch between named workspace configurations (e.g., security vs. payments) to streamline workflow.",
+        "F2": [
+          "How are context profiles structured?",
+          "Where are workspace settings defined?",
+          "Data model for switching configurations",
+          "How is focus scope stored in profiles?"
+        ],
+        "F3": "Defines the data structures for Context Profiles, representing named workspaces with pre-defined configurations. Includes settings for global scope, query defaults, and ripgrep parameters.",
+        "F4": [
+          "Profile",
+          "ProfileSettings",
+          "GlobalSettings",
+          "QuerySettings",
+          "RGSettings"
+        ],
+        "F5": [],
+        "F6": "internal-logic",
+        "F7": [
+          "profile-based-configuration",
+          "focus-scope",
+          "manifest-management"
+        ],
+        "F8": [
+          "infrastructure",
+          "persistence"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/querier.go",
+      "language": "go",
+      "chat_id": 6497,
+      "fields": {
+        "F0": "go",
+        "F1": "Retrieves and summarizes available manifest databases from the registry, calculating file counts and metadata to provide a clear inventory of the project's intelligence sources.",
+        "F2": [
+          "How do I list available databases?",
+          "Where is the database registry logic?",
+          "Get summary of manifest databases",
+          "How are database entries counted?"
+        ],
+        "F3": "Retrieves and summarizes registered manifest databases from the registry, including file counts. It resolves physical paths, queries SQLite for entry counts, and handles errors gracefully.",
+        "F4": [
+          "DatabaseInfo",
+          "ListDatabases"
+        ],
+        "F5": [
+          "internal/db",
+          "internal/git",
+          "internal/registry",
+          "pkg/logger"
+        ],
+        "F6": "internal-logic",
+        "F7": [
+          "manifest-management",
+          "sqlite",
+          "batch-metadata-lookup"
+        ],
+        "F8": [
+          "persistence",
+          "discovery"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/query_formatter.go",
+      "language": "go",
+      "chat_id": 6498,
+      "fields": {
+        "F0": "go",
+        "F1": "Standardizes the presentation of intelligence data, formatting query results, coverage reports, and insights into human-readable tables, JSON, or CSV for the CLI interface.",
+        "F2": [
+          "How are query results formatted?",
+          "Where is the coverage report view generated?",
+          "Logic for printing tables and JSON",
+          "How is the intelligence map rendered?"
+        ],
+        "F3": "Centralizes output formatting for the query subsystem, supporting JSON, Table, and CSV formats for various result types including queries, lists, schemas, coverage reports, and insights.",
+        "F4": [
+          "FormatQueryResults",
+          "FormatListResult",
+          "FormatSchema",
+          "FormatStatusView",
+          "FormatCoverageReport",
+          "FormatInsightsReport",
+          "FormatReport",
+          "FormatManifestList"
+        ],
+        "F5": [
+          "internal/output"
+        ],
+        "F6": "internal-logic",
+        "F7": [
+          "manifest-management",
+          "convenience-commands",
+          "hierarchical-discovery"
+        ],
+        "F8": [
+          "discovery",
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/query_models.go",
+      "language": "go",
+      "chat_id": 6499,
+      "fields": {
+        "F0": "go",
+        "F1": "Defines the data structures that power the `gsc` query and discovery subsystem, acting as the contract between CLI commands, database logic, and output formatters to ensure consistent representation of query results, coverage reports, and insights.",
+        "F2": [
+          "What is the data structure for a coverage report?",
+          "How are query results formatted internally?",
+          "Where is the model for the discovery dashboard list defined?",
+          "What fields are available in the insights response?"
+        ],
+        "F3": "Defines the core data structures for manifest query operations, coverage analysis, and insights reporting. Includes models for hierarchical list items and detailed coverage statistics.",
+        "F4": [
+          "SimpleQuery",
+          "QueryResult",
+          "QueryResponse",
+          "QuerySummary",
+          "ListResult",
+          "ListItem",
+          "QueryAlias",
+          "CoverageReport",
+          "CoverageTotals",
+          "CoveragePercentages",
+          "LanguageCoverage",
+          "BlindSpots",
+          "DirectoryBlindSpot",
+          "InsightsReport",
+          "InsightsContext",
+          "FieldInsight",
+          "InsightsSummary"
+        ],
+        "F5": [],
+        "F6": "internal-logic",
+        "F7": [
+          "convenience-commands",
+          "hierarchical-discovery",
+          "focus-scope",
+          "manifest-management"
+        ],
+        "F8": [
+          "discovery",
+          "persistence"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/rg_enricher.go",
+      "language": "go",
+      "chat_id": 6500,
+      "fields": {
+        "F0": "go",
+        "F1": "Bridges the gap between high-speed text search (ripgrep) and deep semantic understanding (SQLite metadata) by hydrating raw file paths with context like `purpose`, `risk`, or `topics` defined in the manifest.",
+        "F2": [
+          "How does gsc add metadata to grep results?",
+          "Where is the logic for looking up file metadata in the database?",
+          "How are search results enriched with context?",
+          "What handles the batch metadata lookup for search?"
+        ],
+        "F3": "Implements metadata enrichment for ripgrep search results by querying SQLite databases. Provides batch lookup capabilities for dual-pass workflows and formatting utilities for YAML/JSON output.",
+        "F4": [
+          "EnrichMatches",
+          "GetMetadataForFiles",
+          "FormatMetadataYAML",
+          "FormatMetadataJSON",
+          "MetadataOutput"
+        ],
+        "F5": [
+          "internal/db",
+          "pkg/logger"
+        ],
+        "F6": "internal-logic",
+        "F7": [
+          "ripgrep",
+          "sqlite",
+          "metadata-enrichment",
+          "batch-metadata-lookup"
+        ],
+        "F8": [
+          "discovery",
+          "persistence"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/rg_executor.go",
+      "language": "go",
+      "chat_id": 6501,
+      "fields": {
+        "F0": "go",
+        "F1": "Abstracts the execution of the ripgrep binary, providing a clean interface for the CLI to trigger both machine-readable (JSON) discovery passes and human-readable (raw) display passes.",
+        "F2": [
+          "How does gsc execute ripgrep commands?",
+          "Where is the subprocess call to ripgrep defined?",
+          "How does gsc parse JSON output from ripgrep?",
+          "What handles the raw display pass for search results?"
+        ],
+        "F3": "Executes the ripgrep binary as a subprocess to perform high-performance code searches. Supports both JSON parsing for discovery passes and raw output for display passes, handling color preservation and error states.",
+        "F4": [
+          "ExecuteRipgrep",
+          "ExecuteRipgrepRaw"
+        ],
+        "F5": [
+          "pkg/logger"
+        ],
+        "F6": "internal-logic",
+        "F7": [
+          "ripgrep",
+          "dual-pass-search"
+        ],
+        "F8": [
+          "discovery"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/rg_models.go",
+      "language": "go",
+      "chat_id": 6502,
+      "fields": {
+        "F0": "go",
+        "F1": "Defines the data structures that bridge raw ripgrep search results with the repository's metadata system, enabling the CLI to display context-aware search results.",
+        "F2": [
+          "Where is the data structure for ripgrep results defined?",
+          "How are search matches enriched with metadata?",
+          "What is the model for the search options?",
+          "How does the system represent file metadata in search results?"
+        ],
+        "F3": "Defines Go structs for ripgrep operations, mapping raw JSON output to RgMatch, enriched results to EnrichedMatch, and configuration options to RgOptions. Includes FileMetadataResult for generating search appendices.",
+        "F4": [
+          "RgMatch",
+          "EnrichedMatch",
+          "RgOptions",
+          "FileMetadataResult"
+        ],
+        "F5": [],
+        "F6": "internal-logic",
+        "F7": [
+          "ripgrep",
+          "metadata-enrichment"
+        ],
+        "F8": [
+          "discovery",
+          "persistence"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/schemareader.go",
+      "language": "go",
+      "chat_id": 6503,
+      "fields": {
+        "F0": "go",
+        "F1": "Provides introspection capabilities for manifest databases, allowing the system to understand available analyzers, field definitions, and data types to support dynamic querying and validation.",
+        "F2": [
+          "How does the CLI know what fields are available in a database?",
+          "Where is the database schema introspection logic?",
+          "How are field types determined for filtering?",
+          "How does the system list available analyzers?"
+        ],
+        "F3": "Retrieves and structures schema definitions (analyzers and fields) from the manifest database. Provides helpers like ListFieldNames for wizards and GetFieldTypes for filter parser validation.",
+        "F4": [
+          "GetSchema",
+          "ListFieldNames",
+          "GetFieldTypes"
+        ],
+        "F5": [
+          "internal/db",
+          "pkg/logger"
+        ],
+        "F6": "internal-logic",
+        "F7": [
+          "sqlite",
+          "manifest-management",
+          "hierarchical-discovery"
+        ],
+        "F8": [
+          "discovery",
+          "persistence"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/simple_querier.go",
+      "language": "go",
+      "chat_id": 6504,
+      "fields": {
+        "F0": "go",
+        "F1": "Executes the core metadata discovery and analysis logic, including hierarchical navigation, coverage reporting, and insights aggregation, while strictly enforcing focus scope constraints.",
+        "F2": [
+          "How does the CLI calculate code coverage statistics?",
+          "Where is the logic for the discovery dashboard (list command)?",
+          "How are insights and metadata aggregations generated?",
+          "How does the system enforce focus scope during queries?"
+        ],
+        "F3": "Executes metadata queries, hierarchical discovery, coverage analysis, and insights aggregation. Uses temporary tables for efficient scope filtering and handles type-aware SQL generation for array and scalar fields.",
+        "F4": [
+          "ExecuteSimpleQuery",
+          "GetListResult",
+          "PrepareTargetSet",
+          "ExecuteCoverageAnalysis",
+          "ExecuteInsightsAnalysis"
+        ],
+        "F5": [
+          "internal/db",
+          "internal/git",
+          "pkg/logger"
+        ],
+        "F6": "internal-logic",
+        "F7": [
+          "sqlite",
+          "focus-scope",
+          "batch-metadata-lookup",
+          "filter-parsing-and-validation",
+          "convenience-commands"
+        ],
+        "F8": [
+          "discovery",
+          "persistence"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/validator.go",
+      "language": "go",
+      "chat_id": 6505,
+      "fields": {
+        "F0": "go",
+        "F1": "Validates the structural integrity and data types of manifest files, ensuring all required fields and references are present and correctly formatted before import.",
+        "F2": [
+          "How does gsc validate manifest files?",
+          "Where is the manifest schema validation logic?",
+          "What checks are performed before importing a brain?",
+          "How to ensure manifest data integrity?"
+        ],
+        "F3": "Validates the structural integrity of manifest files by checking for required fields like schema version, repository details, and analyzer definitions. It also ensures that data entry field references map correctly to defined fields and performs runtime type checking for values.",
+        "F4": [
+          "ValidateManifest",
+          "ValidateType"
+        ],
+        "F5": [
+          "pkg/logger"
+        ],
+        "F6": "internal-logic",
+        "F7": [
+          "manifest-management",
+          "stage-based-validation"
+        ],
+        "F8": [
+          "persistence"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/wizard.go",
+      "language": "go",
+      "chat_id": 6506,
+      "fields": {
+        "F0": "go",
+        "F1": "Interactive CLI wizard for creating and updating context profiles, guiding users through database selection, field configuration, and focus scope definition.",
+        "F2": [
+          "How do I create a context profile interactively?",
+          "Where is the CLI wizard for profile configuration?",
+          "How to set up focus scope via the command line?",
+          "What prompts are used for profile creation?"
+        ],
+        "F3": "Provides interactive CLI workflows for creating, updating, and selecting context profiles using the survey library. It guides users through database selection, field configuration, and Focus Scope definition, resolving database names and validating inputs before persisting changes.",
+        "F4": [
+          "CreateProfileInteractive",
+          "UpdateProfileInteractive",
+          "SelectProfileInteractive"
+        ],
+        "F5": [
+          "internal/registry",
+          "internal/manifest"
+        ],
+        "F6": "internal-logic",
+        "F7": [
+          "interactive-wizard",
+          "focus-scope",
+          "profile-based-configuration"
+        ],
+        "F8": [
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/git/discovery.go",
+      "language": "go",
+      "chat_id": 6508,
+      "fields": {
+        "F0": "go",
+        "F1": "Establishes the repository context by locating the Git root and enumerating tracked files, which is essential for scoping operations and validating project structure.",
+        "F2": [
+          "How does gsc determine the root of the current project?",
+          "Where is the list of tracked Git files retrieved?",
+          "How does the tool handle symlinks when finding the project path?",
+          "What logic is used to validate if a directory is a Git repository?",
+          "How does the CLI get the relative path from the root to the current directory?"
+        ],
+        "F3": "Locates the Git repository root by traversing the directory tree to find the `.git` folder. It resolves symlinks to determine the canonical repository context and executes the `git ls-files` command to retrieve a list of all tracked files, respecting .gitignore rules.",
+        "F4": [
+          "FindProjectRoot",
+          "GetRepoContext",
+          "FindGitRoot",
+          "GetTrackedFiles"
+        ],
+        "F5": [
+          "github.com/gitsense/gsc-cli/pkg/logger"
+        ],
+        "F6": "pkg-util",
+        "F7": [
+          "git-integration"
+        ],
+        "F8": [
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/git/repo_info.go",
+      "language": "go",
+      "chat_id": 6509,
+      "fields": {
+        "F0": "go",
+        "F1": "Extracts and provides identity metadata for the repository (name, remote URL) and the execution environment (OS, root path), enabling context-aware operations and reporting.",
+        "F2": [
+          "How does gsc extract the repository name from Git config?",
+          "Where is the remote URL of the repository retrieved?",
+          "What system information does the CLI collect for reporting?",
+          "How does the tool parse the .git/config file?",
+          "Where is the operating system detection logic located?"
+        ],
+        "F3": "Extracts repository metadata by parsing the `.git/config` file to identify the remote URL and repository name. It also provides system information such as the operating system and the resolved project root path, utilizing symlink resolution for accuracy.",
+        "F4": [
+          "GetRepositoryInfo",
+          "GetSystemInfo",
+          "RepositoryInfo",
+          "SystemInfo"
+        ],
+        "F5": [
+          "internal/git/discovery.go"
+        ],
+        "F6": "pkg-util",
+        "F7": [
+          "git-integration"
+        ],
+        "F8": [
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/db/schema.go",
+      "language": "go",
+      "chat_id": 6511,
+      "fields": {
+        "F0": "go",
+        "F1": "Defines the foundational SQL schema for the GitSense 'Brains' (manifest databases) and 'Scout' (analytics databases). This file establishes the structural integrity of the intelligence layer, creating tables for repositories, files, analyzers, and metadata fields, while ensuring backwards compatibility for schema evolution.",
+        "F2": [
+          "How is the manifest database structured?",
+          "Where are the database tables defined?",
+          "How does the system handle database schema updates?",
+          "What tables store the architectural metadata?",
+          "Where is the search history schema defined?"
+        ],
+        "F3": "Defines and initializes the SQL schema for manifest and stats databases, including tables for files, metadata, and search history. Implements backwards compatibility for older database versions by adding missing columns and creates performance indexes.",
+        "F4": [
+          "CreateSchema",
+          "CreateStatsSchema"
+        ],
+        "F5": [
+          "github.com/gitsense/gsc-cli/pkg/logger"
+        ],
+        "F6": "data-access",
+        "F7": [
+          "sqlite",
+          "manifest-management"
+        ],
+        "F8": [
+          "persistence"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/db/sqlite.go",
+      "language": "go",
+      "chat_id": 6512,
+      "fields": {
+        "F0": "go",
+        "F1": "Manages SQLite database connections using a pure Go driver to ensure cross-platform portability and zero external dependencies (CGO-free). It optimizes the connection for CLI performance using Write-Ahead Logging (WAL) and connection pooling, serving as the persistence layer for the intelligence system.",
+        "F2": [
+          "How does the CLI connect to the database?",
+          "What SQLite driver is used?",
+          "How are database connections configured?",
+          "Where is the database connection logic?",
+          "How is the database opened and closed?"
+        ],
+        "F3": "Manages SQLite database connections using the modernc.org/sqlite driver for CGO-free execution. Configures pragmas for foreign keys and WAL mode, sets connection pool limits, and handles connection verification and graceful closure.",
+        "F4": [
+          "OpenDB",
+          "CloseDB"
+        ],
+        "F5": [
+          "github.com/gitsense/gsc-cli/pkg/logger"
+        ],
+        "F6": "data-access",
+        "F7": [
+          "sqlite"
+        ],
+        "F8": [
+          "persistence"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/cli/manifest/bundle.go",
+      "language": "go",
+      "chat_id": 6515,
+      "fields": {
+        "F0": "go",
+        "F1": "Enables the extraction of specific file subsets from a manifest database via SQL queries to generate high-signal context bundles for AI agents.",
+        "F2": [
+          "create context bundle for ai",
+          "query manifest database with sql",
+          "generate list of files for analysis",
+          "extract specific metadata from database"
+        ],
+        "F3": "Defines the Cobra CLI command for generating context bundles from manifest databases. It parses user flags for SQL queries and formats, delegates execution to the manifest layer, and handles output printing.",
+        "F4": [],
+        "F5": [
+          "internal/manifest",
+          "pkg/logger"
+        ],
+        "F6": "cli",
+        "F7": [
+          "manifest-management",
+          "sqlite"
+        ],
+        "F8": [
+          "persistence",
+          "discovery"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/cli/manifest/doctor.go",
+      "language": "go",
+      "chat_id": 6516,
+      "fields": {
+        "F0": "go",
+        "F1": "Diagnoses and repairs structural issues within the `.gitsense` environment to ensure the integrity of the workspace, registry, and database connectivity.",
+        "F2": [
+          "troubleshoot gsc environment",
+          "check .gitsense health",
+          "fix database registry issues",
+          "diagnose workspace errors"
+        ],
+        "F3": "Implements the CLI command for running health checks on the GitSense environment. It executes diagnostic logic, handles verbose and fix flags, and formats the health report with color-coded status indicators.",
+        "F4": [],
+        "F5": [
+          "internal/manifest",
+          "pkg/logger"
+        ],
+        "F6": "cli",
+        "F7": [
+          "manifest-management",
+          "sqlite"
+        ],
+        "F8": [
+          "infrastructure",
+          "persistence"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/cli/manifest/export.go",
+      "language": "go",
+      "chat_id": 6517,
+      "fields": {
+        "F0": "go",
+        "F1": "Converts binary manifest database data into human-readable formats (Markdown or JSON) for documentation, auditing, or external sharing.",
+        "F2": [
+          "export manifest database",
+          "save database to markdown",
+          "view manifest contents",
+          "generate json report of metadata"
+        ],
+        "F3": "Defines the CLI command for exporting manifest databases to Markdown or JSON. It resolves database names via the registry, delegates the export logic to the manifest layer, and manages file output or stdout printing.",
+        "F4": [],
+        "F5": [
+          "internal/manifest",
+          "internal/registry",
+          "pkg/logger"
+        ],
+        "F6": "cli",
+        "F7": [
+          "manifest-management",
+          "sqlite"
+        ],
+        "F8": [
+          "persistence"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/cli/manifest/flags.go",
+      "language": "go",
+      "chat_id": 6518,
+      "fields": {
+        "F0": "go",
+        "F1": "Centralizes the definition of shared command-line flags (database name and output format) to ensure consistency across all manifest subcommands. This file acts as a utility to standardize user input handling, reducing code duplication and ensuring a uniform CLI experience for operations involving manifest databases.",
+        "F2": [
+          "Where are the common manifest flags defined?",
+          "How do I add the --db flag to a command?",
+          "What is the default output format for manifest commands?",
+          "How are shared CLI flags configured in gsc?"
+        ],
+        "F3": "Defines shared command-line flags for manifest subcommands, specifically for database name and output format. It provides a helper function to attach these flags to any Cobra command instance.",
+        "F4": [
+          "AddManifestFlags"
+        ],
+        "F5": [],
+        "F6": "cli",
+        "F7": [
+          "manifest-management"
+        ],
+        "F8": [
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/cli/manifest/import.go",
+      "language": "go",
+      "chat_id": 6519,
+      "fields": {
+        "F0": "go",
+        "F1": "Enables users to ingest external intelligence (JSON manifests) into the local GitSense environment, converting static files into queryable SQLite databases. It handles the logic for database naming, atomic imports, and safety mechanisms like backups and overwriting to protect existing data.",
+        "F2": [
+          "How do I load a manifest file into gsc?",
+          "Command to import a JSON brain.",
+          "How to overwrite an existing database?",
+          "How to create a SQLite database from a JSON manifest?"
+        ],
+        "F3": "Implements the CLI command for importing manifest JSON files into SQLite. It handles flag parsing for database naming and overwrite options, delegating the actual import logic to the manifest package.",
+        "F4": [],
+        "F5": [
+          "internal/manifest",
+          "pkg/logger"
+        ],
+        "F6": "cli",
+        "F7": [
+          "manifest-management",
+          "atomic-import"
+        ],
+        "F8": [
+          "infrastructure",
+          "persistence"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/cli/manifest/init.go",
+      "language": "go",
+      "chat_id": 6520,
+      "fields": {
+        "F0": "go",
+        "F1": "Serves as the entry point for setting up the GitSense workspace, creating the necessary directory structure and registry file required for metadata operations. It ensures the environment is correctly initialized to support the storage and management of 'Brains' and other intelligence data.",
+        "F2": [
+          "How do I set up gsc in my project?",
+          "Command to create the .gitsense folder.",
+          "Initialize the GitSense workspace.",
+          "How do I prepare my repository for GitSense metadata?"
+        ],
+        "F3": "Defines the CLI command to initialize the GitSense workspace. It invokes the core initialization function to create the directory structure and registry file.",
+        "F4": [],
+        "F5": [
+          "internal/manifest",
+          "pkg/logger"
+        ],
+        "F6": "cli",
+        "F7": [
+          "manifest-management"
+        ],
+        "F8": [
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/cli/manifest/list.go",
+      "language": "go",
+      "chat_id": 6521,
+      "fields": {
+        "F0": "go",
+        "F1": "Provides the CLI interface for listing available manifest databases, allowing users to discover which intelligence layers are currently loaded in the workspace.",
+        "F2": [
+          "list available databases",
+          "show loaded manifests",
+          "what intelligence is available",
+          "check manifest registry"
+        ],
+        "F3": "Defines the Cobra CLI command for listing manifest databases. It retrieves database entries via the manifest logic layer and formats the output using the centralized formatter, supporting human, JSON, table, and CSV formats.",
+        "F4": [],
+        "F5": [
+          "internal/manifest"
+        ],
+        "F6": "cli",
+        "F7": [
+          "manifest-management"
+        ],
+        "F8": [
+          "discovery"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/cli/manifest/root.go",
+      "language": "go",
+      "chat_id": 6522,
+      "fields": {
+        "F0": "go",
+        "F1": "Defines the root command for the manifest subcommand group, organizing setup and maintenance tasks like initialization, import, and deletion of intelligence databases.",
+        "F2": [
+          "manage metadata manifests",
+          "setup manifest database",
+          "manifest command group",
+          "initialize gitsense workspace"
+        ],
+        "F3": "Defines the root Cobra command for the manifest subcommand group. It registers subcommands for initialization, import, listing, and schema inspection, manages shared flags, and enforces pre-run checks for unsupported features like the CLI Bridge code.",
+        "F4": [
+          "Cmd"
+        ],
+        "F5": [
+          "pkg/logger"
+        ],
+        "F6": "cli",
+        "F7": [
+          "manifest-management",
+          "bridge"
+        ],
+        "F8": [
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/cli/manifest/schema.go",
+      "language": "go",
+      "chat_id": 6523,
+      "fields": {
+        "F0": "go",
+        "F1": "Implements the CLI command to inspect the schema of a manifest database, displaying available analyzers and fields to help users understand what data can be queried.",
+        "F2": [
+          "inspect database schema",
+          "what fields are available",
+          "show metadata structure",
+          "understand database columns"
+        ],
+        "F3": "Implements the CLI command to inspect the schema of a specific manifest database. It resolves the database name, retrieves the analyzer and field definitions, and formats the output using the centralized schema formatter with effective configuration.",
+        "F4": [],
+        "F5": [
+          "internal/manifest",
+          "internal/registry",
+          "pkg/logger"
+        ],
+        "F6": "cli",
+        "F7": [
+          "manifest-management",
+          "hierarchical-discovery"
+        ],
+        "F8": [
+          "discovery"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/cli/config.go",
+      "language": "go",
+      "chat_id": 6524,
+      "fields": {
+        "F0": "go",
+        "F1": "Defines the internal command structure for managing context profiles and workspace settings. Although currently hidden from the user interface to reduce complexity, it retains the logic for switching between different workspaces (e.g., security vs. payments), validating focus scope patterns against tracked files, and managing profile aliases and defaults.",
+        "F2": [
+          "How do I switch between different workspaces or contexts?",
+          "Where is the logic for validating focus scope patterns?",
+          "How are context profiles created and managed internally?",
+          "Is there a way to define default databases or fields for a session?"
+        ],
+        "F3": "Defines the CLI command group for managing context profiles and workspace settings, including profile creation, activation, and scope validation. It supports both interactive wizards and non-interactive flag-based operations, delegating persistence and logic to the manifest package.",
+        "F4": [
+          "RegisterConfigCommand"
+        ],
+        "F5": [
+          "internal/git",
+          "internal/manifest",
+          "internal/output"
+        ],
+        "F6": "cli",
+        "F7": [
+          "interactive-wizard",
+          "focus-scope",
+          "profile-based-configuration",
+          "scope-resolution-precedence"
+        ],
+        "F8": [
+          "infrastructure",
+          "discovery"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/cli/grep.go",
+      "language": "go",
+      "chat_id": 6525,
+      "fields": {
+        "F0": "go",
+        "F1": "Orchestrates the `gsc grep` command, which performs high-performance code searches using ripgrep and enriches the results with metadata from the manifest database. It allows users to filter matches by semantic fields (e.g., topic, risk) and file scope, transforming a standard text search into a context-aware discovery process.",
+        "F2": [
+          "How do I search code by intent or topic instead of just text?",
+          "Where can I find code related to a specific risk level or business domain?",
+          "How do I filter search results using the manifest metadata?",
+          "What command handles the integration between grep results and the chat interface?"
+        ],
+        "F3": "Executes high-performance code searches using ripgrep and enriches results with manifest metadata. It handles configuration merging (flags vs. profiles), metadata filtering, and CLI Bridge integration for chat insertion, while recording search statistics asynchronously.",
+        "F4": [
+          "RegisterGrepCommand"
+        ],
+        "F5": [
+          "internal/bridge",
+          "internal/git",
+          "internal/manifest",
+          "internal/registry",
+          "internal/search",
+          "pkg/logger"
+        ],
+        "F6": "cli",
+        "F7": [
+          "ripgrep",
+          "metadata-enrichment",
+          "filter-parsing-and-validation",
+          "bridge",
+          "batch-metadata-lookup"
+        ],
+        "F8": [
+          "search",
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/cli/info.go",
+      "language": "go",
+      "chat_id": 6526,
+      "fields": {
+        "F0": "go",
+        "F1": "Displays a summary of the current GitSense workspace, including available manifest databases and project context. It acts as a status check to ensure the intelligence layer is active and correctly configured.",
+        "F2": [
+          "How do I check which databases are currently available?",
+          "What is the current workspace context or project root?",
+          "How can I verify that the GitSense environment is set up correctly?",
+          "Where do I see a summary of loaded intelligence?"
+        ],
+        "F3": "Displays the current workspace context, including active databases and configuration status. It gathers data via the manifest package and formats it for human or machine consumption, with optional CLI Bridge integration for chat insertion.",
+        "F4": [
+          "RegisterInfoCommand"
+        ],
+        "F5": [
+          "internal/bridge",
+          "internal/manifest",
+          "pkg/logger"
+        ],
+        "F6": "cli",
+        "F7": [
+          "convenience-commands",
+          "bridge"
+        ],
+        "F8": [
+          "discovery",
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/cli/query.go",
+      "language": "go",
+      "chat_id": 6527,
+      "fields": {
+        "F0": "go",
+        "F1": "Orchestrates the CLI interface for querying repository intelligence, enabling users to discover files by metadata, list available brains, and generate insights or coverage reports.",
+        "F2": [
+          "How do I search for files by intent or metadata value?",
+          "What databases or brains are available in this workspace?",
+          "Show me the analysis coverage for the current project.",
+          "List all fields available in the architect brain.",
+          "Generate insights on metadata distribution."
+        ],
+        "F3": "Defines CLI commands for querying metadata, generating insights, and checking coverage. Orchestrates calls to the manifest layer and integrates with the CLI Bridge for chat output.",
+        "F4": [
+          "queryCmd",
+          "queryListCmd",
+          "InsightsCmd",
+          "CoverageCmd",
+          "FieldsCmd",
+          "BrainsCmd",
+          "RegisterQueryCommand"
+        ],
+        "F5": [
+          "internal/bridge",
+          "internal/git",
+          "internal/manifest",
+          "internal/registry",
+          "pkg/logger"
+        ],
+        "F6": "cli",
+        "F7": [
+          "manifest-management",
+          "convenience-commands",
+          "bridge",
+          "hierarchical-discovery",
+          "batch-metadata-lookup",
+          "filter-parsing-and-validation"
+        ],
+        "F8": [
+          "discovery",
+          "persistence"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/cli/root.go",
+      "language": "go",
+      "chat_id": 6528,
+      "fields": {
+        "F0": "go",
+        "F1": "Serves as the main entry point and traffic controller for the gsc CLI, registering subcommands, managing global flags, and enforcing pre-flight workspace checks.",
+        "F2": [
+          "Where is the main entry point for the gsc application?",
+          "How are global flags and verbosity levels managed?",
+          "What pre-flight checks are performed before running a command?",
+          "How do I register a new top-level command?",
+          "Show me the structured usage examples for AI agents."
+        ],
+        "F3": "Defines the root Cobra command, registers all subcommands, and manages global flags. Implements pre-flight checks for the workspace directory and handles error exit logic.",
+        "F4": [
+          "rootCmd",
+          "Execute",
+          "HandleExit"
+        ],
+        "F5": [
+          "internal/bridge",
+          "internal/cli/manifest",
+          "internal/git",
+          "pkg/logger",
+          "pkg/settings"
+        ],
+        "F6": "cli",
+        "F7": [
+          "bridge",
+          "convenience-commands",
+          "profile-based-configuration"
+        ],
+        "F8": [
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "cmd/gsc/main.go",
+      "language": "go",
+      "chat_id": 6531,
+      "fields": {
+        "F0": "go",
+        "F1": "Serves as the application bootstrap, initializing the runtime environment and delegating execution to the internal CLI command handler.",
+        "F2": [
+          "Where does the application start?",
+          "What is the entry point for the CLI?",
+          "How is the root command invoked?"
+        ],
+        "F3": "The main entry point for the gsc CLI application. It initializes the command-line interface by invoking the root command execution logic from the internal CLI layer and manages the application exit status.",
+        "F4": [],
+        "F5": [
+          "internal/cli"
+        ],
+        "F6": "cli",
+        "F7": [],
+        "F8": [
+          "cli-core"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": ".gitignore",
+      "language": "plaintext",
+      "chat_id": 6532,
+      "fields": {
+        "F0": "gitignore",
+        "F1": "Specifies exclusion patterns for the Git repository to prevent build artifacts, IDE configurations, sensitive environment data, and local `.gitsense` runtime files (like user-specific manifests and backups) from being committed to version control.",
+        "F2": [
+          "What files are excluded from git?",
+          "How do I ignore build artifacts?",
+          "What is the gitignore pattern for .gitsense backups?",
+          "Where are local database files ignored?"
+        ],
+        "F3": "Defines exclusion patterns for the Git repository to prevent build artifacts, IDE configurations, sensitive environment data, and specific `.gitsense` runtime files like manifests and backups from being committed.",
+        "F4": [],
+        "F5": [],
+        "F6": "config",
+        "F7": [],
+        "F8": [
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "go.mod",
+      "language": "plaintext",
+      "chat_id": 6533,
+      "fields": {
+        "F0": "mod",
+        "F1": "Defines the Go module path, required Go version (1.21), and lists direct dependencies necessary for the gsc-cli tool's functionality, including CLI frameworks, database drivers, and language detection libraries.",
+        "F2": [
+          "What version of Go is required?",
+          "What are the main dependencies for this project?",
+          "Which SQLite driver is being used?",
+          "How is the CLI framework defined?"
+        ],
+        "F3": "Defines the Go module configuration for gsc-cli, specifying Go version 1.21 and listing direct dependencies such as cobra for CLI, survey for prompts, and modernc.org/sqlite for database operations.",
+        "F4": [],
+        "F5": [],
+        "F6": "config",
+        "F7": [],
+        "F8": [
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "go.sum",
+      "language": "plaintext",
+      "chat_id": 6534,
+      "fields": {
+        "F0": "sum",
+        "F1": "Locks the cryptographic hashes of all Go module dependencies to ensure reproducible and secure builds for the project by verifying the integrity of downloaded packages.",
+        "F2": [
+          "How are dependencies locked?",
+          "What ensures reproducible builds?",
+          "Where are the dependency hashes stored?",
+          "Is the build deterministic?"
+        ],
+        "F3": "Locks the cryptographic hashes of all Go module dependencies to ensure reproducible and secure builds for the project.",
+        "F4": [],
+        "F5": [],
+        "F6": "config",
+        "F7": [],
+        "F8": [
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "Makefile",
+      "language": "plaintext",
+      "chat_id": 6535,
+      "fields": {
+        "F0": "N/A",
+        "F1": "Automates the build, installation, testing, and cross-compilation processes for the gsc-cli binary, streamlining development and deployment workflows.",
+        "F2": [
+          "How do I build the gsc CLI tool?",
+          "How do I install the binary locally?",
+          "How do I create a release build for Linux or macOS?",
+          "How do I run the test suite?",
+          "How do I clean build artifacts?"
+        ],
+        "F3": "Automates the build, installation, testing, and cross-compilation processes for the gsc-cli binary. It uses Go build commands with ldflags to inject version metadata from internal/version/version.go.",
+        "F4": [
+          "build",
+          "install",
+          "go-install",
+          "clean",
+          "test",
+          "deps",
+          "run",
+          "build-linux",
+          "build-darwin",
+          "build-windows",
+          "help"
+        ],
+        "F5": [
+          "internal/version/version.go"
+        ],
+        "F6": "pkg-util",
+        "F7": [],
+        "F8": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/search/filter_parser.go",
+      "language": "go",
+      "chat_id": 6554,
+      "fields": {
+        "F0": "go",
+        "F1": "Translates user-provided filter strings into executable SQL WHERE clauses. It validates operators and field types against the database schema, enabling users to perform complex, context-aware queries on metadata rather than relying solely on raw text matching.",
+        "F2": [
+          "How do I filter search results by metadata fields?",
+          "Where are search filter operators and syntax defined?",
+          "How does gsc convert filter strings into SQL queries?",
+          "What operators are supported for metadata filtering?"
+        ],
+        "F3": "Parses user-provided filter strings into structured SQL WHERE clauses for metadata queries. Supports various operators including ranges and list checks, validating field types against the manifest schema to ensure query correctness.",
+        "F4": [
+          "ParseFilters",
+          "BuildSQLWhereClause"
+        ],
+        "F5": [
+          "internal/manifest"
+        ],
+        "F6": "internal-logic",
+        "F7": [
+          "filter-parsing-and-validation"
+        ],
+        "F8": [
+          "search"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/search/stats.go",
+      "language": "go",
+      "chat_id": 6555,
+      "fields": {
+        "F0": "go",
+        "F1": "Persists search execution telemetry to a local SQLite database. It records details such as search patterns, duration, match counts, and filters used, creating a historical log that supports future analytics and the development of intelligent discovery features like Scout.",
+        "F2": [
+          "Where does gsc store search history and statistics?",
+          "How are search execution metrics tracked?",
+          "What is the schema for the search statistics database?",
+          "How does gsc record performance data for analytics?"
+        ],
+        "F3": "Records search execution details such as patterns, duration, and match counts to a local SQLite database for analytics. Manages the stats database schema and ensures timestamps are formatted in UTC ISO 8601.",
+        "F4": [
+          "RecordSearch"
+        ],
+        "F5": [
+          "internal/db",
+          "internal/git",
+          "pkg/logger",
+          "pkg/settings"
+        ],
+        "F6": "internal-logic",
+        "F7": [
+          "sqlite"
+        ],
+        "F8": [
+          "persistence"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/registry/resolver.go",
+      "language": "go",
+      "chat_id": 6586,
+      "fields": {
+        "F0": "go",
+        "F1": "This component translates flexible user-provided identifiers into canonical database names required by the system. It abstracts away the complexity of database naming conventions, allowing users to reference databases by display names or filenames with extensions (e.g., `.db`, `.sqlite`) while the system resolves them to the correct physical slug. This ensures a robust and user-friendly command-line experience.",
+        "F2": [
+          "How does the CLI resolve a user-provided name to a database file?",
+          "Can I use the manifest display name instead of the database slug?",
+          "What logic handles case-insensitive database name matching?",
+          "How are file extensions stripped when resolving database names?"
+        ],
+        "F3": "Resolves user-provided database identifiers to canonical physical names. It performs a multi-step lookup (exact slug, case-insensitive name) and sanitizes input by stripping common file extensions.",
+        "F4": [
+          "ResolveDatabase",
+          "sanitizeInput"
+        ],
+        "F5": [],
+        "F6": "data-access",
+        "F7": [
+          "manifest-management"
+        ],
+        "F8": [
+          "persistence"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/gitsense_map.go",
+      "language": "go",
+      "chat_id": 6602,
+      "fields": {
+        "F0": "go",
+        "F1": "Handles loading and validation of the project-level .gitsense-map file, which defines version-controlled team defaults for Focus Scope configuration.",
+        "F2": [
+          "How does gsc load project-level scope configuration?",
+          "Where is the .gitsense-map file logic?",
+          "How to define team defaults for focus scope?",
+          "What validates the .gitsense-map file?"
+        ],
+        "F3": "Handles the loading and validation of the project-level `.gitsense-map` file, which defines version-controlled defaults for Focus Scope. It locates the file at the repository root, parses the JSON configuration, and converts it into a `ScopeConfig` object for use by the application.",
+        "F4": [
+          "LoadGitSenseMap",
+          "ValidateGitSenseMap",
+          "GitSenseMap"
+        ],
+        "F5": [
+          "internal/git",
+          "pkg/logger"
+        ],
+        "F6": "internal-logic",
+        "F7": [
+          "focus-scope",
+          "git-integration",
+          "scope-resolution-precedence"
+        ],
+        "F8": [
+          "infrastructure",
+          "discovery"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/scope.go",
+      "language": "go",
+      "chat_id": 6603,
+      "fields": {
+        "F0": "go",
+        "F1": "Implements the core logic for 'Focus Scope,' enabling users to constrain repository operations to specific file sets using glob patterns. It handles the parsing of include/exclude rules, validates patterns against tracked files to detect typos or empty matches, and resolves the active scope based on a strict precedence chain (CLI flags > Profiles > Project Maps).",
+        "F2": [
+          "How does gsc determine which files are in scope?",
+          "Where is the glob pattern matching logic for filters?",
+          "How are include and exclude patterns validated?",
+          "What is the precedence order for resolving scope configuration?",
+          "How does gsc suggest corrections for invalid glob patterns?"
+        ],
+        "F3": "Implements the core logic for Focus Scope handling, including parsing string overrides, matching file paths using doublestar globs, and validating patterns against tracked Git files. It resolves the active scope based on a precedence chain (CLI, profile, project map) and provides Levenshtein-based suggestions for invalid patterns.",
+        "F4": [
+          "ScopeConfig",
+          "ScopeValidationResult",
+          "ParseScopeOverride",
+          "MatchScope",
+          "ValidateScope",
+          "ResolveScopeForQuery"
+        ],
+        "F5": [
+          "internal/git",
+          "pkg/logger"
+        ],
+        "F6": "internal-logic",
+        "F7": [
+          "focus-scope",
+          "scope-resolution-precedence"
+        ],
+        "F8": [
+          "discovery",
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/importer_test.go",
+      "language": "go",
+      "chat_id": 6630,
+      "fields": {
+        "F0": "go",
+        "F1": "Unit tests for the manifest importer, validating atomic import workflows, backup rotation logic, registry upserts, and file compression utilities to ensure data integrity during manifest operations.",
+        "F2": [
+          "Tests for manifest import logic",
+          "Validate backup rotation behavior",
+          "Test atomic database swaps",
+          "Ensure data integrity during import"
+        ],
+        "F3": "Contains unit tests for the manifest importer, specifically validating atomic import workflows, backup rotation logic (maintaining a maximum of 5 backups), registry upserts, and file compression utilities. It uses temporary directory setups to ensure isolated and reliable testing of data integrity operations.",
+        "F4": [],
+        "F5": [
+          "internal/registry",
+          "pkg/settings"
+        ],
+        "F6": "internal-logic",
+        "F7": [
+          "manifest-management",
+          "atomic-import"
+        ],
+        "F8": [
+          "persistence",
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/bridge/bridge.go",
+      "language": "go",
+      "chat_id": 6867,
+      "fields": {
+        "F0": "go",
+        "F1": "This file orchestrates the secure lifecycle of the CLI Bridge, which enables the command-line tool to send results back to the GitSense Chat interface. It manages the 'handshake' protocol, validates bridge codes at various stages (discovery, execution, insertion), handles user confirmations for data insertion, and ensures the final output is correctly written to the chat database. It acts as the critical link between terminal operations and the chat UI.",
+        "F2": [
+          "How does the gsc CLI send output back to the GitSense Chat UI?",
+          "What manages the bridge code validation and handshake process?",
+          "Where is the logic for user confirmation before inserting data into chat?",
+          "How does the CLI handle interruptions during the bridge process?"
+        ],
+        "F3": "Orchestrates the CLI Bridge lifecycle, managing handshake validation, status updates, user confirmation, and the insertion of command output into the GitSense Chat database. It implements stage-based validation to handle long-running tasks and prevent race conditions.",
+        "F4": [
+          "Execute",
+          "ValidateCode",
+          "LoadHandshake",
+          "UpdateStatus",
+          "InsertToChat",
+          "Cleanup",
+          "resolveGSCHome",
+          "askConfirmation",
+          "BridgeStage",
+          "BridgeError",
+          "Handshake"
+        ],
+        "F5": [
+          "internal/db",
+          "internal/output",
+          "pkg/logger",
+          "pkg/settings"
+        ],
+        "F6": "internal-logic",
+        "F7": [
+          "bridge",
+          "stage-based-validation"
+        ],
+        "F8": [
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/db/chats.go",
+      "language": "go",
+      "chat_id": 6868,
+      "fields": {
+        "F0": "go",
+        "F1": "Implements the data access layer for the GitSense Chat database, specifically handling the persistence of conversation threads. It manages message insertion with automatic model resolution, validates thread hierarchy (ensuring replies only go to leaf nodes), and synchronizes timestamps for the CLI Bridge.",
+        "F2": [
+          "How are messages inserted into the chat database?",
+          "Where is the chat message logic defined?",
+          "How does the bridge validate message threads?",
+          "What handles the chat database interactions?",
+          "How does the system check for leaf nodes?"
+        ],
+        "F3": "Implements database operations for the GitSense Chat system, including message retrieval, leaf node validation, and message insertion. Handles timestamp formatting for JavaScript compatibility and resolves model information via SQL subqueries.",
+        "F4": [
+          "GetMessage",
+          "IsLeafNode",
+          "InsertMessage"
+        ],
+        "F5": [],
+        "F6": "data-access",
+        "F7": [
+          "sqlite",
+          "bridge"
+        ],
+        "F8": [
+          "persistence"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/db/models.go",
+      "language": "go",
+      "chat_id": 6869,
+      "fields": {
+        "F0": "go",
+        "F1": "Defines the core Go data structures that map to the GitSense Chat SQLite schema, representing chat sessions and messages with support for nullable fields and type safety.",
+        "F2": [
+          "What are the data structures for the GitSense Chat database?",
+          "How are chat and message records defined in Go?",
+          "Where is the schema mapping for the SQLite chats and messages tables?",
+          "How are nullable database fields handled in the data models?"
+        ],
+        "F3": "Defines data models for the GitSense Chat database, specifically mapping the 'chats' and 'messages' tables. Utilizes sql.Null types to handle nullable database fields correctly.",
+        "F4": [
+          "Chat",
+          "Message"
+        ],
+        "F5": [],
+        "F6": "data-access",
+        "F7": [
+          "sqlite"
+        ],
+        "F8": [
+          "persistence"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/cli/tree.go",
+      "language": "go",
+      "chat_id": 6953,
+      "fields": {
+        "F0": "go",
+        "F1": "Visualizes the repository as a hierarchical 'Heat Map' enriched with metadata, allowing users to filter, prune, and focus on specific architectural layers or topics.",
+        "F2": [
+          "How do I visualize the project structure with metadata?",
+          "Show me a heat map of the codebase architecture.",
+          "Filter the tree view to show only specific layers or topics.",
+          "Generate an AI-portable JSON map of the project.",
+          "How do I prune the tree to see only relevant files?"
+        ],
+        "F3": "Defines the CLI command for displaying hierarchical file trees enriched with metadata. Coordinates tree construction, enrichment, and rendering, supporting filtering and focus scopes.",
+        "F4": [
+          "treeCmd",
+          "RegisterTreeCommand"
+        ],
+        "F5": [
+          "internal/bridge",
+          "internal/git",
+          "internal/manifest",
+          "internal/registry",
+          "internal/search",
+          "internal/tree",
+          "pkg/logger"
+        ],
+        "F6": "cli",
+        "F7": [
+          "tree-visualization",
+          "filter-parsing-and-validation",
+          "metadata-enrichment",
+          "focus-scope",
+          "git-integration",
+          "bridge"
+        ],
+        "F8": [
+          "discovery",
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/tree/tree.go",
+      "language": "go",
+      "chat_id": 6955,
+      "fields": {
+        "F0": "go",
+        "F1": "Implements the core logic for building, enriching, and visualizing hierarchical filesystem trees, supporting semantic filtering, focus patterns, and 'heat map' rendering to highlight files matching specific metadata criteria.",
+        "F2": [
+          "How does the tree visualization construct the file hierarchy?",
+          "Where is the logic for pruning and filtering the project tree?",
+          "How are semantic filters applied to the tree visualization?",
+          "What generates the ASCII and JSON representations of the file tree?"
+        ],
+        "F3": "Constructs and renders hierarchical filesystem trees with support for structural and semantic filtering. Implements a 'Heat Map' visualization, pruning non-matching nodes, and generating both human-readable ASCII and AI-portable JSON outputs.",
+        "F4": [
+          "BuildTree",
+          "EnrichTree",
+          "CalculateVisibility",
+          "PruneTree",
+          "CalculateStats",
+          "RenderHuman",
+          "RenderJSON",
+          "RenderPortableJSON",
+          "Node",
+          "TreeStats",
+          "PortableNode"
+        ],
+        "F5": [
+          "internal/search",
+          "github.com/bmatcuk/doublestar/v4"
+        ],
+        "F6": "internal-logic",
+        "F7": [
+          "tree-visualization",
+          "focus-scope",
+          "filter-parsing-and-validation",
+          "metadata-enrichment"
+        ],
+        "F8": [
+          "discovery",
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "ARCHITECTURE.md",
+      "language": "markdown",
+      "chat_id": 6969,
+      "fields": {
+        "F0": "md",
+        "F1": "To serve as the definitive 'Source of Truth' for the gsc-cli system architecture, defining strict layer boundaries, data flow patterns, interaction guardrails, and critical abstractions. This document ensures consistency across the codebase and provides the necessary context for AI agents to analyze and generate code that adheres to the project's structural rules.",
+        "F2": [
+          "What are the defined layers and their responsibilities in the gsc-cli architecture?",
+          "How do the different layers (CLI, internal-logic, data-access) interact with each other?",
+          "What are the primary data flow patterns for search, import, and query operations?",
+          "What is the controlled topic taxonomy used for tagging architectural features?",
+          "Where are the critical abstractions like SearchEngine and Registry defined?"
+        ],
+        "F3": "Definitive architectural specification for gsc-cli, defining layers, data flows, interaction guardrails, and critical abstractions to guide AI analysis and development.",
+        "F4": [],
+        "F5": [],
+        "F6": "N/A",
+        "F7": "N/A",
+        "F8": "N/A"
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/manifest/deleter.go",
+      "language": "go",
+      "chat_id": 7018,
+      "fields": {
+        "F0": "go",
+        "F1": "Implements the core logic for deleting a manifest database, coordinating file system removal with registry updates to ensure consistency.",
+        "F2": [
+          "How do I delete a manifest database?",
+          "Remove a brain from the registry",
+          "Clean up unused manifest files",
+          "Unregister a database"
+        ],
+        "F3": "Provides the logic to delete a manifest database, which involves loading the registry to verify existence, resolving the physical database path, deleting the file from disk, and removing the corresponding entry from the registry. It handles edge cases where the file might already be missing.",
+        "F4": [
+          "DeleteManifest"
+        ],
+        "F5": [
+          "internal/registry",
+          "pkg/logger"
+        ],
+        "F6": "internal-logic",
+        "F7": [
+          "manifest-management"
+        ],
+        "F8": [
+          "persistence"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/cli/manifest/delete.go",
+      "language": "go",
+      "chat_id": 7019,
+      "fields": {
+        "F0": "go",
+        "F1": "Provides the CLI interface for removing manifest databases, coordinating the deletion of the physical SQLite file and the registry entry to maintain workspace hygiene.",
+        "F2": [
+          "remove a manifest database",
+          "delete a brain from the registry",
+          "clean up old gsc databases",
+          "uninstall a specific intelligence source"
+        ],
+        "F3": "Defines the Cobra CLI command for deleting manifest databases. It validates arguments, invokes the manifest.DeleteManifest function from the logic layer, and prints success or error messages to the console.",
+        "F4": [
+          "deleteCmd"
+        ],
+        "F5": [
+          "internal/manifest"
+        ],
+        "F6": "cli",
+        "F7": [
+          "manifest-management",
+          "convenience-commands"
+        ],
+        "F8": [
+          "infrastructure",
+          "persistence"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/cli/examples.go",
+      "language": "go",
+      "chat_id": 7141,
+      "fields": {
+        "F0": "go",
+        "F1": "Serves as a central registry of curated usage examples, enabling users and AI agents to discover command capabilities and patterns through real-world scenarios.",
+        "F2": [
+          "show me usage examples",
+          "what can gsc do",
+          "demonstrate command patterns",
+          "get help with gsc syntax"
+        ],
+        "F3": "Provides a centralized registry of usage examples for the GSC CLI. It defines the Example struct and functions to retrieve and render these examples in either JSON or human-readable text formats.",
+        "F4": [
+          "Example",
+          "GetExamples",
+          "RenderExamples"
+        ],
+        "F5": [],
+        "F6": "cli",
+        "F7": [
+          "convenience-commands"
+        ],
+        "F8": [
+          "discovery",
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/cli/values.go",
+      "language": "go",
+      "chat_id": 7143,
+      "fields": {
+        "F0": "go",
+        "F1": "Provides a convenience shortcut for listing unique metadata values within a specific database field, streamlining the exploration of available data dimensions.",
+        "F2": [
+          "list unique values for a field",
+          "show all topics in the database",
+          "what values exist for risk level",
+          "inspect metadata distribution"
+        ],
+        "F3": "Implements the 'gsc values' shortcut command for listing unique metadata field values. It validates arguments, integrates with the CLI Bridge for output handling, and delegates the hierarchical listing logic to handleHierarchicalList.",
+        "F4": [
+          "valuesCmd"
+        ],
+        "F5": [
+          "internal/bridge",
+          "internal/cli/query.go"
+        ],
+        "F6": "cli",
+        "F7": [
+          "convenience-commands",
+          "bridge",
+          "hierarchical-discovery"
+        ],
+        "F8": [
+          "discovery",
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "LICENSE",
+      "language": "plaintext",
+      "chat_id": 7228,
+      "fields": {
+        "F0": "N/A",
+        "F1": "The full text of the Apache License 2.0, governing the terms, conditions, and permissions for using, reproducing, and distributing the software.",
+        "F2": [
+          "What license is this project released under?",
+          "Can I use this code in a commercial project?",
+          "What are the requirements for redistributing this software?",
+          "Is there a warranty provided with this code?",
+          "What does the Apache License 2.0 allow me to do?"
+        ],
+        "F3": "Standard Apache License 2.0 text defining terms and conditions for use, reproduction, and distribution of the software.",
+        "F4": [],
+        "F5": [],
+        "F6": "config",
+        "F7": [],
+        "F8": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "NOTICE",
+      "language": "plaintext",
+      "chat_id": 7229,
+      "fields": {
+        "F0": "N/A",
+        "F1": "Legal notice asserting copyright for GitSense Chat CLI and mandating the preservation of AI traceability metadata in derivative works.",
+        "F2": [
+          "Who holds the copyright for this project?",
+          "What are the attribution requirements for derivative works?",
+          "How should I handle AI traceability metadata when forking?",
+          "What is the development methodology of this project?",
+          "Does this project contain AI-generated code?"
+        ],
+        "F3": "Attribution notice file declaring copyright ownership by GitSense and documenting the project's AI-traceability methodology, requiring derivative works to retain metadata headers.",
+        "F4": [],
+        "F5": [],
+        "F6": "config",
+        "F7": [],
+        "F8": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": ".github/workflows/release.yml",
+      "language": "yaml",
+      "chat_id": 7237,
+      "fields": {
+        "F0": "yml",
+        "F1": "Automates the cross-platform build and release of the gsc CLI tool using GitHub Actions, triggered by version tags. It compiles binaries for Linux, macOS, and Windows across multiple architectures, injects versioning metadata (commit hash, build time) via ldflags to support traceability, and uploads the artifacts to the GitHub Releases page.",
+        "F2": [
+          "How are release binaries generated?",
+          "Where is the GitHub Actions workflow for releases?",
+          "How is version metadata injected into the build?",
+          "What triggers the automated release process?",
+          "Which platforms are supported in the release build?"
+        ],
+        "F3": "GitHub Actions workflow that automates the release process for the gsc-cli binary. It triggers on version tags, executes a matrix build strategy for cross-compilation across Linux, Darwin, and Windows (amd64/arm64), and injects version metadata via ldflags before uploading artifacts to the GitHub release page.",
+        "F4": [],
+        "F5": [
+          "cmd/gsc",
+          "internal/version"
+        ],
+        "F6": "config",
+        "F7": [],
+        "F8": []
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": ".gitsense/references/PROVENANCE_STANDARDS.md",
+      "language": "markdown",
+      "chat_id": 7246,
+      "fields": {
+        "F0": "md",
+        "F1": "To establish non-negotiable standards for AI-generated code provenance, metadata integrity, and documentation quality within the repository. This document acts as a governance rulebook, defining scoring rubrics for agentic readiness, semantic honesty requirements, and risk assessment protocols to ensure code remains auditable and maintainable.",
+        "F2": [
+          "What are the standards for AI-generated code descriptions and metadata headers?",
+          "How is the agentic readiness score calculated for a specific file?",
+          "What constitutes semantic fluff versus semantic honesty in documentation?",
+          "What are the specific layer violation rules that escalate governance risk?",
+          "How is the maintenance burden of a code component assessed?"
+        ],
+        "F3": "Defines non-negotiable standards for AI-generated code provenance, metadata integrity, and documentation quality, including rubrics for agentic readiness and governance risk assessment.",
+        "F4": [],
+        "F5": [],
+        "F6": "config",
+        "F7": [
+          "manifest-management",
+          "bridge"
+        ],
+        "F8": [
+          "documentation",
+          "governance"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": ".gitsense/analyzers/provenance-code-doc-quality.md",
+      "language": "markdown",
+      "chat_id": 7358,
+      "fields": {
+        "F0": "md",
+        "F1": "Defines the logic for the 'Code Documentation Quality Analyzer', which assesses the \"AI-readiness\" of source code. It evaluates semantic honesty, intent clarity, and documentation completeness to calculate an Agentic Readiness Score, ensuring that code is maintainable and safe for AI agents to refactor without human supervision.",
+        "F2": [
+          "How is code documentation quality assessed?",
+          "What determines AI-readiness score?",
+          "Where is the code doc quality analyzer logic?",
+          "How does gsc check for semantic honesty in comments?"
+        ],
+        "F3": "This file defines the instructions for the code quality auditor analyzer, which assesses AI-readiness by evaluating documentation quality, semantic honesty, and intent clarity. It includes scoring rubrics and specific metadata definitions for quality assessment.",
+        "F4": [],
+        "F5": [
+          "PROVENANCE_STANDARDS.md",
+          "ARCHITECTURE.md",
+          "README.md"
+        ],
+        "F6": "config",
+        "F7": [
+          "manifest-management",
+          "metadata-enrichment"
+        ],
+        "F8": [
+          "infrastructure",
+          "discovery"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": ".gitsense/analyzers/provenance-metadata-integrity.md",
+      "language": "markdown",
+      "chat_id": 7359,
+      "fields": {
+        "F0": "md",
+        "F1": "Defines the logic for the 'Provenance Integrity Auditor', a specialized analyzer that validates the honesty and accuracy of AI-generated code metadata. It ensures traceability headers (Block-UUID, Parent-UUID, etc.) are present and accurate, assessing governance risk and architectural alignment to maintain the repository's auditable standard.",
+        "F2": [
+          "How do I validate AI code metadata?",
+          "What checks the traceability headers?",
+          "Where is the metadata integrity analyzer defined?",
+          "How does gsc audit code provenance?"
+        ],
+        "F3": "This file contains the instructions for the metadata integrity auditor, which validates the accuracy of AI-generated code metadata and traceability headers. It defines the assessment logic for governance risk and architectural alignment.",
+        "F4": [],
+        "F5": [
+          ".gitsense/references/PROVENANCE_STANDARDS.md",
+          "ARCHITECTURE.md",
+          "NOTICE"
+        ],
+        "F6": "config",
+        "F7": [
+          "manifest-management",
+          "metadata-enrichment"
+        ],
+        "F8": [
+          "infrastructure",
+          "discovery"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": ".gitsense/manifests/gsc-provenance.json",
+      "language": "json",
+      "chat_id": 7360,
+      "fields": {
+        "F0": "json",
+        "F1": "This file constitutes the \"Provenance & Governance Brain,\" a structured dataset that audits AI-generated code for traceability and documentation quality. It enables deterministic discovery of governance risks, metadata integrity issues, and AI-readiness scores across the repository.",
+        "F2": [
+          "How do I find files with high governance risk?",
+          "Where is the AI-readiness score for specific files stored?",
+          "What metadata validates the traceability of AI code?",
+          "How can I assess the documentation quality of the codebase?",
+          "What is the schema for the provenance database?"
+        ],
+        "F3": "JSON manifest defining the 'Provenance & Governance Brain' for the gsc-cli repository. It specifies the schema, analyzer configurations (integrity and doc quality), and field definitions for governance metrics. The file contains a comprehensive dataset of analysis results, including AI readiness scores and risk factors for 69 project files.",
+        "F4": [],
+        "F5": [],
+        "F6": "data-access",
+        "F7": [
+          "manifest-management"
+        ],
+        "F8": [
+          "persistence",
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": ".gitsense/README.md",
+      "language": "markdown",
+      "chat_id": 7673,
+      "fields": {
+        "F0": "md",
+        "F1": "To explain the role of the .gitsense directory as the repository's intelligence layer, where structured metadata, analyzers, and manifests are stored. This document articulates the philosophy of transforming a passive codebase into a self-aware, queryable knowledge base that enables AI agents to perform high-speed, deterministic discovery.",
+        "F2": [
+          "What is the purpose of the .gitsense directory?",
+          "How does the .gitsense directory transform a repository into a smart repository?",
+          "What types of files and data are stored inside the .gitsense directory?",
+          "How does the gsc CLI utilize the contents of the .gitsense directory?",
+          "What is the difference between a traditional repository and a self-aware repository?"
+        ],
+        "F3": "N/A",
+        "F4": "N/A",
+        "F5": "N/A",
+        "F6": "pkg-util",
+        "F7": [
+          "manifest-management",
+          "metadata-enrichment"
+        ],
+        "F8": [
+          "documentation"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": ".gitsense/analyzers/gsc-architect-governance.md",
+      "language": "markdown",
+      "chat_id": 7674,
+      "fields": {
+        "F0": "md",
+        "F1": "Defines the analyzer logic for enforcing architectural governance, validating layer assignments, and applying the controlled topic taxonomy based on the non-negotiable rules in ARCHITECTURE.md.",
+        "F2": [
+          "How is architectural governance enforced in the project?",
+          "Where is the logic for layer assignment validation defined?",
+          "What analyzer ensures compliance with the controlled taxonomy?",
+          "How do I check if a file violates architectural rules?"
+        ],
+        "F3": "N/A",
+        "F4": "N/A",
+        "F5": "N/A",
+        "F6": "config",
+        "F7": [
+          "manifest-management"
+        ],
+        "F8": [
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": ".gitsense/analyzers/gsc-code-reader.md",
+      "language": "markdown",
+      "chat_id": 7675,
+      "fields": {
+        "F0": "md",
+        "F1": "Defines the analyzer logic for extracting raw technical facts, including exported APIs, implementation summaries, and internal dependencies, to create a structural intelligence layer for the repository.",
+        "F2": [
+          "How are technical APIs and functions extracted for analysis?",
+          "Where is the code reader analyzer logic defined?",
+          "What generates the technical cheat sheet for files?",
+          "How does the system map internal dependencies between files?"
+        ],
+        "F3": "N/A",
+        "F4": "N/A",
+        "F5": "N/A",
+        "F6": "config",
+        "F7": [
+          "manifest-management"
+        ],
+        "F8": [
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "DEBT.md",
+      "language": "markdown",
+      "chat_id": 7677,
+      "fields": {
+        "F0": "md",
+        "F1": "Tracks known technical debt and deviations from the ARCHITECTURE.md specification, including layer interaction violations, feature gaps, and specific remediation plans with target milestones.",
+        "F2": [
+          "What are the known architectural violations in the project?",
+          "Where is the technical debt and remediation plan tracked?",
+          "What deviations currently exist from the architecture specification?",
+          "What is the plan to fix the CLI direct registry access violation?"
+        ],
+        "F3": "N/A",
+        "F4": "N/A",
+        "F5": "N/A",
+        "F6": "config",
+        "F7": [
+          "manifest-management"
+        ],
+        "F8": [
+          "infrastructure"
+        ]
+      }
+    }
+  ]
+}

@@ -64,14 +64,6 @@ This file provides a hierarchical JSON representation of the project structure. 
                 }
               },
               {
-                "name": "gsc-architect.md",
-                "is_dir": false,
-                "matched": true,
-                "metadata": {
-                  "purpose": "Defines the analyzer logic for extracting high-signal architectural metadata, layer assignments, and intent triggers to create a repository intelligence layer."
-                }
-              },
-              {
                 "name": "gsc-code-reader.md",
                 "is_dir": false,
                 "matched": true,
@@ -102,14 +94,6 @@ This file provides a hierarchical JSON representation of the project structure. 
             "is_dir": true,
             "matched": false,
             "children": [
-              {
-                "name": "gsc-architect.json",
-                "is_dir": false,
-                "matched": true,
-                "metadata": {
-                  "purpose": "Provides an architectural mapping of the gsc-cli repository, tracking layers, public APIs, intent triggers, and dependencies to enable zero-shot discovery."
-                }
-              },
               {
                 "name": "gsc-provenance.json",
                 "is_dir": false,

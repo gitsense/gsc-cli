@@ -3,7 +3,7 @@
  * Block-UUID: de6e0582-2023-4b14-ad40-da52ae272064
  * Parent-UUID: 5f82a390-3c7f-4432-9082-dcac558984a5
  * Version: 1.1.0
- * Description: Central registry for gsc usage examples. Uses real-world patterns from the gsc-architect manifest to demonstrate discovery ergonomics.
+ * Description: Central registry for gsc usage examples. Uses real-world patterns from the gsc-cli-architect manifest to demonstrate discovery ergonomics.
  * Language: Go
  * Created-at: 2026-02-13T06:21:05.847Z
  * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0)

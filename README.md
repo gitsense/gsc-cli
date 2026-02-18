@@ -85,10 +85,10 @@ Clone this repository if you have not already done so and run these commands to 
 #### 1. Load the "Architect Brain"
 Import the architectural intent of this project. 
 ```bash
-gsc manifest import .gitsense/manifests/gsc-architect.json --name arch
+gsc manifest import .gitsense/manifests/gsc-cli-architect.json --name arch
 ```
 
-Want to see how the brain was trained to think, take a look at `.gitsense/analyzers/gsc-architect.md`
+Want to see how the brain was trained to think, take a look at `.gitsense/analyzers/gsc-cli-architect.md`
 
 #### 2. Discover Available Intelligence
 List all available databases and fields to understand what intelligence is loaded in your workspace.
