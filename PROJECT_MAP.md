@@ -1,3 +1,8 @@
+# Project Structure Map
+
+This file provides a hierarchical JSON representation of the project structure. It is intended to give AI agents immediate context regarding file locations, module organization, and codebase scope without requiring file system traversal.
+
+```json
 {
   "context": {
     "about": "This JSON represents a hierarchical Git tree. Each node represents a file or directory. Metadata is included for files where available to provide additional context for analysis.",
@@ -8,10 +13,10 @@
     "pruned": false
   },
   "stats": {
-    "files_with_metadata": 83,
-    "matched_files": 84,
-    "metadata_coverage_percent": 98.80952380952381,
-    "total_files": 84
+    "files_with_metadata": 87,
+    "matched_files": 87,
+    "metadata_coverage_percent": 100,
+    "total_files": 87
   },
   "tree": {
     "name": ".",
@@ -51,11 +56,27 @@
             "matched": false,
             "children": [
               {
+                "name": "gsc-architect-governance.md",
+                "is_dir": false,
+                "matched": true,
+                "metadata": {
+                  "purpose": "This file defines the analyzer instructions for the gsc-architect-governance component, which enforces architectural governance and layer compliance within the gsc-cli project."
+                }
+              },
+              {
                 "name": "gsc-architect.md",
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
                   "purpose": "Defines the analyzer logic for extracting high-signal architectural metadata, layer assignments, and intent triggers to create a repository intelligence layer."
+                }
+              },
+              {
+                "name": "gsc-code-reader.md",
+                "is_dir": false,
+                "matched": true,
+                "metadata": {
+                  "purpose": "This file defines the analyzer instructions for the gsc-code-reader component, specializing in raw technical extraction and structural mapping of code files."
                 }
               },
               {
@@ -117,7 +138,10 @@
           {
             "name": "README.md",
             "is_dir": false,
-            "matched": true
+            "matched": true,
+            "metadata": {
+              "purpose": "This directory serves as the intelligence layer for the repository, transforming the codebase into a self-aware, queryable knowledge base for AI agents."
+            }
           }
         ]
       },
@@ -793,6 +817,14 @@
         }
       },
       {
+        "name": "DEBT.md",
+        "is_dir": false,
+        "matched": true,
+        "metadata": {
+          "purpose": "This document serves as a technical debt register for the gsc-cli project, tracking known deviations from the architecture specification."
+        }
+      },
+      {
         "name": "LICENSE",
         "is_dir": false,
         "matched": true,
@@ -851,3 +883,4 @@
     ]
   }
 }
+```
