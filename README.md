@@ -12,10 +12,7 @@ A CLI for querying repository intelligence and a framework for building AI-ready
 
 By shipping with a `.gitsense` directory, we provide a **Discovery Interface** that enables deterministic search of architecture, history, and intent the moment you clone the code. Watch how `gsc` transforms blind grepping into context-aware discovery:
 
-<video width="100%" height="auto" controls poster="https://raw.githubusercontent.com/gitsense/gsc-cli/main/docs/assets/poster.png">
-  <source src="https://raw.githubusercontent.com/gitsense/gsc-cli/main/docs/assets/demo.mp4" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
+[![GSC Demo](https://raw.githubusercontent.com/gitsense/gsc-cli/main/docs/assets/poster.png)](https://raw.githubusercontent.com/gitsense/gsc-cli/main/docs/assets/demo.mp4)
 
 ### How the Brain Works
 
