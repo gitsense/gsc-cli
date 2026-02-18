@@ -129,7 +129,7 @@ func formatInfoTable(info *WorkspaceInfo, verbose bool, noColor bool) string {
 	if len(info.AvailableDBs) == 0 {
 		sb.WriteString("   (none)\n")
 		sb.WriteString("\n")
-		sb.WriteString("Hint: To add a database, use `gsc import <manifest>`\n")
+		sb.WriteString("Hint: To add a database, use `gsc manifest import <manifest>`\n")
 	} else {
 		for _, db := range info.AvailableDBs {
 			marker := " "

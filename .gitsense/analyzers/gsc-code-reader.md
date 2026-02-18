@@ -1,6 +1,3 @@
-; role: assistant
-
-
 # Analyze - `gsc-code-reader::file-content::default`
 
 ## Role: 
