@@ -88,13 +88,15 @@ Import the architectural intent of this project.
 gsc manifest import .gitsense/manifests/gsc-cli-architect.json --name arch
 ```
 
-Want to see how the brain was trained to think, take a look at `.gitsense/analyzers/gsc-cli-architect.md`
+To see how the intelligence was built, review the specialized analyzers in .gitsense/analyzers/. We orchestrate multiple Brains to provide combined expertise that moves beyond simple prompting.
 
 #### 2. Discover Available Intelligence
 List all available databases and fields to understand what intelligence is loaded in your workspace.
 ```bash
 gsc brains
 ```
+
+For a quick summary of available databases without the detailed field breakdown, use `gsc info`.
 
 #### 3. Visualize the Intelligence Map
 Stop guessing where logic lives. Use the `tree` command to see the repository's structure enriched with the "Why" behind every file.
@@ -113,7 +115,7 @@ Standard `grep` finds strings. `gsc grep` finds **context**. Find where "Execute
 gsc grep "Execute" --db arch --filter "topics=bridge" --fields purpose,topics
 ```
 
-Note: You can define as many fields as you need to help identify connections and to refine/expand your search.
+Note: You can include any number of fields availble to surface more context, helping you identify connections and refine your search.
 
 #### 5. Discover What the Repository Knows
 If you're unsure what questions you can ask, get a distribution of the top values.
