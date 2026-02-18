@@ -1,12 +1,12 @@
 /**
  * Component: Grep Command
- * Block-UUID: 9ec1a8a6-3854-4093-97c4-ebf88dfa9723
- * Parent-UUID: 31a17d64-12b4-4e5e-85d1-672992bd93ad
- * Version: 4.5.0
+ * Block-UUID: 9a66b548-8586-4509-9f9b-c2512470bbeb
+ * Parent-UUID: 9ec1a8a6-3854-4093-97c4-ebf88dfa9723
+ * Version: 4.6.0
  * Description: CLI command definition for 'gsc grep'. Updated to remove references to profiles and config features from help text and error messages. Removed the '--profile' flag to hide the feature from the user interface. Updated to support metadata filtering, stats recording, and case-sensitive defaults. Updated to resolve database names from user input or config to physical names. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted Info logs to Debug and set SilenceUsage to true. Integrated CLI Bridge: if --code is provided, output is captured and sent to the bridge orchestrator for chat insertion. Added debug logging to trace the bridge code received from the CLI arguments.
  * Language: Go
- * Created-at: 2026-02-09T02:49:16.740Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v3.0.0), GLM-4.7 (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.7 (v3.3.0), Gemini 3 Flash (v3.4.0), Gemini 3 Flash (v3.5.0), Gemini 3 Flash (v3.6.0), Gemini 3 Flash (v3.7.0), Gemini 3 Flash (v3.8.0), Gemini 3 Flash (v3.9.0), Gemini 3 Flash (v3.9.1), Gemini 3 Flash (v4.0.0), Gemini 3 Flash (v4.0.1), Gemini 3 Flash (v4.1.0), GLM-4.7 (v4.2.0), Gemini 3 Flash (v4.3.0), GLM-4.7 (v4.3.1), Gemini 3 Flash (v4.4.0), GLM-4.7 (v4.5.0)
+ * Created-at: 2026-02-18T06:04:20.388Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v3.0.0), GLM-4.7 (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.7 (v3.3.0), Gemini 3 Flash (v3.4.0), Gemini 3 Flash (v3.5.0), Gemini 3 Flash (v3.6.0), Gemini 3 Flash (v3.7.0), Gemini 3 Flash (v3.8.0), Gemini 3 Flash (v3.9.0), Gemini 3 Flash (v3.9.1), Gemini 3 Flash (v4.0.0), Gemini 3 Flash (v4.0.1), Gemini 3 Flash (v4.1.0), GLM-4.7 (v4.2.0), Gemini 3 Flash (v4.3.0), GLM-4.7 (v4.3.1), Gemini 3 Flash (v4.4.0), GLM-4.7 (v4.5.0), GLM-4.7 (v4.6.0)
  */
 
 
@@ -203,6 +203,22 @@ Filtering:
 		// 9. Aggregate Summary
 		summary := search.AggregateMatches(enrichedMatches, grepLimit)
 		summary.MatchesOutsideScope = matchesOutsideScope
+
+		// 9.5. Filter detailed matches to respect the limit
+		// If the summary was truncated, we must also truncate the detailed matches
+		// to ensure the output is consistent and useful for screenshots.
+		if grepLimit > 0 && summary.IsTruncated {
+			var filteredMatches []search.MatchResult
+			// Iterate over the sorted summary files to maintain priority order
+			for _, fs := range summary.Files {
+				for _, m := range enrichedMatches {
+					if m.FilePath == fs.FilePath {
+						filteredMatches = append(filteredMatches, m)
+					}
+				}
+			}
+			enrichedMatches = filteredMatches
+		}
 
 		// 10. Build Query Context
 		mode := "full"
