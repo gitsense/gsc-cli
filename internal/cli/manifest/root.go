@@ -1,12 +1,12 @@
 /**
  * Component: Manifest Root Command
- * Block-UUID: d7a8e30f-790a-4898-8e11-2525080a1fe7
- * Parent-UUID: 62834949-e5fa-4002-a389-15c2886e1698
- * Version: 1.7.0
- * Description: Defines the root command for the 'manifest' subcommand group, serving as the parent for init, import, list, and delete.
+ * Block-UUID: 1c56f16f-be76-427a-99e2-bbbbb363bf43
+ * Parent-UUID: d7a8e30f-790a-4898-8e11-2525080a1fe7
+ * Version: 1.8.0
+ * Description: Registered the new 'publish' and 'unpublish' subcommands to enable GitSense Chat app integration.
  * Language: Go
- * Created-at: 2026-02-13T04:59:45.865Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.4.5 (v1.1.0), GLM-4.7 (v1.2.0), Claude Haiku 4.4.5 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0)
+ * Created-at: 2026-02-19T18:29:28.554Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.4.5 (v1.1.0), GLM-4.7 (v1.2.0), Claude Haiku 4.4.5 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), Gemini 3 Flash (v1.8.0)
  */
 
 
@@ -52,6 +52,10 @@ func init() {
 	Cmd.AddCommand(initCmd)
 	Cmd.AddCommand(importCmd)
 	Cmd.AddCommand(listCmd)
+
+	// Subcommands for GitSense Chat app integration
+	Cmd.AddCommand(publishCmd)
+	Cmd.AddCommand(unpublishCmd)
 
 	// Temporarily hidden commands due to lack of time for validation.
 	// The code logic remains in bundle.go and export.go.
