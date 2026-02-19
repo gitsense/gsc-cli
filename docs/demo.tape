@@ -92,7 +92,7 @@ Enter
 Type "gsc grep 'Execute' --db arch --fields purpose,topics --filter 'topics=bridge' --limit 1"
 Sleep 1s
 Enter
-Sleep 3s
+Sleep 1.5s
 Type "# The --filter flag narrowed the search to only 'bridge' topics."
 Sleep 1s
 Enter
