@@ -13,10 +13,10 @@ This file provides a hierarchical JSON representation of the project structure. 
     "pruned": false
   },
   "stats": {
-    "files_with_metadata": 87,
-    "matched_files": 87,
-    "metadata_coverage_percent": 100,
-    "total_files": 87
+    "files_with_metadata": 91,
+    "matched_files": 93,
+    "metadata_coverage_percent": 97.84946236559139,
+    "total_files": 93
   },
   "tree": {
     "name": ".",
@@ -38,7 +38,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Automates the cross-platform build and release of the gsc CLI tool using GitHub Actions, triggered by version tags."
+                  "purpose": "Automates the release process for the gsc-cli project by building cross-platform Go binaries and uploading them as GitHub release assets upon version tag pushes."
                 }
               }
             ]
@@ -60,7 +60,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "This file defines the analyzer instructions for the gsc-architect-governance component, which enforces architectural governance and layer compliance within the gsc-cli project."
+                  "purpose": "Provides analyzer instructions for enforcing architectural governance, specifically focusing on layer assignment, controlled taxonomy classification, and the generation of governance reports for the gsc-cli project."
                 }
               },
               {
@@ -68,7 +68,15 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "This file defines the analyzer instructions for the gsc-code-reader component, specializing in raw technical extraction and structural mapping of code files."
+                  "purpose": "This file defines the gsc-code-reader analyzer, which extracts technical details like APIs and dependencies from code files to create a structural intelligence layer."
+                }
+              },
+              {
+                "name": "gsc-intent-scout.md",
+                "is_dir": false,
+                "matched": true,
+                "metadata": {
+                  "purpose": "This file configures the gsc-intent-scout analyzer to translate technical code into human-centric descriptions and identify intent triggers for discovery."
                 }
               },
               {
@@ -76,7 +84,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Defines the analyzer logic for assessing code documentation quality, semantic honesty, and AI-readiness to determine maintenance burden."
+                  "purpose": "This file defines the provenance-code-doc-quality analyzer, which assesses code documentation quality, semantic honesty, and AI-readiness scores."
                 }
               },
               {
@@ -84,7 +92,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Defines the analyzer logic for validating the honesty and accuracy of AI-generated code metadata and traceability headers."
+                  "purpose": "Defines the analyzer instructions for validating the integrity and accuracy of AI-generated code metadata, specifically focusing on traceability headers and governance risk assessment."
                 }
               }
             ]
@@ -95,11 +103,19 @@ This file provides a hierarchical JSON representation of the project structure. 
             "matched": false,
             "children": [
               {
-                "name": "gsc-provenance.json",
+                "name": "gsc-cli-architect.json",
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Defines the schema and data for the \"Provenance \u0026 Governance Brain,\" which validates AI-generated code metadata integrity and assesses code documentation quality to ensure governance and traceability."
+                  "purpose": "Architectural mapping of the gsc-cli repository to build an intelligence layer for humans and AI agents."
+                }
+              },
+              {
+                "name": "gsc-cli-provenance.json",
+                "is_dir": false,
+                "matched": true,
+                "metadata": {
+                  "purpose": "Governance layer for AI-generated code in gsc-cli, ensuring traceability, metadata integrity, and AI-readiness."
                 }
               }
             ]
@@ -114,7 +130,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Defines non-negotiable standards for AI-generated code provenance, metadata integrity, and documentation quality to ensure architectural compliance and maintainability."
+                  "purpose": "Defines non-negotiable standards for AI-generated code provenance, metadata integrity, and documentation quality within the gsc-cli repository."
                 }
               }
             ]
@@ -124,7 +140,7 @@ This file provides a hierarchical JSON representation of the project structure. 
             "is_dir": false,
             "matched": true,
             "metadata": {
-              "purpose": "This directory serves as the intelligence layer for the repository, transforming the codebase into a self-aware, queryable knowledge base for AI agents."
+              "purpose": "This document introduces the `.gitsense` directory as an intelligence layer that transforms repositories into self-aware, queryable knowledge bases for AI agents, reducing token usage and hallucination risks."
             }
           }
         ]
@@ -144,10 +160,42 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "The main entry point for the gsc CLI application, responsible for initializing the command-line interface and executing the root command defined in the internal CLI layer."
+                  "purpose": "Serves as the entry point for the GSC CLI application, initializing the command-line interface and handling the execution flow."
                 }
               }
             ]
+          }
+        ]
+      },
+      {
+        "name": "docs",
+        "is_dir": true,
+        "matched": false,
+        "children": [
+          {
+            "name": "assets",
+            "is_dir": true,
+            "matched": false,
+            "children": [
+              {
+                "name": "demo.mp4",
+                "is_dir": false,
+                "matched": true
+              },
+              {
+                "name": "poster.png",
+                "is_dir": false,
+                "matched": true
+              }
+            ]
+          },
+          {
+            "name": "demo.tape",
+            "is_dir": false,
+            "matched": true,
+            "metadata": {
+              "purpose": "A VHS (Video Helper Script) file used to generate a terminal demonstration video for the `gsc` CLI, showcasing features like self-aware repository discovery and intent-based search."
+            }
           }
         ]
       },
@@ -166,7 +214,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Orchestrates the CLI Bridge lifecycle, managing handshake validation, status updates, user confirmation, and the insertion of command output into the GitSense Chat database."
+                  "purpose": "Orchestrates the CLI bridge lifecycle, managing handshakes, user confirmations, and the insertion of command outputs into the chat database."
                 }
               }
             ]
@@ -186,7 +234,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                     "is_dir": false,
                     "matched": true,
                     "metadata": {
-                      "purpose": "CLI command definition for generating context bundles from a manifest database using SQL queries."
+                      "purpose": "CLI command definition for generating context bundles from a manifest database using SQL queries to create focused file lists for AI analysis."
                     }
                   },
                   {
@@ -194,7 +242,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                     "is_dir": false,
                     "matched": true,
                     "metadata": {
-                      "purpose": "Defines the CLI command for deleting a manifest database, handling user input and invoking the deletion logic to remove the database file and registry entry."
+                      "purpose": "CLI command for deleting a manifest database by name, removing the physical file and updating the project registry."
                     }
                   },
                   {
@@ -202,7 +250,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                     "is_dir": false,
                     "matched": true,
                     "metadata": {
-                      "purpose": "Provides a CLI command to run health checks on the `.gitsense` environment and databases, diagnosing structural issues and connectivity with optional auto-fix capabilities."
+                      "purpose": "CLI command for running health checks on the .gitsense environment and databases, diagnosing structural and connectivity issues."
                     }
                   },
                   {
@@ -210,7 +258,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                     "is_dir": false,
                     "matched": true,
                     "metadata": {
-                      "purpose": "Implements the CLI command to export manifest databases to human-readable formats (Markdown or JSON), resolving database names via the registry and handling file output."
+                      "purpose": "Defines the CLI command for exporting manifest databases to Markdown or JSON formats, resolving database names and handling output to file or stdout."
                     }
                   },
                   {
@@ -218,7 +266,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                     "is_dir": false,
                     "matched": true,
                     "metadata": {
-                      "purpose": "Defines shared command-line flags for manifest subcommands, such as database name and output format, to ensure consistency across the CLI interface."
+                      "purpose": "Provides shared flag definitions and a helper function to standardize CLI options across manifest subcommands."
                     }
                   },
                   {
@@ -226,7 +274,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                     "is_dir": false,
                     "matched": true,
                     "metadata": {
-                      "purpose": "CLI command to import manifest JSON files into SQLite databases, supporting atomic imports with backup and overwrite options."
+                      "purpose": "Implements the CLI command for importing JSON manifest files into SQLite databases, with options for naming, overwriting, and backup management."
                     }
                   },
                   {
@@ -234,7 +282,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                     "is_dir": false,
                     "matched": true,
                     "metadata": {
-                      "purpose": "CLI command to initialize the GitSense directory structure and create the manifest.json registry file in the project root."
+                      "purpose": "Defines the CLI command for initializing the GitSense directory structure and manifest registry."
                     }
                   },
                   {
@@ -242,7 +290,15 @@ This file provides a hierarchical JSON representation of the project structure. 
                     "is_dir": false,
                     "matched": true,
                     "metadata": {
-                      "purpose": "CLI command to list available manifest databases from the registry, displaying metadata such as name, description, and tags in various formats."
+                      "purpose": "Implements the CLI command to list available manifest databases with support for multiple output formats."
+                    }
+                  },
+                  {
+                    "name": "publish.go",
+                    "is_dir": false,
+                    "matched": true,
+                    "metadata": {
+                      "purpose": "Implements the CLI command to publish a local manifest file to the GitSense Chat application, handling environment validation and repository details."
                     }
                   },
                   {
@@ -250,7 +306,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                     "is_dir": false,
                     "matched": true,
                     "metadata": {
-                      "purpose": "Defines the root command for the manifest subcommand group, serving as the entry point for manifest management tasks."
+                      "purpose": "Serves as the root command group for manifest management, aggregating subcommands for initialization, listing, publishing, and maintenance."
                     }
                   },
                   {
@@ -258,7 +314,15 @@ This file provides a hierarchical JSON representation of the project structure. 
                     "is_dir": false,
                     "matched": true,
                     "metadata": {
-                      "purpose": "Implements the manifest schema command to inspect and display the metadata structure of a manifest database."
+                      "purpose": "Defines the CLI command to inspect the schema of a manifest database, resolving the database name and formatting the output."
+                    }
+                  },
+                  {
+                    "name": "unpublish.go",
+                    "is_dir": false,
+                    "matched": true,
+                    "metadata": {
+                      "purpose": "Implements the CLI command to remove a published manifest from the GitSense Chat application, validating the environment and triggering deletion."
                     }
                   }
                 ]
@@ -268,7 +332,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Defines the gsc config command group for managing context profiles and workspace settings, including focus scope validation."
+                  "purpose": "Defines the CLI command structure for managing GitSense context profiles and workspace settings, including creation, activation, and validation of configuration scopes."
                 }
               },
               {
@@ -276,7 +340,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Serves as a central registry for curated usage examples, demonstrating real-world patterns for the `gsc` CLI to facilitate command discovery."
+                  "purpose": "Acts as a central registry for curated usage examples, demonstrating real-world patterns for discovery, search, visualization, and AI integration within the gsc-cli tool."
                 }
               },
               {
@@ -284,7 +348,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Executes high-performance code searches using ripgrep and enriches the results with manifest metadata, allowing users to filter by semantic fields like risk or topic while viewing raw code matches."
+                  "purpose": "Defines the CLI command for searching code using ripgrep, enriched with metadata from a manifest database."
                 }
               },
               {
@@ -292,7 +356,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Displays the current workspace context, including active databases and configuration status, providing a quick overview of the environment without executing complex queries."
+                  "purpose": "Implements the CLI command to display current workspace context and available databases."
                 }
               },
               {
@@ -300,7 +364,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Orchestrates metadata discovery and analysis commands, enabling users to query files by value, list available intelligence, and generate insights or coverage reports."
+                  "purpose": "Provides the CLI interface for querying metadata, listing databases and fields, and analyzing coverage or insights."
                 }
               },
               {
@@ -308,7 +372,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Root command definition for the gsc CLI, registering all subcommands, managing global flags, and enforcing pre-flight workspace checks."
+                  "purpose": "Defines the root command for the GitSense Chat CLI, handling global configuration, logging initialization, and the registration of all subcommands."
                 }
               },
               {
@@ -316,7 +380,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "CLI command definition for 'gsc tree', handling user input, coordinating tree construction and enrichment, and managing output formatting and CLI Bridge integration."
+                  "purpose": "Implements the `tree` command to display a hierarchical, metadata-enriched view of tracked files, supporting filtering, pruning, and multiple output formats."
                 }
               },
               {
@@ -324,7 +388,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Defines the `values` CLI command, a convenience shortcut for listing unique metadata values within a specific database field."
+                  "purpose": "Provides a shortcut command to list unique values for a specific metadata field within a database, delegating logic to the hierarchical list handler."
                 }
               }
             ]
@@ -339,7 +403,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Library methods for interacting with the GitSense Chat database, including message insertion and validation."
+                  "purpose": "Implements database operations for managing chat hierarchies, message persistence, and published manifest indexing."
                 }
               },
               {
@@ -347,7 +411,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Data structures mapping to the GitSense Chat SQLite schema (chats and messages tables)."
+                  "purpose": "Defines the Go data structures that map to the SQLite database schema for chats, messages, and published manifests."
                 }
               },
               {
@@ -355,7 +419,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Defines and initializes the SQL schema for manifest and stats databases, including tables for files, metadata, and search history, with backwards compatibility for older versions."
+                  "purpose": "Contains the SQL DDL and logic to initialize the SQLite database schema for manifests, files, and analysis metadata, including backwards compatibility handling."
                 }
               },
               {
@@ -363,7 +427,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Handles SQLite database connections using the modernc.org/sqlite driver for CGO-free execution, configuring pragmas and connection pooling for optimal CLI performance."
+                  "purpose": "Manages SQLite database connections with optimized settings for the CLI, including connection pooling and pragma configurations."
                 }
               }
             ]
@@ -378,7 +442,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Locates the Git repository root and retrieves tracked files to support scope validation and repository context."
+                  "purpose": "Discovers the project root by locating the .git directory and retrieves tracked files using 'git ls-files' for scope validation."
                 }
               },
               {
@@ -386,7 +450,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Extracts repository metadata (name, URL, remote) from the local Git configuration and provides system environment details like OS and project root."
+                  "purpose": "Extracts repository metadata such as name and URL from .git/config, and provides system information including OS and project root details."
                 }
               }
             ]
@@ -401,7 +465,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Generates context bundles by executing SQL queries against a manifest database, formatting results into lists or JSON for use in chat sessions or other tools."
+                  "purpose": "Generates context bundles from SQL queries against a manifest database, supporting multiple output formats like JSON and context lists."
                 }
               },
               {
@@ -409,7 +473,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Manages the loading, saving, and merging of query configurations and profiles, handling scope resolution precedence and integrating project-level settings from `.gitsense-map`."
+                  "purpose": "Manages the loading, saving, and merging of query configurations and profiles to provide effective settings for CLI commands."
                 }
               },
               {
@@ -417,7 +481,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Implements the core logic for deleting a manifest database, coordinating file system removal with registry updates to ensure consistency."
+                  "purpose": "Removes the physical database file and updates the registry to delete a manifest entry."
                 }
               },
               {
@@ -425,7 +489,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Performs health checks on the `.gitsense` environment, validating the project root, directory structure, registry file, database connectivity, and identifying orphaned database files."
+                  "purpose": "Performs comprehensive health checks on the `.gitsense` environment to validate directory structure, registry integrity, and database connectivity."
                 }
               },
               {
@@ -433,7 +497,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Exports the contents of a manifest database to Markdown or JSON formats, validating database existence and retrieving all associated metadata, files, and references."
+                  "purpose": "Exports manifest database content to Markdown or JSON formats, including validation and data querying."
                 }
               },
               {
@@ -441,7 +505,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Handles loading and validation of the project-level `.gitsense-map` file, which defines version-controlled team defaults for Focus Scope configuration."
+                  "purpose": "Loads and validates the project-level .gitsense-map configuration file to define team-wide scope defaults."
                 }
               },
               {
@@ -449,7 +513,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Handles the parsing and importing of JSON manifests into SQLite databases using an atomic swap strategy, including backup rotation, file locking, and language detection."
+                  "purpose": "Handles the parsing of JSON manifest files and the atomic import of data into a SQLite database, including schema creation, metadata insertion, and registry updates."
                 }
               },
               {
@@ -457,7 +521,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Unit tests for the manifest importer, validating atomic import workflows, backup rotation logic, registry upserts, and file compression utilities to ensure data integrity during manifest operations."
+                  "purpose": "Provides unit tests for the manifest importer, covering atomic imports, backup rotation, and registry management."
                 }
               },
               {
@@ -465,7 +529,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Logic to gather and format workspace information, including available databases and project root details, while internally managing profile data that is hidden from the user interface."
+                  "purpose": "Gathers and formats workspace information for the `gsc info` command, listing available databases and managing internal profile state."
                 }
               },
               {
@@ -473,7 +537,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Initializes the `.gitsense` workspace directory structure and the manifest registry file, ensuring the environment is ready for metadata operations."
+                  "purpose": "Initializes the `.gitsense` directory structure and registry file, setting up the necessary workspace environment within a Git repository."
                 }
               },
               {
@@ -481,7 +545,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Defines the Go structs that map to the JSON manifest schema, representing the core data model for repositories, branches, analyzers, and file metadata."
+                  "purpose": "Defines the Go data structures that map to the JSON manifest schema, representing repositories, branches, analyzers, and file metadata."
                 }
               },
               {
@@ -489,7 +553,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Helper functions to resolve file paths for databases, backups, and manifests within the `.gitsense` directory, supporting atomic imports and concurrency control."
+                  "purpose": "Provides utility functions to resolve absolute paths for databases, backups, and lock files, and validates the workspace structure."
                 }
               },
               {
@@ -497,7 +561,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Manages the lifecycle of Context Profiles, including creation, deletion, activation, and alias resolution."
+                  "purpose": "Manages the lifecycle of context profiles, including creation, deletion, activation, and alias resolution, though currently marked as an internal feature."
                 }
               },
               {
@@ -505,7 +569,15 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Defines data structures for Context Profiles, which encapsulate configuration settings for workspace switching."
+                  "purpose": "Defines the Go data structures for Context Profiles, which represent named workspaces containing pre-defined configuration values for the CLI."
+                }
+              },
+              {
+                "name": "publisher.go",
+                "is_dir": false,
+                "matched": true,
+                "metadata": {
+                  "purpose": "Handles the orchestration of publishing and unpublishing intelligence manifests, managing hierarchical chat structures, file persistence, and UI synchronization via Markdown regeneration."
                 }
               },
               {
@@ -513,7 +585,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Retrieves and summarizes registered manifest databases from the registry, including file counts and metadata tags."
+                  "purpose": "Implements logic to query the manifest registry and list available databases, providing summary information such as entry counts and metadata."
                 }
               },
               {
@@ -521,7 +593,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Formats query results, discovery lists, coverage reports, and insights into JSON or human-readable tables, supporting hierarchical views for the intelligence map."
+                  "purpose": "Centralizes output formatting logic for query results, lists, schemas, coverage reports, and insights, supporting JSON, table, and CSV formats."
                 }
               },
               {
@@ -529,7 +601,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Defines the core data structures for query operations, coverage analysis, and insights reporting, including hierarchical list items for the discovery dashboard."
+                  "purpose": "Defines the core data structures and models for query operations, coverage analysis, and insights reporting within the manifest system."
                 }
               },
               {
@@ -537,7 +609,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Enriches raw ripgrep search results with file metadata from the SQLite database, supporting both single-match and batch lookup workflows for the dual-pass search system."
+                  "purpose": "Enriches raw ripgrep search results with file metadata from the database and formats the output for display or further processing."
                 }
               },
               {
@@ -545,7 +617,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Executes the ripgrep binary as a subprocess, handling both JSON discovery passes and raw display passes to support the dual-pass search workflow."
+                  "purpose": "Executes the ripgrep search tool as a subprocess, handling both JSON parsing for discovery and raw output for terminal display."
                 }
               },
               {
@@ -553,7 +625,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Defines the data structures for ripgrep operations, mapping raw JSON output to Go structs and defining enriched results for the search pipeline."
+                  "purpose": "Defines the Go data structures for ripgrep search operations, including raw match results, enriched metadata outputs, and configuration options for search execution."
                 }
               },
               {
@@ -561,7 +633,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Retrieves and structures schema definitions (analyzers and fields) from the manifest database to support introspection and query validation."
+                  "purpose": "Provides database query logic to retrieve analyzer and field definitions, supporting schema introspection and field type resolution for filtering and CLI interactions."
                 }
               },
               {
@@ -569,7 +641,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Core logic for Focus Scope handling, implementing glob-based file filtering, pattern validation with Levenshtein suggestions, and the precedence chain for resolving active scopes from CLI, profiles, or project maps."
+                  "purpose": "Implements core logic for parsing, validating, and resolving file scope patterns using glob matching and precedence rules to filter repository operations."
                 }
               },
               {
@@ -577,7 +649,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Executes metadata queries and hierarchical discovery operations, including coverage analysis and insights aggregation, while respecting focus scope constraints."
+                  "purpose": "Handles execution of simple queries, hierarchical discovery lists, coverage analysis, and metadata insights against the manifest database."
                 }
               },
               {
@@ -585,7 +657,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Validates the structural integrity and data types of manifest files, ensuring all required fields and references are present and correctly formatted before import."
+                  "purpose": "Validates the structure and content of loaded ManifestFile objects, ensuring required fields are present and data types match the schema."
                 }
               },
               {
@@ -593,7 +665,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Interactive CLI wizard for creating and updating context profiles, guiding users through database selection, field configuration, and focus scope definition."
+                  "purpose": "Implements interactive CLI wizards for creating, updating, and selecting context profiles, guiding users through configuration steps."
                 }
               }
             ]
@@ -608,7 +680,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Provides utility functions to format data into JSON, Table, or CSV strings and constructs Markdown messages for the CLI Bridge."
+                  "purpose": "Provides utility functions to format data into JSON, Table, or CSV strings, including terminal width detection and Markdown generation for CLI bridges."
                 }
               }
             ]
@@ -623,7 +695,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Defines the core data structures and schema for the GitSense registry, including methods for managing database entries."
+                  "purpose": "Defines the core data structures and CRUD operations for managing the GitSense manifest registry index."
                 }
               },
               {
@@ -631,7 +703,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Handles the persistence layer for the manifest registry, including loading, saving, and upserting database entries."
+                  "purpose": "Implements file system operations for loading, saving, and persisting the registry JSON file to the `.gitsense` directory."
                 }
               },
               {
@@ -639,7 +711,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Resolves user-provided database identifiers to canonical physical names."
+                  "purpose": "Provides logic to resolve user-provided database identifiers to canonical physical names, supporting fuzzy matching and input sanitization."
                 }
               }
             ]
@@ -654,7 +726,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Aggregates enriched search results into a structured summary, grouping matches by file, calculating statistics, and applying truncation limits for display."
+                  "purpose": "Aggregates raw search matches into a structured summary, grouping results by file and calculating statistics like match counts and field distributions."
                 }
               },
               {
@@ -662,7 +734,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Defines the core abstraction for search engines, allowing pluggable implementations like ripgrep, and structures raw search results for further enrichment."
+                  "purpose": "Defines the core abstraction and data structures for the search engine, decoupling the implementation (ripgrep/git grep) from the application logic."
                 }
               },
               {
@@ -670,7 +742,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Orchestrates the enrichment of raw search matches by fetching metadata from SQLite, applying system and metadata filters, and projecting requested fields for the final result set."
+                  "purpose": "Enriches raw search matches with metadata from a SQLite database, applying system filters and user-defined metadata conditions to refine the result set."
                 }
               },
               {
@@ -678,7 +750,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Parses user-provided filter strings into structured SQL WHERE clauses, supporting operators, ranges, and type-aware validation for metadata queries."
+                  "purpose": "Parses string-based filter expressions into structured condition objects and generates the corresponding SQL WHERE clauses and arguments for database queries."
                 }
               },
               {
@@ -686,7 +758,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Handles the formatting and presentation of search results, supporting both human-readable terminal output with syntax highlighting and structured JSON for the CLI Bridge."
+                  "purpose": "Formats and outputs search results, supporting both human-readable text with syntax highlighting and structured JSON, while grouping matches by file."
                 }
               },
               {
@@ -694,7 +766,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Defines the core data structures and JSON schemas for the search subsystem, including request contexts, result summaries, file matches, and filter conditions."
+                  "purpose": "Defines the structured data models and JSON schemas for search results, query context, and system metadata used by the search intelligence layer."
                 }
               },
               {
@@ -702,7 +774,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Implements the SearchEngine interface using the ripgrep binary to perform high-performance code search and parse JSON output into structured results."
+                  "purpose": "Implements the search engine interface by wrapping the ripgrep binary, executing search commands, and parsing JSON output into structured results."
                 }
               },
               {
@@ -710,7 +782,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Records search execution details, such as patterns, duration, and match counts, to a local SQLite database to support analytics and the future Scout intelligence feature."
+                  "purpose": "Manages the persistence of search execution statistics to a local SQLite database, including schema management and record insertion for analytics."
                 }
               }
             ]
@@ -725,7 +797,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Core logic for building, enriching, pruning, and rendering hierarchical filesystem trees with metadata coverage statistics."
+                  "purpose": "Core logic for constructing, enriching, and rendering hierarchical file trees, supporting semantic filtering and visibility pruning for visualization."
                 }
               }
             ]
@@ -740,7 +812,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Stores and retrieves version information, including the application version, Git commit hash, and build timestamp."
+                  "purpose": "Manages application versioning by storing build-time metadata and providing a formatted version string for the GSC CLI."
                 }
               }
             ]
@@ -762,7 +834,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Provides standardized logging utilities with severity levels, color-coded terminal output, and structured key-value formatting for the GSC CLI."
+                  "purpose": "Provides standardized logging utilities with configurable severity levels, color-coded terminal output, and structured key-value formatting for the GSC CLI."
                 }
               }
             ]
@@ -777,7 +849,7 @@ This file provides a hierarchical JSON representation of the project structure. 
                 "is_dir": false,
                 "matched": true,
                 "metadata": {
-                  "purpose": "Defines global configuration constants and default values for directory structures, file extensions, backup policies, and bridge parameters."
+                  "purpose": "Manages environment resolution for GSC_HOME and constructs file paths for application storage, databases, and backups."
                 }
               }
             ]
@@ -789,7 +861,7 @@ This file provides a hierarchical JSON representation of the project structure. 
         "is_dir": false,
         "matched": true,
         "metadata": {
-          "purpose": "This file specifies the exclusion patterns for the Git repository, preventing build artifacts, IDE configurations, and sensitive environment data from being committed to version control."
+          "purpose": "This file specifies intentionally untracked files to be ignored by Git, focusing on build artifacts, dependencies, IDE configurations, and sensitive environment data for the gsc-cli project."
         }
       },
       {
@@ -797,7 +869,7 @@ This file provides a hierarchical JSON representation of the project structure. 
         "is_dir": false,
         "matched": true,
         "metadata": {
-          "purpose": "Definitive architectural specification for gsc-cli, defining layers, data flows, interaction guardrails, and critical abstractions to guide AI analysis and development."
+          "purpose": "This document serves as the definitive source of truth for the `gsc-cli` system architecture, defining layer rules, data flow patterns, interaction guardrails, and critical abstractions."
         }
       },
       {
@@ -805,7 +877,7 @@ This file provides a hierarchical JSON representation of the project structure. 
         "is_dir": false,
         "matched": true,
         "metadata": {
-          "purpose": "This document serves as a technical debt register for the gsc-cli project, tracking known deviations from the architecture specification."
+          "purpose": "This document serves as a technical debt register for the gsc-cli project, tracking known deviations from the architecture specification and planned remediation steps."
         }
       },
       {
@@ -813,7 +885,7 @@ This file provides a hierarchical JSON representation of the project structure. 
         "is_dir": false,
         "matched": true,
         "metadata": {
-          "purpose": "The full text of the Apache License 2.0, governing the terms, conditions, and permissions for using, reproducing, and distributing the software."
+          "purpose": "Contains the full text of the Apache License 2.0, outlining terms and conditions for use, reproduction, and distribution of the software."
         }
       },
       {
@@ -821,7 +893,7 @@ This file provides a hierarchical JSON representation of the project structure. 
         "is_dir": false,
         "matched": true,
         "metadata": {
-          "purpose": "Automates the build, installation, testing, and cross-compilation processes for the gsc-cli binary, streamlining development and deployment workflows."
+          "purpose": "Automates the build, installation, testing, and cross-compilation processes for the gsc-cli Go tool, including version metadata injection."
         }
       },
       {
@@ -829,7 +901,7 @@ This file provides a hierarchical JSON representation of the project structure. 
         "is_dir": false,
         "matched": true,
         "metadata": {
-          "purpose": "Legal notice asserting copyright for GitSense Chat CLI and mandating the preservation of AI traceability metadata in derivative works."
+          "purpose": "Legal notice file containing copyright information, attribution details, and requirements for maintaining AI traceability metadata in derivative works under the Apache License 2.0."
         }
       },
       {
@@ -837,7 +909,7 @@ This file provides a hierarchical JSON representation of the project structure. 
         "is_dir": false,
         "matched": true,
         "metadata": {
-          "purpose": "Provides an AI-portable hierarchical map of the repository enriched with architectural metadata to optimize token usage and assist LLM navigation."
+          "purpose": "This file provides a hierarchical JSON representation of the project structure, offering immediate context regarding file locations, module organization, and codebase scope for AI agents."
         }
       },
       {
@@ -853,7 +925,7 @@ This file provides a hierarchical JSON representation of the project structure. 
         "is_dir": false,
         "matched": true,
         "metadata": {
-          "purpose": "Defines the Go module path, required Go version, and lists the direct dependencies necessary for the gsc-cli tool's functionality."
+          "purpose": "Defines the Go module for the gsc-cli project, specifying the Go version and listing required dependencies for building the application."
         }
       },
       {
@@ -861,7 +933,7 @@ This file provides a hierarchical JSON representation of the project structure. 
         "is_dir": false,
         "matched": true,
         "metadata": {
-          "purpose": "Locks the cryptographic hashes of all Go module dependencies to ensure reproducible and secure builds for the project."
+          "purpose": "Provides cryptographic checksums for all project dependencies to ensure reproducible builds and verify the integrity of downloaded modules."
         }
       }
     ]
