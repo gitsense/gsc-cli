@@ -1,16 +1,22 @@
 /**
  * Component: Settings
- * Block-UUID: 63907862-1f4b-484c-ac50-593567964dd5
- * Parent-UUID: 253896fb-1af3-4728-a310-9ccfaa2fe69f
- * Version: 1.3.0
- * Description: Package settings provides global configuration constants for the GSC CLI. Added constants for backup directory, temporary database suffix, and maximum backup retention count.
+ * Block-UUID: 38c1b204-244a-4f26-b145-d146d08939b6
+ * Parent-UUID: 63907862-1f4b-484c-ac50-593567964dd5
+ * Version: 1.4.0
+ * Description: Centralized environment resolution for GSC_HOME and path construction for the GitSense Chat application storage and database.
  * Language: Go
- * Created-at: 2026-02-08T06:37:58.511Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0)
+ * Created-at: 2026-02-19T17:47:24.406Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0), Gemini 3 Flash (v1.4.0)
  */
 
 
 package settings
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+)
 
 // DefaultGitSenseDir is the default name of the directory where GitSense Chat stores its data
 const DefaultGitSenseDir = ".gitsense"
@@ -49,3 +55,39 @@ const RealModelNotes = "GitSense Notes"
 // BridgeHandshakeDir is the relative path within GSC_HOME for handshake files
 const BridgeHandshakeDir = "data/codes"
 
+// ManifestStorageDir is the relative path within GSC_HOME for published manifest files
+const ManifestStorageDir = "storage/manifests"
+
+// ChatDatabaseRelPath is the relative path within GSC_HOME for the chat database
+const ChatDatabaseRelPath = "data/chats.db"
+
+// GetGSCHome resolves the GSC_HOME directory. If required is true, it returns an
+// error if the environment variable is not set. If required is false, it falls
+// back to the user's home directory .gitsense folder.
+func GetGSCHome(required bool) (string, error) {
+	gscHome := os.Getenv("GSC_HOME")
+	if gscHome != "" {
+		return gscHome, nil
+	}
+
+	if required {
+		return "", fmt.Errorf("GSC_HOME environment variable is not set")
+	}
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve user home directory: %w", err)
+	}
+
+	return filepath.Join(homeDir, DefaultGitSenseDir), nil
+}
+
+// GetChatDatabasePath returns the absolute path to the GitSense Chat database.
+func GetChatDatabasePath(gscHome string) string {
+	return filepath.Join(gscHome, ChatDatabaseRelPath)
+}
+
+// GetManifestStoragePath returns the absolute path to the manifest storage directory.
+func GetManifestStoragePath(gscHome string) string {
+	return filepath.Join(gscHome, ManifestStorageDir)
+}

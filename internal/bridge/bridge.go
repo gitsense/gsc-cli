@@ -1,12 +1,12 @@
 /**
  * Component: CLI Bridge Orchestrator
- * Block-UUID: e199447b-efa6-4317-8950-81021425300c
- * Parent-UUID: 683dcaff-d2da-47ee-b619-ab88c0899e36
- * Version: 1.5.0
- * Description: Orchestrates the CLI Bridge lifecycle. Added stage-based validation (Discovery, Execution, Insertion) to handle long-running tasks and prevent race conditions. ValidateCode now enforces strict state checks (e.g., StartedAt must be nil for new tasks) and ensures codes haven't expired or been invalidated during execution.
+ * Block-UUID: 899c306a-c6c7-4eaa-ac4d-6a31a16298cb
+ * Parent-UUID: e199447b-efa6-4317-8950-81021425300c
+ * Version: 1.6.0
+ * Description: Refactored to use centralized settings.GetGSCHome for environment resolution, removing duplicate logic.
  * Language: Go
- * Created-at: 2026-02-09T02:43:34.123Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), Gemini 3 Flash (v1.3.1), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.5.0)
+ * Created-at: 2026-02-19T17:50:00.000Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), Gemini 3 Flash (v1.3.1), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.5.0), Gemini 3 Flash (v1.6.0)
  */
 
 
@@ -91,7 +91,7 @@ type Result struct {
 // Execute is the main entry point for the CLI Bridge.
 func Execute(code string, rawOutput string, format string, cmdStr string, duration time.Duration, dbName string, force bool) error {
 	// 1. Resolve GSC_HOME and Load Handshake
-	gscHome, err := resolveGSCHome()
+	gscHome, err := settings.GetGSCHome(false)
 	if err != nil {
 		return fmt.Errorf("failed to resolve GSC_HOME: %w", err)
 	}
@@ -187,7 +187,7 @@ func Execute(code string, rawOutput string, format string, cmdStr string, durati
 
 // ValidateCode checks if a bridge code is valid for a specific lifecycle stage.
 func ValidateCode(code string, stage BridgeStage) error {
-	gscHome, err := resolveGSCHome()
+	gscHome, err := settings.GetGSCHome(false)
 	if err != nil {
 		return fmt.Errorf("failed to resolve GSC_HOME: %w", err)
 	}
@@ -349,23 +349,6 @@ func (h *Handshake) Cleanup() {
 	if err := os.Remove(path); err != nil {
 		logger.Debug("[BRIDGE] Failed to delete handshake file", "path", path, "error", err)
 	}
-}
-
-// resolveGSCHome determines the GSC_HOME directory.
-func resolveGSCHome() (string, error) {
-	if gscHome := os.Getenv("GSC_HOME"); gscHome != "" {
-		logger.Debug("Resolved GSC_HOME", "path", gscHome, "source", "env")
-		return gscHome, nil
-	}
-	
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-	
-	defaultPath := filepath.Join(homeDir, ".gitsense")
-	logger.Debug("Resolved GSC_HOME", "path", defaultPath, "source", "default")
-	return defaultPath, nil
 }
 
 // askConfirmation prompts the user for a Y/n or y/N response.

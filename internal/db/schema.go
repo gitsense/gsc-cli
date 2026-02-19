@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Database Schema Definition
- * Block-UUID: b34c3488-b9fb-4406-bc16-8070293399b3
- * Parent-UUID: 6b9211b5-42d5-40f6-a098-2c669894415d
- * Version: 1.4.0
+ * Block-UUID: 94bda755-4554-4422-9680-a223ba23b6f8
+ * Parent-UUID: b34c3488-b9fb-4406-bc16-8070293399b3
+ * Version: 1.5.0
  * Description: Defines the SQL schema for the GitSense Chat manifest SQLite database. Added updated_at column to manifest_info table and backwards compatibility logic to ensure it exists in older databases.
  * Language: Go
- * Created-at: 2026-02-02T05:30:00.000Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
+ * Created-at: 2026-02-19T17:55:55.207Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.5.0)
  */
 
 
@@ -196,5 +196,37 @@ func CreateStatsSchema(db *sql.DB) error {
 	}
 
 	logger.Success("Stats database schema created successfully")
+	return nil
+}
+
+// CreatePublishedManifestsTable creates the table that tracks all published intelligence layers
+// and their associated chat UI components in the GitSense Chat database.
+func CreatePublishedManifestsTable(db *sql.DB) error {
+	logger.Info("Creating published_manifests table...")
+
+	query := `
+	CREATE TABLE IF NOT EXISTS published_manifests (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		uuid TEXT NOT NULL UNIQUE,
+		owner TEXT NOT NULL,
+		repo TEXT NOT NULL,
+		branch TEXT NOT NULL,
+		database TEXT NOT NULL,
+		published_at TIMESTAMP NOT NULL,
+		deleted INTEGER DEFAULT 0,
+		root_chat_id INTEGER,
+		owner_chat_id INTEGER,
+		repo_chat_id INTEGER,
+		FOREIGN KEY (root_chat_id) REFERENCES chats(id),
+		FOREIGN KEY (owner_chat_id) REFERENCES chats(id),
+		FOREIGN KEY (repo_chat_id) REFERENCES chats(id)
+	);`
+
+	if _, err := db.Exec(query); err != nil {
+		logger.Error("Failed to create published_manifests table", "error", err)
+		return err
+	}
+
+	logger.Success("Published manifests table created successfully")
 	return nil
 }
