@@ -1,12 +1,12 @@
 /**
  * Component: Manifest Publisher Logic
- * Block-UUID: 1ea963da-4ae6-4722-b602-ece5605e0a52
- * Parent-UUID: 5c8f9a2b-3d4e-4f5a-9b1c-2d3e4f5a6b7c
- * Version: 1.0.3
+ * Block-UUID: f47f8f8f-d2fe-407a-82e8-b7fef36b1462
+ * Parent-UUID: 1ea963da-4ae6-4722-b602-ece5605e0a52
+ * Version: 1.0.4
  * Description: Orchestrates the publishing and unpublishing of intelligence manifests. Manages the hierarchical chat structure, file storage in GSC_HOME, and deterministic Markdown regeneration from the published_manifests index.
  * Language: Go
- * Created-at: 2026-02-20T00:17:03.703Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3)
+ * Created-at: 2026-02-20T00:43:51.874Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4)
  */
 
 
@@ -156,16 +156,32 @@ func ensureHierarchy(chatDB *sql.DB, owner, repo string) (int64, int64, int64, e
 	// Root Level
 	root, err := db.FindChatByTypeAndName(chatDB, "intelligence-manifests-root", "Intelligence Manifests", 0)
 	if err != nil {
-		return 0, 0, 0, err
+		return 0, 0, 0, fmt.Errorf("failed to find root chat: %w", err)
 	}
 	var rootID int64
 	if root == nil {
+		// Ensure we have a valid Group and Prompt before creating the chat
+		groupID, err := getOrCreateDefaultGroup(chatDB)
+		if err != nil {
+			return 0, 0, 0, fmt.Errorf("failed to get default group: %w", err)
+		}
+		promptID, err := getOrCreateDefaultPrompt(chatDB)
+		if err != nil {
+			return 0, 0, 0, fmt.Errorf("failed to get default prompt: %w", err)
+		}
+
 		rootID, err = db.InsertChat(chatDB, &db.Chat{
 			Type:       "intelligence-manifests-root",
 			Name:       "Intelligence Manifests",
 			Visibility: "public",
 			MainModel:  settings.RealModelNotes,
+			ParentID:   0,
+			GroupID:    groupID,
+			PromptID:   promptID,
 		})
+		if err != nil {
+			return 0, 0, 0, fmt.Errorf("failed to insert root chat: %w", err)
+		}
 	} else {
 		rootID = root.ID
 	}
@@ -173,17 +189,32 @@ func ensureHierarchy(chatDB *sql.DB, owner, repo string) (int64, int64, int64, e
 	// Owner Level
 	ownerChat, err := db.FindChatByTypeAndName(chatDB, "intelligence-manifests-owner", owner, rootID)
 	if err != nil {
-		return 0, 0, 0, err
+		return 0, 0, 0, fmt.Errorf("failed to find owner chat: %w", err)
 	}
 	var ownerID int64
 	if ownerChat == nil {
+		// Reuse the same group and prompt for the hierarchy
+		groupID, err := getOrCreateDefaultGroup(chatDB)
+		if err != nil {
+			return 0, 0, 0, fmt.Errorf("failed to get default group: %w", err)
+		}
+		promptID, err := getOrCreateDefaultPrompt(chatDB)
+		if err != nil {
+			return 0, 0, 0, fmt.Errorf("failed to get default prompt: %w", err)
+		}
+
 		ownerID, err = db.InsertChat(chatDB, &db.Chat{
 			Type:       "intelligence-manifests-owner",
 			Name:       owner,
 			ParentID:   rootID,
 			Visibility: "public",
 			MainModel:  settings.RealModelNotes,
+			GroupID:    groupID,
+			PromptID:   promptID,
 		})
+		if err != nil {
+			return 0, 0, 0, fmt.Errorf("failed to insert owner chat: %w", err)
+		}
 	} else {
 		ownerID = ownerChat.ID
 	}
@@ -191,22 +222,67 @@ func ensureHierarchy(chatDB *sql.DB, owner, repo string) (int64, int64, int64, e
 	// Repo Level
 	repoChat, err := db.FindChatByTypeAndName(chatDB, "intelligence-manifests-repo", repo, ownerID)
 	if err != nil {
-		return 0, 0, 0, err
+		return 0, 0, 0, fmt.Errorf("failed to find repo chat: %w", err)
 	}
 	var repoID int64
 	if repoChat == nil {
+		// Reuse the same group and prompt for the hierarchy
+		groupID, err := getOrCreateDefaultGroup(chatDB)
+		if err != nil {
+			return 0, 0, 0, fmt.Errorf("failed to get default group: %w", err)
+		}
+		promptID, err := getOrCreateDefaultPrompt(chatDB)
+		if err != nil {
+			return 0, 0, 0, fmt.Errorf("failed to get default prompt: %w", err)
+		}
+
 		repoID, err = db.InsertChat(chatDB, &db.Chat{
 			Type:       "intelligence-manifests-repo",
 			Name:       repo,
 			ParentID:   ownerID,
 			Visibility: "public",
 			MainModel:  settings.RealModelNotes,
+			GroupID:    groupID,
+			PromptID:   promptID,
 		})
+		if err != nil {
+			return 0, 0, 0, fmt.Errorf("failed to insert repo chat: %w", err)
+		}
 	} else {
 		repoID = repoChat.ID
 	}
 
 	return rootID, ownerID, repoID, nil
+}
+
+// getOrCreateDefaultGroup ensures a default group exists for manifest chats.
+func getOrCreateDefaultGroup(chatDB *sql.DB) (int64, error) {
+	group, err := db.FindGroupByTypeAndName(chatDB, "regular", "Intelligence Manifests")
+	if err != nil {
+		return 0, err
+	}
+	if group != nil {
+		return group.ID, nil
+	}
+	return db.InsertGroup(chatDB, &db.Group{
+		Type: "regular",
+		Name: "Intelligence Manifests",
+	})
+}
+
+// getOrCreateDefaultPrompt ensures a default prompt exists for manifest chats.
+func getOrCreateDefaultPrompt(chatDB *sql.DB) (int64, error) {
+	prompt, err := db.FindPromptByTypeAndName(chatDB, "system", "Manifest Viewer")
+	if err != nil {
+		return 0, err
+	}
+	if prompt != nil {
+		return prompt.ID, nil
+	}
+	return db.InsertPrompt(chatDB, &db.Prompt{
+		Type: "system",
+		Name: "Manifest Viewer",
+	})
 }
 
 // regenerateUI rebuilds the Markdown for all three levels of the hierarchy.
@@ -270,6 +346,7 @@ func ensureMessages(chatDB *sql.DB, chatID int64, contextName, content string) e
 			ParentID:   sysID,
 			Level:      1,
 			Visibility: "public",
+			Temperature: sql.NullFloat64{Float64: 0.0, Valid: true},
 			Message:    sql.NullString{String: content, Valid: true},
 		})
 	} else {

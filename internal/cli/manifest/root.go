@@ -1,19 +1,18 @@
 /**
  * Component: Manifest Root Command
- * Block-UUID: 1c56f16f-be76-427a-99e2-bbbbb363bf43
- * Parent-UUID: d7a8e30f-790a-4898-8e11-2525080a1fe7
- * Version: 1.8.0
+ * Block-UUID: 571a8f1e-1e46-404c-8ef7-bf439f0cd9e7
+ * Parent-UUID: 1c56f16f-be76-427a-99e2-bbbbb363bf43
+ * Version: 1.9.0
  * Description: Registered the new 'publish' and 'unpublish' subcommands to enable GitSense Chat app integration.
  * Language: Go
- * Created-at: 2026-02-19T18:29:28.554Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.4.5 (v1.1.0), GLM-4.7 (v1.2.0), Claude Haiku 4.4.5 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), Gemini 3 Flash (v1.8.0)
+ * Created-at: 2026-02-20T00:40:01.327Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.4.5 (v1.1.0), GLM-4.7 (v1.2.0), Claude Haiku 4.4.5 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), Gemini 3 Flash (v1.8.0), GLM-4.7 (v1.9.0)
  */
 
 
 package manifest
 
 import (
-	"fmt"
 	"github.com/spf13/cobra"
 	"github.com/gitsense/gsc-cli/pkg/logger"
 )
@@ -38,15 +37,7 @@ func init() {
 	AddManifestFlags(Cmd)
 
 	// Add --code flag for future support
-	Cmd.PersistentFlags().StringVar(&manifestCode, "code", "", "CLI Bridge code (not yet supported for manifest commands)")
-
-	// Intercept --code flag to inform user of future support
-	Cmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
-		if manifestCode != "" {
-			return fmt.Errorf("the --code flag is not yet supported for manifest commands. It will be available in a future release")
-		}
-		return nil
-	}
+	Cmd.PersistentFlags().StringVar(&manifestCode, "code", "", "CLI Bridge code (not yet supported for manifest commands")
 
 	// Register subcommands
 	Cmd.AddCommand(initCmd)

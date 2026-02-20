@@ -1,12 +1,12 @@
 /**
  * Component: Chat Database Operations
- * Block-UUID: da0d314e-caaa-4dc7-b64e-72554161cccd
- * Parent-UUID: b307fcec-1757-4ade-83f2-a71dd56382ca
- * Version: 1.2.0
+ * Block-UUID: c92b0041-a23a-444a-a673-53498558d586
+ * Parent-UUID: 39b4da7b-6566-48cc-a3ab-a6c811a342d2
+ * Version: 1.4.0
  * Description: Expanded library methods for hierarchical chat management, message upserts, and manifest indexing. Enforces strict ISO 8601 UTC timestamps and supports the "Find or Create" pattern for intelligence manifest pages.
  * Language: Go
- * Created-at: 2026-02-19T18:08:53.555Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0)
+ * Created-at: 2026-02-20T01:37:35.376Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
  */
 
 
@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/gitsense/gsc-cli/pkg/logger"
 	"github.com/google/uuid"
 )
 
@@ -120,7 +121,13 @@ func InsertChat(db *sql.DB, chat *Chat) (int64, error) {
 		return 0, fmt.Errorf("failed to insert chat: %w", err)
 	}
 
-	return result.LastInsertId()
+	id, err := result.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+	
+	logger.Debug("InsertChat result", "id", id)
+	return id, nil
 }
 
 // FindMessageByRoleAndType finds a specific message within a chat.
@@ -143,10 +150,16 @@ func UpdateMessage(db *sql.DB, id int64, content string) error {
 	query := `UPDATE messages SET message = ?, updated_at = ? WHERE id = ?`
 	now := time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
 	
-	_, err := db.Exec(query, content, now, id)
+	truncatedContent := truncateString(content, 100)
+	logger.Debug("UpdateMessage", "query", query, "args", []interface{}{truncatedContent, now, id})
+	
+	result, err := db.Exec(query, content, now, id)
 	if err != nil {
 		return fmt.Errorf("failed to update message: %w", err)
 	}
+	
+	rowsAffected, _ := result.RowsAffected()
+	logger.Debug("UpdateMessage result", "rows_affected", rowsAffected)
 	return nil
 }
 
@@ -165,6 +178,13 @@ func InsertMessage(db *sql.DB, msg *Message) (int64, error) {
 
 	now := time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
 	
+	// Prepare args for logging (truncate message content)
+	msgContent := ""
+	if msg.Message.Valid {
+		msgContent = truncateString(msg.Message.String, 100)
+	}
+	logger.Debug("InsertMessage", "query", query, "args", []interface{}{msg.Type, msg.Deleted, msg.Visibility, msg.ChatID, msg.ParentID, msg.Level, msg.ChatID, msg.RealModel, msg.Temperature, msg.Role, msgContent, now, now})
+
 	result, err := db.Exec(
 		query,
 		msg.Type,
@@ -186,7 +206,13 @@ func InsertMessage(db *sql.DB, msg *Message) (int64, error) {
 		return 0, fmt.Errorf("failed to insert message: %w", err)
 	}
 
-	return result.LastInsertId()
+	id, err := result.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+	
+	logger.Debug("InsertMessage result", "id", id)
+	return id, nil
 }
 
 // InsertPublishedManifest records a new publication in the index.
@@ -274,4 +300,82 @@ func GetActiveManifests(db *sql.DB, owner, repo string) ([]PublishedManifest, er
 	}
 
 	return manifests, nil
+}
+
+// Group represents a record in the 'groups' table.
+type Group struct {
+	ID        int64  `json:"id"`
+	Type      string `json:"type"`
+	Name      string `json:"name"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+}
+
+// Prompt represents a record in the 'prompts' table.
+type Prompt struct {
+	ID        int64  `json:"id"`
+	Type      string `json:"type"`
+	Name      string `json:"name"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+}
+
+// FindGroupByTypeAndName retrieves a group by type and name.
+func FindGroupByTypeAndName(db *sql.DB, groupType string, name string) (*Group, error) {
+	query := `SELECT id, type, name, created_at, updated_at FROM groups WHERE type = ? AND name = ?`
+	var g Group
+	err := db.QueryRow(query, groupType, name).Scan(&g.ID, &g.Type, &g.Name, &g.CreatedAt, &g.UpdatedAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to query group: %w", err)
+	}
+	return &g, nil
+}
+
+// InsertGroup creates a new group record.
+func InsertGroup(db *sql.DB, group *Group) (int64, error) {
+	query := `INSERT INTO groups (type, name, created_at, updated_at) VALUES (?, ?, ?, ?)`
+	now := time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
+	result, err := db.Exec(query, group.Type, group.Name, now, now)
+	if err != nil {
+		return 0, fmt.Errorf("failed to insert group: %w", err)
+	}
+	return result.LastInsertId()
+}
+
+// FindPromptByTypeAndName retrieves a prompt by type and name.
+func FindPromptByTypeAndName(db *sql.DB, promptType string, name string) (*Prompt, error) {
+	query := `SELECT id, type, name, created_at, updated_at FROM prompts WHERE type = ? AND name = ?`
+	var p Prompt
+	err := db.QueryRow(query, promptType, name).Scan(&p.ID, &p.Type, &p.Name, &p.CreatedAt, &p.UpdatedAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to query prompt: %w", err)
+	}
+	return &p, nil
+}
+
+// InsertPrompt creates a new prompt record.
+func InsertPrompt(db *sql.DB, prompt *Prompt) (int64, error) {
+	query := `INSERT INTO prompts (type, name, prompt, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+	now := time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
+	// We use a generic system prompt text for the manifest viewer
+	promptText := "You are a helpful assistant for viewing intelligence manifests."
+	result, err := db.Exec(query, prompt.Type, prompt.Name, promptText, now, now)
+	if err != nil {
+		return 0, fmt.Errorf("failed to insert prompt: %w", err)
+	}
+	return result.LastInsertId()
+}
+
+// truncateString truncates a string to a maximum length, appending "..." if truncated.
+func truncateString(s string, maxLen int) string {
+	if len(s) > maxLen {
+		return s[:maxLen] + "..."
+	}
+	return s
 }
