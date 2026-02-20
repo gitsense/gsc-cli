@@ -59,7 +59,7 @@ const BridgeHandshakeDir = "data/codes"
 const ManifestStorageDir = "storage/manifests"
 
 // ChatDatabaseRelPath is the relative path within GSC_HOME for the chat database
-const ChatDatabaseRelPath = "data/chats.db"
+const ChatDatabaseRelPath = "data/chats.sqlite3"
 
 // GetGSCHome resolves the GSC_HOME directory. If required is true, it returns an
 // error if the environment variable is not set. If required is false, it falls

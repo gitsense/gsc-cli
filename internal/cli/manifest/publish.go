@@ -1,12 +1,12 @@
 /*
  * Component: Manifest Publish Command
- * Block-UUID: 24cb9b01-4e9a-4166-bd47-c3215de4f5ee
- * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: Defines the 'gsc manifest publish' command, allowing users to publish local manifests to a GitSense Chat installation.
+ * Block-UUID: bab7cf2f-a615-408f-9ea6-c105c8fd295b
+ * Parent-UUID: 24cb9b01-4e9a-4166-bd47-c3215de4f5ee
+ * Version: 1.0.1
+ * Description: Defines the 'gsc manifest publish' command, allowing users to publish local manifests to a GitSense Chat installation. Suppresses usage output on error.
  * Language: Go
  * Created-at: 2026-02-19T18:29:28.554Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1)
  */
 
 
@@ -36,6 +36,7 @@ var publishCmd = &cobra.Command{
 This command creates the necessary chat hierarchy (Root -> Owner -> Repo) and 
 updates the index for user downloads.`,
 	Args: cobra.ExactArgs(1),
+	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// 1. Pre-flight check for GSC_HOME
 		if _, err := settings.GetGSCHome(true); err != nil {

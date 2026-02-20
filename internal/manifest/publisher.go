@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Manifest Publisher Logic
- * Block-UUID: 46b7b011-7807-4d60-b933-8fe770b1377a
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 1ea963da-4ae6-4722-b602-ece5605e0a52
+ * Parent-UUID: 5c8f9a2b-3d4e-4f5a-9b1c-2d3e4f5a6b7c
+ * Version: 1.0.3
  * Description: Orchestrates the publishing and unpublishing of intelligence manifests. Manages the hierarchical chat structure, file storage in GSC_HOME, and deterministic Markdown regeneration from the published_manifests index.
  * Language: Go
- * Created-at: 2026-02-19T18:23:42.179Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Created-at: 2026-02-20T00:17:03.703Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3)
  */
 
 
@@ -51,16 +51,23 @@ func Publish(manifestPath, owner, repo, branch string) error {
 
 	// 3. Database Connection
 	dbPath := settings.GetChatDatabasePath(gscHome)
+	logger.Debug("Connecting to GitSense Chat database", "path", dbPath)
 	chatDB, err := db.OpenDB(dbPath)
 	if err != nil {
 		return err
 	}
 	defer db.CloseDB(chatDB)
 
+	// 3.5. Schema Initialization
+	// Ensure the published_manifests table exists before attempting to insert data.
+	if err := db.CreatePublishedManifestsTable(chatDB); err != nil {
+		return fmt.Errorf("failed to ensure published_manifests table exists: %w", err)
+	}
+
 	// 4. Hierarchy Management (Find or Create Chats)
 	rootID, ownerID, repoID, err := ensureHierarchy(chatDB, owner, repo)
 	if err != nil {
-		return fmt.Errorf("failed to establish chat hierarchy: %w", err)
+		return fmt.Errorf("failed to establish chat hierarchy (db: %s): %w", dbPath, err)
 	}
 
 	// 5. Identity & Persistence
