@@ -10,18 +10,7 @@ A CLI for querying repository intelligence and a framework for building AI-ready
 
 **This repository is self-aware.**
 
-By shipping with a `.gitsense` directory, we provide a **Discovery Interface** that enables deterministic search of architecture, history, and intent the moment you clone the code. Watch how `gsc` transforms blind grepping into context-aware discovery:
-
-[![GSC Demo](https://raw.githubusercontent.com/gitsense/gsc-cli/main/docs/assets/poster.png)](https://raw.githubusercontent.com/gitsense/gsc-cli/main/docs/assets/demo.mp4)
-
-### How the Brain Works
-
-The `.gitsense` directory contains queryable metadata manifests we call "Brains." We ship with two by default:
-
-*   **Architect Brain:** Maps layers, public APIs, and intent triggers for zero-shot discovery.
-*   **Provenance Brain:** Audits AI-generated code for traceability, metadata integrity, and agentic readiness.
-
-These are just examples. You can replace them with your own queryable data sources, whether that is a REST API, a GraphQL endpoint, or a custom database. The `gsc` CLI does not care about the source; it only cares that the data is queryable and structured.
+By shipping with a `.gitsense` directory, we provide a **Discovery Interface** that enables deterministic search of architecture, history, and intent the moment you clone the code.
 
 ### Beyond Text Matching
 
@@ -32,6 +21,8 @@ When an AI agent (or a human) searches for "Execute", they are often met with do
 2. **Manual Labor:** Keep grepping and filtering by hand until you find the signal.
 
 `gsc` provides a third way: **Context-Aware Discovery.** By enriching search results with metadata like `purpose` and `topics`, you can drill into your codebase deterministically. You don't search for strings; you search for intent.
+
+[![GSC Demo](https://raw.githubusercontent.com/gitsense/gsc-cli/main/docs/assets/poster.png)](https://raw.githubusercontent.com/gitsense/gsc-cli/main/docs/assets/demo.mp4)
 
 ### The World's First
 
@@ -57,7 +48,7 @@ Every line of AI-generated code that is used in `gsc` can be traced to a convers
 `gsc` is betting on a future where metadata becomes the new document. We are building `gsc` to make `.gitsense` as essential as a README. It is the bridge between human expertise and AI capability. By encoding domain knowledge as queryable metadata, we enable AI agents to discover code deterministically, not probabilistically. This is the paradigm shift that makes coding agents scalable.
 
 The current building blocks are:
-*   **`gsc brains`**: Loads architectural intent so agents can discover what the repository knows without reading text documents.
+*   **`gsc brains`**: Shows available intelligence so agents can discover what the repository knows without reading text documents.
 *   **`gsc query`**: Enables deterministic discovery by drilling into metadata, replacing the guesswork of keyword searching.
 *   **`gsc grep`**: Finds code based on both content and intent, replacing blind grepping with context-aware search.
 *   **`gsc tree`**: Visualizes a "Heat Map" of the project, replacing the need to browse raw file lists.
