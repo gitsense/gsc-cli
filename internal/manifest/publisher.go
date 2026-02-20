@@ -104,7 +104,7 @@ func Publish(manifestPath, owner, repo, branch string) error {
 			return fmt.Errorf("failed to regenerate chat UI after bump: %w", err)
 		}
 
-		logger.Success("Manifest bumped successfully", "uuid", existing.UUID, "repo", owner+"/"+repo)
+		fmt.Println("Manifest bumped successfully", "uuid", existing.UUID, "repo", owner+"/"+repo)
 		return nil
 	}
 
@@ -473,7 +473,7 @@ func buildRepoMarkdown(owner, repo string, manifests []db.PublishedManifest) str
 		for _, m := range manifests {
 			shortID := m.UUID[:8]
 			published := m.PublishedAt.Format("2006-01-02 15:04:05")
-			link := fmt.Sprintf("[Download](/--/manifests/%s/%s/%s)", owner, repo, m.UUID)
+			link := fmt.Sprintf("[Download](/--/manifests/%s.json)", m.UUID)
 			sb.WriteString(fmt.Sprintf("| `%s` | %s | %s | %s | %s |\n", shortID, m.Branch, m.ManifestName, published, link))
 		}
 	}

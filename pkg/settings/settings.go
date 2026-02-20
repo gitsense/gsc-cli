@@ -56,7 +56,7 @@ const RealModelNotes = "GitSense Notes"
 const BridgeHandshakeDir = "data/codes"
 
 // ManifestStorageDir is the relative path within GSC_HOME for published manifest files
-const ManifestStorageDir = "storage/manifests"
+const ManifestStorageDir = "data/storage/manifests"
 
 // ChatDatabaseRelPath is the relative path within GSC_HOME for the chat database
 const ChatDatabaseRelPath = "data/chats.sqlite3"

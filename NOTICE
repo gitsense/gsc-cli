@@ -9,10 +9,13 @@ This product includes software developed by GitSense
 GitSense
 
 ### Development Methodology
-This project is **Human-Architected and AI-Generated (99.9%)**. 
+This project is **Human-Architected and AI-Generated (99.9%)**.
 
 ### AI Traceability and Attribution
-This project utilizes a unique AI-traceability system. Every source file in this repository contains a mandatory metadata header including a `Block-UUID`, `Parent-UUID`, and a chronological `Authors` list that documents the specific Large Language Model (LLM) version responsible for its generation.
+This project utilizes a unique AI-traceability system. Every source file in this repository
+contains a mandatory metadata header including a `Block-UUID`, `Parent-UUID`, and a
+chronological `Authors` list that documents the specific Large Language Model (LLM) version
+responsible for its generation.
 
 As per the terms of the Apache License, Version 2.0, any derivative works or forks of this software MUST:
 1. Retain all original copyright and attribution notices.

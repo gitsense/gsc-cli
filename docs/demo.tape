@@ -23,6 +23,7 @@ Enter
 Type "# It works, but it's not scalable. The fix: self-aware repositories."
 Sleep 1s
 Enter
+Type "#"
 Enter
 
 # --- Scene 2: The Intelligence Map (gsc brains) ---
@@ -35,9 +36,11 @@ Sleep .5s
 Type "#   - The `gsc` CLI to query that intelligence locally"
 Sleep .5s
 Enter
+Type "#"
 Enter
 Type "# Since this repository is self-aware, let's see what it knows:"
 Enter
+Type "#"
 Enter
 Sleep 1s
 Type "gsc brains"
@@ -47,9 +50,10 @@ Sleep 1.5s
 Type "# Notice how it knows each file's `purpose` and `topic`."
 Sleep 1.5s
 Enter
-Type "# Now let's see this knowledge in action to make Claude Code smarter!"
+Type "# Now let's see this knowledge in action to make Claude Code and others smarter!"
 Sleep 1s
 Enter
+Type "#"
 Enter
 
 # --- Scene 3: Context-Aware Discovery ---
@@ -59,11 +63,12 @@ Enter
 Type "# I'll limit the results to keep things concise."
 Sleep 1s
 Enter
+Type "#"
 Enter
 Type "gsc grep 'Execute' --db arch --fields purpose,topics --limit 1"
 Sleep 1s
 Enter
-Sleep 3s
+Sleep 2s
 Type "# Notice the 'purpose' and 'topics' metadata below the file."
 Sleep 1.5s
 Enter
@@ -76,6 +81,7 @@ Enter
 Type "# This is how GitSense scales AI agents like Claude Code."
 Sleep 1.5s
 Enter
+Type "#"
 Enter
  
 # --- Scene 4: Intent-Based Search ---
@@ -88,17 +94,18 @@ Enter
 Type "# Instead of just finding context, let's search with intent."
 Sleep 1.5s
 Enter
+Type "#"
 Enter
 Type "gsc grep 'Execute' --db arch --fields purpose,topics --filter 'topics=bridge' --limit 1"
-Sleep 1s
+Sleep 2s
 Enter
-Sleep 1.5s
 Type "# The --filter flag narrowed the search to only 'bridge' topics."
 Sleep 1s
 Enter
 Type "# Now we're only seeing 'Execute' where it's actually acting as a bridge."
-Sleep 2s
+Sleep 1s
 Enter
+Type "#"
 Enter
 Type "# Imagine filtering by 'component' or 'team' to tame massive monorepos."
 Sleep 1.5s
@@ -106,6 +113,7 @@ Enter
 Type "# This is deterministic discovery: no guessing, just intent. This is GitSense."
 Sleep 1.5s
 Enter
+Type "#"
 Enter
 
 # --- Conclusion ---
