@@ -168,12 +168,12 @@ func InsertMessage(db *sql.DB, msg *Message) (int64, error) {
 	query := `
 		INSERT INTO messages (
 			type, deleted, visibility, chat_id, parent_id, level, 
-			model, real_model, temperature, role, message, 
-			created_at, updated_at
+			model, 
+			real_model, temperature, role, message, created_at, updated_at
 		) VALUES (
 			?, ?, ?, ?, ?, ?, 
 			(SELECT main_model FROM chats WHERE id = ?), 
-			?, ?, ?, ?, ?, ?, ?
+			?, ?, ?, ?, ?, ?
 		)`
 
 	now := time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
