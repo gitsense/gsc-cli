@@ -1,12 +1,12 @@
 /**
  * Component: Manifest Publisher Logic
- * Block-UUID: 6ab9d46b-0220-45e0-8976-7be4f3b37d8e
- * Parent-UUID: 7b67834d-594a-402a-a93e-49106cd18eed
- * Version: 1.2.0
- * Description: Orchestrates the publishing and unpublishing of intelligence manifests. Updated to support modular UI sections, global history tables, owner counts, and removed the database column from the repo view.
+ * Block-UUID: b0cdfcc6-fbc1-44df-b871-df516d79fa1e
+ * Parent-UUID: 6ab9d46b-0220-45e0-8976-7be4f3b37d8e
+ * Version: 1.3.0
+ * Description: Orchestrates the publishing and unpublishing of intelligence manifests. Updated buildOwnerMarkdown to display the count of manifests per repository.
  * Language: Go
  * Created-at: 2026-02-20T04:31:47.873Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0)
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0)
  */
 
 
@@ -452,7 +452,7 @@ func buildOwnerMarkdown(owner string, repos []db.PublishedManifest) string {
 		sb.WriteString("No repositories for this owner have published manifests yet.\n")
 	} else {
 		for _, r := range repos {
-			sb.WriteString(fmt.Sprintf("*   [%s](#)\n", r.Repo))
+			sb.WriteString(fmt.Sprintf("*   [%s](#) (%d)\n", r.Repo, r.ManifestCount))
 		}
 	}
 	

@@ -1,12 +1,12 @@
 /**
  * Component: Chat Database Operations
- * Block-UUID: be880f6c-ea9c-4b6f-ac21-ed5a975c4f15
- * Parent-UUID: 4d3c4ea8-e1bc-47fc-a854-d3f794296464
- * Version: 1.6.0
- * Description: Expanded library methods for hierarchical chat management. Updated GetActiveManifests to support owner counts and added GetGlobalRecentManifests for the Root UI.
+ * Block-UUID: 696b977f-81a2-44b9-8feb-f82a939b0275
+ * Parent-UUID: be880f6c-ea9c-4b6f-ac21-ed5a975c4f15
+ * Version: 1.7.0
+ * Description: Expanded library methods for hierarchical chat management. Updated GetActiveManifests to support repository counts at the Owner level to display the number of manifests per repository.
  * Language: Go
  * Created-at: 2026-02-20T04:31:47.873Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0)
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0)
  */
 
 
@@ -303,8 +303,8 @@ func GetActiveManifests(db *sql.DB, owner, repo string) ([]PublishedManifest, er
 		// Root level: Get unique owners and their manifest counts
 		query = `SELECT owner, COUNT(*) as count FROM published_manifests WHERE deleted = 0 GROUP BY owner ORDER BY owner ASC`
 	} else if repo == "" {
-		// Owner level: Get unique repos for owner
-		query = `SELECT DISTINCT repo FROM published_manifests WHERE owner = ? AND deleted = 0 ORDER BY repo ASC`
+		// Owner level: Get unique repos for owner and their manifest counts
+		query = `SELECT repo, COUNT(*) as count FROM published_manifests WHERE owner = ? AND deleted = 0 GROUP BY repo ORDER BY repo ASC`
 		args = append(args, owner)
 	} else {
 		// Repo level: Get all branches for repo
@@ -324,7 +324,7 @@ func GetActiveManifests(db *sql.DB, owner, repo string) ([]PublishedManifest, er
 		if owner == "" {
 			err = rows.Scan(&m.Owner, &m.ManifestCount)
 		} else if repo == "" {
-			err = rows.Scan(&m.Repo)
+			err = rows.Scan(&m.Repo, &m.ManifestCount)
 		} else {
 			var publishedAtStr string
 			err = rows.Scan(&m.UUID, &m.Branch, &m.Database, &m.ManifestName, &publishedAtStr)
