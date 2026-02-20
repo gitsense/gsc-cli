@@ -31,8 +31,8 @@ import (
 // ManifestMeta is a helper struct to extract the database name from the manifest JSON.
 type ManifestMeta struct {
 	ManifestInfo struct {
-		Name string `json:"name"`
-	} `json:"manifest_info"`
+		DatabaseName string `json:"database_name"`
+	} `json:"manifest"`
 }
 
 // Publish orchestrates the publication of a manifest to the local GitSense Chat app.
@@ -47,6 +47,11 @@ func Publish(manifestPath, owner, repo, branch string) error {
 	dbName, err := extractDBName(manifestPath)
 	if err != nil {
 		return fmt.Errorf("failed to read manifest metadata: %w", err)
+	}
+
+	// Validate that we actually found a database name
+	if dbName == "" {
+		return fmt.Errorf("manifest metadata is invalid: 'manifest_info.database_name' is missing or empty in %s", manifestPath)
 	}
 
 	// 3. Database Connection
@@ -400,7 +405,7 @@ func buildRepoMarkdown(owner, repo string, manifests []db.PublishedManifest) str
 		sb.WriteString("| :--- | :--- | :--- | :--- | :--- |\n")
 		for _, m := range manifests {
 			shortID := m.UUID[:8]
-			published := m.PublishedAt.Format("2006-01-02")
+			published := m.PublishedAt.Format("2006-01-02 15:04:05")
 			link := fmt.Sprintf("[Download](/--/manifests/%s/%s/%s)", owner, repo, m.UUID)
 			sb.WriteString(fmt.Sprintf("| `%s` | %s | %s | %s | %s |\n", shortID, m.Branch, m.Database, published, link))
 		}
@@ -445,7 +450,7 @@ func extractDBName(path string) (string, error) {
 	if err := json.NewDecoder(file).Decode(&meta); err != nil {
 		return "", err
 	}
-	return meta.ManifestInfo.Name, nil
+	return meta.ManifestInfo.DatabaseName, nil
 }
 
 func copyFile(src, dst string) error {
