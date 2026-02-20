@@ -1,12 +1,12 @@
 /**
  * Component: Chat Database Operations
- * Block-UUID: c92b0041-a23a-444a-a673-53498558d586
- * Parent-UUID: 39b4da7b-6566-48cc-a3ab-a6c811a342d2
- * Version: 1.4.0
- * Description: Expanded library methods for hierarchical chat management, message upserts, and manifest indexing. Enforces strict ISO 8601 UTC timestamps and supports the "Find or Create" pattern for intelligence manifest pages.
+ * Block-UUID: 4d3c4ea8-e1bc-47fc-a854-d3f794296464
+ * Parent-UUID: c92b0041-a23a-444a-a673-53498558d586
+ * Version: 1.5.0
+ * Description: Expanded library methods for hierarchical chat management, message upserts, and manifest indexing. Updated to support full manifest metadata, hash-based duplicate detection, and timestamp bumping for republishing.
  * Language: Go
  * Created-at: 2026-02-20T01:37:35.376Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
  */
 
 
@@ -173,7 +173,7 @@ func InsertMessage(db *sql.DB, msg *Message) (int64, error) {
 		) VALUES (
 			?, ?, ?, ?, ?, ?, 
 			(SELECT main_model FROM chats WHERE id = ?), 
-			?, ?, ?, ?, ?, ?
+			?, ?, ?, ?, ?, ?, ?
 		)`
 
 	now := time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
@@ -219,9 +219,10 @@ func InsertMessage(db *sql.DB, msg *Message) (int64, error) {
 func InsertPublishedManifest(db *sql.DB, m *PublishedManifest) (int64, error) {
 	query := `
 		INSERT INTO published_manifests (
-			uuid, owner, repo, branch, database, published_at, 
-			root_chat_id, owner_chat_id, repo_chat_id
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+			uuid, owner, repo, branch, database, schema_version, generated_at, 
+			manifest_name, manifest_description, manifest_tags, repositories, branches, 
+			hash, published_at, root_chat_id, owner_chat_id, repo_chat_id
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	now := time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
 	
@@ -232,6 +233,14 @@ func InsertPublishedManifest(db *sql.DB, m *PublishedManifest) (int64, error) {
 		m.Repo,
 		m.Branch,
 		m.Database,
+		m.SchemaVersion,
+		m.GeneratedAt.Format("2006-01-02T15:04:05.000Z"),
+		m.ManifestName,
+		m.ManifestDescription,
+		m.ManifestTags,
+		m.Repositories,
+		m.Branches,
+		m.Hash,
 		now,
 		m.RootChatID,
 		m.OwnerChatID,
@@ -243,6 +252,36 @@ func InsertPublishedManifest(db *sql.DB, m *PublishedManifest) (int64, error) {
 	}
 
 	return result.LastInsertId()
+}
+
+// FindManifestByHash retrieves a manifest by its content hash.
+func FindManifestByHash(db *sql.DB, hash string) (*PublishedManifest, error) {
+	query := `SELECT id, uuid, owner, repo, branch, root_chat_id, owner_chat_id, repo_chat_id FROM published_manifests WHERE hash = ? AND deleted = 0`
+	
+	var m PublishedManifest
+	err := db.QueryRow(query, hash).Scan(&m.ID, &m.UUID, &m.Owner, &m.Repo, &m.Branch, &m.RootChatID, &m.OwnerChatID, &m.RepoChatID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to query manifest by hash: %w", err)
+	}
+	return &m, nil
+}
+
+// UpdateManifestTimestamp updates the published_at timestamp for an existing manifest (the "bump" logic).
+func UpdateManifestTimestamp(db *sql.DB, id int64) error {
+	query := `UPDATE published_manifests SET published_at = ? WHERE id = ?`
+	now := time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
+	
+	result, err := db.Exec(query, now, id)
+	if err != nil {
+		return fmt.Errorf("failed to update manifest timestamp: %w", err)
+	}
+	
+	rowsAffected, _ := result.RowsAffected()
+	logger.Debug("UpdateManifestTimestamp result", "rows_affected", rowsAffected)
+	return nil
 }
 
 // DeletePublishedManifest performs a soft delete on a manifest record.
@@ -269,7 +308,7 @@ func GetActiveManifests(db *sql.DB, owner, repo string) ([]PublishedManifest, er
 		args = append(args, owner)
 	} else {
 		// Repo level: Get all branches for repo
-		query = `SELECT uuid, branch, database, published_at FROM published_manifests WHERE owner = ? AND repo = ? AND deleted = 0 ORDER BY published_at DESC`
+		query = `SELECT uuid, branch, database, manifest_name, published_at FROM published_manifests WHERE owner = ? AND repo = ? AND deleted = 0 ORDER BY published_at DESC`
 		args = append(args, owner, repo)
 	}
 
@@ -288,7 +327,7 @@ func GetActiveManifests(db *sql.DB, owner, repo string) ([]PublishedManifest, er
 			err = rows.Scan(&m.Repo)
 		} else {
 			var publishedAtStr string
-			err = rows.Scan(&m.UUID, &m.Branch, &m.Database, &publishedAtStr)
+			err = rows.Scan(&m.UUID, &m.Branch, &m.Database, &m.ManifestName, &publishedAtStr)
 			if err == nil {
 				m.PublishedAt, _ = time.Parse("2006-01-02T15:04:05.000Z", publishedAtStr)
 			}

@@ -1,12 +1,12 @@
 /**
  * Component: Database Schema Definition
- * Block-UUID: 94bda755-4554-4422-9680-a223ba23b6f8
- * Parent-UUID: b34c3488-b9fb-4406-bc16-8070293399b3
- * Version: 1.5.0
- * Description: Defines the SQL schema for the GitSense Chat manifest SQLite database. Added updated_at column to manifest_info table and backwards compatibility logic to ensure it exists in older databases.
+ * Block-UUID: 71a843e9-81b0-459f-9460-0f2eac3b171e
+ * Parent-UUID: 94bda755-4554-4422-9680-a223ba23b6f8
+ * Version: 1.6.0
+ * Description: Defines the SQL schema for the GitSense Chat manifest SQLite database. Updated published_manifests table to support full manifest metadata including schema version, generated timestamp, manifest details, and content hash for duplicate detection.
  * Language: Go
  * Created-at: 2026-02-19T17:55:55.207Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.5.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.5.0), GLM-4.7 (v1.6.0)
  */
 
 
@@ -212,6 +212,14 @@ func CreatePublishedManifestsTable(db *sql.DB) error {
 		repo TEXT NOT NULL,
 		branch TEXT NOT NULL,
 		database TEXT NOT NULL,
+		schema_version TEXT,
+		generated_at TIMESTAMP,
+		manifest_name TEXT,
+		manifest_description TEXT,
+		manifest_tags TEXT,
+		repositories TEXT,
+		branches TEXT,
+		hash TEXT NOT NULL,
 		published_at TIMESTAMP NOT NULL,
 		deleted INTEGER DEFAULT 0,
 		root_chat_id INTEGER,

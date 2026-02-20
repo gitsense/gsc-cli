@@ -1,12 +1,12 @@
 /**
  * Component: Chat Database Models
- * Block-UUID: b8e2e972-aa89-4b86-b9b8-c298697dd5ed
- * Parent-UUID: 49ca7d56-f7b1-42a9-a81d-03ae696ff784
- * Version: 1.1.0
- * Description: Data structures mapping to the GitSense Chat SQLite schema (chats and messages tables).
+ * Block-UUID: c4b82151-6596-4fcc-ab50-0a837df74166
+ * Parent-UUID: b8e2e972-aa89-4b86-b9b8-c298697dd5ed
+ * Version: 1.2.0
+ * Description: Data structures mapping to the GitSense Chat SQLite schema. Updated PublishedManifest struct to support full manifest metadata including schema version, generated timestamp, manifest details, and content hash.
  * Language: Go
  * Created-at: 2026-02-19T17:58:56.212Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -77,16 +77,23 @@ type Message struct {
 
 // PublishedManifest represents a record in the 'published_manifests' table.
 type PublishedManifest struct {
-	ID          int64         `json:"id"`
-	UUID        string        `json:"uuid"`
-	Owner       string        `json:"owner"`
-	Repo        string        `json:"repo"`
-	Branch      string        `json:"branch"`
-	Database    string        `json:"database"`
-	PublishedAt time.Time     `json:"published_at"`
-	Deleted     int           `json:"deleted"`
-	RootChatID  sql.NullInt64 `json:"root_chat_id"`
-	OwnerChatID sql.NullInt64 `json:"owner_chat_id"`
-	RepoChatID  sql.NullInt64 `json:"repo_chat_id"`
+	ID                  int64          `json:"id"`
+	UUID                string         `json:"uuid"`
+	Owner               string         `json:"owner"`
+	Repo                string         `json:"repo"`
+	Branch              string         `json:"branch"`
+	Database            string         `json:"database"`
+	SchemaVersion       string         `json:"schema_version"`
+	GeneratedAt         time.Time      `json:"generated_at"`
+	ManifestName        string         `json:"manifest_name"`
+	ManifestDescription string         `json:"manifest_description"`
+	ManifestTags        string         `json:"manifest_tags"` // Stored as JSON string
+	Repositories        string         `json:"repositories"` // Stored as JSON string
+	Branches            string         `json:"branches"`     // Stored as JSON string
+	Hash                string         `json:"hash"`
+	PublishedAt         time.Time      `json:"published_at"`
+	Deleted             int            `json:"deleted"`
+	RootChatID          sql.NullInt64  `json:"root_chat_id"`
+	OwnerChatID         sql.NullInt64  `json:"owner_chat_id"`
+	RepoChatID          sql.NullInt64  `json:"repo_chat_id"`
 }
-

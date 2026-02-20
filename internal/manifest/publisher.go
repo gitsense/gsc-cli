@@ -1,25 +1,28 @@
 /**
  * Component: Manifest Publisher Logic
- * Block-UUID: f47f8f8f-d2fe-407a-82e8-b7fef36b1462
- * Parent-UUID: 1ea963da-4ae6-4722-b602-ece5605e0a52
- * Version: 1.0.4
- * Description: Orchestrates the publishing and unpublishing of intelligence manifests. Manages the hierarchical chat structure, file storage in GSC_HOME, and deterministic Markdown regeneration from the published_manifests index.
+ * Block-UUID: 7b67834d-594a-402a-a93e-49106cd18eed
+ * Parent-UUID: f47f8f8f-d2fe-407a-82e8-b7fef36b1462
+ * Version: 1.1.0
+ * Description: Orchestrates the publishing and unpublishing of intelligence manifests. Updated to support full manifest metadata extraction, hash-based duplicate detection with "bump" logic, and updated Markdown UI to display manifest names.
  * Language: Go
  * Created-at: 2026-02-20T00:43:51.874Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4)
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.1.0)
  */
 
 
 package manifest
 
 import (
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -28,11 +31,24 @@ import (
 	"github.com/gitsense/gsc-cli/pkg/settings"
 )
 
-// ManifestMeta is a helper struct to extract the database name from the manifest JSON.
-type ManifestMeta struct {
-	ManifestInfo struct {
-		DatabaseName string `json:"database_name"`
+// ManifestJSON represents the full structure of a manifest file for unmarshaling.
+type ManifestJSON struct {
+	SchemaVersion string `json:"schema_version"`
+	GeneratedAt   string `json:"generated_at"`
+	Manifest      struct {
+		Name        string   `json:"name"`
+		DatabaseName string  `json:"database_name"`
+		Description string   `json:"description"`
+		Tags        []string `json:"tags"`
 	} `json:"manifest"`
+	Repositories []struct {
+		Ref  string `json:"ref"`
+		Name string `json:"name"`
+	} `json:"repositories"`
+	Branches []struct {
+		Ref  string `json:"ref"`
+		Name string `json:"name"`
+	} `json:"branches"`
 }
 
 // Publish orchestrates the publication of a manifest to the local GitSense Chat app.
@@ -43,15 +59,15 @@ func Publish(manifestPath, owner, repo, branch string) error {
 		return err
 	}
 
-	// 2. Metadata Extraction
-	dbName, err := extractDBName(manifestPath)
+	// 2. Metadata Extraction & Hash Calculation
+	fileBytes, manifestData, hash, err := extractManifestProperties(manifestPath, owner, repo, branch)
 	if err != nil {
 		return fmt.Errorf("failed to read manifest metadata: %w", err)
 	}
 
 	// Validate that we actually found a database name
-	if dbName == "" {
-		return fmt.Errorf("manifest metadata is invalid: 'manifest_info.database_name' is missing or empty in %s", manifestPath)
+	if manifestData.Manifest.DatabaseName == "" {
+		return fmt.Errorf("manifest metadata is invalid: 'manifest.database_name' is missing or empty in %s", manifestPath)
 	}
 
 	// 3. Database Connection
@@ -69,41 +85,84 @@ func Publish(manifestPath, owner, repo, branch string) error {
 		return fmt.Errorf("failed to ensure published_manifests table exists: %w", err)
 	}
 
-	// 4. Hierarchy Management (Find or Create Chats)
+	// 4. Duplicate Detection (The "Bump" Logic)
+	existing, err := db.FindManifestByHash(chatDB, hash)
+	if err != nil {
+		return fmt.Errorf("failed to check for existing manifest: %w", err)
+	}
+
+	if existing != nil {
+		// BUMP: Manifest exists, just update the timestamp and regenerate UI
+		logger.Info("Manifest already exists. Bumping timestamp...", "uuid", existing.UUID)
+		
+		if err := db.UpdateManifestTimestamp(chatDB, existing.ID); err != nil {
+			return fmt.Errorf("failed to bump manifest timestamp: %w", err)
+		}
+
+		// Regenerate UI for the existing hierarchy
+		if err := regenerateUI(chatDB, existing.RootChatID.Int64, existing.OwnerChatID.Int64, existing.RepoChatID.Int64, existing.Owner, existing.Repo); err != nil {
+			return fmt.Errorf("failed to regenerate chat UI after bump: %w", err)
+		}
+
+		logger.Success("Manifest bumped successfully", "uuid", existing.UUID, "repo", owner+"/"+repo)
+		return nil
+	}
+
+	// 5. Hierarchy Management (Find or Create Chats)
 	rootID, ownerID, repoID, err := ensureHierarchy(chatDB, owner, repo)
 	if err != nil {
 		return fmt.Errorf("failed to establish chat hierarchy (db: %s): %w", dbPath, err)
 	}
 
-	// 5. Identity & Persistence
+	// 6. Identity & Persistence
 	manifestUUID := uuid.New().String()
+	
+	// Prepare JSON fields for storage
+	tagsJSON, _ := json.Marshal(manifestData.Manifest.Tags)
+	reposJSON, _ := json.Marshal(manifestData.Repositories)
+	branchesJSON, _ := json.Marshal(manifestData.Branches)
+	
+	// Parse generated_at
+	var generatedAt time.Time
+	if manifestData.GeneratedAt != "" {
+		generatedAt, _ = time.Parse(time.RFC3339, manifestData.GeneratedAt)
+	}
+
 	m := &db.PublishedManifest{
-		UUID:        manifestUUID,
-		Owner:       owner,
-		Repo:        repo,
-		Branch:      branch,
-		Database:    dbName,
-		RootChatID:  sql.NullInt64{Int64: rootID, Valid: true},
-		OwnerChatID: sql.NullInt64{Int64: ownerID, Valid: true},
-		RepoChatID:  sql.NullInt64{Int64: repoID, Valid: true},
+		UUID:                manifestUUID,
+		Owner:               owner,
+		Repo:                repo,
+		Branch:              branch,
+		Database:            manifestData.Manifest.DatabaseName,
+		SchemaVersion:       manifestData.SchemaVersion,
+		GeneratedAt:         generatedAt,
+		ManifestName:        manifestData.Manifest.Name,
+		ManifestDescription: manifestData.Manifest.Description,
+		ManifestTags:        string(tagsJSON),
+		Repositories:        string(reposJSON),
+		Branches:            string(branchesJSON),
+		Hash:                hash,
+		RootChatID:          sql.NullInt64{Int64: rootID, Valid: true},
+		OwnerChatID:         sql.NullInt64{Int64: ownerID, Valid: true},
+		RepoChatID:          sql.NullInt64{Int64: repoID, Valid: true},
 	}
 
 	if _, err := db.InsertPublishedManifest(chatDB, m); err != nil {
 		return err
 	}
 
-	// 6. File Operation
+	// 7. File Operation
 	storageDir := settings.GetManifestStoragePath(gscHome)
 	if err := os.MkdirAll(storageDir, 0755); err != nil {
 		return fmt.Errorf("failed to create storage directory: %w", err)
 	}
 
 	destPath := filepath.Join(storageDir, manifestUUID+".json")
-	if err := copyFile(manifestPath, destPath); err != nil {
-		return fmt.Errorf("failed to copy manifest to storage: %w", err)
+	if err := os.WriteFile(destPath, fileBytes, 0644); err != nil {
+		return fmt.Errorf("failed to write manifest to storage: %w", err)
 	}
 
-	// 7. UI Synchronization (Regeneration)
+	// 8. UI Synchronization (Regeneration)
 	if err := regenerateUI(chatDB, rootID, ownerID, repoID, owner, repo); err != nil {
 		return fmt.Errorf("failed to regenerate chat UI: %w", err)
 	}
@@ -401,13 +460,13 @@ func buildRepoMarkdown(owner, repo string, manifests []db.PublishedManifest) str
 	if len(manifests) == 0 {
 		sb.WriteString("No active intelligence layers are currently published for this repository.\n")
 	} else {
-		sb.WriteString("| ID | Branch | Database | Published | Download |\n")
-		sb.WriteString("| :--- | :--- | :--- | :--- | :--- |\n")
+		sb.WriteString("| ID | Branch | Manifest | Database | Published | Download |\n")
+		sb.WriteString("| :--- | :--- | :--- | :--- | :--- | :--- |\n")
 		for _, m := range manifests {
 			shortID := m.UUID[:8]
 			published := m.PublishedAt.Format("2006-01-02 15:04:05")
 			link := fmt.Sprintf("[Download](/--/manifests/%s/%s/%s)", owner, repo, m.UUID)
-			sb.WriteString(fmt.Sprintf("| `%s` | %s | %s | %s | %s |\n", shortID, m.Branch, m.Database, published, link))
+			sb.WriteString(fmt.Sprintf("| `%s` | %s | %s | %s | %s | %s |\n", shortID, m.Branch, m.ManifestName, m.Database, published, link))
 		}
 	}
 
@@ -439,33 +498,30 @@ Visit [https://github.com/gitsense/gsc-cli](https://github.com/gitsense/gsc-cli)
 
 // --- Utilities ---
 
-func extractDBName(path string) (string, error) {
+// extractManifestProperties reads the manifest file, calculates the hash, and extracts metadata.
+func extractManifestProperties(path, owner, repo, branch string) ([]byte, *ManifestJSON, string, error) {
 	file, err := os.Open(path)
 	if err != nil {
-		return "", err
+		return nil, nil, "", err
 	}
 	defer file.Close()
 
-	var meta ManifestMeta
-	if err := json.NewDecoder(file).Decode(&meta); err != nil {
-		return "", err
-	}
-	return meta.ManifestInfo.DatabaseName, nil
-}
-
-func copyFile(src, dst string) error {
-	source, err := os.Open(src)
+	// Read file content for hashing
+	fileBytes, err := io.ReadAll(file)
 	if err != nil {
-		return err
+		return nil, nil, "", err
 	}
-	defer source.Close()
 
-	destination, err := os.Create(dst)
-	if err != nil {
-		return err
+	// Calculate Hash: SHA256(file_content + owner + repo + branch)
+	hashInput := string(fileBytes) + owner + repo + branch
+	hashBytes := sha256.Sum256([]byte(hashInput))
+	hash := hex.EncodeToString(hashBytes[:])
+
+	// Unmarshal JSON to extract properties
+	var data ManifestJSON
+	if err := json.Unmarshal(fileBytes, &data); err != nil {
+		return nil, nil, "", err
 	}
-	defer destination.Close()
 
-	_, err = io.Copy(destination, source)
-	return err
+	return fileBytes, &data, hash, nil
 }
