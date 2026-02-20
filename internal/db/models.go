@@ -1,12 +1,12 @@
 /**
  * Component: Chat Database Models
- * Block-UUID: c4b82151-6596-4fcc-ab50-0a837df74166
- * Parent-UUID: b8e2e972-aa89-4b86-b9b8-c298697dd5ed
- * Version: 1.2.0
- * Description: Data structures mapping to the GitSense Chat SQLite schema. Updated PublishedManifest struct to support full manifest metadata including schema version, generated timestamp, manifest details, and content hash.
+ * Block-UUID: 0bed6a29-b637-4ac7-9dd5-2118b07e1a4e
+ * Parent-UUID: c4b82151-6596-4fcc-ab50-0a837df74166
+ * Version: 1.3.0
+ * Description: Data structures mapping to the GitSense Chat SQLite schema. Updated PublishedManifest struct to include ManifestCount for hierarchical UI summaries.
  * Language: Go
- * Created-at: 2026-02-19T17:58:56.212Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0)
+ * Created-at: 2026-02-20T04:31:47.873Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0)
  */
 
 
@@ -96,4 +96,5 @@ type PublishedManifest struct {
 	RootChatID          sql.NullInt64  `json:"root_chat_id"`
 	OwnerChatID         sql.NullInt64  `json:"owner_chat_id"`
 	RepoChatID          sql.NullInt64  `json:"repo_chat_id"`
+	ManifestCount       int            `json:"manifest_count"` // Used for UI summaries
 }

@@ -1,12 +1,12 @@
 /**
  * Component: Manifest Publisher Logic
- * Block-UUID: 7b67834d-594a-402a-a93e-49106cd18eed
- * Parent-UUID: f47f8f8f-d2fe-407a-82e8-b7fef36b1462
- * Version: 1.1.0
- * Description: Orchestrates the publishing and unpublishing of intelligence manifests. Updated to support full manifest metadata extraction, hash-based duplicate detection with "bump" logic, and updated Markdown UI to display manifest names.
+ * Block-UUID: 6ab9d46b-0220-45e0-8976-7be4f3b37d8e
+ * Parent-UUID: 7b67834d-594a-402a-a93e-49106cd18eed
+ * Version: 1.2.0
+ * Description: Orchestrates the publishing and unpublishing of intelligence manifests. Updated to support modular UI sections, global history tables, owner counts, and removed the database column from the repo view.
  * Language: Go
- * Created-at: 2026-02-20T00:43:51.874Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.1.0)
+ * Created-at: 2026-02-20T04:31:47.873Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0)
  */
 
 
@@ -367,7 +367,8 @@ func regenerateUI(chatDB *sql.DB, rootID, ownerID, repoID int64, owner, repo str
 
 	// 3. Root Level
 	rootManifests, _ := db.GetActiveManifests(chatDB, "", "")
-	rootMD := buildRootMarkdown(rootManifests)
+	recentManifests, _ := db.GetGlobalRecentManifests(chatDB, 5)
+	rootMD := buildRootMarkdown(rootManifests, recentManifests)
 	if err := ensureMessages(chatDB, rootID, "Intelligence Manifests", rootMD); err != nil {
 		return err
 	}
@@ -422,18 +423,24 @@ func ensureMessages(chatDB *sql.DB, chatID int64, contextName, content string) e
 
 // --- Markdown Builders ---
 
-func buildRootMarkdown(owners []db.PublishedManifest) string {
+func buildRootMarkdown(owners []db.PublishedManifest, recent []db.PublishedManifest) string {
 	var sb strings.Builder
 	sb.WriteString("# Intelligence Manifests\n\nWelcome to the central index for published intelligence layers.\n\n")
+	
+	//// Recently Published Section
+	//sb.WriteString(generateRecentlyPublishedTable(recent))
+	//sb.WriteString("\n")
+
 	sb.WriteString("## Repository Owners\n\n")
 	if len(owners) == 0 {
 		sb.WriteString("No repository owners have published manifests yet.\n")
 	} else {
 		for _, o := range owners {
-			sb.WriteString(fmt.Sprintf("*   [%s](#)\n", o.Owner))
+			sb.WriteString(fmt.Sprintf("*   [%s (%d)](#)\n", o.Owner, o.ManifestCount))
 		}
 	}
-	sb.WriteString(generateStandardFooter())
+	
+	sb.WriteString(generateLearnMoreSection())
 	return sb.String()
 }
 
@@ -448,7 +455,8 @@ func buildOwnerMarkdown(owner string, repos []db.PublishedManifest) string {
 			sb.WriteString(fmt.Sprintf("*   [%s](#)\n", r.Repo))
 		}
 	}
-	sb.WriteString(generateStandardFooter())
+	
+	sb.WriteString(generateLearnMoreSection())
 	return sb.String()
 }
 
@@ -460,21 +468,22 @@ func buildRepoMarkdown(owner, repo string, manifests []db.PublishedManifest) str
 	if len(manifests) == 0 {
 		sb.WriteString("No active intelligence layers are currently published for this repository.\n")
 	} else {
-		sb.WriteString("| ID | Branch | Manifest | Database | Published | Download |\n")
-		sb.WriteString("| :--- | :--- | :--- | :--- | :--- | :--- |\n")
+		sb.WriteString("| ID | Branch | Manifest | Published | Download |\n")
+		sb.WriteString("| :--- | :--- | :--- | :--- | :--- |\n")
 		for _, m := range manifests {
 			shortID := m.UUID[:8]
 			published := m.PublishedAt.Format("2006-01-02 15:04:05")
 			link := fmt.Sprintf("[Download](/--/manifests/%s/%s/%s)", owner, repo, m.UUID)
-			sb.WriteString(fmt.Sprintf("| `%s` | %s | %s | %s | %s | %s |\n", shortID, m.Branch, m.ManifestName, m.Database, published, link))
+			sb.WriteString(fmt.Sprintf("| `%s` | %s | %s | %s | %s |\n", shortID, m.Branch, m.ManifestName, published, link))
 		}
 	}
 
-	sb.WriteString(generateStandardFooter())
+	sb.WriteString(generateHowToUseSection())
+	sb.WriteString(generateLearnMoreSection())
 	return sb.String()
 }
 
-func generateStandardFooter() string {
+func generateHowToUseSection() string {
 	return `
 
 ## How to Use
@@ -489,11 +498,32 @@ To add this intelligence layer to your repository:
 ` + "```bash" + `
 gsc manifest import <path-to-manifest-file>
 ` + "```" + `
+`
+}
+
+func generateLearnMoreSection() string {
+	return `
 
 ## Learn More
 
-Visit [https://github.com/gitsense/gsc-cli](https://github.com/gitsense/gsc-cli) to learn more about GitSense Chat CLI.
+Visit [https://github.com/gitsense/gsc-cli](https://github.com/gitsense/gsc-cli) to learn more about GitSense Chat CLI and the intelligence layer.
 `
+}
+
+func generateRecentlyPublishedTable(manifests []db.PublishedManifest) string {
+	if len(manifests) == 0 {
+		return ""
+	}
+
+	var sb strings.Builder
+	sb.WriteString("## Recently Published\n\n")
+	sb.WriteString("| Repository | Manifest | Published |\n")
+	sb.WriteString("| :--- | :--- | :--- |\n")
+	for _, m := range manifests {
+		published := m.PublishedAt.Format("2006-01-02 15:04:05")
+		sb.WriteString(fmt.Sprintf("| %s/%s | %s | %s |\n", m.Owner, m.Repo, m.ManifestName, published))
+	}
+	return sb.String()
 }
 
 // --- Utilities ---

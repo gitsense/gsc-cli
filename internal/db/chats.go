@@ -1,12 +1,12 @@
 /**
  * Component: Chat Database Operations
- * Block-UUID: 4d3c4ea8-e1bc-47fc-a854-d3f794296464
- * Parent-UUID: c92b0041-a23a-444a-a673-53498558d586
- * Version: 1.5.0
- * Description: Expanded library methods for hierarchical chat management, message upserts, and manifest indexing. Updated to support full manifest metadata, hash-based duplicate detection, and timestamp bumping for republishing.
+ * Block-UUID: be880f6c-ea9c-4b6f-ac21-ed5a975c4f15
+ * Parent-UUID: 4d3c4ea8-e1bc-47fc-a854-d3f794296464
+ * Version: 1.6.0
+ * Description: Expanded library methods for hierarchical chat management. Updated GetActiveManifests to support owner counts and added GetGlobalRecentManifests for the Root UI.
  * Language: Go
- * Created-at: 2026-02-20T01:37:35.376Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
+ * Created-at: 2026-02-20T04:31:47.873Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0)
  */
 
 
@@ -300,8 +300,8 @@ func GetActiveManifests(db *sql.DB, owner, repo string) ([]PublishedManifest, er
 	var args []interface{}
 
 	if owner == "" {
-		// Root level: Get unique owners
-		query = `SELECT DISTINCT owner FROM published_manifests WHERE deleted = 0 ORDER BY owner ASC`
+		// Root level: Get unique owners and their manifest counts
+		query = `SELECT owner, COUNT(*) as count FROM published_manifests WHERE deleted = 0 GROUP BY owner ORDER BY owner ASC`
 	} else if repo == "" {
 		// Owner level: Get unique repos for owner
 		query = `SELECT DISTINCT repo FROM published_manifests WHERE owner = ? AND deleted = 0 ORDER BY repo ASC`
@@ -322,7 +322,7 @@ func GetActiveManifests(db *sql.DB, owner, repo string) ([]PublishedManifest, er
 	for rows.Next() {
 		var m PublishedManifest
 		if owner == "" {
-			err = rows.Scan(&m.Owner)
+			err = rows.Scan(&m.Owner, &m.ManifestCount)
 		} else if repo == "" {
 			err = rows.Scan(&m.Repo)
 		} else {
@@ -338,6 +338,34 @@ func GetActiveManifests(db *sql.DB, owner, repo string) ([]PublishedManifest, er
 		manifests = append(manifests, m)
 	}
 
+	return manifests, nil
+}
+
+// GetGlobalRecentManifests retrieves the most recently published manifests across all repositories.
+func GetGlobalRecentManifests(db *sql.DB, limit int) ([]PublishedManifest, error) {
+	query := `
+		SELECT uuid, owner, repo, manifest_name, published_at 
+		FROM published_manifests 
+		WHERE deleted = 0 
+		ORDER BY published_at DESC 
+		LIMIT ?`
+
+	rows, err := db.Query(query, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query global recent manifests: %w", err)
+	}
+	defer rows.Close()
+
+	var manifests []PublishedManifest
+	for rows.Next() {
+		var m PublishedManifest
+		var publishedAtStr string
+		if err := rows.Scan(&m.UUID, &m.Owner, &m.Repo, &m.ManifestName, &publishedAtStr); err != nil {
+			return nil, err
+		}
+		m.PublishedAt, _ = time.Parse("2006-01-02T15:04:05.000Z", publishedAtStr)
+		manifests = append(manifests, m)
+	}
 	return manifests, nil
 }
 
