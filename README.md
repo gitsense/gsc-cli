@@ -8,9 +8,9 @@
 
 A CLI for querying repository intelligence and a framework for building AI-ready developer tools. Designed for humans and AI.
 
-## The Big Picture
+## How it Works
 
-`gsc-cli` is the interface to portable intelligence created with [GitSense Chat (GSC)](https://github.com/gitsense/chat). It transforms any text file into a smart, queryable entity through four simple steps:
+`gsc-cli` is the interface to portable intelligence created with [GitSense Chat](https://github.com/gitsense/chat). It transforms any text file into a smart, queryable entity through four simple steps:
 
 **GitSense Chat**
 - Create a Brain to encode your domain expertise
