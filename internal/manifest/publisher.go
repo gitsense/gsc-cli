@@ -431,7 +431,7 @@ func buildRootMarkdown(owners []db.PublishedManifest, recent []db.PublishedManif
 	//sb.WriteString(generateRecentlyPublishedTable(recent))
 	//sb.WriteString("\n")
 
-	sb.WriteString("## Repository Owners\n\n")
+	sb.WriteString("## Owners\n\n")
 	if len(owners) == 0 {
 		sb.WriteString("No repository owners have published manifests yet.\n")
 	} else {

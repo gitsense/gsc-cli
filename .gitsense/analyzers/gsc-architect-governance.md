@@ -1,6 +1,3 @@
-; role: assistant
-
-
 # Analyze - `gsc-architect-governance::file-content::default`
 
 ## Role: 

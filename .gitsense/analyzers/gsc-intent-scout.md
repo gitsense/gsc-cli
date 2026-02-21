@@ -1,6 +1,3 @@
-; role: assistant
-
-
 # Analyze - `gsc-intent-scout::file-content::default`
 
 ## Role: 

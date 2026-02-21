@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "generated_at": "2026-02-14T04:13:55.422Z",
   "manifest": {
-    "name": "Provenance & Governance Brain",
+    "name": "GitSense Chat CLI Provenance & Governance Brain",
     "database_name": "gsc-cli-provenance",
     "description": "Governance layer for AI-generated code in gsc-cli, ensuring traceability, metadata integrity, and AI-readiness. This manifest validates that code block headers remain accurate (Metadata Integrity) and assesses whether code documentation provides sufficient context for AI agents (Code Documentation Quality). It enables \"Smarter and Safer\" development by identifying governance risks and ensuring the repository remains auditable.",
     "tags": [
