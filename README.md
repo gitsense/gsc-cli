@@ -10,15 +10,11 @@ A CLI for querying repository intelligence and a framework for building AI-ready
 
 ## How it Works
 
-`gsc-cli` is the interface to portable intelligence created with [GitSense Chat](https://github.com/gitsense/chat). It transforms any text file into a smart, queryable entity through four simple steps:
+`gsc-cli` is the interface to portable intelligence created with [GitSense Chat](https://github.com/gitsense/chat). It functions as a semantic enrichment engine, bridging the gap between raw repository data and architectural intent. 
 
-**GitSense Chat**
-- Create a Brain to encode your domain expertise
-- Load your data using Git as a first-class citizen
-- Analyze at scale with intelligent batch processing
+By joining standard system outputs with pre-computed metadata in real-time, it enables **Deterministic Discovery**. Currently, `gsc` enriches the tools you use most-`grep` (via ripgrep) and `tree`-with the goal of supporting any utility that operates on files, including `ls`, `find`, and custom internal tools.
 
-**GitSense Chat CLI**
-- Search with intent using deterministic discovery
+The CLI is designed to be a lightweight, open-source utility that makes repository intelligence actionable. However, the "heavy lifting"-the complex analysis required to extract intent, purpose, and architectural layers from a codebase-is performed by [GitSense Chat](https://github.com/gitsense/chat). 
 
 ### Scaling Coding Agents
 
@@ -36,7 +32,7 @@ You can manage these intelligence layers just like your source code by versionin
 
 This decoupled workflow ensures you analyze once and distribute everywhere. It eliminates redundant processing and cloud dependencies by providing deterministic discovery at SQLite speed for your entire team.
 
-### The World's First
+## The World's First
 
 We believe this is the world's first intelligent, AI-auditable code repository. By publishing this repository with pre-built intelligence and auditable, AI-generated code, we are providing a template for how every repository can be made more human and AI-friendly. Our `.gitsense` directory is the new README, and we can demonstrate how today.
 
