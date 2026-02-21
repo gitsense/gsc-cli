@@ -24,14 +24,6 @@ By shipping with a `.gitsense` directory, we provide a **Discovery Interface** t
 **GitSense Chat CLI**
 - Search with intent using deterministic discovery
 
-## Intelligence as Code
-
-Intelligence as Code treats domain knowledge as a versioned, portable artifact rather than ephemeral chat context. By encoding architectural intent into manifests, you transform subjective expertise into an executable layer that lives alongside your source. This approach ensures that every developer and agent operates from the same verified source of truth.
-
-You can manage these intelligence layers just like your source code by versioning them directly in your repository or publishing them to the GitSense Chat hub. Using `gsc manifest publish` makes these layers instantly discoverable and downloadable for the entire team. Once imported via `gsc manifest import`, the intelligence is available locally for deterministic discovery.
-
-This decoupled workflow ensures you analyze once and distribute everywhere. It eliminates redundant processing and cloud dependencies by providing deterministic discovery at SQLite speed for your entire team.
-
 ### Beyond Text Matching
 
 Standard tools like `ripgrep` are incredible at matching text across thousands of files in milliseconds. But text matching has a ceiling: **it lacks context.** 
@@ -43,6 +35,14 @@ When an AI agent (or a human) searches for "Execute", they are often met with do
 `gsc` provides a third way: **Context-Aware Discovery.** By enriching search results with metadata like `purpose` and `topics`, you can drill into your codebase deterministically. You don't search for strings; you search for intent.
 
 [![GSC Demo](https://raw.githubusercontent.com/gitsense/gsc-cli/main/docs/assets/poster.png)](https://raw.githubusercontent.com/gitsense/gsc-cli/main/docs/assets/demo.mp4)
+
+## Intelligence as Code
+
+Intelligence as Code treats domain knowledge as a versioned, portable artifact rather than ephemeral chat context. By encoding architectural intent into manifests, you transform subjective expertise into an executable layer that lives alongside your source. This approach ensures that every developer and agent operates from the same verified source of truth.
+
+You can manage these intelligence layers just like your source code by versioning them directly in your repository or publishing them to the GitSense Chat hub. Using `gsc manifest publish` makes these layers instantly discoverable and downloadable for the entire team. Once imported via `gsc manifest import`, the intelligence is available locally for deterministic discovery.
+
+This decoupled workflow ensures you analyze once and distribute everywhere. It eliminates redundant processing and cloud dependencies by providing deterministic discovery at SQLite speed for your entire team.
 
 ### The World's First
 
