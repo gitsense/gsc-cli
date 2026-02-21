@@ -8,10 +8,6 @@
 
 A CLI for querying repository intelligence and a framework for building AI-ready developer tools. Designed for humans and AI.
 
-**This repository is self-aware.**
-
-By shipping with a `.gitsense` directory, we provide a **Discovery Interface** that enables deterministic search of architecture, history, and intent the moment you clone the code.
-
 ## The Bigger Picture
 
 `gsc-cli` is the interface to portable intelligence created with [GitSense Chat (GSC)](https://github.com/gitsense/chat). It transforms any text file into a smart, queryable entity through four simple steps:
