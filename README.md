@@ -20,15 +20,11 @@ A CLI for querying repository intelligence and a framework for building AI-ready
 **GitSense Chat CLI**
 - Search with intent using deterministic discovery
 
-### Beyond Text Matching
+### Scaling Coding Agents
 
-Standard tools like `ripgrep` are incredible at matching text across thousands of files in milliseconds. But text matching has a ceiling: **it lacks context.** 
+Standard tools like `ripgrep` match text, but they lack context. Brute-forcing discovery with agents is expensive, slow, and often inaccurate.
 
-When an AI agent (or a human) searches for "Execute", they are often met with dozens of irrelevant matches. To find the right one, you either:
-1. **Pay the Token Tax:** Shove all matches into a massive context window and hope the LLM guesses correctly.
-2. **Manual Labor:** Keep grepping and filtering by hand until you find the signal.
-
-`gsc` provides a third way: **Context-Aware Discovery.** By enriching search results with metadata like `purpose` and `topics`, you can drill into your codebase deterministically. You don't search for strings; you search for intent.
+`gsc` enables **deterministic discovery**, allowing agents to find the right files in milliseconds without the token tax. Watch how we make repositories self-aware to scale AI agents.
 
 [![GSC Demo](https://raw.githubusercontent.com/gitsense/gsc-cli/main/docs/assets/poster.png)](https://raw.githubusercontent.com/gitsense/gsc-cli/main/docs/assets/demo.mp4)
 
