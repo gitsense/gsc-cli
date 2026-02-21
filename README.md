@@ -10,11 +10,11 @@ A CLI for querying repository intelligence and a framework for building AI-ready
 
 ## How it Works
 
-`gsc-cli` is the interface to portable intelligence created with [GitSense Chat](https://github.com/gitsense/chat). It functions as a semantic enrichment engine, bridging the gap between raw repository data and architectural intent. 
+`gsc-cli` is the interface to portable intelligence created with [GitSense Chat](https://github.com/gitsense/chat). It functions as a semantic enrichment engine, bridging the gap between raw repository data and architectural intent.
 
-By joining standard system outputs with pre-computed metadata in real-time, it enables **Deterministic Discovery**. Currently, `gsc` enriches the tools you use most-`grep` (via ripgrep) and `tree`-with the goal of supporting any utility that operates on files, including `ls`, `find`, and custom internal tools.
+By providing semantic alternatives to standard Unix utilities, `gsc` enables **Deterministic Discovery**. It currently implements metadata-enriched versions of `grep` and `tree`, with the goal of supporting a full suite of intelligent tools such as `ls`, `find`, and custom internal utilities that operate on files.
 
-The CLI is designed to be a lightweight, open-source utility that makes repository intelligence actionable. However, the "heavy lifting"-the complex analysis required to extract intent, purpose, and architectural layers from a codebase-is performed by [GitSense Chat](https://github.com/gitsense/chat). 
+The CLI is designed to be a lightweight, open-source utility that makes repository intelligence actionable. However, the "heavy lifting" (the complex analysis required to extract intent, purpose, and architectural layers from a codebase) is performed by [GitSense Chat](https://github.com/gitsense/chat).
 
 ### Scaling Coding Agents
 
