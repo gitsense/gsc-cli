@@ -12,6 +12,26 @@ A CLI for querying repository intelligence and a framework for building AI-ready
 
 By shipping with a `.gitsense` directory, we provide a **Discovery Interface** that enables deterministic search of architecture, history, and intent the moment you clone the code.
 
+## The Bigger Picture
+
+`gsc-cli` is the interface to portable intelligence created with [GitSense Chat (GSC)](https://github.com/gitsense/chat). It transforms any text file into a smart, queryable entity through four simple steps:
+
+**GitSense Chat**
+- Create a Brain to encode your domain expertise
+- Load your data using Git as a first-class citizen
+- Analyze at scale with intelligent batch processing
+
+**GitSense Chat CLI**
+- Search with intent using deterministic discovery
+
+## Intelligence as Code
+
+Intelligence as Code treats domain knowledge as a versioned, portable artifact rather than ephemeral chat context. By encoding architectural intent into manifests, you transform subjective expertise into an executable layer that lives alongside your source. This approach ensures that every developer and agent operates from the same verified source of truth.
+
+You can manage these intelligence layers just like your source code by versioning them directly in your repository or publishing them to the GitSense Chat hub. Using `gsc manifest publish` makes these layers instantly discoverable and downloadable for the entire team. Once imported via `gsc manifest import`, the intelligence is available locally for deterministic discovery.
+
+This decoupled workflow ensures you analyze once and distribute everywhere. It eliminates redundant processing and cloud dependencies by providing deterministic discovery at SQLite speed for your entire team.
+
 ### Beyond Text Matching
 
 Standard tools like `ripgrep` are incredible at matching text across thousands of files in milliseconds. But text matching has a ceiling: **it lacks context.** 
