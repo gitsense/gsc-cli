@@ -4,7 +4,7 @@
 [![AI-Ready](https://img.shields.io/badge/AI--Ready-Yes%20✓-blue)](https://github.com/gitsense/gsc-cli)
 [![AI Traceable Code](https://img.shields.io/badge/AI%20Traceable%20Code-99%25-orange)](ARCHITECTURE.md)
 
-**The Intelligence Layer for Git: Turn any text file into a smart one.**
+**Make your Git repository self-aware**
 
 A CLI for querying repository intelligence and a framework for building AI-ready developer tools. Designed for humans and AI.
 
@@ -171,16 +171,18 @@ It transforms code review from a syntax check into an intent validation loop:
 3. **Review:** Validate the change against the intent.
 4. **Iterate:** Refine based on the architectural feedback,
 
-**Tool Calling 2.0** 
+### Tool Calling 2.0
 
 We are moving from static metadata to executable intelligence. This is Tool Calling 2.0. Unlike traditional tool schemas (like MCP or Claude Tools) which are defined outside the codebase, `gsc` embeds tools and knowledge directly in your repository as queryable metadata. This makes `gsc` a perfect complement to MCP: while MCP standardizes the *how* of tool calling, `gsc` provides the *what* and *why* directly from the source of truth.
 
-An agent can discover exactly what it is allowed to do by running:
+For example, suppose we implemented a `run` command designed for tool calling. An agent could discover exactly what it can learn by running:
+
 ```bash
 gsc run --examples --format json
 ```
 
-This returns a structured list of commands with descriptions and examples. The agent simply maps your natural language request to the best available command. This is discovery in its simplest form. You get the speed of an agent with the safety of a reviewed, deterministic contract, like a safeguarded delete:
+This would return a structured list of commands with descriptions and examples. The agent simply maps your natural language request to the best available command. This is discovery in its simplest form. You would get the speed of an agent with the safety of a reviewed, deterministic contract, like a safeguarded delete:
+
 ```bash
 gsc run guard-rm --db infrastructure --filter "protection=high"
 ```
