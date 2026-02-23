@@ -1,12 +1,12 @@
 /**
  * Component: Values Command
- * Block-UUID: f87f9ef9-9b1c-4b21-bd17-56f8922c0b3d
- * Parent-UUID: 3497ae90-8770-4551-988c-6a1663c87196
- * Version: 1.1.0
- * Description: Provides a top-level shortcut for listing unique metadata values. This command maps directly to 'gsc query list --db <db> <field>'.
+ * Block-UUID: 2a6be9f5-66bb-4729-a481-352ca80984b2
+ * Parent-UUID: f87f9ef9-9b1c-4b21-bd17-56f8922c0b3d
+ * Version: 1.2.0
+ * Description: Provides a top-level shortcut for listing unique metadata values. This command maps directly to 'gsc query list --db <db> <field>'. Updated bridge.Execute calls to include the new exitCode argument.
  * Language: Go
  * Created-at: 2026-02-12T05:18:55.857Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0)
  */
 
 
@@ -78,7 +78,7 @@ This is equivalent to running 'gsc query list --db <database> <field>'.`,
 
 			// 2. Hand off to bridge orchestrator
 			cmdStr := filepath.Base(os.Args[0]) + " " + strings.Join(os.Args[1:], " ")
-			return bridge.Execute(bridgeCode, outputStr, valuesFormat, cmdStr, time.Since(startTime), resolvedDB, forceInsert)
+			return bridge.Execute(bridgeCode, outputStr, valuesFormat, cmdStr, time.Since(startTime), resolvedDB, 0, forceInsert)
 		}
 
 		// Standard Output Mode

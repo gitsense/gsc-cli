@@ -1,12 +1,12 @@
 /**
  * Component: Settings
- * Block-UUID: 38c1b204-244a-4f26-b145-d146d08939b6
- * Parent-UUID: 63907862-1f4b-484c-ac50-593567964dd5
- * Version: 1.4.0
- * Description: Centralized environment resolution for GSC_HOME and path construction for the GitSense Chat application storage and database.
+ * Block-UUID: edf2ece8-2f85-45b6-b1e0-545a8adc37c7
+ * Parent-UUID: 38c1b204-244a-4f26-b145-d146d08939b6
+ * Version: 1.5.0
+ * Description: Centralized environment resolution for GSC_HOME and path construction for the GitSense Chat application storage and database. Added ExecOutputsRelPath and GetExecOutputsDir to support the 'exec' command's persistence layer.
  * Language: Go
  * Created-at: 2026-02-19T17:47:24.406Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0), Gemini 3 Flash (v1.4.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0), Gemini 3 Flash (v1.4.0), Gemini 3 Flash (v1.5.0)
  */
 
 
@@ -61,6 +61,9 @@ const ManifestStorageDir = "data/storage/manifests"
 // ChatDatabaseRelPath is the relative path within GSC_HOME for the chat database
 const ChatDatabaseRelPath = "data/chats.sqlite3"
 
+// ExecOutputsRelPath is the relative path within GSC_HOME for exec command outputs
+const ExecOutputsRelPath = "exec/outputs"
+
 // GetGSCHome resolves the GSC_HOME directory. If required is true, it returns an
 // error if the environment variable is not set. If required is false, it falls
 // back to the user's home directory .gitsense folder.
@@ -90,4 +93,13 @@ func GetChatDatabasePath(gscHome string) string {
 // GetManifestStoragePath returns the absolute path to the manifest storage directory.
 func GetManifestStoragePath(gscHome string) string {
 	return filepath.Join(gscHome, ManifestStorageDir)
+}
+
+// GetExecOutputsDir returns the absolute path to the exec outputs directory.
+func GetExecOutputsDir() (string, error) {
+	gscHome, err := GetGSCHome(false)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve GSC_HOME for exec outputs: %w", err)
+	}
+	return filepath.Join(gscHome, ExecOutputsRelPath), nil
 }

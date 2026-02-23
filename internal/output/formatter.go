@@ -1,12 +1,12 @@
 /**
  * Component: Output Formatter
- * Block-UUID: 2bc306a2-ee33-4c1e-b2d7-dc580e2201ef
- * Parent-UUID: e347b3a4-25ca-433a-8fc4-e40a203f8027
- * Version: 1.9.0
- * Description: Provides utility functions to format data into JSON, Table, or CSV strings. Added FormatMetadataYAML and FormatMetadataJSON to support the ripgrep metadata appendix.
+ * Block-UUID: fd3cc890-0e80-499d-a5a1-6f88a1f02824
+ * Parent-UUID: 2bc306a2-ee33-4c1e-b2d7-dc580e2201ef
+ * Version: 1.10.0
+ * Description: Provides utility functions to format data into JSON, Table, or CSV strings. Added FormatMetadataYAML and FormatMetadataJSON to support the ripgrep metadata appendix. Updated FormatBridgeMarkdown to support Exit Code and N/A database handling for the exec command. Added FormatExecList for displaying saved execution outputs.
  * Language: Go
  * Created-at: 2026-02-15T02:49:39.077Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), Gemini 3 Flash (v1.7.0), Gemini 3 Flash (v1.8.0), GLM-4.7 (v1.9.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), Gemini 3 Flash (v1.7.0), Gemini 3 Flash (v1.8.0), GLM-4.7 (v1.9.0), Gemini 3 Flash (v1.10.0)
  */
 
 
@@ -150,7 +150,7 @@ func IsTerminal() bool {
 }
 
 // FormatBridgeMarkdown constructs the Markdown message for the CLI Bridge.
-func FormatBridgeMarkdown(command string, duration time.Duration, dbName string, format string, output string) string {
+func FormatBridgeMarkdown(command string, duration time.Duration, dbName string, format string, output string, exitCode int) string {
 	var sb strings.Builder
 
 	sb.WriteString("## GSC CLI Output\n\n")
@@ -158,7 +158,21 @@ func FormatBridgeMarkdown(command string, duration time.Duration, dbName string,
 	sb.WriteString("| :--- | :--- |\n")
 	sb.WriteString(fmt.Sprintf("| **Command** | `%s` |\n", command))
 	sb.WriteString(fmt.Sprintf("| **Execution Time** | %v |\n", duration.Round(time.Millisecond)))
-	sb.WriteString(fmt.Sprintf("| **Database** | `%s` |\n", dbName))
+	
+	// Only show Database if it is not "N/A"
+	if dbName != "N/A" {
+		sb.WriteString(fmt.Sprintf("| **Database** | `%s` |\n", dbName))
+	}
+
+	// Show Exit Code if provided (valid range 0-255, or -1 to hide)
+	if exitCode >= 0 && exitCode <= 255 {
+		statusIcon := "✅"
+		if exitCode != 0 {
+			statusIcon = "❌"
+		}
+		sb.WriteString(fmt.Sprintf("| **Exit Code** | %s %d |\n", statusIcon, exitCode))
+	}
+
 	sb.WriteString(fmt.Sprintf("| **Format** | %s |\n", strings.ToUpper(format)))
 	sb.WriteString("\n")
 
@@ -175,4 +189,34 @@ func FormatBridgeMarkdown(command string, duration time.Duration, dbName string,
 	sb.WriteString("```\n")
 
 	return sb.String()
+}
+
+// ExecOutput represents a saved execution output for listing purposes.
+// This struct is defined here to avoid circular dependencies with the exec package.
+type ExecOutput struct {
+	ID        string
+	Command   string
+	ExitCode  int
+	Timestamp string
+}
+
+// FormatExecList formats a list of saved execution outputs into a table.
+func FormatExecList(outputs []ExecOutput) string {
+	if len(outputs) == 0 {
+		return "No saved outputs found."
+	}
+
+	headers := []string{"ID", "Command", "Exit Code", "Timestamp"}
+	
+	rows := make([][]string, len(outputs))
+	for i, out := range outputs {
+		rows[i] = []string{
+			out.ID,
+			truncate(out.Command, 40),
+			fmt.Sprintf("%d", out.ExitCode),
+			out.Timestamp,
+		}
+	}
+
+	return FormatTable(headers, rows)
 }

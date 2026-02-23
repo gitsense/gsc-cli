@@ -1,12 +1,12 @@
 /**
  * Component: Grep Command
- * Block-UUID: 9a66b548-8586-4509-9f9b-c2512470bbeb
- * Parent-UUID: 9ec1a8a6-3854-4093-97c4-ebf88dfa9723
- * Version: 4.6.0
- * Description: CLI command definition for 'gsc grep'. Updated to remove references to profiles and config features from help text and error messages. Removed the '--profile' flag to hide the feature from the user interface. Updated to support metadata filtering, stats recording, and case-sensitive defaults. Updated to resolve database names from user input or config to physical names. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted Info logs to Debug and set SilenceUsage to true. Integrated CLI Bridge: if --code is provided, output is captured and sent to the bridge orchestrator for chat insertion. Added debug logging to trace the bridge code received from the CLI arguments.
+ * Block-UUID: 8bf323ea-cec4-489a-9761-2ec7de1c4148
+ * Parent-UUID: 9a66b548-8586-4509-9f9b-c2512470bbeb
+ * Version: 4.7.0
+ * Description: CLI command definition for 'gsc grep'. Updated to remove references to profiles and config features from help text and error messages. Removed the '--profile' flag to hide the feature from the user interface. Updated to support metadata filtering, stats recording, and case-sensitive defaults. Updated to resolve database names from user input or config to physical names. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted Info logs to Debug and set SilenceUsage to true. Integrated CLI Bridge: if --code is provided, output is captured and sent to the bridge orchestrator for chat insertion. Added debug logging to trace the bridge code received from the CLI arguments. Updated bridge.Execute calls to include the new exitCode argument.
  * Language: Go
  * Created-at: 2026-02-18T06:04:20.388Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v3.0.0), GLM-4.7 (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.7 (v3.3.0), Gemini 3 Flash (v3.4.0), Gemini 3 Flash (v3.5.0), Gemini 3 Flash (v3.6.0), Gemini 3 Flash (v3.7.0), Gemini 3 Flash (v3.8.0), Gemini 3 Flash (v3.9.0), Gemini 3 Flash (v3.9.1), Gemini 3 Flash (v4.0.0), Gemini 3 Flash (v4.0.1), Gemini 3 Flash (v4.1.0), GLM-4.7 (v4.2.0), Gemini 3 Flash (v4.3.0), GLM-4.7 (v4.3.1), Gemini 3 Flash (v4.4.0), GLM-4.7 (v4.5.0), GLM-4.7 (v4.6.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v3.0.0), GLM-4.7 (v3.1.0), GLM-4.7 (v3.2.0), GLM-4.7 (v3.3.0), Gemini 3 Flash (v3.4.0), Gemini 3 Flash (v3.5.0), Gemini 3 Flash (v3.6.0), Gemini 3 Flash (v3.7.0), Gemini 3 Flash (v3.8.0), Gemini 3 Flash (v3.9.0), Gemini 3 Flash (v3.9.1), Gemini 3 Flash (v4.0.0), Gemini 3 Flash (v4.0.1), Gemini 3 Flash (v4.1.0), GLM-4.7 (v4.2.0), Gemini 3 Flash (v4.3.0), GLM-4.7 (v4.3.1), Gemini 3 Flash (v4.4.0), GLM-4.7 (v4.5.0), GLM-4.7 (v4.6.0), Gemini 3 Flash (v4.7.0)
  */
 
 
@@ -288,7 +288,7 @@ Filtering:
 
 			// 3. Hand off to bridge orchestrator
 			cmdStr := filepath.Base(os.Args[0]) + " " + strings.Join(os.Args[1:], " ")
-			return bridge.Execute(bridgeCode, outputStr, grepFormat, cmdStr, time.Since(startTime), dbName, forceInsert)
+			return bridge.Execute(bridgeCode, outputStr, grepFormat, cmdStr, time.Since(startTime), dbName, 0, forceInsert)
 		}
 
 		// Standard Output Mode

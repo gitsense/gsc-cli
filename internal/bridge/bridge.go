@@ -1,12 +1,12 @@
 /**
  * Component: CLI Bridge Orchestrator
- * Block-UUID: 899c306a-c6c7-4eaa-ac4d-6a31a16298cb
- * Parent-UUID: e199447b-efa6-4317-8950-81021425300c
- * Version: 1.6.0
- * Description: Refactored to use centralized settings.GetGSCHome for environment resolution, removing duplicate logic.
+ * Block-UUID: afeb3ea5-a3b9-423e-a63b-a21dafe8b789
+ * Parent-UUID: cfc76884-041e-4372-ad56-46fb1028ba31
+ * Version: 1.8.0
+ * Description: Refactored to use centralized settings.GetGSCHome for environment resolution, removing duplicate logic. Added BridgeCodeExpiredError to allow the exec command to detect expired codes and persist output for recovery. Updated Execute signature to accept exitCode for display in the bridge message.
  * Language: Go
  * Created-at: 2026-02-19T17:50:00.000Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), Gemini 3 Flash (v1.3.1), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.5.0), Gemini 3 Flash (v1.6.0)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), Gemini 3 Flash (v1.3.1), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.5.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), Gemini 3 Flash (v1.8.0)
  */
 
 
@@ -54,6 +54,16 @@ func (e *BridgeError) Error() string {
 	return e.Message
 }
 
+// BridgeCodeExpiredError is a specific error type returned when a bridge code
+// has expired or is not found. This allows the CLI to implement recovery logic.
+type BridgeCodeExpiredError struct {
+	Code string
+}
+
+func (e *BridgeCodeExpiredError) Error() string {
+	return fmt.Sprintf("bridge code %s has expired", e.Code)
+}
+
 // Handshake represents the JSON handshake file created by the Web UI.
 type Handshake struct {
 	Code              string    `json:"code"`
@@ -89,7 +99,7 @@ type Result struct {
 }
 
 // Execute is the main entry point for the CLI Bridge.
-func Execute(code string, rawOutput string, format string, cmdStr string, duration time.Duration, dbName string, force bool) error {
+func Execute(code string, rawOutput string, format string, cmdStr string, duration time.Duration, dbName string, exitCode int, force bool) error {
 	// 1. Resolve GSC_HOME and Load Handshake
 	gscHome, err := settings.GetGSCHome(false)
 	if err != nil {
@@ -125,7 +135,7 @@ func Execute(code string, rawOutput string, format string, cmdStr string, durati
 	}
 
 	// 4. Format the Markdown Message
-	markdown := output.FormatBridgeMarkdown(cmdStr, duration, dbName, format, rawOutput)
+	markdown := output.FormatBridgeMarkdown(cmdStr, duration, dbName, format, rawOutput, exitCode)
 	outputSize := int64(len(markdown))
 
 	// 5. Size Validation & Confirmation
@@ -155,7 +165,7 @@ func Execute(code string, rawOutput string, format string, cmdStr string, durati
 
 	// 6. Final Validation: Ensure code is still valid after potentially long execution/wait
 	if err := ValidateCode(code, StageInsertion); err != nil {
-		return &BridgeError{ExitCode: 2, Message: err.Error()}
+		return err
 	}
 
 	// 7. Database Insertion
@@ -196,11 +206,8 @@ func ValidateCode(code string, stage BridgeStage) error {
 
 	// 1. Check if file exists
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		msg := fmt.Sprintf("bridge code %s not found or expired", code)
-		if os.Getenv("GSC_HOME") == "" {
-			msg += fmt.Sprintf(".\n\nHint: GSC_HOME is not set. The CLI looked in: %s", path)
-		}
-		return fmt.Errorf(msg)
+		// Return specific error for recovery logic
+		return &BridgeCodeExpiredError{Code: code}
 	}
 
 	// 2. Read and Parse
@@ -221,7 +228,8 @@ func ValidateCode(code string, stage BridgeStage) error {
 
 	now := time.Now().UnixNano() / 1e6
 	if h.ExpiresAt < now {
-		return fmt.Errorf("bridge code %s has expired", code)
+		// Return specific error for recovery logic
+		return &BridgeCodeExpiredError{Code: code}
 	}
 
 	// 4. Stage-Specific Validations

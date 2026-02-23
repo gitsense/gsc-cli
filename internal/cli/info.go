@@ -1,12 +1,12 @@
 /**
  * Component: Info Command
- * Block-UUID: 0ca81879-f2d3-4719-8472-78465957ae09
- * Parent-UUID: 3f73ed1a-0e4a-4507-9b22-10da1bf75391
- * Version: 1.0.6
- * Description: CLI command definition for 'gsc info', displaying the current workspace context and available databases. Updated help text to remove references to profiles and configuration features, which are now internal/hidden. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted Info logs to Debug, removed redundant Error logs, and set SilenceUsage to true. Integrated CLI Bridge: if --code is provided, output is captured and sent to the bridge orchestrator for chat insertion.
+ * Block-UUID: e7f7424e-0799-4900-9a4d-3f2e5026bd33
+ * Parent-UUID: 0ca81879-f2d3-4719-8472-78465957ae09
+ * Version: 1.0.7
+ * Description: CLI command definition for 'gsc info', displaying the current workspace context and available databases. Updated help text to remove references to profiles and configuration features, which are now internal/hidden. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted Info logs to Debug, removed redundant Error logs, and set SilenceUsage to true. Integrated CLI Bridge: if --code is provided, output is captured and sent to the bridge orchestrator for chat insertion. Updated bridge.Execute calls to include the new exitCode argument.
  * Language: Go
  * Created-at: 2026-02-09T02:48:32.741Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.1.0 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), Gemini 3 Flash (v1.0.4), Gemini 3 Flash (v1.0.5), GLM-4.7 (v1.0.6)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.1.0 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), Gemini 3 Flash (v1.0.4), Gemini 3 Flash (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7)
  */
 
 
@@ -78,7 +78,7 @@ multiple commands.`,
 			// Hand off to bridge orchestrator
 			cmdStr := filepath.Base(os.Args[0]) + " " + strings.Join(os.Args[1:], " ")
 			// info command does not target a specific database, so dbName is empty
-			return bridge.Execute(bridgeCode, output, infoFormat, cmdStr, time.Since(startTime), "", forceInsert)
+			return bridge.Execute(bridgeCode, output, infoFormat, cmdStr, time.Since(startTime), "", 0, forceInsert)
 		}
 
 		// Standard Output Mode

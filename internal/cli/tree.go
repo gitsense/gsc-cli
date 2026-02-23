@@ -1,12 +1,12 @@
 /**
  * Component: Tree Command
- * Block-UUID: 1a9d66c9-6df4-459d-8732-d365cc507350
- * Parent-UUID: d62bae43-1883-4fd9-9c01-5a3b63b3c2f2
- * Version: 1.4.0
- * Description: Added a guard clause to prevent empty tree output when no database or --no-compact flag is provided. This reinforces the "Intelligence Layer" identity by requiring explicit intent for raw structural views.
+ * Block-UUID: fcb68692-b004-4cfc-8ce1-43827a12809c
+ * Parent-UUID: 1a9d66c9-6df4-459d-8732-d365cc507350
+ * Version: 1.5.0
+ * Description: Added a guard clause to prevent empty tree output when no database or --no-compact flag is provided. This reinforces the "Intelligence Layer" identity by requiring explicit intent for raw structural views. Updated bridge.Execute calls to include the new exitCode argument.
  * Language: Go
  * Created-at: 2026-02-13T01:24:44.962Z
- * Authors: Gemini并发 Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), Gemini 3 Flash (v1.3.0), Gemini 3 Flash (v1.3.1), GLM-4.7 (v1.4.0)
+ * Authors: Gemini并发 Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), Gemini 3 Flash (v1.3.0), Gemini 3 Flash (v1.3.1), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
  */
 
 
@@ -200,7 +200,7 @@ Filtering & Pruning:
 			}
 
 			fmt.Print(outputStr)
-			return bridge.Execute(bridgeCode, outputStr, treeFormat, cmdStr, time.Since(startTime), dbName, forceInsert)
+			return bridge.Execute(bridgeCode, outputStr, treeFormat, cmdStr, time.Since(startTime), dbName, 0, forceInsert)
 		}
 
 		// Standard Output

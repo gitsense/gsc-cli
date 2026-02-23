@@ -1,12 +1,12 @@
 /**
  * Component: Query Command
- * Block-UUID: 3a029d35-546d-4e45-b016-151a935d0d0c
- * Parent-UUID: 2c1c2989-d17d-471e-8940-a7b9fd498d28
- * Version: 3.11.0
- * Description: Added the 'DatabasesCmd' as a root-level convenience command. It supports listing all databases, inspecting a specific database schema via positional argument, or dumping all schemas using the --schema flag.
+ * Block-UUID: edb5aa42-8b16-45e7-9cb5-d420c3db14e2
+ * Parent-UUID: 3a029d35-546d-4e45-b016-151a935d0d0c
+ * Version: 3.12.0
+ * Description: Added the 'DatabasesCmd' as a root-level convenience command. It supports listing all databases, inspecting a specific database schema via positional argument, or dumping all schemas using the --schema flag. Updated bridge.Execute calls to include the new exitCode argument.
  * Language: Go
  * Created-at: 2026-02-14T04:28:58.816Z
- * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.9.0), Gemini 3 Flash (v3.10.0), GLM-4.7 (v3.11.0)
+ * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.9.0), Gemini 3 Flash (v3.10.0), GLM-4.7 (v3.11.0), Gemini 3 Flash (v3.12.0)
  */
 
 
@@ -81,7 +81,7 @@ If no value is provided, it displays the current workspace context.`,
 
 			// 2. Hand off to bridge orchestrator
 			cmdStr := filepath.Base(os.Args[0]) + " " + strings.Join(os.Args[1:], " ")
-			return bridge.Execute(bridgeCode, outputStr, queryFormat, cmdStr, time.Since(startTime), resolvedDB, forceInsert)
+			return bridge.Execute(bridgeCode, outputStr, queryFormat, cmdStr, time.Since(startTime), resolvedDB, 0, forceInsert)
 		}
 
 		// Standard Output Mode
@@ -133,7 +133,7 @@ var queryListCmd = &cobra.Command{
 			if err != nil {
 				return fmt.Errorf("failed to load config: %w", err)
 			}
-			outputStr, resolvedDB, err = handleList(ctx, "", "", queryFormat, queryQuiet, config, queryListAll)
+			outputStr, resolvedDB, err = handleQueryList(ctx, "", "", queryFormat, queryQuiet, config, queryListAll)
 		} else {
 			fieldName := ""
 			if len(args) > 0 {
@@ -152,7 +152,7 @@ var queryListCmd = &cobra.Command{
 
 			// 2. Hand off to bridge orchestrator
 			cmdStr := filepath.Base(os.Args[0]) + " " + strings.Join(os.Args[1:], " ")
-			return bridge.Execute(bridgeCode, outputStr, queryFormat, cmdStr, time.Since(startTime), resolvedDB, forceInsert)
+			return bridge.Execute(bridgeCode, outputStr, queryFormat, cmdStr, time.Since(startTime), resolvedDB, 0, forceInsert)
 		}
 
 		// Standard Output Mode
@@ -194,7 +194,7 @@ Useful for identifying common patterns or unanalyzed areas.`,
 
 			// 2. Hand off to bridge orchestrator
 			cmdStr := filepath.Base(os.Args[0]) + " " + strings.Join(os.Args[1:], " ")
-			return bridge.Execute(bridgeCode, outputStr, queryFormat, cmdStr, time.Since(startTime), resolvedDB, forceInsert)
+			return bridge.Execute(bridgeCode, outputStr, queryFormat, cmdStr, time.Since(startTime), resolvedDB, 0, forceInsert)
 		}
 
 		// Standard Output Mode
@@ -242,7 +242,7 @@ files that have not yet been analyzed within the current focus scope.`,
 
 			// 2. Hand off to bridge orchestrator
 			cmdStr := filepath.Base(os.Args[0]) + " " + strings.Join(os.Args[1:], " ")
-			return bridge.Execute(bridgeCode, outputStr, queryFormat, cmdStr, time.Since(startTime), resolvedDB, forceInsert)
+			return bridge.Execute(bridgeCode, outputStr, queryFormat, cmdStr, time.Since(startTime), resolvedDB, 0, forceInsert)
 		}
 
 		// Standard Output Mode
@@ -286,7 +286,7 @@ and the metadata fields available in each. This is equivalent to running
 
 			// 2. Hand off to bridge orchestrator
 			cmdStr := filepath.Base(os.Args[0]) + " " + strings.Join(os.Args[1:], " ")
-			return bridge.Execute(bridgeCode, outputStr, queryFormat, cmdStr, time.Since(startTime), resolvedDB, forceInsert)
+			return bridge.Execute(bridgeCode, outputStr, queryFormat, cmdStr, time.Since(startTime), resolvedDB, 0, forceInsert)
 		}
 
 		// Standard Output Mode
@@ -334,7 +334,7 @@ var BrainsCmd = &cobra.Command{
 
 			// 2. Hand off to bridge orchestrator
 			cmdStr := filepath.Base(os.Args[0]) + " " + strings.Join(os.Args[1:], " ")
-			return bridge.Execute(bridgeCode, outputStr, queryFormat, cmdStr, time.Since(startTime), resolvedDB, forceInsert)
+			return bridge.Execute(bridgeCode, outputStr, queryFormat, cmdStr, time.Since(startTime), resolvedDB, 0, forceInsert)
 		}
 
 		// Standard Output Mode
@@ -434,7 +434,7 @@ func handleBrains(ctx context.Context, args []string, showSchema bool, format st
 	}
 
 	// Case 3: Default (List all databases)
-	return handleList(ctx, "", "", format, quiet, config, true)
+	return handleQueryList(ctx, "", "", format, quiet, config, true)
 }
 
 // handleCoverage orchestrates the coverage analysis process.
@@ -558,11 +558,12 @@ func handleHierarchicalList(ctx context.Context, dbName string, fieldName string
 		resolvedField = config.Query.DefaultField
 	}
 
-	return handleList(ctx, resolvedDB, resolvedField, format, quiet, config, all)
+	return handleQueryList(ctx, resolvedDB, resolvedField, format, quiet, config, all)
 }
 
-// handleList performs the actual discovery call.
-func handleList(ctx context.Context, dbName string, fieldName string, format string, quiet bool, config *manifest.QueryConfig, all bool) (string, string, error) {
+// handleQueryList performs the actual discovery call.
+// Renamed from handleList to avoid conflict with internal/cli/exec.go
+func handleQueryList(ctx context.Context, dbName string, fieldName string, format string, quiet bool, config *manifest.QueryConfig, all bool) (string, string, error) {
 	if dbName != "" {
 		var err error
 		dbName, err = registry.ResolveDatabase(dbName)

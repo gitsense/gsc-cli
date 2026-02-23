@@ -1,12 +1,12 @@
 /**
  * Component: Root CLI Command
- * Block-UUID: 7dcf1d25-4d5d-439a-b599-62740ce913f4
- * Parent-UUID: 16b4f580-492b-4c21-b093-c85bac8eb350
- * Version: 1.26.0
- * Description: Registered the new 'databases' command as a top-level shortcut for manifest discovery and schema inspection.
+ * Block-UUID: ba0f4669-87d9-4658-8fc8-081ee1352b34
+ * Parent-UUID: 9f2f55aa-d1b6-4a6f-8bf4-bf1d66716241
+ * Version: 1.28.0
+ * Description: Registered the new 'exec' command and whitelisted it to bypass the .gitsense directory check, allowing it to run in any directory. Updated bridge.Execute calls to include the new exitCode argument.
  * Language: Go
  * Created-at: 2026-02-13T06:17:35.067Z
- * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v1.25.0), Gemini 3 Flash (v1.26.0)
+ * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v1.25.0), Gemini 3 Flash (v1.26.0), Gemini 3 Flash (v1.27.0), Gemini 3 Flash (v1.28.0)
  */
 
 
@@ -64,9 +64,9 @@ AI ASSISTANT DISCOVERY:
 		}
 
 		// 2. Pre-flight Check: Ensure .gitsense directory exists
-		// Skip for 'init', 'doctor', and global '--examples'
+		// Skip for 'init', 'doctor', 'exec', and global '--examples'
 		commandName := cmd.Name()
-		if commandName != "init" && commandName != "doctor" && !showExamples {
+		if commandName != "init" && commandName != "doctor" && commandName != "exec" && !showExamples {
 			root, err := git.FindProjectRoot()
 			if err != nil {
 				cmd.SilenceUsage = true
@@ -92,7 +92,7 @@ AI ASSISTANT DISCOVERY:
 			if bridgeCode != "" {
 				fmt.Print(output)
 				cmdStr := "gsc --examples --format " + rootFormat
-				return bridge.Execute(bridgeCode, output, rootFormat, cmdStr, time.Since(startTime), "internal", forceInsert)
+				return bridge.Execute(bridgeCode, output, rootFormat, cmdStr, time.Since(startTime), "internal", 0, forceInsert)
 			}
 
 			fmt.Print(output)
@@ -114,6 +114,7 @@ func init() {
 	RegisterGrepCommand(rootCmd)
 	RegisterTreeCommand(rootCmd)
 	RegisterInfoCommand(rootCmd)
+	RegisterExecCommand(rootCmd)
 
 	rootCmd.PersistentFlags().CountP("verbose", "c", "Increase verbosity (-c for info, -cc for debug)")
 	rootCmd.PersistentFlags().Bool("quiet", false, "Suppress all output except errors")
