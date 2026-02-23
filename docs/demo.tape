@@ -44,13 +44,12 @@ Type "#"
 Enter
 Sleep 1s
 Type "gsc brains"
-Sleep 1s
-Enter
-Sleep 1.5s
-Type "# Notice how it knows each file's `purpose` and `topic`."
 Sleep 1.5s
 Enter
-Type "# Now let's see this knowledge in action to make Claude Code and others smarter!"
+Type "# Notice how the 'Architect' brain knows a file's `purpose` and `topic`."
+Sleep 1.5s
+Enter
+Type "# Now let's see this knowledge in action to make agents like Claude Code smarter!"
 Sleep 1s
 Enter
 Type "#"
@@ -68,18 +67,22 @@ Enter
 Type "gsc grep 'Execute' --db arch --fields purpose,topics --limit 1"
 Sleep 1s
 Enter
-Sleep 2s
-Type "# Notice the 'purpose' and 'topics' metadata below the file."
-Sleep 1.5s
+Type "# You see the matches, just like you'd expect from grep."
+Sleep .5s
+Enter
+Type "# But look below the file path. You now see the 'purpose' and 'topics'."
+Sleep .5s
+Enter
+Type "#"
 Enter
 Type "# These are just two of many fields available in the 'Architect' brain."
-Sleep 1.5s
+Sleep 5s
 Enter
 Type "# Agents can request exactly what they need, like 'public_api' or 'intent_triggers'."
-Sleep 1.5s
+Sleep .5s
 Enter
-Type "# This is how GitSense scales AI agents like Claude Code."
-Sleep 1.5s
+Type "# This is how GitSense scales agents like Claude Code."
+Sleep 1s
 Enter
 Type "#"
 Enter
