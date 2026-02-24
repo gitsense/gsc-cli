@@ -1,12 +1,12 @@
 /**
  * Component: Manifest Importer
- * Block-UUID: 8a280a93-0560-4563-bd88-4a18559dc8bb
- * Parent-UUID: 8a4d2b1c-9e3f-4a5d-8b6c-7d8e9f0a1b2c
- * Version: 1.14.0
- * Description: Logic to parse a JSON manifest file and import its data into a SQLite database.
+ * Block-UUID: 65aefae6-66f7-4ce2-af33-0b05db5b5b38
+ * Parent-UUID: 8a280a93-0560-4563-bd88-4a18559dc8bb
+ * Version: 1.15.0
+ * Description: Logic to parse a JSON manifest file and import its data into a SQLite database. Updated to support importing from URIs (URLs or local paths). If a URL is provided, it downloads the manifest to a temporary file before processing.
  * Language: Go
  * Created-at: 2026-02-14T05:58:52.348Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.6.1), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), Gemini 3 Flash (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), Gemini 3 Flash (v1.14.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.6.1), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), Gemini 3 Flash (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), Gemini 3 Flash (v1.14.0), GLM-4.7 (v1.15.0)
  */
 
 
@@ -31,21 +31,48 @@ import (
 	"github.com/gitsense/gsc-cli/internal/git"
 	"github.com/gitsense/gsc-cli/internal/registry"
 	"github.com/gitsense/gsc-cli/pkg/logger"
+	"github.com/gitsense/gsc-cli/pkg/netutil"
 	"github.com/gitsense/gsc-cli/pkg/settings"
 )
 
-// ImportManifest reads a JSON manifest file and imports it into the specified SQLite database.
+// ImportManifest reads a JSON manifest file from a URI (URL or local path) and imports it into the specified SQLite database.
 // It implements an atomic swap strategy: imports to a temp file, backs up the existing DB (if any),
 // and then renames the temp file to the final name.
-func ImportManifest(ctx context.Context, jsonPath string, dbName string, force bool, noBackup bool) error {
-	logger.Debug("Starting import", "path", jsonPath)
+func ImportManifest(ctx context.Context, uri string, dbName string, force bool, noBackup bool) error {
+	logger.Debug("Starting import", "uri", uri)
 
 	// 1. Validate Workspace Integrity
 	if err := ValidateWorkspace(); err != nil {
 		return err
 	}
 
-	// 2. Acquire Lock
+	// 2. Resolve URI to Local Path
+	// If the URI is a URL, download it to a temporary file.
+	// If it is a local path, use it directly.
+	var jsonPath string
+	var cleanupNeeded bool
+
+	if strings.HasPrefix(uri, "http://") || strings.HasPrefix(uri, "https://") {
+		logger.Info(fmt.Sprintf("Downloading manifest from '%s'...", uri))
+		tmpFile, err := netutil.DownloadToTemp(uri)
+		if err != nil {
+			return fmt.Errorf("failed to download manifest: %w", err)
+		}
+		jsonPath = tmpFile.Name()
+		cleanupNeeded = true
+		
+		// Ensure the temporary file is removed after processing
+		defer func() {
+			if cleanupNeeded {
+				logger.Debug("Cleaning up downloaded temporary file", "path", jsonPath)
+				os.Remove(jsonPath)
+			}
+		}()
+	} else {
+		jsonPath = uri
+	}
+
+	// 3. Acquire Lock
 	// Prevents concurrent imports from corrupting the registry or database files.
 	lockPath, err := ResolveLockPath()
 	if err != nil {
@@ -59,7 +86,7 @@ func ImportManifest(ctx context.Context, jsonPath string, dbName string, force b
 	defer os.Remove(lockPath)
 	defer lockFile.Close()
 
-	// 3. Read and Parse JSON
+	// 4. Read and Parse JSON
 	data, err := os.ReadFile(jsonPath)
 	if err != nil {
 		return fmt.Errorf("failed to read manifest file: %w", err)
@@ -70,12 +97,12 @@ func ImportManifest(ctx context.Context, jsonPath string, dbName string, force b
 		return fmt.Errorf("failed to parse manifest JSON: %w", err)
 	}
 
-	// 4. Validate Manifest
+	// 5. Validate Manifest
 	if err := ValidateManifest(&manifestFile); err != nil {
 		return fmt.Errorf("manifest validation failed: %w", err)
 	}
 
-	// 5. Resolve Database Name
+	// 6. Resolve Database Name
 	// Priority: CLI arg > JSON field > Filename
 	if dbName == "" {
 		if manifestFile.Manifest.DatabaseName != "" {
@@ -89,7 +116,7 @@ func ImportManifest(ctx context.Context, jsonPath string, dbName string, force b
 		}
 	}
 
-	// 6. Pre-flight Check (Registry)
+	// 7. Pre-flight Check (Registry)
 	// Check if database exists in registry to prevent accidental overwrites
 	if !force {
 		reg, err := registry.LoadRegistry()
@@ -101,7 +128,7 @@ func ImportManifest(ctx context.Context, jsonPath string, dbName string, force b
 		}
 	}
 
-	// 7. Resolve Temp Database Path
+	// 8. Resolve Temp Database Path
 	tempPath, err := ResolveTempDBPath(dbName)
 	if err != nil {
 		return fmt.Errorf("failed to resolve temp database path: %w", err)
@@ -115,19 +142,19 @@ func ImportManifest(ctx context.Context, jsonPath string, dbName string, force b
 		}
 	}()
 
-	// 8. Open Database Connection (Temp)
+	// 9. Open Database Connection (Temp)
 	database, err := db.OpenDB(tempPath)
 	if err != nil {
 		return fmt.Errorf("failed to open temp database: %w", err)
 	}
 	defer db.CloseDB(database)
 
-	// 9. Create Schema (if not exists)
+	// 10. Create Schema (if not exists)
 	if err := db.CreateSchema(database); err != nil {
 		return fmt.Errorf("failed to create database schema: %w", err)
 	}
 
-	// 10. Begin Transaction
+	// 11. Begin Transaction
 	tx, err := database.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
@@ -138,31 +165,31 @@ func ImportManifest(ctx context.Context, jsonPath string, dbName string, force b
 		}
 	}()
 
-	// 11. Insert Manifest Info
+	// 12. Insert Manifest Info
 	// Use current time for updated_at
 	if err := insertManifestInfo(tx, &manifestFile, jsonPath, time.Now()); err != nil {
 		return err
 	}
 
-	// 12. Insert Reference Data (Repositories, Branches, Analyzers, Fields)
+	// 13. Insert Reference Data (Repositories, Branches, Analyzers, Fields)
 	if err := insertReferenceData(tx, &manifestFile); err != nil {
 		return err
 	}
 
-	// 13. Insert File Data and Metadata
+	// 14. Insert File Data and Metadata
 	if err := insertFileData(ctx, tx, &manifestFile); err != nil {
 		return err
 	}
 
-	// 14. Commit Transaction
+	// 15. Commit Transaction
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	// 15. Close DB explicitly before rename
+	// 16. Close DB explicitly before rename
 	db.CloseDB(database)
 
-	// 16. Backup Existing Database (if applicable)
+	// 17. Backup Existing Database (if applicable)
 	finalPath, err := ResolveDBPath(dbName)
 	if err != nil {
 		return fmt.Errorf("failed to resolve final database path: %w", err)
@@ -183,13 +210,13 @@ func ImportManifest(ctx context.Context, jsonPath string, dbName string, force b
 		logger.Debug("Skipping backup due to --no-backup flag", "db", dbName)
 	}
 
-	// 17. Atomic Swap
+	// 18. Atomic Swap
 	logger.Debug("Performing atomic swap", "from", tempPath, "to", finalPath)
 	if err := os.Rename(tempPath, finalPath); err != nil {
 		return fmt.Errorf("failed to swap database: %w", err)
 	}
 
-	// 18. Update Registry
+	// 19. Update Registry
 	// Use the resolved dbName to support CLI overrides (--name flag).
 	entry := registry.RegistryEntry{
 		ManifestName : manifestFile.Manifest.ManifestName,

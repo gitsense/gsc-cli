@@ -1,12 +1,12 @@
 /**
  * Component: Manifest Publisher Logic
- * Block-UUID: b0cdfcc6-fbc1-44df-b871-df516d79fa1e
- * Parent-UUID: 6ab9d46b-0220-45e0-8976-7be4f3b37d8e
- * Version: 1.3.0
- * Description: Orchestrates the publishing and unpublishing of intelligence manifests. Updated buildOwnerMarkdown to display the count of manifests per repository.
+ * Block-UUID: 20d7e928-0a82-4ef4-8f87-cb55546b694b
+ * Parent-UUID: b0cdfcc6-fbc1-44df-b871-df516d79fa1e
+ * Version: 1.4.0
+ * Description: Orchestrates the publishing and unpublishing of intelligence manifests. Updated buildRepoMarkdown to include a dedicated 'Copy' column for easy URL copying.
  * Language: Go
  * Created-at: 2026-02-20T04:31:47.873Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0)
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
  */
 
 
@@ -468,13 +468,14 @@ func buildRepoMarkdown(owner, repo string, manifests []db.PublishedManifest) str
 	if len(manifests) == 0 {
 		sb.WriteString("No active intelligence layers are currently published for this repository.\n")
 	} else {
-		sb.WriteString("| ID | Branch | Manifest | Published | Download |\n")
-		sb.WriteString("| :--- | :--- | :--- | :--- | :--- |\n")
+		sb.WriteString("| ID | Branch | Manifest | Published | Download | Copy |\n")
+		sb.WriteString("| :--- | :--- | :--- | :--- | :--- | :--- |\n")
 		for _, m := range manifests {
 			shortID := m.UUID[:8]
 			published := m.PublishedAt.Format("2006-01-02 15:04:05")
 			link := fmt.Sprintf("[Download](/--/manifests/%s.json)", m.UUID)
-			sb.WriteString(fmt.Sprintf("| `%s` | %s | %s | %s | %s |\n", shortID, m.Branch, m.ManifestName, published, link))
+			copyLink := "[Link](#)"
+			sb.WriteString(fmt.Sprintf("| `%s` | %s | %s | %s | %s | %s |\n", shortID, m.Branch, m.ManifestName, published, link, copyLink))
 		}
 	}
 

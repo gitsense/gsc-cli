@@ -1,12 +1,12 @@
 /*
  * Component: Manifest Import Command
- * Block-UUID: 16b34bb8-2011-417b-ae15-9663b216f128
- * Parent-UUID: 17f6fbf9-b729-4268-b4da-683cd9c815e3
- * Version: 1.3.0
- * Description: CLI command definition for importing a manifest JSON file. Added --force flag to allow overwriting existing databases and --no-backup flag to skip backup creation. Updated to support professional CLI output: removed redundant logger.Error calls in RunE and set SilenceUsage to true to prevent usage spam on logic errors.
+ * Block-UUID: 3ab9776f-fa6b-46ab-8e9b-bb41c94302ef
+ * Parent-UUID: 16b34bb8-2011-417b-ae15-9663b216f128
+ * Version: 1.4.0
+ * Description: CLI command definition for importing a manifest JSON file. Updated to support URIs (URLs or local paths) for the manifest source.
  * Language: Go
  * Created-at: 2026-02-02T05:35:00Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
  */
 
 
@@ -22,9 +22,12 @@ import (
 )
 
 var importCmd = &cobra.Command{
-	Use:   "import <file.json>",
-	Short: "Import a manifest JSON file into a SQLite database",
+	Use:   "import <URI>",
+	Short: "Import a manifest JSON file from a URI (URL or local path)",
 	Long: `Import a manifest JSON file downloaded from the Insights Builder or Analysis tool into a local SQLite database.
+The <URI> argument can be a local file path or a remote URL (http:// or https://).
+If a URL is provided, the manifest will be downloaded to a temporary file before import.
+
 This command creates a new database file in the .gitsense directory and populates it with the metadata from the JSON file.
 The database name is determined by the following priority:
 1. The --name flag (if provided)
@@ -36,7 +39,7 @@ Use the --force flag to overwrite an existing database. When using --force, a ba
 existing database is automatically created in .gitsense/backups/ unless --no-backup is specified.`,
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		jsonPath := args[0]
+		uri := args[0]
 
 		// Parse flags
 		dbName, _ := cmd.Flags().GetString("name")
@@ -48,10 +51,10 @@ existing database is automatically created in .gitsense/backups/ unless --no-bac
 		_, _ = cmd.Flags().GetString("description")
 		_, _ = cmd.Flags().GetString("tags")
 
-		logger.Info(fmt.Sprintf("Importing manifest from '%s'...", jsonPath))
+		logger.Info(fmt.Sprintf("Importing manifest from '%s'...", uri))
 
 		ctx := context.Background()
-		if err := manifest.ImportManifest(ctx, jsonPath, dbName, force, noBackup); err != nil {
+		if err := manifest.ImportManifest(ctx, uri, dbName, force, noBackup); err != nil {
 			// Error is returned to Cobra, which will print it cleanly via root.HandleExit
 			return err
 		}
