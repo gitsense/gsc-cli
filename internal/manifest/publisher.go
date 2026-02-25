@@ -462,7 +462,7 @@ func buildOwnerMarkdown(owner string, repos []db.PublishedManifest) string {
 
 func buildRepoMarkdown(owner, repo string, manifests []db.PublishedManifest) string {
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("# %s/%s\n\nIntelligence layers for the %s/%s repository.\n\n", owner, repo, owner, repo))
+	sb.WriteString(fmt.Sprintf("# %s / %s\n\nIntelligence layers for the %s/%s repository.\n\n", owner, repo, owner, repo))
 
 	sb.WriteString("## Published Manifests\n\n")
 	if len(manifests) == 0 {
