@@ -1,12 +1,12 @@
 /**
  * Component: Tree Command
- * Block-UUID: fcb68692-b004-4cfc-8ce1-43827a12809c
- * Parent-UUID: 1a9d66c9-6df4-459d-8732-d365cc507350
- * Version: 1.5.0
- * Description: Added a guard clause to prevent empty tree output when no database or --no-compact flag is provided. This reinforces the "Intelligence Layer" identity by requiring explicit intent for raw structural views. Updated bridge.Execute calls to include the new exitCode argument.
+ * Block-UUID: 674c1f17-f7e9-42b6-8bbf-f66cae798561
+ * Parent-UUID: fcb68692-b004-4cfc-8ce1-43827a12809c
+ * Version: 1.6.0
+ * Description: Implemented 'prune by default when filtering' behavior. Added --no-prune flag to allow users to see the full heat map. Updated EnrichTree call to pass requested fields for metadata projection. Updated help text for --prune to reflect new defaults.
  * Language: Go
  * Created-at: 2026-02-13T01:24:44.962Z
- * Authors: Gemini并发 Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), Gemini 3 Flash (v1.3.0), Gemini 3 Flash (v1.3.1), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
+ * Authors: Gemini并发 Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), Gemini 3 Flash (v1.3.0), Gemini 3 Flash (v1.3.1), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0)
  */
 
 
@@ -40,6 +40,7 @@ var (
 	treeFocus     []string
 	treeNoCompact bool
 	treeFieldSingular []string
+	treeNoPrune   bool
 )
 
 // treeCmd represents the tree command
@@ -55,7 +56,8 @@ directory. Use --fields to include specific metadata like 'purpose' or 'layer'.
 
 Filtering & Pruning:
   --filter "field=val"      Filter by metadata. Supports 'in' for multiple values (e.g., layer in cli,logic)
-  --prune                   Hide non-matching files to create a condensed context map
+  --prune                   Explicitly hide non-matching files (default when filtering)
+  --no-prune                Show all files in the tree, marking matches (Heat Map mode)
   --focus "path/**"         Restrict the tree to specific paths or globs
   --no-compact              Show filenames for non-matching files in the heat map`,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -146,7 +148,8 @@ Filtering & Pruning:
 				logger.Debug("Failed to fetch metadata for tree", "error", err)
 			} else {
 				// 8. Enrich Tree & Evaluate Filters
-				tree.EnrichTree(rootNode, "", metadataMap, filters)
+				// Pass treeFields to ensure only requested fields are projected into the node metadata
+				tree.EnrichTree(rootNode, "", metadataMap, filters, treeFields)
 			}
 		} else if len(treeFilters) > 0 {
 			return fmt.Errorf("database (--db) is required when using --filter")
@@ -155,23 +158,27 @@ Filtering & Pruning:
 		// 9. Calculate Visibility (Propagate match status up the tree)
 		tree.CalculateVisibility(rootNode)
 
-		// 10. Prune if requested
-		if treePrune {
+		// 10. Determine Pruning Strategy
+		// Default to pruning if filters are active, unless --no-prune is explicitly set
+		shouldPrune := treePrune || (len(treeFilters) > 0 && !treeNoPrune)
+
+		// 11. Prune if requested
+		if shouldPrune {
 			tree.PruneTree(rootNode)
 		}
 
-		// 11. Calculate Stats
+		// 12. Calculate Stats
 		stats := tree.CalculateStats(rootNode)
 
-		// 12. Render Output
+		// 13. Render Output
 		var outputStr string
 		if treeFormat == "json" {
-			outputStr, err = tree.RenderJSON(rootNode, stats, dbName, treeFields, filters, treeFocus, treePrune, cwdOffset)
+			outputStr, err = tree.RenderJSON(rootNode, stats, dbName, treeFields, filters, treeFocus, shouldPrune, cwdOffset)
 			if err != nil {
 				return fmt.Errorf("failed to render JSON: %w", err)
 			}
 		} else if treeFormat == "ai-portable" {
-			outputStr, err = tree.RenderPortableJSON(rootNode, stats, treeFields, treePrune, cwdOffset)
+			outputStr, err = tree.RenderPortableJSON(rootNode, stats, treeFields, shouldPrune, cwdOffset)
 			if err != nil {
 				return fmt.Errorf("failed to render Portable JSON: %w", err)
 			}
@@ -190,7 +197,7 @@ Filtering & Pruning:
 			}
 		}
 
-		// 13. CLI Bridge Integration
+		// 14. CLI Bridge Integration
 		if bridgeCode != "" {
 			cmdStr := filepath.Base(os.Args[0]) + " " + strings.Join(os.Args[1:], " ")
 			
@@ -216,12 +223,13 @@ func init() {
 	treeCmd.Flags().IntVar(&treeIndent, "indent", 4, "Indentation width in spaces")
 	treeCmd.Flags().IntVar(&treeTruncate, "truncate", 60, "Maximum length for metadata values (0 for no truncation)")
 	treeCmd.Flags().StringVar(&treeFormat, "format", "human", "Output format: human, json, or ai-portable")
-	treeCmd.Flags().BoolVar(&treePrune, "prune", false, "Hide files/dirs that don't match the filters to create a condensed map")
+	treeCmd.Flags().BoolVar(&treePrune, "prune", false, "Hide files/dirs that don't match the filters (default when filtering)")
 	
 	// New Filter & Focus Flags
 	treeCmd.Flags().StringArrayVarP(&treeFilters, "filter", "F", []string{}, "Filter by metadata field. Supports 'in' (e.g., 'layer in cli,logic')")
 	treeCmd.Flags().StringArrayVarP(&treeFocus, "focus", "f", []string{}, "Restrict tree to specific paths or globs")
 	treeCmd.Flags().BoolVar(&treeNoCompact, "no-compact", false, "Show filenames for non-matching files in the heat map")
+	treeCmd.Flags().BoolVar(&treeNoPrune, "no-prune", false, "Show all files in the tree, marking matches (Heat Map mode)")
 }
 
 // RegisterTreeCommand registers the tree command with the root command.

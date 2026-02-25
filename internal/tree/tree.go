@@ -1,12 +1,12 @@
 /**
  * Component: Tree Logic
- * Block-UUID: b173275f-24c3-4aa2-b437-cea29e24b901
- * Parent-UUID: 8c8d1c1a-e9b0-45d5-b768-d64894efac9a
- * Version: 1.2.1
- * Description: Enhanced tree logic to support semantic filtering and structural focus. Added 'Matched' and 'Visible' states to Node to enable the "Semantic Heat Map" visualization. Updated rendering to support name-hiding for non-matching files and multi-path focus pruning.
+ * Block-UUID: bee6de68-87d5-4c34-adb6-cfe6ba0416c6
+ * Parent-UUID: b173275f-24c3-4aa2-b437-cea29e24b901
+ * Version: 1.3.0
+ * Description: Implemented metadata projection in EnrichTree to prevent filter-only fields from leaking into the output. Added requestedFields parameter to ensure only user-specified fields are included in node metadata.
  * Language: Go
  * Created-at: 2026-02-12T04:22:17.605Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.2.1)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.2.1), GLM-4.7 (v1.3.0)
  */
 
 
@@ -120,7 +120,9 @@ func BuildTree(files []string, cwdOffset string, focusPatterns []string) *Node {
 }
 
 // EnrichTree populates the tree nodes with metadata and evaluates semantic filters.
-func EnrichTree(node *Node, currentPath string, metadataMap map[string]search.FileMetadata, filters []search.FilterCondition) {
+// It now accepts requestedFields to perform metadata projection, ensuring only
+// user-specified fields are included in the output.
+func EnrichTree(node *Node, currentPath string, metadataMap map[string]search.FileMetadata, filters []search.FilterCondition, requestedFields []string) {
 	fullPath := node.Name
 	if currentPath != "" && currentPath != "." {
 		fullPath = filepath.Join(currentPath, node.Name)
@@ -130,11 +132,26 @@ func EnrichTree(node *Node, currentPath string, metadataMap map[string]search.Fi
 		if meta, exists := metadataMap[fullPath]; exists {
 			node.ChatID = meta.ChatID
 			node.Analyzed = meta.ChatID > 0
-			node.Metadata = meta.Fields
+
+			// Metadata Projection: Only include requested fields
+			if len(requestedFields) > 0 {
+				node.Metadata = make(map[string]interface{})
+				for _, field := range requestedFields {
+					if val, ok := meta.Fields[field]; ok {
+						node.Metadata[field] = val
+					}
+				}
+			} else {
+				// If no fields requested, include all (backward compatibility)
+				node.Metadata = meta.Fields
+			}
 
 			// Evaluate Semantic Filter
 			if len(filters) > 0 {
-				node.Matched = search.CheckFilters(node.Metadata, filters)
+				// Note: We must use the full meta.Fields for filtering, 
+				// not the projected node.Metadata, because filters might 
+				// depend on fields not requested for display (e.g., has_todo).
+				node.Matched = search.CheckFilters(meta.Fields, filters)
 			} else {
 				node.Matched = true // If no filter, everything is a match
 			}
@@ -146,7 +163,7 @@ func EnrichTree(node *Node, currentPath string, metadataMap map[string]search.Fi
 	}
 
 	for _, child := range node.Children {
-		EnrichTree(child, fullPath, metadataMap, filters)
+		EnrichTree(child, fullPath, metadataMap, filters, requestedFields)
 	}
 }
 
