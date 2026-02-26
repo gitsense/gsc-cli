@@ -1,12 +1,12 @@
 /**
  * Component: Contract Manager
- * Block-UUID: dbe9f2c0-9c17-4503-ae69-e763fc795f13
- * Parent-UUID: 20890375-f53e-4473-bc52-8ca83d8e936b
- * Version: 1.0.2
+ * Block-UUID: b2a5d928-1eac-4baf-9818-d0235f41c8e6
+ * Parent-UUID: dbe9f2c0-9c17-4503-ae69-e763fc795f13
+ * Version: 1.0.3
  * Description: Manages the lifecycle of traceability contracts, including creation, listing, cancellation, and renewal. Handles interaction with the handshake system, local JSON storage, and the Chat database.
  * Language: Go
- * Created-at: 2026-02-26T04:19:57.102Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2)
+ * Created-at: 2026-02-26T05:53:17.561Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3)
  */
 
 
@@ -40,6 +40,11 @@ func CreateContract(code string, description string, workdir string) (*ContractM
 	h, err := bridge.LoadHandshake(gscHome, code, bridge.StageExecution)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load handshake: %w", err)
+	}
+
+	// Claim the handshake immediately to prevent double-use
+	if err := h.UpdateStatus("running", nil); err != nil {
+		return nil, fmt.Errorf("failed to claim handshake: %w", err)
 	}
 
 	// 2. Validate Workdir
@@ -92,11 +97,18 @@ func CreateContract(code string, description string, workdir string) (*ContractM
 	if err != nil {
 		// Rollback: Remove the JSON file if DB insertion fails
 		_ = os.Remove(getContractPath(meta.UUID))
+		// Mark handshake as failed if DB insertion fails
+		_ = h.UpdateStatus("error", &bridge.Error{Code: "CONTRACT_FAILED", Message: err.Error()})
 		return nil, fmt.Errorf("failed to insert contract message: %w", err)
 	}
 
 	meta.ContractMessageID = contractMsgID
 	logger.Info("Contract created successfully", "uuid", meta.UUID, "expires_at", meta.ExpiresAt)
+
+	// Mark handshake as successfully consumed
+	if err := h.UpdateStatus("success", nil); err != nil {
+		logger.Warning("Failed to mark handshake as consumed", "error", err)
+	}
 	return meta, nil
 }
 
