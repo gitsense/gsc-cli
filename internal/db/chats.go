@@ -1,12 +1,12 @@
 /**
  * Component: Chat Database Operations
- * Block-UUID: 696b977f-81a2-44b9-8feb-f82a939b0275
- * Parent-UUID: be880f6c-ea9c-4b6f-ac21-ed5a975c4f15
- * Version: 1.7.0
- * Description: Expanded library methods for hierarchical chat management. Updated GetActiveManifests to support repository counts at the Owner level to display the number of manifests per repository.
+ * Block-UUID: fedb9533-9ac0-476c-a7cc-b1d42ea6631e
+ * Parent-UUID: 696b977f-81a2-44b9-8feb-f82a939b0275
+ * Version: 1.8.0
+ * Description: Added support for the Contract feature. Implemented InsertContractWithAnchor for Root Anchor insertion and UpdateContractMessage for status/expiration updates. Added ContractMessageData struct and FormatContractMarkdown helper.
  * Language: Go
  * Created-at: 2026-02-20T04:31:47.873Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0)
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0)
  */
 
 
@@ -20,6 +20,150 @@ import (
 	"github.com/gitsense/gsc-cli/pkg/logger"
 	"github.com/google/uuid"
 )
+
+// ContractMessageData holds the data required to generate a contract message.
+// This struct is defined here to avoid circular dependencies with the manifest package.
+type ContractMessageData struct {
+	Description string
+	Workdir     string
+	ExpiresAt   time.Time
+	UUID        string
+	Status      string // "active", "cancelled", "expired"
+}
+
+// FormatContractMarkdown generates the Markdown content for a contract message.
+func FormatContractMarkdown(data ContractMessageData) string {
+	var sb strings.Builder
+
+	statusIcon := "✅"
+	if data.Status == "cancelled" {
+		statusIcon = "🚫"
+	} else if data.Status == "expired" {
+		statusIcon = "⏰"
+	}
+
+	sb.WriteString(fmt.Sprintf("### 📝 Traceability Contract %s\n\n", strings.Title(data.Status)))
+	sb.WriteString(fmt.Sprintf("**Description:** %s\n", data.Description))
+	sb.WriteString(fmt.Sprintf("**Workdir:** `%s`\n", data.Workdir))
+	sb.WriteString(fmt.Sprintf("**Expires:** `%s`\n", data.ExpiresAt.Format(time.RFC3339)))
+	sb.WriteString("\n")
+	sb.WriteString("---\n")
+	sb.WriteString("**Contract-Metadata**\n")
+	sb.WriteString(fmt.Sprintf("- type: gsc-cli-contract\n"))
+	sb.WriteString(fmt.Sprintf("- uuid: %s\n", data.UUID))
+	sb.WriteString(fmt.Sprintf("- expires_at: %s\n", data.ExpiresAt.Format(time.RFC3339)))
+	sb.WriteString(fmt.Sprintf("- status: %s\n", data.Status))
+
+	return sb.String()
+}
+
+// InsertContractWithAnchor inserts a contract message between the system prompt and the first user message.
+// It performs a transaction to ensure the "Root Anchor" logic is atomic.
+func InsertContractWithAnchor(db *sql.DB, chatID int64, data ContractMessageData) (int64, error) {
+	tx, err := db.Begin()
+	if err != nil {
+		return 0, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// 1. Find the System Message (Level 0)
+	var systemID int64
+	err = tx.QueryRow("SELECT id FROM messages WHERE chat_id = ? AND role = 'system' ORDER BY id ASC LIMIT 1", chatID).Scan(&systemID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to find system message: %w", err)
+	}
+
+	// 2. Find the Original First Message (Child of System)
+	var originalFirstID int64
+	err = tx.QueryRow("SELECT id FROM messages WHERE chat_id = ? AND parent_id = ? ORDER BY id ASC LIMIT 1", chatID, systemID).Scan(&originalFirstID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, fmt.Errorf("no first message found to re-parent")
+		}
+		return 0, fmt.Errorf("failed to find original first message: %w", err)
+	}
+
+	// 3. Insert the Contract Message
+	markdown := FormatContractMarkdown(data)
+	now := time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
+
+	insertQuery := `
+		INSERT INTO messages (
+			type, deleted, visibility, chat_id, parent_id, level, 
+			model, real_model, temperature, role, message, created_at, updated_at
+		) VALUES (
+			?, ?, ?, ?, ?, ?, 
+			(SELECT main_model FROM chats WHERE id = ?), 
+			?, ?, ?, ?, ?, ?
+		)`
+
+	result, err := tx.Exec(
+		insertQuery,
+		"gsc-cli-contract", // Type
+		0,                  // Deleted
+		"human-public",     // Visibility
+		chatID,
+		systemID,           // Parent ID (System)
+		1,                  // Level (Same as original first message)
+		chatID,             // Subquery for model
+		sql.NullString{String: "GitSense Notes", Valid: true}, // Real Model
+		sql.NullFloat64{Float64: 0, Valid: true},             // Temperature
+		"assistant",        // Role
+		sql.NullString{String: markdown, Valid: true},        // Message
+		now,                // Created At
+		now,                // Updated At
+	)
+
+	if err != nil {
+		return 0, fmt.Errorf("failed to insert contract message: %w", err)
+	}
+
+	contractID, err := result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get contract message ID: %w", err)
+	}
+
+	// 4. Re-parent the Original First Message to the Contract
+	_, err = tx.Exec("UPDATE messages SET parent_id = ?, updated_at = ? WHERE id = ?", contractID, now, originalFirstID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to re-parent original first message: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	logger.Debug("Contract message inserted with anchor", "contract_id", contractID, "original_first_id", originalFirstID)
+	return contractID, nil
+}
+
+// UpdateContractMessage updates the content of an existing contract message.
+// This is used for cancellation and renewal operations.
+func UpdateContractMessage(db *sql.DB, msgID int64, data ContractMessageData) error {
+	// 1. Verify the message exists
+	var exists int
+	err := db.QueryRow("SELECT 1 FROM messages WHERE id = ?", msgID).Scan(&exists)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("contract message with ID %d not found", msgID)
+		}
+		return fmt.Errorf("failed to verify contract message: %w", err)
+	}
+
+	// 2. Generate new content
+	markdown := FormatContractMarkdown(data)
+	now := time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
+
+	// 3. Update the message
+	query := `UPDATE messages SET message = ?, updated_at = ? WHERE id = ?`
+	_, err = db.Exec(query, sql.NullString{String: markdown, Valid: true}, now, msgID)
+	if err != nil {
+		return fmt.Errorf("failed to update contract message: %w", err)
+	}
+
+	logger.Debug("Contract message updated", "msg_id", msgID, "status", data.Status)
+	return nil
+}
 
 // GetMessage retrieves a message by its ID.
 func GetMessage(db *sql.DB, id int64) (*Message, error) {

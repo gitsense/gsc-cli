@@ -1,12 +1,12 @@
-/**
+/*
  * Component: Settings
- * Block-UUID: edf2ece8-2f85-45b6-b1e0-545a8adc37c7
- * Parent-UUID: 38c1b204-244a-4f26-b145-d146d08939b6
- * Version: 1.5.0
- * Description: Centralized environment resolution for GSC_HOME and path construction for the GitSense Chat application storage and database. Added ExecOutputsRelPath and GetExecOutputsDir to support the 'exec' command's persistence layer.
+ * Block-UUID: 5f19ef23-e1c7-455f-aeec-046dbbcbcba8
+ * Parent-UUID: edf2ece8-2f85-45b6-b1e0-545a8adc37c7
+ * Version: 1.6.0
+ * Description: Added constants for the Contract and Provenance systems, including relative paths and default TTL.
  * Language: Go
  * Created-at: 2026-02-19T17:47:24.406Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0), Gemini 3 Flash (v1.4.0), Gemini 3 Flash (v1.5.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0), Gemini 3 Flash (v1.4.0), Gemini 3 Flash (v1.5.0), Gemini 3 Flash (v1.6.0)
  */
 
 
@@ -63,6 +63,18 @@ const ChatDatabaseRelPath = "data/chats.sqlite3"
 
 // ExecOutputsRelPath is the relative path within GSC_HOME for exec command outputs
 const ExecOutputsRelPath = "exec/outputs"
+
+// ContractsRelPath is the relative path within GSC_HOME for contract metadata
+const ContractsRelPath = "contracts"
+
+// ProvenanceFileName is the name of the project-local audit log
+const ProvenanceFileName = "provenance.log"
+
+// ContractHandshakeConsumer is the consumer name for contract-related handshakes
+const ContractHandshakeConsumer = "gsc-contract"
+
+// DefaultContractTTL is the default time-to-live for a contract (24 hours)
+const DefaultContractTTL = 24
 
 // GetGSCHome resolves the GSC_HOME directory. If required is true, it returns an
 // error if the environment variable is not set. If required is false, it falls

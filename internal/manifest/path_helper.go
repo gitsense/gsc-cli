@@ -1,12 +1,12 @@
-/**
+/*
  * Component: Manifest Path Helper
- * Block-UUID: b170a058-08e3-41a6-afc2-c90c4032975a
- * Parent-UUID: 497c60a5-854b-483c-b619-2aa807e762ed
- * Version: 1.5.0
- * Description: Helper functions to resolve file paths for databases and manifests. Added ResolveLockPath to support file-based locking for concurrent import prevention.
+ * Block-UUID: 28743fe9-d0c3-48d6-a285-de4a3b7dbc17
+ * Parent-UUID: b170a058-08e3-41a6-afc2-c90c4032975a
+ * Version: 1.6.0
+ * Description: Restored all original path resolution functions and added new helpers for Global (~/.gitsense) and Local (.gitsense) path resolution to support the Contract and Provenance systems.
  * Language: Go
  * Created-at: 2026-02-14T05:55:16.869Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.5.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.5.0), Gemini 3 Flash (v1.6.0)
  */
 
 
@@ -21,6 +21,34 @@ import (
 	"github.com/gitsense/gsc-cli/pkg/logger"
 	"github.com/gitsense/gsc-cli/pkg/settings"
 )
+
+// ResolveGlobalDir returns the absolute path to the global .gitsense directory.
+// It respects the GSC_HOME environment variable if set.
+func ResolveGlobalDir() (string, error) {
+	return settings.GetGSCHome(false)
+}
+
+// ResolveGlobalContractDir returns the path to the global contracts store in GSC_HOME.
+func ResolveGlobalContractDir() (string, error) {
+	gscHome, err := settings.GetGSCHome(false)
+	if err != nil {
+		return "", err
+	}
+	contractDir := filepath.Join(gscHome, settings.ContractsRelPath)
+	if err := os.MkdirAll(contractDir, 0700); err != nil {
+		return "", fmt.Errorf("failed to create global contracts directory: %w", err)
+	}
+	return contractDir, nil
+}
+
+// ResolveLocalProvenanceLog returns the path to the project-local provenance log.
+func ResolveLocalProvenanceLog() (string, error) {
+	root, err := git.FindProjectRoot()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(root, settings.GitSenseDir, settings.ProvenanceFileName), nil
+}
 
 // ResolveDBPath constructs the absolute path to a database file within the .gitsense directory.
 // It finds the project root and appends the database name with a .db extension.

@@ -1,12 +1,12 @@
 /**
  * Component: Ripgrep Search Engine
- * Block-UUID: fdc96a4b-5a28-4abc-a1b9-cc9d294f2f96
- * Parent-UUID: 86856e68-1f1d-4ef8-830d-01143457abea
- * Version: 2.3.1
- * Description: Implements the SearchEngine interface using ripgrep. Updated to return SearchResult with timing and version info. Fixed line number parsing. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted routine Info logs to Debug level to enable quiet-by-default behavior.
+ * Block-UUID: f07fa5a4-de49-43df-8d17-0f7f515fb0b1
+ * Parent-UUID: fdc96a4b-5a28-4abc-a1b9-cc9d294f2f96
+ * Version: 2.4.0
+ * Description: Added FindBlockByUUID and EnsureUUIDUniqueness methods to support the Contract feature. Implemented formatBlockUUIDPattern helper to enforce strict header formatting (leading space, single trailing space).
  * Language: Go
  * Created-at: 2026-02-06T02:15:47.902Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), Gemini 3 Flash (v2.3.0), Gemini 3 Flash (v2.3.1)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), Gemini 3 Flash (v2.3.0), Gemini 3 Flash (v2.3.1), GLM-4.7 (v2.4.0)
  */
 
 
@@ -92,6 +92,120 @@ func (e *RipgrepEngine) Search(ctx context.Context, options SearchOptions) (Sear
 		ToolVersion: version,
 		DurationMs:  duration,
 	}, nil
+}
+
+// FindBlockByUUID searches the workdir for a specific Block-UUID.
+// It returns the absolute file path and the line number of the match.
+ // It enforces strict formatting: 5920cf5a-39a5-4f18-b758-57b66c5c3746
+func (e *RipgrepEngine) FindBlockByUUID(ctx context.Context, workdir string, uuid string) (string, int, error) {
+	pattern := formatBlockUUIDPattern(uuid)
+	
+	args := []string{"--json", "-i", pattern}
+	cmd := exec.CommandContext(ctx, "rg", args...)
+	cmd.Dir = workdir
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return "", 0, fmt.Errorf("failed to create stdout pipe: %w", err)
+	}
+
+	if err := cmd.Start(); err != nil {
+		return "", 0, fmt.Errorf("failed to start ripgrep: %w", err)
+	}
+
+	var matches []struct {
+		Path string `json:"path"`
+		Line int    `json:"line_number"`
+	}
+
+	scanner := bufio.NewScanner(stdout)
+	for scanner.Scan() {
+		var message map[string]interface{}
+		if err := json.Unmarshal(scanner.Bytes(), &message); err != nil {
+			continue
+		}
+
+		if msgType, ok := message["type"].(string); ok && msgType == "match" {
+			if data, ok := message["data"].(map[string]interface{}); ok {
+				if path, ok := data["path"].(map[string]interface{}); ok {
+					if text, ok := path["text"].(string); ok {
+						if num, ok := data["line_number"].(float64); ok {
+							matches = append(matches, struct {
+								Path string
+								Line int
+							}{text, int(num)})
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if err := cmd.Wait(); err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
+			// No matches found
+			return "", 0, fmt.Errorf("Block-UUID %s not found in workdir", uuid)
+		}
+		return "", 0, fmt.Errorf("ripgrep execution failed: %w", err)
+	}
+
+	if len(matches) == 0 {
+		return "", 0, fmt.Errorf("Block-UUID %s not found in workdir", uuid)
+	}
+
+	if len(matches) > 1 {
+		return "", 0, fmt.Errorf("data integrity violation: Block-UUID %s found in %d locations", uuid, len(matches))
+	}
+
+	return matches[0].Path, matches[0].Line, nil
+}
+
+// EnsureUUIDUniqueness checks if a Block-UUID already exists in the workdir.
+// It returns an error if the UUID is found, ensuring global uniqueness.
+func (e *RipgrepEngine) EnsureUUIDUniqueness(ctx context.Context, workdir string, uuid string) error {
+	pattern := formatBlockUUIDPattern(uuid)
+	
+	args := []string{"--json", "-i", pattern}
+	cmd := exec.CommandContext(ctx, "rg", args...)
+	cmd.Dir = workdir
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("failed to create stdout pipe: %w", err)
+	}
+
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start ripgrep: %w", err)
+	}
+
+	scanner := bufio.NewScanner(stdout)
+	for scanner.Scan() {
+		var message map[string]interface{}
+		if err := json.Unmarshal(scanner.Bytes(), &message); err != nil {
+			continue
+		}
+
+		if msgType, ok := message["type"].(string); ok && msgType == "match" {
+			// Found at least one match
+			_ = cmd.Wait() // Clean up process
+			return fmt.Errorf("Block-UUID %s already exists in workdir", uuid)
+		}
+	}
+
+	if err := cmd.Wait(); err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
+			// No matches found, which is success
+			return nil
+		}
+		return fmt.Errorf("ripgrep execution failed: %w", err)
+	}
+
+	return nil
+}
+
+// formatBlockUUIDPattern constructs the strict search pattern for a Block-UUID.
+func formatBlockUUIDPattern(uuid string) string {
+ 	return fmt.Sprintf(" Block-UUID: %s", uuid)
 }
 
 // getRipgrepVersion executes 'rg --version' and returns the version string.
