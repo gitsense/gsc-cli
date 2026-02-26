@@ -1,12 +1,12 @@
 /*
  * Component: Contract CLI Commands
- * Block-UUID: d03dcaac-b5c2-4ce0-841a-512371a27dd8
- * Parent-UUID: N/A
- * Version: 1.1.0
- * Description: Updated imports to use the new internal/contract package instead of internal/manifest to resolve circular dependency.
+ * Block-UUID: ec36e852-512f-4568-8aec-ad6f75f24b06
+ * Parent-UUID: d03dcaac-b5c2-4ce0-841a-512371a27dd8
+ * Version: 1.2.0
+ * Description: Added 'status' command to display the active contract for the current working directory, providing a quick way to check contract validity and details.
  * Language: Go
  * Created-at: 2026-02-26T04:50:00.000Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -72,6 +72,46 @@ var createContractCmd = &cobra.Command{
 		fmt.Printf("Contract created successfully.\n")
 		fmt.Printf("UUID: %s\n", meta.UUID)
 		fmt.Printf("Expires: %s\n", meta.ExpiresAt.Format(time.RFC3339))
+		return nil
+	},
+}
+
+// statusContractCmd handles 'gsc contract status'
+var statusContractCmd = &cobra.Command{
+	Use:   "status",
+	Short: "Show the status of the contract for the current repository",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		// Resolve workdir to current directory
+		workdir, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("failed to get current directory: %w", err)
+		}
+
+		// Call manager
+		meta, err := contract.GetContractByWorkdir(workdir)
+		if err != nil {
+			// Handle "no contract" gracefully (exit 0)
+			if strings.Contains(err.Error(), "no active contract") {
+				fmt.Println("No active contract found for this repository.")
+				fmt.Println("To create a new contract, run:")
+				fmt.Println("  gsc contract create --code <6-digit-code> --description \"Purpose of contract\"")
+				return nil
+			}
+			// Other errors (like multiple contracts) should fail
+			return err
+		}
+
+		// Map to Display Format
+		display := output.ContractDisplay{
+			UUID:        meta.UUID,
+			Description: meta.Description,
+			Workdir:     meta.Workdir,
+			Status:      string(meta.Status),
+			ExpiresAt:   meta.ExpiresAt.Format(time.RFC3339),
+		}
+
+		// Output
+		fmt.Print(output.FormatContractStatus(display))
 		return nil
 	},
 }
@@ -230,6 +270,7 @@ func init() {
 
 	// Add subcommands to base contract command
 	contractCmd.AddCommand(createContractCmd)
+	contractCmd.AddCommand(statusContractCmd)
 	contractCmd.AddCommand(listContractCmd)
 	contractCmd.AddCommand(cancelContractCmd)
 	contractCmd.AddCommand(renewContractCmd)

@@ -1,12 +1,12 @@
 /**
  * Component: Output Formatter
- * Block-UUID: 89162c3e-f1fd-4efb-aabc-75006bf579fb
- * Parent-UUID: fd3cc890-0e80-499d-a5a1-6f88a1f02824
- * Version: 1.11.0
- * Description: Added FormatContractList and FormatProvenanceList to support the traceability contract system. Defined ContractDisplay and ProvenanceDisplay structs to avoid circular dependencies with the manifest package.
+ * Block-UUID: 26c49c82-656b-48dd-aaba-21f83acb6151
+ * Parent-UUID: 89162c3e-f1fd-4efb-aabc-75006bf579fb
+ * Version: 1.12.0
+ * Description: Added FormatContractStatus to support the 'gsc contract status' command, providing a detailed human-readable view of a single contract's state.
  * Language: Go
  * Created-at: 2026-02-26T04:58:22.818Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), Gemini 3 Flash (v1.7.0), Gemini 3 Flash (v1.8.0), GLM-4.7 (v1.9.0), Gemini 3 Flash (v1.10.0), Gemini 3 Flash (v1.11.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), Gemini 3 Flash (v1.7.0), Gemini 3 Flash (v1.8.0), GLM-4.7 (v1.9.0), Gemini 3 Flash (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0)
  */
 
 
@@ -280,4 +280,18 @@ func FormatProvenanceList(entries []ProvenanceDisplay) string {
 	}
 
 	return FormatTable(headers, rows)
+}
+
+// FormatContractStatus formats a single contract for the 'status' command.
+// It provides a detailed, human-readable view of the contract's state.
+func FormatContractStatus(c ContractDisplay) string {
+	var sb strings.Builder
+
+	sb.WriteString(fmt.Sprintf("Contract Status for: %s\n\n", c.Workdir))
+	sb.WriteString(fmt.Sprintf("  UUID:         %s\n", c.UUID))
+	sb.WriteString(fmt.Sprintf("  Description:  %s\n", c.Description))
+	sb.WriteString(fmt.Sprintf("  Status:       %s\n", c.Status))
+	sb.WriteString(fmt.Sprintf("  Expires At:   %s\n", c.ExpiresAt))
+
+	return sb.String()
 }

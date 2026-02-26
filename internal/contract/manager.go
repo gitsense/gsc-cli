@@ -1,12 +1,12 @@
 /**
  * Component: Contract Manager
- * Block-UUID: b2a5d928-1eac-4baf-9818-d0235f41c8e6
- * Parent-UUID: dbe9f2c0-9c17-4503-ae69-e763fc795f13
- * Version: 1.0.3
- * Description: Manages the lifecycle of traceability contracts, including creation, listing, cancellation, and renewal. Handles interaction with the handshake system, local JSON storage, and the Chat database.
+ * Block-UUID: d188da85-f7eb-4503-afcc-86dee9d5e8c1
+ * Parent-UUID: b2a5d928-1eac-4baf-9818-d0235f41c8e6
+ * Version: 1.0.4
+ * Description: Added GetContractByWorkdir to support the 'status' command. This function retrieves the active contract for a specific working directory, handling edge cases for zero or multiple matches.
  * Language: Go
  * Created-at: 2026-02-26T05:53:17.561Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4)
  */
 
 
@@ -152,6 +152,38 @@ func ListContracts() ([]ContractMetadata, error) {
 func GetContract(uuid string) (*ContractMetadata, error) {
 	path := getContractPath(uuid)
 	return loadContractMetadata(path)
+}
+
+// GetContractByWorkdir retrieves the active contract for a specific working directory.
+// It returns an error if no active contract is found or if multiple active contracts exist for the same directory.
+func GetContractByWorkdir(workdir string) (*ContractMetadata, error) {
+	// Resolve to absolute path to ensure consistency
+	absWorkdir, err := filepath.Abs(workdir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve absolute path: %w", err)
+	}
+
+	contracts, err := ListContracts()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list contracts: %w", err)
+	}
+
+	var matches []ContractMetadata
+	for _, c := range contracts {
+		if c.Status == ContractActive && c.Workdir == absWorkdir {
+			matches = append(matches, c)
+		}
+	}
+
+	if len(matches) == 0 {
+		return nil, fmt.Errorf("no active contract found for directory: %s", absWorkdir)
+	}
+
+	if len(matches) > 1 {
+		return nil, fmt.Errorf("multiple active contracts found for directory: %s. Please specify a UUID", absWorkdir)
+	}
+
+	return &matches[0], nil
 }
 
 // CancelContract terminates a contract immediately.
