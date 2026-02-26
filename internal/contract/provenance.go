@@ -1,16 +1,16 @@
 /**
  * Component: Provenance Manager
- * Block-UUID: 8a7b9c1d-2e3f-4a5b-8c9d-0e1f2a3b4c5d
+ * Block-UUID: 307513b9-a317-4078-9628-7d094fda25d4
  * Parent-UUID: cb9d2a5f-1200-45e4-b3eb-52e40894ada4
- * Version: 1.0.1
+ * Version: 1.0.2
  * Description: Handles file operations (update-file, new-file) and provenance logging. Enforces traceability rules like UUID uniqueness and parent-child validation.
  * Language: Go
  * Created-at: 2026-02-26T04:22:53.564Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2)
  */
 
 
-package manifest
+package contract
 
 import (
 	"context"
@@ -24,6 +24,7 @@ import (
 	"github.com/gitsense/gsc-cli/internal/search"
 	"github.com/gitsense/gsc-cli/internal/traceability"
 	"github.com/gitsense/gsc-cli/pkg/logger"
+	"github.com/gitsense/gsc-cli/pkg/settings"
 )
 
 // Contract-specific exit codes
@@ -175,7 +176,7 @@ func NewFile(contractUUID string, targetRelativePath string, sourceFile string) 
 	}
 
 	// Calculate relative path for provenance log
-	relPath, err := filepath.Rel(contract.Workdir, absTargetPath)
+	relPath, err = filepath.Rel(contract.Workdir, absTargetPath)
 	if err != nil {
 		return fmt.Errorf("failed to calculate relative path: %w", err)
 	}

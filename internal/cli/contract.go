@@ -1,12 +1,12 @@
 /*
  * Component: Contract CLI Commands
- * Block-UUID: 68390be0-8fd0-4624-bddd-cb16fffeb047
+ * Block-UUID: d03dcaac-b5c2-4ce0-841a-512371a27dd8
  * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: Defines the CLI command structure for managing traceability contracts, including creation, listing, cancellation, renewal, and file updates/creation.
+ * Version: 1.1.0
+ * Description: Updated imports to use the new internal/contract package instead of internal/manifest to resolve circular dependency.
  * Language: Go
  * Created-at: 2026-02-26T04:50:00.000Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0)
  */
 
 
@@ -21,10 +21,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/gitsense/gsc-cli/internal/git"
-	"github.com/gitsense/gsc-cli/internal/manifest"
+	"github.com/gitsense/gsc-cli/internal/contract"
 	"github.com/gitsense/gsc-cli/internal/output"
-	"github.com/gitsense/gsc-cli/pkg/logger"
 )
 
 var (
@@ -66,7 +64,7 @@ var createContractCmd = &cobra.Command{
 		}
 
 		// Call manager
-		meta, err := manifest.CreateContract(contractCode, contractDescription, workdir)
+		meta, err := contract.CreateContract(contractCode, contractDescription, workdir)
 		if err != nil {
 			return err
 		}
@@ -83,7 +81,7 @@ var listContractCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all traceability contracts",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		contracts, err := manifest.ListContracts()
+		contracts, err := contract.ListContracts()
 		if err != nil {
 			return err
 		}
@@ -94,11 +92,23 @@ var listContractCmd = &cobra.Command{
 		// Sort
 		sortContracts(filtered, contractSort, contractOrder)
 
+		// Map to Display Format
+		displayContracts := make([]output.ContractDisplay, len(filtered))
+		for i, c := range filtered {
+			displayContracts[i] = output.ContractDisplay{
+				UUID:        c.UUID,
+				Description: c.Description,
+				Workdir:     c.Workdir,
+				Status:      string(c.Status),
+				ExpiresAt:   c.ExpiresAt.Format(time.RFC3339),
+			}
+		}
+
 		// Output
 		if contractFormat == "json" {
-			output.FormatJSON(filtered)
+			output.FormatJSON(displayContracts)
 		} else {
-			fmt.Print(output.FormatContractList(filtered))
+			fmt.Print(output.FormatContractList(displayContracts))
 		}
 		return nil
 	},
@@ -124,7 +134,7 @@ var cancelContractCmd = &cobra.Command{
 			uuid = foundUUID
 		}
 
-		return manifest.CancelContract(uuid)
+		return contract.CancelContract(uuid)
 	},
 }
 
@@ -148,7 +158,7 @@ var renewContractCmd = &cobra.Command{
 			uuid = foundUUID
 		}
 
-		return manifest.RenewContract(uuid, contractRenewHours)
+		return contract.RenewContract(uuid, contractRenewHours)
 	},
 }
 
@@ -157,10 +167,10 @@ var updateFileCmd = &cobra.Command{
 	Use:   "update-file",
 	Short: "Update an existing traceable file using a contract",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		err := manifest.UpdateFile(contractUUID, contractFile)
+		err := contract.UpdateFile(contractUUID, contractFile)
 		if err != nil {
 			// Handle ContractError for specific exit codes
-			if cErr, ok := err.(*manifest.ContractError); ok {
+			if cErr, ok := err.(*contract.ContractError); ok {
 				return &cliError{code: cErr.Code, message: cErr.Message}
 			}
 			return err
@@ -177,10 +187,10 @@ var newFileCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		targetPath := args[0]
-		err := manifest.NewFile(contractUUID, targetPath, contractFile)
+		err := contract.NewFile(contractUUID, targetPath, contractFile)
 		if err != nil {
 			// Handle ContractError for specific exit codes
-			if cErr, ok := err.(*manifest.ContractError); ok {
+			if cErr, ok := err.(*contract.ContractError); ok {
 				return &cliError{code: cErr.Code, message: cErr.Message}
 			}
 			return err
@@ -233,13 +243,13 @@ func RegisterContractCommand(root *cobra.Command) {
 }
 
 // Helper: filterContracts filters the list based on the status string
-func filterContracts(contracts []manifest.ContractMetadata, statusStr string) []manifest.ContractMetadata {
+func filterContracts(contracts []contract.ContractMetadata, statusStr string) []contract.ContractMetadata {
 	if statusStr == "" || statusStr == "all" {
 		return contracts
 	}
 
 	parts := strings.Split(statusStr, ",")
-	var filtered []manifest.ContractMetadata
+	var filtered []contract.ContractMetadata
 
 	for _, c := range contracts {
 		for _, part := range parts {
@@ -257,7 +267,7 @@ func filterContracts(contracts []manifest.ContractMetadata, statusStr string) []
 }
 
 // Helper: sortContracts sorts the list based on field and order
-func sortContracts(contracts []manifest.ContractMetadata, field, order string) {
+func sortContracts(contracts []contract.ContractMetadata, field, order string) {
 	less := func(i, j int) bool {
 		switch field {
 		case "created":
@@ -293,14 +303,14 @@ func findContractUUIDByWorkdir() (string, error) {
 		return "", fmt.Errorf("failed to resolve absolute path: %w", err)
 	}
 
-	contracts, err := manifest.ListContracts()
+	contracts, err := contract.ListContracts()
 	if err != nil {
 		return "", err
 	}
 
 	var matches []string
 	for _, c := range contracts {
-		if c.Status == manifest.ContractActive && c.Workdir == absCwd {
+		if c.Status == contract.ContractActive && c.Workdir == absCwd {
 			matches = append(matches, c.UUID)
 		}
 	}

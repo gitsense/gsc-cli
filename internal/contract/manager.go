@@ -1,16 +1,16 @@
 /**
  * Component: Contract Manager
- * Block-UUID: abf91b84-4372-47c6-b99e-644af84a6827
+ * Block-UUID: dbe9f2c0-9c17-4503-ae69-e763fc795f13
  * Parent-UUID: 20890375-f53e-4473-bc52-8ca83d8e936b
- * Version: 1.0.1
+ * Version: 1.0.2
  * Description: Manages the lifecycle of traceability contracts, including creation, listing, cancellation, and renewal. Handles interaction with the handshake system, local JSON storage, and the Chat database.
  * Language: Go
  * Created-at: 2026-02-26T04:19:57.102Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2)
  */
 
 
-package manifest
+package contract
 
 import (
 	"encoding/json"
@@ -22,6 +22,7 @@ import (
 	"github.com/gitsense/gsc-cli/internal/git"
 	"github.com/gitsense/gsc-cli/internal/bridge"
 	"github.com/gitsense/gsc-cli/internal/db"
+	"github.com/gitsense/gsc-cli/internal/manifest"
 	"github.com/gitsense/gsc-cli/pkg/logger"
 	"github.com/gitsense/gsc-cli/pkg/settings"
 	"github.com/google/uuid"
@@ -102,7 +103,7 @@ func CreateContract(code string, description string, workdir string) (*ContractM
 // ListContracts retrieves all contracts from the global storage.
 // It performs a lazy expiration check, updating the status in memory if a contract has expired.
 func ListContracts() ([]ContractMetadata, error) {
-	contractDir, err := ResolveGlobalContractDir()
+	contractDir, err := manifest.ResolveGlobalContractDir()
 	if err != nil {
 		return nil, err
 	}
@@ -249,7 +250,7 @@ func RenewContract(uuid string, hours int) error {
 
 // saveContractMetadata performs an atomic write of the contract metadata to disk.
 func saveContractMetadata(meta *ContractMetadata) error {
-	contractDir, err := ResolveGlobalContractDir()
+	contractDir, err := manifest.ResolveGlobalContractDir()
 	if err != nil {
 		return err
 	}
@@ -295,4 +296,3 @@ func getContractPath(uuid string) string {
 	gscHome, _ := settings.GetGSCHome(false)
 	return filepath.Join(gscHome, settings.ContractsRelPath, uuid+".json")
 }
-

@@ -1,12 +1,12 @@
 /**
  * Component: Git Discovery
- * Block-UUID: d564e339-ef25-4f2d-894f-611175df95ad
- * Parent-UUID: d6a7296e-f17a-44fa-9aee-5b796e2f64a5
- * Version: 1.7.0
+ * Block-UUID: 8fef65ab-de31-404f-b307-bd4c41fdf983
+ * Parent-UUID: d564e339-ef25-4f2d-894f-611175df95ad
+ * Version: 1.8.0
  * Description: Provides functionality to discover the project root by locating the .git directory. Added GetTrackedFiles to execute 'git ls-files' for scope validation and coverage analysis.
  * Language: Go
- * Created-at: 2026-02-06T04:05:10.555Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), Claude Haiku 4.5 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), Gemini 3 Flash (v1.7.0)
+ * Created-at: 2026-02-26T05:26:29.971Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), Claude Haiku 4.5 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), Gemini 3 Flash (v1.7.0), Gemini 3 Flash (v1.8.0)
  */
 
 
@@ -77,6 +77,32 @@ func FindGitRoot() (string, error) {
 	}
 
 	path := cwd
+	for {
+		// Check if .git exists in the current directory
+		gitPath := filepath.Join(path, ".git")
+		if _, err := os.Stat(gitPath); err == nil {
+			// Found it
+			return path, nil
+		}
+
+		// Move to parent directory
+		parent := filepath.Dir(path)
+		if parent == path {
+			// Reached the root of the filesystem without finding .git
+			return "", os.ErrNotExist
+		}
+		path = parent
+	}
+}
+
+// FindGitRootFrom starts at the given path and walks up to find the Git root.
+// It returns the absolute path to the git repository root or an error if not found.
+func FindGitRootFrom(startPath string) (string, error) {
+	path, err := filepath.Abs(startPath)
+	if err != nil {
+		return "", err
+	}
+
 	for {
 		// Check if .git exists in the current directory
 		gitPath := filepath.Join(path, ".git")

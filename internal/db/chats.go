@@ -1,12 +1,12 @@
 /**
  * Component: Chat Database Operations
- * Block-UUID: fedb9533-9ac0-476c-a7cc-b1d42ea6631e
- * Parent-UUID: 696b977f-81a2-44b9-8feb-f82a939b0275
- * Version: 1.8.0
+ * Block-UUID: 30108f7a-57ae-423c-a805-13277d39b11a
+ * Parent-UUID: fedb9533-9ac0-476c-a7cc-b1d42ea6631e
+ * Version: 1.8.1
  * Description: Added support for the Contract feature. Implemented InsertContractWithAnchor for Root Anchor insertion and UpdateContractMessage for status/expiration updates. Added ContractMessageData struct and FormatContractMarkdown helper.
  * Language: Go
- * Created-at: 2026-02-20T04:31:47.873Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0)
+ * Created-at: 2026-02-26T05:18:35.700Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.8.1)
  */
 
 
@@ -15,6 +15,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gitsense/gsc-cli/pkg/logger"
@@ -34,13 +35,6 @@ type ContractMessageData struct {
 // FormatContractMarkdown generates the Markdown content for a contract message.
 func FormatContractMarkdown(data ContractMessageData) string {
 	var sb strings.Builder
-
-	statusIcon := "✅"
-	if data.Status == "cancelled" {
-		statusIcon = "🚫"
-	} else if data.Status == "expired" {
-		statusIcon = "⏰"
-	}
 
 	sb.WriteString(fmt.Sprintf("### 📝 Traceability Contract %s\n\n", strings.Title(data.Status)))
 	sb.WriteString(fmt.Sprintf("**Description:** %s\n", data.Description))

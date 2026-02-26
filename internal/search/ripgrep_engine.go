@@ -1,12 +1,12 @@
 /**
  * Component: Ripgrep Search Engine
- * Block-UUID: f07fa5a4-de49-43df-8d17-0f7f515fb0b1
- * Parent-UUID: fdc96a4b-5a28-4abc-a1b9-cc9d294f2f96
- * Version: 2.4.0
+ * Block-UUID: df7edd10-46ac-4a38-81a6-c75f5cf6a8c0
+ * Parent-UUID: f07fa5a4-de49-43df-8d17-0f7f515fb0b1
+ * Version: 2.4.1
  * Description: Added FindBlockByUUID and EnsureUUIDUniqueness methods to support the Contract feature. Implemented formatBlockUUIDPattern helper to enforce strict header formatting (leading space, single trailing space).
  * Language: Go
- * Created-at: 2026-02-06T02:15:47.902Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), Gemini 3 Flash (v2.3.0), Gemini 3 Flash (v2.3.1), GLM-4.7 (v2.4.0)
+ * Created-at: 2026-02-26T05:22:23.250Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), Gemini 3 Flash (v2.3.0), Gemini 3 Flash (v2.3.1), GLM-4.7 (v2.4.0), Gemini 3 Flash (v2.4.1)
  */
 
 
@@ -114,8 +114,8 @@ func (e *RipgrepEngine) FindBlockByUUID(ctx context.Context, workdir string, uui
 	}
 
 	var matches []struct {
-		Path string `json:"path"`
-		Line int    `json:"line_number"`
+		Path string
+		Line int
 	}
 
 	scanner := bufio.NewScanner(stdout)

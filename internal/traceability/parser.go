@@ -1,12 +1,12 @@
 /*
  * Component: Traceability Header Parser
- * Block-UUID: 5b4112f0-926d-4baf-870f-b056f5c667fd
+ * Block-UUID: f44c952b-f3bf-4884-a104-9f74de157077
  * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: A utility to parse the metadata header from traceable code blocks. It handles various comment styles and extracts fields into a CodeMetadata struct.
+ * Version: 1.1.0
+ * Description: Updated to return traceability.CodeMetadata instead of manifest.CodeMetadata to resolve circular dependency.
  * Language: Go
  * Created-at: 2026-02-26T01:18:45.667Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0)
  */
 
 
@@ -17,15 +17,13 @@ import (
 	"fmt"
 	"strings"
 	"time"
-
-	"github.com/gitsense/gsc-cli/internal/manifest"
 )
 
 // ParseHeader extracts the metadata header and the remaining code from a string.
 // It expects the header to be at the very beginning of the content.
-func ParseHeader(content string) (*manifest.CodeMetadata, string, error) {
+func ParseHeader(content string) (*CodeMetadata, string, error) {
 	scanner := bufio.NewScanner(strings.NewReader(content))
-	metadata := &manifest.CodeMetadata{}
+	metadata := &CodeMetadata{}
 	
 	var headerLines []string
 	var codeLines []string
