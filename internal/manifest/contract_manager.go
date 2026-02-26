@@ -1,0 +1,308 @@
+/*
+ * Component: Contract Manager
+ * Block-UUID: 20890375-f53e-4473-bc52-8ca83d8e936b
+ * Parent-UUID: N/A
+ * Version: 1.0.0
+ * Description: Manages the lifecycle of traceability contracts, including creation, listing, cancellation, and renewal. Handles interaction with the handshake system, local JSON storage, and the Chat database.
+ * Language: Go
+ * Created-at: 2026-02-26T04:10:00.000Z
+ * Authors: Gemini 3 Flash (v1.0.0)
+ */
+
+
+package manifest
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"time"
+
+	"github.com/gitsense/gsc-cli/internal/bridge"
+	"github.com/gitsense/gsc-cli/internal/db"
+	"github.com/gitsense/gsc-cli/pkg/logger"
+	"github.com/gitsense/gsc-cli/pkg/settings"
+	"github.com/google/uuid"
+)
+
+// CreateContract initializes a new traceability contract using a valid handshake code.
+// It validates the workdir, persists the contract metadata, and inserts the contract message into the chat.
+func CreateContract(code string, description string, workdir string) (*ContractMetadata, error) {
+	// 1. Resolve GSC_HOME and Load Handshake
+	gscHome, err := settings.GetGSCHome(false)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve GSC_HOME: %w", err)
+	}
+
+	h, err := bridge.LoadHandshake(gscHome, code, bridge.StageExecution)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load handshake: %w", err)
+	}
+
+	// 2. Validate Workdir
+	absWorkdir, err := filepath.Abs(workdir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve absolute path for workdir: %w", err)
+	}
+
+	if err := validateGitRepo(absWorkdir); err != nil {
+		return nil, fmt.Errorf("invalid workdir: %w", err)
+	}
+
+	// 3. Generate Metadata
+	now := time.Now()
+	meta := &ContractMetadata{
+		UUID:        uuid.New().String(),
+		Description: description,
+		Workdir:     absWorkdir,
+		ChatID:      h.ChatID,
+		ChatUUID:    h.ChatUUID,
+		Status:      ContractActive,
+		CreatedAt:   now,
+		ExpiresAt:   now.Add(24 * time.Hour),
+	}
+
+	// 4. Persist JSON
+	if err := saveContractMetadata(meta); err != nil {
+		return nil, fmt.Errorf("failed to save contract metadata: %w", err)
+	}
+
+	// 5. Insert DB Message
+	sqliteDB, err := db.OpenDB(settings.GetChatDatabasePath(gscHome))
+	if err != nil {
+		// Rollback: Remove the JSON file if DB connection fails
+		_ = os.Remove(getContractPath(meta.UUID))
+		return nil, fmt.Errorf("failed to open chat database: %w", err)
+	}
+	defer sqliteDB.Close()
+
+	dbData := db.ContractMessageData{
+		Description: meta.Description,
+		Workdir:     meta.Workdir,
+		ExpiresAt:   meta.ExpiresAt,
+		UUID:        meta.UUID,
+		Status:      string(meta.Status),
+	}
+
+	if _, err := db.InsertContractWithAnchor(sqliteDB, h.ChatID, dbData); err != nil {
+		// Rollback: Remove the JSON file if DB insertion fails
+		_ = os.Remove(getContractPath(meta.UUID))
+		return nil, fmt.Errorf("failed to insert contract message: %w", err)
+	}
+
+	logger.Info("Contract created successfully", "uuid", meta.UUID, "expires_at", meta.ExpiresAt)
+	return meta, nil
+}
+
+// ListContracts retrieves all contracts from the global storage.
+// It performs a lazy expiration check, updating the status in memory if a contract has expired.
+func ListContracts() ([]ContractMetadata, error) {
+	contractDir, err := ResolveGlobalContractDir()
+	if err != nil {
+		return nil, err
+	}
+
+	files, err := filepath.Glob(filepath.Join(contractDir, "*.json"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to scan contracts directory: %w", err)
+	}
+
+	var contracts []ContractMetadata
+	now := time.Now()
+
+	for _, file := range files {
+		meta, err := loadContractMetadata(file)
+		if err != nil {
+			logger.Warning("Failed to load contract file", "file", file, "error", err)
+			continue
+		}
+
+		// Lazy Expiration Check
+		if meta.Status == ContractActive && now.After(meta.ExpiresAt) {
+			meta.Status = ContractExpired
+			// Note: We do not persist this change to disk here to keep ListContracts read-only.
+			// The status will be updated if the user attempts to renew or if we add a cleanup job.
+		}
+
+		contracts = append(contracts, *meta)
+	}
+
+	return contracts, nil
+}
+
+// GetContract retrieves a specific contract by its UUID.
+func GetContract(uuid string) (*ContractMetadata, error) {
+	path := getContractPath(uuid)
+	return loadContractMetadata(path)
+}
+
+// CancelContract terminates a contract immediately.
+// It updates the local JSON file and the corresponding message in the Chat database.
+func CancelContract(uuid string) error {
+	meta, err := GetContract(uuid)
+	if err != nil {
+		return err
+	}
+
+	if meta.Status == ContractCancelled {
+		return fmt.Errorf("contract %s is already cancelled", uuid)
+	}
+
+	// Update Status
+	meta.Status = ContractCancelled
+
+	// Persist JSON
+	if err := saveContractMetadata(meta); err != nil {
+		return fmt.Errorf("failed to update contract metadata: %w", err)
+	}
+
+	// Update DB Message
+	gscHome, err := settings.GetGSCHome(false)
+	if err != nil {
+		return fmt.Errorf("failed to resolve GSC_HOME: %w", err)
+	}
+
+	sqliteDB, err := db.OpenDB(settings.GetChatDatabasePath(gscHome))
+	if err != nil {
+		return fmt.Errorf("failed to open chat database: %w", err)
+	}
+	defer sqliteDB.Close()
+
+	dbData := db.ContractMessageData{
+		Description: meta.Description,
+		Workdir:     meta.Workdir,
+		ExpiresAt:   meta.ExpiresAt,
+		UUID:        meta.UUID,
+		Status:      string(meta.Status),
+	}
+
+	if err := db.UpdateContractMessage(sqliteDB, meta.ChatID, dbData); err != nil {
+		return fmt.Errorf("failed to update contract message in database: %w", err)
+	}
+
+	logger.Info("Contract cancelled", "uuid", uuid)
+	return nil
+}
+
+// RenewContract extends the expiration time of an active or expired contract.
+// It updates the local JSON file and the corresponding message in the Chat database.
+func RenewContract(uuid string, hours int) error {
+	meta, err := GetContract(uuid)
+	if err != nil {
+		return err
+	}
+
+	if meta.Status == ContractCancelled {
+		return fmt.Errorf("cannot renew a cancelled contract")
+	}
+
+	// Calculate new expiration
+	duration := time.Duration(hours) * time.Hour
+	meta.ExpiresAt = meta.ExpiresAt.Add(duration)
+
+	// Update Status if it was expired
+	if meta.Status == ContractExpired {
+		meta.Status = ContractActive
+	}
+
+	// Persist JSON
+	if err := saveContractMetadata(meta); err != nil {
+		return fmt.Errorf("failed to update contract metadata: %w", err)
+	}
+
+	// Update DB Message
+	gscHome, err := settings.GetGSCHome(false)
+	if err != nil {
+		return fmt.Errorf("failed to resolve GSC_HOME: %w", err)
+	}
+
+	sqliteDB, err := db.OpenDB(settings.GetChatDatabasePath(gscHome))
+	if err != nil {
+		return fmt.Errorf("failed to open chat database: %w", err)
+	}
+	defer sqliteDB.Close()
+
+	dbData := db.ContractMessageData{
+		Description: meta.Description,
+		Workdir:     meta.Workdir,
+		ExpiresAt:   meta.ExpiresAt,
+		UUID:        meta.UUID,
+		Status:      string(meta.Status),
+	}
+
+	if err := db.UpdateContractMessage(sqliteDB, meta.ChatID, dbData); err != nil {
+		return fmt.Errorf("failed to update contract message in database: %w", err)
+	}
+
+	logger.Info("Contract renewed", "uuid", uuid, "new_expires_at", meta.ExpiresAt)
+	return nil
+}
+
+// saveContractMetadata performs an atomic write of the contract metadata to disk.
+func saveContractMetadata(meta *ContractMetadata) error {
+	contractDir, err := ResolveGlobalContractDir()
+	if err != nil {
+		return err
+	}
+
+	path := filepath.Join(contractDir, meta.UUID+".json")
+	tmpPath := path + ".tmp"
+
+	data, err := json.MarshalIndent(meta, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal contract metadata: %w", err)
+	}
+
+	if err := os.WriteFile(tmpPath, data, 0600); err != nil {
+		return fmt.Errorf("failed to write temp contract file: %w", err)
+	}
+
+	if err := os.Rename(tmpPath, path); err != nil {
+		return fmt.Errorf("failed to rename contract file: %w", err)
+	}
+
+	return nil
+}
+
+// loadContractMetadata reads and unmarshals a contract metadata file.
+func loadContractMetadata(path string) (*ContractMetadata, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read contract file: %w", err)
+	}
+
+	var meta ContractMetadata
+	if err := json.Unmarshal(data, &meta); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal contract metadata: %w", err)
+	}
+
+	return &meta, nil
+}
+
+// getContractPath returns the absolute path to a contract file.
+func getContractPath(uuid string) string {
+	// We assume ResolveGlobalContractDir succeeds or we handle the error in the caller.
+	// For simplicity here, we construct the path assuming the dir exists.
+	gscHome, _ := settings.GetGSCHome(false)
+	return filepath.Join(gscHome, settings.ContractsRelPath, uuid+".json")
+}
+
+// validateGitRepo checks if the given path is inside a valid Git repository.
+func validateGitRepo(path string) error {
+	// Check for .git directory in the current path or parents
+	currentPath := path
+	for {
+		gitPath := filepath.Join(currentPath, ".git")
+		if _, err := os.Stat(gitPath); err == nil {
+			return nil // Found it
+		}
+
+		parent := filepath.Dir(currentPath)
+		if parent == currentPath {
+			// Reached the root of the filesystem
+			return fmt.Errorf("not a git repository")
+		}
+		currentPath = parent
+	}
+}
