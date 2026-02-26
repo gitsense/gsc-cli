@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Manifest Models
- * Block-UUID: 3c8f1bc5-d234-4560-a188-e7ebc216974d
- * Parent-UUID: 1a2b3c4d-5e6f-7890-abcd-ef1234567890
- * Version: 1.3.0
+ * Block-UUID: 4e3987a8-5a5b-4641-a9b0-fe810e4b6a45
+ * Parent-UUID: 3c8f1bc5-d234-4560-a188-e7ebc216974d
+ * Version: 1.3.1
  * Description: Added CodeMetadata, ContractMetadata, and ProvenanceEntry structs to support the traceability contract system.
  * Language: Go
- * Created-at: 2026-02-11T03:19:08.509Z
- * Authors: GLM-4.7 (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0)
+ * Created-at: 2026-02-26T04:18:29.696Z
+ * Authors: GLM-4.7 (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0), Gemini 3 Flash (v1.3.1)
  */
 
 
@@ -103,6 +103,7 @@ type ContractMetadata struct {
 	Workdir     string         `json:"workdir"`
 	ChatID      int64          `json:"chat_id"`
 	ChatUUID    string         `json:"chat_uuid"`
+	ContractMessageID int64    `json:"contract_message_id"`
 	Status      ContractStatus `json:"status"`
 	CreatedAt   time.Time      `json:"created_at"`
 	ExpiresAt   time.Time      `json:"expires_at"`
@@ -132,3 +133,4 @@ type ProvenanceEntry struct {
 	Error         string           `json:"error,omitempty"` // Error message if status is failed
 	Description   string           `json:"description"`     // User-defined intent for the change
 }
+

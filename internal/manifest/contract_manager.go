@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Contract Manager
- * Block-UUID: 20890375-f53e-4473-bc52-8ca83d8e936b
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: abf91b84-4372-47c6-b99e-644af84a6827
+ * Parent-UUID: 20890375-f53e-4473-bc52-8ca83d8e936b
+ * Version: 1.0.1
  * Description: Manages the lifecycle of traceability contracts, including creation, listing, cancellation, and renewal. Handles interaction with the handshake system, local JSON storage, and the Chat database.
  * Language: Go
- * Created-at: 2026-02-26T04:10:00.000Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Created-at: 2026-02-26T04:19:57.102Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1)
  */
 
 
@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/gitsense/gsc-cli/internal/git"
 	"github.com/gitsense/gsc-cli/internal/bridge"
 	"github.com/gitsense/gsc-cli/internal/db"
 	"github.com/gitsense/gsc-cli/pkg/logger"
@@ -46,7 +47,7 @@ func CreateContract(code string, description string, workdir string) (*ContractM
 		return nil, fmt.Errorf("failed to resolve absolute path for workdir: %w", err)
 	}
 
-	if err := validateGitRepo(absWorkdir); err != nil {
+	if _, err := git.FindGitRootFrom(absWorkdir); err != nil {
 		return nil, fmt.Errorf("invalid workdir: %w", err)
 	}
 
@@ -57,6 +58,7 @@ func CreateContract(code string, description string, workdir string) (*ContractM
 		Description: description,
 		Workdir:     absWorkdir,
 		ChatID:      h.ChatID,
+		ContractMessageID: 0, // Will be set after DB insertion
 		ChatUUID:    h.ChatUUID,
 		Status:      ContractActive,
 		CreatedAt:   now,
@@ -85,12 +87,14 @@ func CreateContract(code string, description string, workdir string) (*ContractM
 		Status:      string(meta.Status),
 	}
 
-	if _, err := db.InsertContractWithAnchor(sqliteDB, h.ChatID, dbData); err != nil {
+	contractMsgID, err := db.InsertContractWithAnchor(sqliteDB, h.ChatID, dbData)
+	if err != nil {
 		// Rollback: Remove the JSON file if DB insertion fails
 		_ = os.Remove(getContractPath(meta.UUID))
 		return nil, fmt.Errorf("failed to insert contract message: %w", err)
 	}
 
+	meta.ContractMessageID = contractMsgID
 	logger.Info("Contract created successfully", "uuid", meta.UUID, "expires_at", meta.ExpiresAt)
 	return meta, nil
 }
@@ -177,7 +181,7 @@ func CancelContract(uuid string) error {
 		Status:      string(meta.Status),
 	}
 
-	if err := db.UpdateContractMessage(sqliteDB, meta.ChatID, dbData); err != nil {
+	if err := db.UpdateContractMessage(sqliteDB, meta.ContractMessageID, dbData); err != nil {
 		return fmt.Errorf("failed to update contract message in database: %w", err)
 	}
 
@@ -199,7 +203,11 @@ func RenewContract(uuid string, hours int) error {
 
 	// Calculate new expiration
 	duration := time.Duration(hours) * time.Hour
-	meta.ExpiresAt = meta.ExpiresAt.Add(duration)
+	newStart := time.Now()
+	if meta.ExpiresAt.After(newStart) {
+		newStart = meta.ExpiresAt
+	}
+	meta.ExpiresAt = newStart.Add(duration)
 
 	// Update Status if it was expired
 	if meta.Status == ContractExpired {
@@ -231,7 +239,7 @@ func RenewContract(uuid string, hours int) error {
 		Status:      string(meta.Status),
 	}
 
-	if err := db.UpdateContractMessage(sqliteDB, meta.ChatID, dbData); err != nil {
+	if err := db.UpdateContractMessage(sqliteDB, meta.ContractMessageID, dbData); err != nil {
 		return fmt.Errorf("failed to update contract message in database: %w", err)
 	}
 
@@ -288,21 +296,3 @@ func getContractPath(uuid string) string {
 	return filepath.Join(gscHome, settings.ContractsRelPath, uuid+".json")
 }
 
-// validateGitRepo checks if the given path is inside a valid Git repository.
-func validateGitRepo(path string) error {
-	// Check for .git directory in the current path or parents
-	currentPath := path
-	for {
-		gitPath := filepath.Join(currentPath, ".git")
-		if _, err := os.Stat(gitPath); err == nil {
-			return nil // Found it
-		}
-
-		parent := filepath.Dir(currentPath)
-		if parent == currentPath {
-			// Reached the root of the filesystem
-			return fmt.Errorf("not a git repository")
-		}
-		currentPath = parent
-	}
-}

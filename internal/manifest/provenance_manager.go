@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Provenance Manager
- * Block-UUID: cb9d2a5f-1200-45e4-b3eb-52e40894ada4
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 8a7b9c1d-2e3f-4a5b-8c9d-0e1f2a3b4c5d
+ * Parent-UUID: cb9d2a5f-1200-45e4-b3eb-52e40894ada4
+ * Version: 1.0.1
  * Description: Handles file operations (update-file, new-file) and provenance logging. Enforces traceability rules like UUID uniqueness and parent-child validation.
  * Language: Go
- * Created-at: 2026-02-26T04:12:00.000Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Created-at: 2026-02-26T04:22:53.564Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1)
  */
 
 
@@ -85,6 +85,12 @@ func UpdateFile(contractUUID string, sourceFile string) error {
 		return &ContractError{Code: ExitParentUUIDMismatch, Message: fmt.Sprintf("Parent-UUID mismatch: Expected %s, found %s", oldMeta.BlockUUID, newMeta.ParentUUID)}
 	}
 
+	// Calculate relative path for provenance log
+	relPath, err := filepath.Rel(contract.Workdir, targetPath)
+	if err != nil {
+		return fmt.Errorf("failed to calculate relative path: %w", err)
+	}
+
 	// 6. Atomic Write
 	tmpPath := targetPath + ".gsc-tmp"
 	if err := os.WriteFile(tmpPath, newContent, 0644); err != nil {
@@ -97,10 +103,10 @@ func UpdateFile(contractUUID string, sourceFile string) error {
 
 	// 7. Log Provenance
 	entry := ProvenanceEntry{
-		Timestamp:     time.Now(),
+		Timestamp:     time.Now().UTC(),
 		Status:        ProvenanceSaved,
 		Action:        "update-file",
-		FilePath:      strings.TrimPrefix(targetPath, contract.Workdir+"/"),
+		FilePath:      relPath,
 		BlockUUID:     newMeta.BlockUUID,
 		ParentUUID:    newMeta.ParentUUID,
 		SourceVersion: oldMeta.Version,
@@ -110,7 +116,7 @@ func UpdateFile(contractUUID string, sourceFile string) error {
 		Description:   "Updated via gsc contract",
 	}
 
-	if err := logProvenance(entry); err != nil {
+	if err := logProvenance(entry, contract.Workdir); err != nil {
 		// Log failure is fatal as per requirements
 		return fmt.Errorf("failed to write provenance log: %w", err)
 	}
@@ -168,6 +174,12 @@ func NewFile(contractUUID string, targetRelativePath string, sourceFile string) 
 		return &ContractError{Code: ExitDuplicateBlockUUID, Message: fmt.Sprintf("Block-UUID %s already exists in workdir", newMeta.BlockUUID)}
 	}
 
+	// Calculate relative path for provenance log
+	relPath, err := filepath.Rel(contract.Workdir, absTargetPath)
+	if err != nil {
+		return fmt.Errorf("failed to calculate relative path: %w", err)
+	}
+
 	// 5. Create Directories if needed
 	if err := os.MkdirAll(filepath.Dir(absTargetPath), 0755); err != nil {
 		return fmt.Errorf("failed to create directories: %w", err)
@@ -185,10 +197,10 @@ func NewFile(contractUUID string, targetRelativePath string, sourceFile string) 
 
 	// 7. Log Provenance
 	entry := ProvenanceEntry{
-		Timestamp:     time.Now(),
+		Timestamp:     time.Now().UTC(),
 		Status:        ProvenanceSaved,
 		Action:        "create-file",
-		FilePath:      targetRelativePath,
+		FilePath:      relPath,
 		BlockUUID:     newMeta.BlockUUID,
 		ParentUUID:    "N/A",
 		SourceVersion: "N/A",
@@ -198,7 +210,7 @@ func NewFile(contractUUID string, targetRelativePath string, sourceFile string) 
 		Description:   "Created via gsc contract",
 	}
 
-	if err := logProvenance(entry); err != nil {
+	if err := logProvenance(entry, contract.Workdir); err != nil {
 		return fmt.Errorf("failed to write provenance log: %w", err)
 	}
 
@@ -206,12 +218,10 @@ func NewFile(contractUUID string, targetRelativePath string, sourceFile string) 
 	return nil
 }
 
-// logProvenance appends a JSONL entry to the project-local provenance.log.
-func logProvenance(entry ProvenanceEntry) error {
-	logPath, err := ResolveLocalProvenanceLog()
-	if err != nil {
-		return err
-	}
+// logProvenance appends a JSONL entry to the project-local provenance log.
+func logProvenance(entry ProvenanceEntry, baseDir string) error {
+	// Construct path relative to the contract's workdir, not the CWD
+	logPath := filepath.Join(baseDir, settings.GitSenseDir, settings.ProvenanceFileName)
 
 	// Ensure directory exists
 	if err := os.MkdirAll(filepath.Dir(logPath), 0755); err != nil {
