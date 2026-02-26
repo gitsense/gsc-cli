@@ -1,12 +1,12 @@
 /**
  * Component: Root CLI Command
- * Block-UUID: ba0f4669-87d9-4658-8fc8-081ee1352b34
- * Parent-UUID: 9f2f55aa-d1b6-4a6f-8bf4-bf1d66716241
- * Version: 1.28.0
- * Description: Registered the new 'exec' command and whitelisted it to bypass the .gitsense directory check, allowing it to run in any directory. Updated bridge.Execute calls to include the new exitCode argument.
+ * Block-UUID: 0cac71ef-ba0d-4989-ac16-c3642daf59b9
+ * Parent-UUID: ba0f4669-87d9-4658-8fc8-081ee1352b34
+ * Version: 1.29.0
+ * Description: Registered the new 'contract' command and whitelisted it to bypass the .gitsense directory check, allowing it to run in any directory.
  * Language: Go
  * Created-at: 2026-02-13T06:17:35.067Z
- * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v1.25.0), Gemini 3 Flash (v1.26.0), Gemini 3 Flash (v1.27.0), Gemini 3 Flash (v1.28.0)
+ * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v1.28.0), Gemini 3 Flash (v1.29.0)
  */
 
 
@@ -64,9 +64,9 @@ AI ASSISTANT DISCOVERY:
 		}
 
 		// 2. Pre-flight Check: Ensure .gitsense directory exists
-		// Skip for 'init', 'doctor', 'exec', and global '--examples'
+		// Skip for 'init', 'doctor', 'exec', 'contract', and global '--examples'
 		commandName := cmd.Name()
-		if commandName != "init" && commandName != "doctor" && commandName != "exec" && !showExamples {
+		if commandName != "init" && commandName != "doctor" && commandName != "exec" && commandName != "contract" && !showExamples {
 			root, err := git.FindProjectRoot()
 			if err != nil {
 				cmd.SilenceUsage = true
@@ -115,6 +115,7 @@ func init() {
 	RegisterTreeCommand(rootCmd)
 	RegisterInfoCommand(rootCmd)
 	RegisterExecCommand(rootCmd)
+	RegisterContractCommand(rootCmd)
 
 	rootCmd.PersistentFlags().CountP("verbose", "c", "Increase verbosity (-c for info, -cc for debug)")
 	rootCmd.PersistentFlags().Bool("quiet", false, "Suppress all output except errors")
@@ -134,6 +135,12 @@ func Execute() error {
 
 func HandleExit(err error) {
 	if err != nil {
+		// Handle custom CLI errors with specific exit codes
+		if cErr, ok := err.(*cliError); ok {
+			fmt.Fprintf(os.Stderr, "Error: %s\n", cErr.message)
+			os.Exit(cErr.code)
+		}
+
 		if bErr, ok := err.(*bridge.BridgeError); ok {
 			fmt.Fprintf(os.Stderr, "Error: %s\n", bErr.Message)
 			os.Exit(bErr.ExitCode)

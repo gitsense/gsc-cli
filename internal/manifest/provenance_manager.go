@@ -66,7 +66,7 @@ func UpdateFile(contractUUID string, sourceFile string) error {
 	// 3. Find Target File in Workdir via Parent-UUID
 	targetPath, _, err := engine.FindBlockByUUID(ctx, contract.Workdir, newMeta.ParentUUID)
 	if err != nil {
-		return &ContractError{Code: ExitTargetFileNotFound, Message: fmt.Sprintf("Target file with Parent-UUID %s not found: %v", newMeta.ParentUUID, err)}
+		return &ContractError{Code: ExitTargetFileNotFound, Message: fmt.Sprintf("Failed to locate target file for Parent-UUID %s: %v", newMeta.ParentUUID, err)}
 	}
 
 	// 4. Read Existing File (for SourceVersion)

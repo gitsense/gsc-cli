@@ -1,12 +1,12 @@
 /**
  * Component: Output Formatter
- * Block-UUID: fd3cc890-0e80-499d-a5a1-6f88a1f02824
- * Parent-UUID: 2bc306a2-ee33-4c1e-b2d7-dc580e2201ef
- * Version: 1.10.0
- * Description: Provides utility functions to format data into JSON, Table, or CSV strings. Added FormatMetadataYAML and FormatMetadataJSON to support the ripgrep metadata appendix. Updated FormatBridgeMarkdown to support Exit Code and N/A database handling for the exec command. Added FormatExecList for displaying saved execution outputs.
+ * Block-UUID: 89162c3e-f1fd-4efb-aabc-75006bf579fb
+ * Parent-UUID: fd3cc890-0e80-499d-a5a1-6f88a1f02824
+ * Version: 1.11.0
+ * Description: Added FormatContractList and FormatProvenanceList to support the traceability contract system. Defined ContractDisplay and ProvenanceDisplay structs to avoid circular dependencies with the manifest package.
  * Language: Go
- * Created-at: 2026-02-15T02:49:39.077Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), Gemini 3 Flash (v1.7.0), Gemini 3 Flash (v1.8.0), GLM-4.7 (v1.9.0), Gemini 3 Flash (v1.10.0)
+ * Created-at: 2026-02-26T04:58:22.818Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), Gemini 3 Flash (v1.7.0), Gemini 3 Flash (v1.8.0), GLM-4.7 (v1.9.0), Gemini 3 Flash (v1.10.0), Gemini 3 Flash (v1.11.0)
  */
 
 
@@ -192,7 +192,6 @@ func FormatBridgeMarkdown(command string, duration time.Duration, dbName string,
 }
 
 // ExecOutput represents a saved execution output for listing purposes.
-// This struct is defined here to avoid circular dependencies with the exec package.
 type ExecOutput struct {
 	ID        string
 	Command   string
@@ -215,6 +214,68 @@ func FormatExecList(outputs []ExecOutput) string {
 			truncate(out.Command, 40),
 			fmt.Sprintf("%d", out.ExitCode),
 			out.Timestamp,
+		}
+	}
+
+	return FormatTable(headers, rows)
+}
+
+// ContractDisplay represents a contract for listing purposes.
+type ContractDisplay struct {
+	UUID        string
+	Description string
+	Workdir     string
+	Status      string
+	ExpiresAt   string
+}
+
+// FormatContractList formats a list of contracts into a table.
+func FormatContractList(contracts []ContractDisplay) string {
+	if len(contracts) == 0 {
+		return "No contracts found."
+	}
+
+	headers := []string{"UUID", "Description", "Workdir", "Status", "Expires"}
+	
+	rows := make([][]string, len(contracts))
+	for i, c := range contracts {
+		rows[i] = []string{
+			c.UUID[:8], // Short UUID for display
+			truncate(c.Description, 30),
+			truncate(c.Workdir, 40),
+			c.Status,
+			c.ExpiresAt,
+		}
+	}
+
+	return FormatTable(headers, rows)
+}
+
+// ProvenanceDisplay represents a provenance entry for listing purposes.
+type ProvenanceDisplay struct {
+	Timestamp string
+	Action    string
+	FilePath  string
+	Version   string
+	Status    string
+}
+
+// FormatProvenanceList formats a list of provenance entries into a table.
+func FormatProvenanceList(entries []ProvenanceDisplay) string {
+	if len(entries) == 0 {
+		return "No provenance entries found."
+	}
+
+	headers := []string{"Timestamp", "Action", "File", "Version", "Status"}
+	
+	rows := make([][]string, len(entries))
+	for i, e := range entries {
+		rows[i] = []string{
+			e.Timestamp,
+			e.Action,
+			truncate(e.FilePath, 40),
+			e.Version,
+			e.Status,
 		}
 	}
 
