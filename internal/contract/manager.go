@@ -1,12 +1,12 @@
 /**
  * Component: Contract Manager
- * Block-UUID: 227dfc4e-b6c1-41a0-8b01-5dcc8e898313
- * Parent-UUID: ff816cf1-17fb-49a5-8282-fb88800ce117
- * Version: 1.0.8
- * Description: Added FormatContractInfo and FormatContractTest to resolve import cycle with internal/output.
+ * Block-UUID: d16a09d8-fa88-4f66-8ff3-28c679347494
+ * Parent-UUID: 227dfc4e-b6c1-41a0-8b01-5dcc8e898313
+ * Version: 1.1.0
+ * Description: Improved CreateContract logic to prevent multiple active contracts for the same workspace and implemented chat idempotency by using UpsertContractMessage.
  * Language: Go
  * Created-at: 2026-02-27T04:53:27.526Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7), GLM-4.7 (v1.0.8)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7), GLM-4.7 (v1.0.8), Gemini 3 Flash (v1.1.0)
  */
 
 
@@ -43,12 +43,7 @@ func CreateContract(code string, description string, workdir string) (*ContractM
 		return nil, fmt.Errorf("failed to load handshake: %w", err)
 	}
 
-	// Claim the handshake immediately to prevent double-use
-	if err := h.UpdateStatus("running", nil); err != nil {
-		return nil, fmt.Errorf("failed to claim handshake: %w", err)
-	}
-
-	// 2. Validate Workdir
+	// 2. Validate Workdir and Check for Existing Active Contracts
 	absWorkdir, err := filepath.Abs(workdir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve absolute path for workdir: %w", err)
@@ -56,6 +51,16 @@ func CreateContract(code string, description string, workdir string) (*ContractM
 
 	if _, err := git.FindGitRootFrom(absWorkdir); err != nil {
 		return nil, fmt.Errorf("invalid workdir: %w", err)
+	}
+
+	// Check if an active contract already exists for this workspace
+	if existing, err := GetContractByWorkdir(absWorkdir); err == nil && existing != nil {
+		return nil, fmt.Errorf("an active contract already exists for this workspace: %s. Please cancel it before creating a new one", existing.UUID)
+	}
+
+	// Claim the handshake immediately to prevent double-use
+	if err := h.UpdateStatus("running", nil); err != nil {
+		return nil, fmt.Errorf("failed to claim handshake: %w", err)
 	}
 
 	// 3. Generate Metadata
@@ -77,7 +82,7 @@ func CreateContract(code string, description string, workdir string) (*ContractM
 		return nil, fmt.Errorf("failed to save contract metadata: %w", err)
 	}
 
-	// 5. Insert DB Message
+	// 5. Upsert DB Message (Idempotency)
 	sqliteDB, err := db.OpenDB(settings.GetChatDatabasePath(gscHome))
 	if err != nil {
 		// Rollback: Remove the JSON file if DB connection fails
@@ -94,13 +99,14 @@ func CreateContract(code string, description string, workdir string) (*ContractM
 		Status:      string(meta.Status),
 	}
 
-	contractMsgID, err := db.InsertContractWithAnchor(sqliteDB, h.ChatID, dbData)
+	// Use UpsertContractMessage to ensure only one contract message exists per chat
+	contractMsgID, err := db.UpsertContractMessage(sqliteDB, h.ChatID, dbData)
 	if err != nil {
 		// Rollback: Remove the JSON file if DB insertion fails
 		_ = os.Remove(getContractPath(meta.UUID))
 		// Mark handshake as failed if DB insertion fails
 		_ = h.UpdateStatus("error", &bridge.Error{Code: "CONTRACT_FAILED", Message: err.Error()})
-		return nil, fmt.Errorf("failed to insert contract message: %w", err)
+		return nil, fmt.Errorf("failed to upsert contract message: %w", err)
 	}
 
 	meta.ContractMessageID = contractMsgID
@@ -108,7 +114,6 @@ func CreateContract(code string, description string, workdir string) (*ContractM
 	// Persist the updated metadata (specifically the ContractMessageID) to disk
 	if err := saveContractMetadata(meta); err != nil {
 		// Log warning but don't fail the contract creation, as the DB record exists.
-		// The ID mismatch might cause issues for updates/cancellations, but the contract is technically valid.
 		logger.Warning("Failed to update contract metadata file with message ID", "error", err)
 	}
 

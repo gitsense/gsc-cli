@@ -1,12 +1,12 @@
 /**
  * Component: Chat Database Operations
- * Block-UUID: 30108f7a-57ae-423c-a805-13277d39b11a
- * Parent-UUID: fedb9533-9ac0-476c-a7cc-b1d42ea6631e
- * Version: 1.8.1
- * Description: Added support for the Contract feature. Implemented InsertContractWithAnchor for Root Anchor insertion and UpdateContractMessage for status/expiration updates. Added ContractMessageData struct and FormatContractMarkdown helper.
+ * Block-UUID: a5821070-b3de-4280-8ab1-4ed789e6d62b
+ * Parent-UUID: 30108f7a-57ae-423c-a805-13277d39b11a
+ * Version: 1.9.0
+ * Description: Added UpsertContractMessage to support idempotent contract creation. This function checks for an existing contract message in the chat and updates it if found, or inserts a new one with anchor logic if not found.
  * Language: Go
- * Created-at: 2026-02-26T05:18:35.700Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.8.1)
+ * Created-at: 2026-02-20T04:31:47.873Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.8.1), GLM-4.7 (v1.9.0)
  */
 
 
@@ -50,6 +50,34 @@ func FormatContractMarkdown(data ContractMessageData) string {
 	sb.WriteString(fmt.Sprintf("| **Status** | %s |\n", data.Status))
 
 	return sb.String()
+}
+
+// UpsertContractMessage inserts or updates a contract message in the chat.
+// It enforces a "Single Source of Truth" by checking if a contract message already exists.
+// If found, it updates the existing message. If not, it inserts a new one with anchor logic.
+func UpsertContractMessage(db *sql.DB, chatID int64, data ContractMessageData) (int64, error) {
+	// 1. Check for existing contract message
+	var existingID int64
+	query := `SELECT id FROM messages WHERE chat_id = ? AND type = 'gsc-cli-contract' AND deleted = 0 LIMIT 1`
+	err := db.QueryRow(query, chatID).Scan(&existingID)
+
+	if err == nil {
+		// Found existing message: Update it
+		logger.Debug("Existing contract message found, updating", "msg_id", existingID)
+		if err := UpdateContractMessage(db, existingID, data); err != nil {
+			return 0, fmt.Errorf("failed to update existing contract message: %w", err)
+		}
+		return existingID, nil
+	}
+
+	if err != sql.ErrNoRows {
+		// Database error other than "not found"
+		return 0, fmt.Errorf("failed to query for existing contract message: %w", err)
+	}
+
+	// 2. No existing message found: Insert new one with anchor logic
+	logger.Debug("No existing contract message found, inserting new with anchor")
+	return InsertContractWithAnchor(db, chatID, data)
 }
 
 // InsertContractWithAnchor inserts a contract message between the system prompt and the first user message.
