@@ -1,12 +1,12 @@
 /*
  * Component: Contract Models
- * Block-UUID: c0e5534d-3236-46b2-8a57-4a5940040a1a
- * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: Defines the data structures for traceability contracts and provenance logs.
+ * Block-UUID: cff6b5b8-f3ed-4fd4-9449-3168c7791468
+ * Parent-UUID: c0e5534d-3236-46b2-8a57-4a5940040a1a
+ * Version: 1.1.0
+ * Description: Added ContractInfoResult and ContractTestResult to support the 'info' and 'test' subcommands.
  * Language: Go
  * Created-at: 2026-02-26T05:15:01.000Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0)
  */
 
 
@@ -59,4 +59,30 @@ type ProvenanceEntry struct {
 	ContractUUID  string           `json:"contract_uuid"`   // Link to the global contract
 	Error         string           `json:"error,omitempty"` // Error message if status is failed
 	Description   string           `json:"description"`     // User-defined intent for the change
+}
+
+// ContractInfoResult represents the sanitized output of the 'contract info' command.
+type ContractInfoResult struct {
+	UUID        string    `json:"uuid"`
+	Description string    `json:"description"`
+	Workdir     string    `json:"workdir"`
+	Status      string    `json:"status"`
+	CreatedAt   time.Time `json:"created_at"`
+	ExpiresAt   time.Time `json:"expires_at"`
+}
+
+// ContractTestResult represents the output of the 'contract test' command.
+type ContractTestResult struct {
+	ContractInfoResult // Embedded: Includes UUID, Status, ExpiresAt, etc.
+
+	// Test Specific Fields
+	Success      bool   `json:"success"`       // Overall success/failure
+	ErrorCode    string `json:"error_code"`    // Specific error code if failed
+	Message      string `json:"message"`       // Human-readable status message
+	RelativePath string `json:"relative_path"` // Path relative to workdir (if parent found)
+	DiffHTML     string `json:"diff_html"`     // HTML fragment of the diff (if parent found)
+	DiffUnified  string `json:"diff_unified"`  // Unified diff text (if parent found)
+	BlockUUID    string `json:"block_uuid"`    // The UUID from the source file
+	ParentUUID   string `json:"parent_uuid"`   // The parent UUID from the source file
+	IsUnique     bool   `json:"is_unique"`     // Whether the Block-UUID is unique
 }

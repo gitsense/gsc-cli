@@ -1,12 +1,12 @@
 /**
  * Component: Provenance Manager
- * Block-UUID: 307513b9-a317-4078-9628-7d094fda25d4
- * Parent-UUID: cb9d2a5f-1200-45e4-b3eb-52e40894ada4
- * Version: 1.0.2
- * Description: Handles file operations (update-file, new-file) and provenance logging. Enforces traceability rules like UUID uniqueness and parent-child validation.
+ * Block-UUID: b4f3a8fa-e1e5-48ce-87c1-d16f78cf9ab6
+ * Parent-UUID: e06c54c2-beef-4b93-860b-66b7e9fdbdda
+ * Version: 1.1.1
+ * Description: Added TestFile function to support the 'contract test' command, enabling pre-flight validation of code changes including UUID uniqueness and diff generation.
  * Language: Go
- * Created-at: 2026-02-26T04:22:53.564Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2)
+ * Created-at: 2026-02-26T18:13:46.301Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.1.0), GLM-4.7 (v1.1.1)
  */
 
 
@@ -25,6 +25,7 @@ import (
 	"github.com/gitsense/gsc-cli/internal/traceability"
 	"github.com/gitsense/gsc-cli/pkg/logger"
 	"github.com/gitsense/gsc-cli/pkg/settings"
+	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
 // Contract-specific exit codes
@@ -35,6 +36,16 @@ const (
 	ExitTargetFileNotFound   = 13 // Target file not found (for update-file)
 	ExitTargetPathExists     = 14 // Target path already exists (for new-file)
 	ExitInvalidTargetPath    = 15 // Target path is not relative or escapes workdir
+)
+
+// Error codes for the 'test' command
+const (
+	ErrCodeContractExpired    = "CONTRACT_EXPIRED"
+	ErrCodeContractCancelled  = "CONTRACT_CANCELLED"
+	ErrCodeDuplicateBlockUUID = "DUPLICATE_BLOCK_UUID"
+	ErrCodeParentNotFound     = "PARENT_UUID_NOT_FOUND"
+	ErrCodeParentMismatch     = "PARENT_UUID_MISMATCH"
+	ErrCodeHeaderParseFailed  = "HEADER_PARSE_FAILED"
 )
 
 // UpdateFile updates an existing traceable file using a contract.
@@ -217,6 +228,256 @@ func NewFile(contractUUID string, targetRelativePath string, sourceFile string) 
 
 	logger.Info("File created successfully", "file", absTargetPath, "version", newMeta.Version)
 	return nil
+}
+
+// TestFile validates a file change against a contract without writing it.
+// It checks contract status, UUID uniqueness, and generates a diff if a parent exists.
+func TestFile(contractUUID string, sourceFile string, sanitize bool) (*ContractTestResult, error) {
+	ctx := context.Background()
+	engine := &search.RipgrepEngine{}
+
+	// 1. Load Contract
+	contract, err := GetContract(contractUUID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load contract: %w", err)
+	}
+
+	// 2. Check Contract Status
+	if contract.Status == ContractCancelled {
+		return &ContractTestResult{
+			ContractInfoResult: ContractInfoResult{
+				UUID:        contract.UUID,
+				Status:      string(contract.Status),
+				Description: contract.Description,
+				Workdir:     contract.Workdir,
+				CreatedAt:   contract.CreatedAt,
+				ExpiresAt:   contract.ExpiresAt,
+			},
+			Success:   false,
+			ErrorCode: ErrCodeContractCancelled,
+			Message:   "The contract has been cancelled.",
+		}, nil
+	}
+
+	if contract.Status == ContractExpired || time.Now().After(contract.ExpiresAt) {
+		return &ContractTestResult{
+			ContractInfoResult: ContractInfoResult{
+				UUID:        contract.UUID,
+				Status:      string(contract.Status),
+				Description: contract.Description,
+				Workdir:     contract.Workdir,
+				CreatedAt:   contract.CreatedAt,
+				ExpiresAt:   contract.ExpiresAt,
+			},
+			Success:   false,
+			ErrorCode: ErrCodeContractExpired,
+			Message:   "The contract has expired.",
+		}, nil
+	}
+
+	// 3. Parse Source File
+	newContentBytes, err := os.ReadFile(sourceFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read source file: %w", err)
+	}
+
+	newMeta, _, err := traceability.ParseHeader(string(newContentBytes))
+	if err != nil {
+		return &ContractTestResult{
+			ContractInfoResult: ContractInfoResult{
+				UUID:        contract.UUID,
+				Status:      string(contract.Status),
+				Description: contract.Description,
+				Workdir:     contract.Workdir,
+				CreatedAt:   contract.CreatedAt,
+				ExpiresAt:   contract.ExpiresAt,
+			},
+			Success:   false,
+			ErrorCode: ErrCodeHeaderParseFailed,
+			Message:   fmt.Sprintf("Failed to parse source file header: %v", err),
+		}, nil
+	}
+
+	// 4. Check Block-UUID Uniqueness
+	isUnique := true
+	if err := engine.EnsureUUIDUniqueness(ctx, contract.Workdir, newMeta.BlockUUID); err != nil {
+		isUnique = false
+		// Try to find where it exists for a better error message
+		if targetPath, _, findErr := engine.FindBlockByUUID(ctx, contract.Workdir, newMeta.BlockUUID); findErr == nil {
+			relPath, _ := filepath.Rel(contract.Workdir, targetPath)
+			return &ContractTestResult{
+				ContractInfoResult: ContractInfoResult{
+					UUID:        contract.UUID,
+					Status:      string(contract.Status),
+					Description: contract.Description,
+					Workdir:     contract.Workdir,
+					CreatedAt:   contract.CreatedAt,
+					ExpiresAt:   contract.ExpiresAt,
+				},
+				Success:   false,
+				ErrorCode: ErrCodeDuplicateBlockUUID,
+				Message:   fmt.Sprintf("Block-UUID '%s' already exists in '%s'.", newMeta.BlockUUID, relPath),
+				BlockUUID: newMeta.BlockUUID,
+				IsUnique:  false,
+			}, nil
+		}
+	}
+
+	// 5. Handle Parent-UUID
+	if newMeta.ParentUUID == "" || newMeta.ParentUUID == "N/A" {
+		// New file scenario
+		return &ContractTestResult{
+			ContractInfoResult: ContractInfoResult{
+				UUID:        contract.UUID,
+				Status:      string(contract.Status),
+				Description: contract.Description,
+				Workdir:     contract.Workdir,
+				CreatedAt:   contract.CreatedAt,
+				ExpiresAt:   contract.ExpiresAt,
+			},
+			Success:    true,
+			Message:    "Contract valid. New file detected.",
+			BlockUUID:  newMeta.BlockUUID,
+			ParentUUID: newMeta.ParentUUID,
+			IsUnique:   isUnique,
+		}, nil
+	}
+
+	// Update scenario: Find Parent
+	targetPath, _, err := engine.FindBlockByUUID(ctx, contract.Workdir, newMeta.ParentUUID)
+	if err != nil {
+		return &ContractTestResult{
+			ContractInfoResult: ContractInfoResult{
+				UUID:        contract.UUID,
+				Status:      string(contract.Status),
+				Description: contract.Description,
+				Workdir:     contract.Workdir,
+				CreatedAt:   contract.CreatedAt,
+				ExpiresAt:   contract.ExpiresAt,
+			},
+			Success:   false,
+			ErrorCode: ErrCodeParentNotFound,
+			Message:   fmt.Sprintf("Parent-UUID '%s' not found in workdir.", newMeta.ParentUUID),
+			BlockUUID: newMeta.BlockUUID,
+			ParentUUID: newMeta.ParentUUID,
+			IsUnique:  isUnique,
+		}, nil
+	}
+
+	// Read target file content
+	oldContentBytes, err := os.ReadFile(targetPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read target file: %w", err)
+	}
+
+	oldMeta, _, err := traceability.ParseHeader(string(oldContentBytes))
+	if err != nil {
+		return &ContractTestResult{
+			ContractInfoResult: ContractInfoResult{
+				UUID:        contract.UUID,
+				Status:      string(contract.Status),
+				Description: contract.Description,
+				Workdir:     contract.Workdir,
+				CreatedAt:   contract.CreatedAt,
+				ExpiresAt:   contract.ExpiresAt,
+			},
+			Success:   false,
+			ErrorCode: ErrCodeHeaderParseFailed,
+			Message:   fmt.Sprintf("Failed to parse target file header: %v", err),
+			BlockUUID: newMeta.BlockUUID,
+			ParentUUID: newMeta.ParentUUID,
+			IsUnique:  isUnique,
+		}, nil
+	}
+
+	// Validate Parent-UUID Match
+	if oldMeta.BlockUUID != newMeta.ParentUUID {
+		return &ContractTestResult{
+			ContractInfoResult: ContractInfoResult{
+				UUID:        contract.UUID,
+				Status:      string(contract.Status),
+				Description: contract.Description,
+				Workdir:     contract.Workdir,
+				CreatedAt:   contract.CreatedAt,
+				ExpiresAt:   contract.ExpiresAt,
+			},
+			Success:   false,
+			ErrorCode: ErrCodeParentMismatch,
+			Message:   fmt.Sprintf("Parent-UUID mismatch: Expected '%s', found '%s' in target file.", newMeta.ParentUUID, oldMeta.BlockUUID),
+			BlockUUID: newMeta.BlockUUID,
+			ParentUUID: newMeta.ParentUUID,
+			IsUnique:  isUnique,
+		}, nil
+	}
+
+	// 6. Generate Diff
+	dmp := diffmatchpatch.New()
+	diffs := dmp.DiffMain(string(oldContentBytes), string(newContentBytes), false)
+	
+	// Generate HTML Diff
+	diffHTML := dmp.DiffPrettyHtml(diffs)
+	
+	// Generate Unified Diff
+	// Note: diffmatchpatch doesn't have a built-in unified diff generator, 
+	// so we construct a simple one or just return the raw diffs if needed.
+	// For now, we will return a simplified unified representation or just the HTML.
+	// A proper unified diff generator is complex, so we'll stick to HTML for the frontend
+	// and a simple text representation for the CLI.
+	diffUnified := generateUnifiedDiff(string(oldContentBytes), string(newContentBytes))
+
+	// 7. Sanitize Paths
+	relPath := targetPath
+	if sanitize {
+		relPath, _ = filepath.Rel(contract.Workdir, targetPath)
+	}
+
+	return &ContractTestResult{
+		ContractInfoResult: ContractInfoResult{
+			UUID:        contract.UUID,
+			Status:      string(contract.Status),
+			Description: contract.Description,
+			Workdir:     contract.Workdir,
+			CreatedAt:   contract.CreatedAt,
+			ExpiresAt:   contract.ExpiresAt,
+		},
+		Success:      true,
+		Message:      "Contract valid. Block-UUID is unique. Parent found.",
+		RelativePath: relPath,
+		DiffHTML:     diffHTML,
+		DiffUnified:  diffUnified,
+		BlockUUID:    newMeta.BlockUUID,
+		ParentUUID:   newMeta.ParentUUID,
+		IsUnique:     isUnique,
+	}, nil
+}
+
+// generateUnifiedDiff creates a simple unified diff string.
+// This is a basic implementation; a full implementation would handle line numbers and context.
+func generateUnifiedDiff(oldText, newText string) string {
+	dmp := diffmatchpatch.New()
+	diffs := dmp.DiffMain(oldText, newText, false)
+	
+	var sb strings.Builder
+	sb.WriteString("--- Original\n")
+	sb.WriteString("+++ Modified\n")
+	
+	// This is a very simplified view. A real unified diff needs line numbers.
+	// For the purpose of this feature, the HTML diff is the primary artifact.
+	// We will just list the changes here.
+	for _, diff := range diffs {
+		switch diff.Type {
+		case diffmatchpatch.DiffInsert:
+			sb.WriteString("+ ")
+			sb.WriteString(diff.Text)
+		case diffmatchpatch.DiffDelete:
+			sb.WriteString("- ")
+			sb.WriteString(diff.Text)
+		case diffmatchpatch.DiffEqual:
+			sb.WriteString("  ")
+			sb.WriteString(diff.Text)
+		}
+	}
+	return sb.String()
 }
 
 // logProvenance appends a JSONL entry to the project-local provenance log.

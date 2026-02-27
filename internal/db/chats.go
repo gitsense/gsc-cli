@@ -36,17 +36,18 @@ type ContractMessageData struct {
 func FormatContractMarkdown(data ContractMessageData) string {
 	var sb strings.Builder
 
-	sb.WriteString(fmt.Sprintf("### 📝 Traceability Contract %s\n\n", strings.Title(data.Status)))
-	sb.WriteString(fmt.Sprintf("**Description:** %s\n", data.Description))
-	sb.WriteString(fmt.Sprintf("**Workdir:** `%s`\n", data.Workdir))
-	sb.WriteString(fmt.Sprintf("**Expires:** `%s`\n", data.ExpiresAt.Format(time.RFC3339)))
-	sb.WriteString("\n")
-	sb.WriteString("---\n")
-	sb.WriteString("**Contract-Metadata**\n")
-	sb.WriteString(fmt.Sprintf("- type: gsc-cli-contract\n"))
-	sb.WriteString(fmt.Sprintf("- uuid: %s\n", data.UUID))
-	sb.WriteString(fmt.Sprintf("- expires_at: %s\n", data.ExpiresAt.Format(time.RFC3339)))
-	sb.WriteString(fmt.Sprintf("- status: %s\n", data.Status))
+	sb.WriteString(fmt.Sprintf("### CLI Handshake (%s)\n\n", strings.Title(data.Status)))
+
+	// Table Header
+	sb.WriteString("| Field | Value |\n")
+	// Table Alignment Separator
+	sb.WriteString("| :--- | :--- |\n")
+
+	// Table Rows
+	sb.WriteString(fmt.Sprintf("| **Description** | %s |\n", data.Description))
+	sb.WriteString(fmt.Sprintf("| **UUID** | %s |\n", data.UUID))
+	sb.WriteString(fmt.Sprintf("| **Expires At** | %s |\n", data.ExpiresAt.Format(time.RFC3339)))
+	sb.WriteString(fmt.Sprintf("| **Status** | %s |\n", data.Status))
 
 	return sb.String()
 }

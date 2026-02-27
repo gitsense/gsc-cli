@@ -1,12 +1,12 @@
 /**
  * Component: Contract Manager
- * Block-UUID: d188da85-f7eb-4503-afcc-86dee9d5e8c1
- * Parent-UUID: b2a5d928-1eac-4baf-9818-d0235f41c8e6
- * Version: 1.0.4
- * Description: Added GetContractByWorkdir to support the 'status' command. This function retrieves the active contract for a specific working directory, handling edge cases for zero or multiple matches.
+ * Block-UUID: 227dfc4e-b6c1-41a0-8b01-5dcc8e898313
+ * Parent-UUID: ff816cf1-17fb-49a5-8282-fb88800ce117
+ * Version: 1.0.8
+ * Description: Added FormatContractInfo and FormatContractTest to resolve import cycle with internal/output.
  * Language: Go
- * Created-at: 2026-02-26T05:53:17.561Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4)
+ * Created-at: 2026-02-27T04:53:27.526Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7), GLM-4.7 (v1.0.8)
  */
 
 
@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gitsense/gsc-cli/internal/git"
@@ -103,6 +104,14 @@ func CreateContract(code string, description string, workdir string) (*ContractM
 	}
 
 	meta.ContractMessageID = contractMsgID
+
+	// Persist the updated metadata (specifically the ContractMessageID) to disk
+	if err := saveContractMetadata(meta); err != nil {
+		// Log warning but don't fail the contract creation, as the DB record exists.
+		// The ID mismatch might cause issues for updates/cancellations, but the contract is technically valid.
+		logger.Warning("Failed to update contract metadata file with message ID", "error", err)
+	}
+
 	logger.Info("Contract created successfully", "uuid", meta.UUID, "expires_at", meta.ExpiresAt)
 
 	// Mark handshake as successfully consumed
@@ -184,6 +193,44 @@ func GetContractByWorkdir(workdir string) (*ContractMetadata, error) {
 	}
 
 	return &matches[0], nil
+}
+
+// GetContractInfo retrieves contract information for the 'info' command.
+// It applies sanitization rules if requested (e.g., converting absolute paths to relative).
+func GetContractInfo(uuid string, sanitize bool) (*ContractInfoResult, error) {
+	meta, err := GetContract(uuid)
+	if err != nil {
+		return nil, err
+	}
+
+	result := &ContractInfoResult{
+		UUID:        meta.UUID,
+		Description: meta.Description,
+		Status:      string(meta.Status),
+		CreatedAt:   meta.CreatedAt,
+		ExpiresAt:   meta.ExpiresAt,
+	}
+
+	if sanitize {
+		// Try to make the workdir relative to the current working directory
+		cwd, err := os.Getwd()
+		if err == nil {
+			relPath, err := filepath.Rel(cwd, meta.Workdir)
+			if err == nil {
+				result.Workdir = relPath
+			} else {
+				// Fallback to basename if relative path calculation fails
+				result.Workdir = filepath.Base(meta.Workdir)
+			}
+		} else {
+			// Fallback to basename if CWD is unavailable
+			result.Workdir = filepath.Base(meta.Workdir)
+		}
+	} else {
+		result.Workdir = meta.Workdir
+	}
+
+	return result, nil
 }
 
 // CancelContract terminates a contract immediately.
@@ -335,8 +382,89 @@ func loadContractMetadata(path string) (*ContractMetadata, error) {
 
 // getContractPath returns the absolute path to a contract file.
 func getContractPath(uuid string) string {
-	// We assume ResolveGlobalContractDir succeeds or we handle the error in the caller.
-	// For simplicity here, we construct the path assuming the dir exists.
-	gscHome, _ := settings.GetGSCHome(false)
-	return filepath.Join(gscHome, settings.ContractsRelPath, uuid+".json")
+	contractDir, _ := manifest.ResolveGlobalContractDir()
+	return filepath.Join(contractDir, uuid+".json")
+}
+
+// FormatContractInfo formats the output for the 'contract info' command.
+func FormatContractInfo(info *ContractInfoResult, format string) string {
+	if format == "json" {
+		bytes, err := json.MarshalIndent(info, "", "  ")
+		if err != nil {
+			return fmt.Sprintf("Error formatting JSON: %v\n", err)
+		}
+		return string(bytes)
+	}
+
+	var sb strings.Builder
+	sb.WriteString("Contract Information:\n")
+	sb.WriteString(fmt.Sprintf("  UUID:         %s\n", info.UUID))
+	sb.WriteString(fmt.Sprintf("  Status:       %s\n", info.Status))
+	sb.WriteString(fmt.Sprintf("  Description:  %s\n", info.Description))
+	sb.WriteString(fmt.Sprintf("  Workdir:      %s\n", info.Workdir))
+	sb.WriteString(fmt.Sprintf("  Created At:   %s\n", info.CreatedAt.Format(time.RFC3339)))
+	sb.WriteString(fmt.Sprintf("  Expires At:   %s\n", info.ExpiresAt.Format(time.RFC3339)))
+	
+	return sb.String()
+}
+
+// FormatContractTest formats the output for the 'contract test' command.
+func FormatContractTest(result *ContractTestResult, format string) string {
+	if format == "json" {
+		bytes, err := json.MarshalIndent(result, "", "  ")
+		if err != nil {
+			return fmt.Sprintf("Error formatting JSON: %v\n", err)
+		}
+		return string(bytes)
+	}
+
+	var sb strings.Builder
+
+	// 1. Contract Info Section
+	sb.WriteString("Contract Information:\n")
+	sb.WriteString(fmt.Sprintf("  UUID:         %s\n", result.UUID))
+	sb.WriteString(fmt.Sprintf("  Status:       %s\n", result.Status))
+	sb.WriteString(fmt.Sprintf("  Expires At:   %s\n", result.ExpiresAt.Format(time.RFC3339)))
+	sb.WriteString(fmt.Sprintf("  Workdir:      %s\n", result.Workdir))
+	sb.WriteString("\n")
+
+	// 2. Test Result Section
+	sb.WriteString("Contract Test Result:\n")
+	statusStr := "Success"
+	if !result.Success {
+		statusStr = "Failed"
+	}
+	sb.WriteString(fmt.Sprintf("  Status:       %s\n", statusStr))
+	
+	if result.ErrorCode != "" {
+		sb.WriteString(fmt.Sprintf("  Error Code:   %s\n", result.ErrorCode))
+	}
+	
+	sb.WriteString(fmt.Sprintf("  Message:      %s\n", result.Message))
+	sb.WriteString("\n")
+
+	// 3. File Details (if applicable)
+	if result.RelativePath != "" {
+		sb.WriteString(fmt.Sprintf("  File:         %s\n", result.RelativePath))
+	}
+	
+	if result.BlockUUID != "" {
+		sb.WriteString(fmt.Sprintf("  Block-UUID: %s\n", result.BlockUUID))
+	}
+
+	if result.ParentUUID != "" {
+		sb.WriteString(fmt.Sprintf("  Parent-UUID: %s\n", result.ParentUUID))
+	}
+
+	if result.RelativePath != "" || result.BlockUUID != "" {
+		sb.WriteString("\n")
+	}
+
+	// 4. Diff Section (if applicable)
+	if result.DiffUnified != "" {
+		sb.WriteString("Diff:\n")
+		sb.WriteString(result.DiffUnified)
+	}
+
+	return sb.String()
 }

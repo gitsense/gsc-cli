@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Contract CLI Commands
- * Block-UUID: ec36e852-512f-4568-8aec-ad6f75f24b06
- * Parent-UUID: d03dcaac-b5c2-4ce0-841a-512371a27dd8
- * Version: 1.2.0
- * Description: Added 'status' command to display the active contract for the current working directory, providing a quick way to check contract validity and details.
+ * Block-UUID: 7a2a6699-9330-4da8-acb9-1b3764afce55
+ * Parent-UUID: 5cd5c94e-9f86-4128-a7ac-43494f13c9d4
+ * Version: 1.5.0
+ * Description: Updated calls to FormatContractInfo and FormatContractTest to use the contract package instead of the output package, resolving the import cycle.
  * Language: Go
- * Created-at: 2026-02-26T04:50:00.000Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0)
+ * Created-at: 2026-02-27T05:23:25.321Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
  */
 
 
@@ -42,6 +42,15 @@ var (
 	// Update/New file flags
 	contractUUID string
 	contractFile string
+
+	// Info flags
+	contractInfoFormat   string
+	contractInfoSanitize bool
+
+	// Test flags
+	contractTestFormat   string
+	contractTestSanitize bool
+	contractTestFile     string
 )
 
 // contractCmd represents the base command for contract management
@@ -57,6 +66,7 @@ var createContractCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a new traceability contract for the current repository",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true
 		// Resolve workdir to current directory
 		workdir, err := os.Getwd()
 		if err != nil {
@@ -81,6 +91,7 @@ var statusContractCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Show the status of the contract for the current repository",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true
 		// Resolve workdir to current directory
 		workdir, err := os.Getwd()
 		if err != nil {
@@ -121,6 +132,7 @@ var listContractCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all traceability contracts",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true
 		contracts, err := contract.ListContracts()
 		if err != nil {
 			return err
@@ -160,6 +172,7 @@ var cancelContractCmd = &cobra.Command{
 	Short: "Cancel an active traceability contract",
 	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true
 		uuid := ""
 		if len(args) > 0 {
 			uuid = args[0]
@@ -184,6 +197,7 @@ var renewContractCmd = &cobra.Command{
 	Short: "Extend the expiration time of a contract",
 	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true
 		uuid := ""
 		if len(args) > 0 {
 			uuid = args[0]
@@ -207,6 +221,7 @@ var updateFileCmd = &cobra.Command{
 	Use:   "update-file",
 	Short: "Update an existing traceable file using a contract",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true
 		err := contract.UpdateFile(contractUUID, contractFile)
 		if err != nil {
 			// Handle ContractError for specific exit codes
@@ -226,6 +241,7 @@ var newFileCmd = &cobra.Command{
 	Short: "Create a new traceable file using a contract",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true
 		targetPath := args[0]
 		err := contract.NewFile(contractUUID, targetPath, contractFile)
 		if err != nil {
@@ -236,6 +252,68 @@ var newFileCmd = &cobra.Command{
 			return err
 		}
 		fmt.Println("File created successfully.")
+		return nil
+	},
+}
+
+// infoContractCmd handles 'gsc contract info [uuid]'
+var infoContractCmd = &cobra.Command{
+	Use:   "info [uuid]",
+	Short: "Display detailed information about a contract",
+	Args:  cobra.MaximumNArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true
+		uuid := ""
+		if len(args) > 0 {
+			uuid = args[0]
+		}
+
+		// Smart Default: Find UUID by workdir if not provided
+		if uuid == "" {
+			foundUUID, err := findContractUUIDByWorkdir()
+			if err != nil {
+				return err
+			}
+			uuid = foundUUID
+		}
+
+		info, err := contract.GetContractInfo(uuid, contractInfoSanitize)
+		if err != nil {
+			return err
+		}
+
+		fmt.Print(contract.FormatContractInfo(info, contractInfoFormat))
+		return nil
+	},
+}
+
+// testContractCmd handles 'gsc contract test [uuid]'
+var testContractCmd = &cobra.Command{
+	Use:   "test [uuid]",
+	Short: "Test a file change against a contract without writing it",
+	Args:  cobra.MaximumNArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true
+		uuid := ""
+		if len(args) > 0 {
+			uuid = args[0]
+		}
+
+		// Smart Default: Find UUID by workdir if not provided
+		if uuid == "" {
+			foundUUID, err := findContractUUIDByWorkdir()
+			if err != nil {
+				return err
+			}
+			uuid = foundUUID
+		}
+
+		result, err := contract.TestFile(uuid, contractTestFile, contractTestSanitize)
+		if err != nil {
+			return err
+		}
+
+		fmt.Print(contract.FormatContractTest(result, contractTestFormat))
 		return nil
 	},
 }
@@ -268,6 +346,16 @@ func init() {
 	newFileCmd.MarkFlagRequired("uuid")
 	newFileCmd.MarkFlagRequired("file")
 
+	// Info Flags
+	infoContractCmd.Flags().StringVarP(&contractInfoFormat, "format", "f", "human", "Output format (human, json)")
+	infoContractCmd.Flags().BoolVar(&contractInfoSanitize, "sanitize", false, "Sanitize output (e.g., relative paths)")
+
+	// Test Flags
+	testContractCmd.Flags().StringVarP(&contractTestFormat, "format", "f", "human", "Output format (human, json)")
+	testContractCmd.Flags().BoolVar(&contractTestSanitize, "sanitize", false, "Sanitize output (e.g., relative paths)")
+	testContractCmd.Flags().StringVar(&contractTestFile, "file", "", "Path to the file containing new code to test (required)")
+	testContractCmd.MarkFlagRequired("file")
+
 	// Add subcommands to base contract command
 	contractCmd.AddCommand(createContractCmd)
 	contractCmd.AddCommand(statusContractCmd)
@@ -276,6 +364,8 @@ func init() {
 	contractCmd.AddCommand(renewContractCmd)
 	contractCmd.AddCommand(updateFileCmd)
 	contractCmd.AddCommand(newFileCmd)
+	contractCmd.AddCommand(infoContractCmd)
+	contractCmd.AddCommand(testContractCmd)
 }
 
 // RegisterContractCommand adds the contract command to the root CLI

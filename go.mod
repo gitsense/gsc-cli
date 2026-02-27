@@ -6,7 +6,9 @@ require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/agnivade/levenshtein v1.2.1
 	github.com/bmatcuk/doublestar/v4 v4.10.0
+	github.com/google/uuid v1.3.0
 	github.com/mattn/go-isatty v0.0.16
+	github.com/sergi/go-diff v1.0.0
 	github.com/spf13/cobra v1.8.0
 	github.com/src-d/enry/v2 v2.1.0
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
@@ -16,7 +18,6 @@ require (
 
 require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/google/uuid v1.3.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/mattn/go-colorable v0.1.2 // indirect
