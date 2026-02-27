@@ -1,12 +1,12 @@
 /**
  * Component: Contract Manager
- * Block-UUID: 37c524cf-fb0b-4180-90ba-e296e23fa3c4
- * Parent-UUID: 44882e87-28d2-4f10-9a3f-625fe78c049e
- * Version: 1.3.1
+ * Block-UUID: bc99e7a5-7dcf-40fd-9103-7cabb3d42a64
+ * Parent-UUID: 37c524cf-fb0b-4180-90ba-e296e23fa3c4
+ * Version: 1.3.2
  * Description: Improved CreateContract logic to prevent multiple active contracts for the same workspace and implemented chat idempotency by using UpsertContractMessage.
  * Language: Go
- * Created-at: 2026-02-27T16:54:18.758Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7), GLM-4.7 (v1.0.8), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1)
+ * Created-at: 2026-02-27T17:01:48.830Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7), GLM-4.7 (v1.0.8), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2)
  */
 
 
@@ -215,6 +215,8 @@ func GetContractInfo(uuid string, sanitize bool) (*ContractInfoResult, error) {
 		Status:      string(meta.Status),
 		CreatedAt:   meta.CreatedAt,
 		ExpiresAt:   meta.ExpiresAt,
+		Authcode:    meta.Authcode,
+		Workdir:     meta.Workdir,
 	}
 
 	if sanitize {
@@ -232,8 +234,9 @@ func GetContractInfo(uuid string, sanitize bool) (*ContractInfoResult, error) {
 			// Fallback to basename if CWD is unavailable
 			result.Workdir = filepath.Base(meta.Workdir)
 		}
-	} else {
-		result.Workdir = meta.Workdir
+		
+		// Mask authcode if sanitizing output
+		result.Authcode = "****"
 	}
 
 	return result, nil
