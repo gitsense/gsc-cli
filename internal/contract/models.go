@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Contract Models
- * Block-UUID: cff6b5b8-f3ed-4fd4-9449-3168c7791468
- * Parent-UUID: c0e5534d-3236-46b2-8a57-4a5940040a1a
- * Version: 1.1.0
+ * Block-UUID: 8e5b16f3-65eb-4faa-9c06-f93d8c9d3fb2
+ * Parent-UUID: cff6b5b8-f3ed-4fd4-9449-3168c7791468
+ * Version: 1.2.0
  * Description: Added ContractInfoResult and ContractTestResult to support the 'info' and 'test' subcommands.
  * Language: Go
- * Created-at: 2026-02-26T05:15:01.000Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0)
+ * Created-at: 2026-02-27T16:16:05.671Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0)
  */
 
 
@@ -26,6 +26,7 @@ const (
 // ContractMetadata represents a traceability contract stored in ~/.gitsense/contracts.
 type ContractMetadata struct {
 	UUID             string         `json:"uuid"`
+	Authcode         string         `json:"authcode"`
 	Description      string         `json:"description"`
 	Workdir          string         `json:"workdir"`
 	ChatID           int64          `json:"chat_id"`

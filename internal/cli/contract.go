@@ -1,19 +1,21 @@
 /**
  * Component: Contract CLI Commands
- * Block-UUID: 7a2a6699-9330-4da8-acb9-1b3764afce55
- * Parent-UUID: 5cd5c94e-9f86-4128-a7ac-43494f13c9d4
- * Version: 1.5.0
+ * Block-UUID: 63d748ed-72cd-46cb-a028-69fdbe1ed135
+ * Parent-UUID: 7a2a6699-9330-4da8-acb9-1b3764afce55
+ * Version: 1.6.0
  * Description: Updated calls to FormatContractInfo and FormatContractTest to use the contract package instead of the output package, resolving the import cycle.
  * Language: Go
- * Created-at: 2026-02-27T05:23:25.321Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
+ * Created-at: 2026-02-27T16:15:48.626Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0)
  */
 
 
 package cli
 
 import (
+	"crypto/rand"
 	"fmt"
+	"math/big"
 	"os"
 	"path/filepath"
 	"sort"
@@ -29,6 +31,7 @@ var (
 	// Create flags
 	contractCode        string
 	contractDescription string
+	contractAuthcode    string
 
 	// List flags
 	contractStatus string
@@ -73,14 +76,24 @@ var createContractCmd = &cobra.Command{
 			return fmt.Errorf("failed to get current directory: %w", err)
 		}
 
+		// Generate random 4-digit authcode if not provided
+		if contractAuthcode == "" {
+			n, err := rand.Int(rand.Reader, big.NewInt(10000))
+			if err != nil {
+				return fmt.Errorf("failed to generate random authcode: %w", err)
+			}
+			contractAuthcode = fmt.Sprintf("%04d", n.Int64())
+		}
+
 		// Call manager
-		meta, err := contract.CreateContract(contractCode, contractDescription, workdir)
+		meta, err := contract.CreateContract(contractCode, contractDescription, contractAuthcode, workdir)
 		if err != nil {
 			return err
 		}
 
 		fmt.Printf("Contract created successfully.\n")
 		fmt.Printf("UUID: %s\n", meta.UUID)
+		fmt.Printf("Authcode: %s\n", contractAuthcode)
 		fmt.Printf("Expires: %s\n", meta.ExpiresAt.Format(time.RFC3339))
 		return nil
 	},
@@ -322,6 +335,7 @@ func init() {
 	// Create Flags
 	createContractCmd.Flags().StringVar(&contractCode, "code", "", "6-digit handshake code from chat (required)")
 	createContractCmd.Flags().StringVar(&contractDescription, "description", "", "Description of the contract's purpose (required)")
+	createContractCmd.Flags().StringVar(&contractAuthcode, "authcode", "", "4-digit authorization code (optional, random if not set)")
 	createContractCmd.MarkFlagRequired("code")
 	createContractCmd.MarkFlagRequired("description")
 

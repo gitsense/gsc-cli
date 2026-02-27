@@ -1,12 +1,12 @@
 /**
  * Component: Contract Manager
- * Block-UUID: d16a09d8-fa88-4f66-8ff3-28c679347494
- * Parent-UUID: 227dfc4e-b6c1-41a0-8b01-5dcc8e898313
- * Version: 1.1.0
+ * Block-UUID: 44882e87-28d2-4f10-9a3f-625fe78c049e
+ * Parent-UUID: d16a09d8-fa88-4f66-8ff3-28c679347494
+ * Version: 1.2.0
  * Description: Improved CreateContract logic to prevent multiple active contracts for the same workspace and implemented chat idempotency by using UpsertContractMessage.
  * Language: Go
- * Created-at: 2026-02-27T04:53:27.526Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7), GLM-4.7 (v1.0.8), Gemini 3 Flash (v1.1.0)
+ * Created-at: 2026-02-27T16:18:07.755Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7), GLM-4.7 (v1.0.8), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -31,7 +31,7 @@ import (
 
 // CreateContract initializes a new traceability contract using a valid handshake code.
 // It validates the workdir, persists the contract metadata, and inserts the contract message into the chat.
-func CreateContract(code string, description string, workdir string) (*ContractMetadata, error) {
+func CreateContract(code string, description string, authcode string, workdir string) (*ContractMetadata, error) {
 	// 1. Resolve GSC_HOME and Load Handshake
 	gscHome, err := settings.GetGSCHome(false)
 	if err != nil {
@@ -67,6 +67,7 @@ func CreateContract(code string, description string, workdir string) (*ContractM
 	now := time.Now()
 	meta := &ContractMetadata{
 		UUID:        uuid.New().String(),
+		Authcode:    authcode,
 		Description: description,
 		Workdir:     absWorkdir,
 		ChatID:      h.ChatID,
