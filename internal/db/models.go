@@ -1,12 +1,12 @@
 /**
  * Component: Chat Database Models
- * Block-UUID: 0bed6a29-b637-4ac7-9dd5-2118b07e1a4e
- * Parent-UUID: c4b82151-6596-4fcc-ab50-0a837df74166
- * Version: 1.3.0
- * Description: Data structures mapping to the GitSense Chat SQLite schema. Updated PublishedManifest struct to include ManifestCount for hierarchical UI summaries.
+ * Block-UUID: 16f66ffe-c5bb-4d7d-bd64-e5d9ea38a84b
+ * Parent-UUID: 0bed6a29-b637-4ac7-9dd5-2118b07e1a4e
+ * Version: 1.4.0
+ * Description: Data structures mapping to the GitSense Chat SQLite schema. Updated ContractMessageData to include Authcode for secure contract operations.
  * Language: Go
  * Created-at: 2026-02-20T04:31:47.873Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0), GLM-4.7 (v1.4.0)
  */
 
 
@@ -38,7 +38,7 @@ type Chat struct {
 	IsDefaultName   int            `json:"is_default_name"`
 	CreatedAt       time.Time      `json:"created_at"`
 	UpdatedAt       time.Time      `json:"updated_at"`
-	ModifiedAt      sql.NullTime   `json:"modified_at"`
+	ModifiedAt       sql.NullTime   `json:"modified_at"`
 }
 
 // Message represents a record in the 'messages' table.
@@ -97,4 +97,15 @@ type PublishedManifest struct {
 	OwnerChatID         sql.NullInt64  `json:"owner_chat_id"`
 	RepoChatID          sql.NullInt64  `json:"repo_chat_id"`
 	ManifestCount       int            `json:"manifest_count"` // Used for UI summaries
+}
+
+// ContractMessageData holds the data required to generate a contract message.
+// This struct is defined here to avoid circular dependencies with the manifest package.
+type ContractMessageData struct {
+	Description string
+	Workdir     string
+	ExpiresAt   time.Time
+	UUID        string
+	Status      string // "active", "cancelled", "expired"
+	Authcode    string // 4-digit authorization code
 }

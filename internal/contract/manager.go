@@ -1,12 +1,12 @@
 /**
  * Component: Contract Manager
- * Block-UUID: 44882e87-28d2-4f10-9a3f-625fe78c049e
- * Parent-UUID: d16a09d8-fa88-4f66-8ff3-28c679347494
- * Version: 1.2.0
+ * Block-UUID: 37c524cf-fb0b-4180-90ba-e296e23fa3c4
+ * Parent-UUID: 44882e87-28d2-4f10-9a3f-625fe78c049e
+ * Version: 1.3.1
  * Description: Improved CreateContract logic to prevent multiple active contracts for the same workspace and implemented chat idempotency by using UpsertContractMessage.
  * Language: Go
- * Created-at: 2026-02-27T16:18:07.755Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7), GLM-4.7 (v1.0.8), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0)
+ * Created-at: 2026-02-27T16:54:18.758Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7), GLM-4.7 (v1.0.8), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1)
  */
 
 
@@ -407,6 +407,7 @@ func FormatContractInfo(info *ContractInfoResult, format string) string {
 	sb.WriteString(fmt.Sprintf("  UUID:         %s\n", info.UUID))
 	sb.WriteString(fmt.Sprintf("  Status:       %s\n", info.Status))
 	sb.WriteString(fmt.Sprintf("  Description:  %s\n", info.Description))
+	sb.WriteString(fmt.Sprintf("  Authcode:     %s\n", info.Authcode))
 	sb.WriteString(fmt.Sprintf("  Workdir:      %s\n", info.Workdir))
 	sb.WriteString(fmt.Sprintf("  Created At:   %s\n", info.CreatedAt.Format(time.RFC3339)))
 	sb.WriteString(fmt.Sprintf("  Expires At:   %s\n", info.ExpiresAt.Format(time.RFC3339)))

@@ -1,12 +1,12 @@
 /**
  * Component: Provenance Manager
- * Block-UUID: b4f3a8fa-e1e5-48ce-87c1-d16f78cf9ab6
- * Parent-UUID: e06c54c2-beef-4b93-860b-66b7e9fdbdda
- * Version: 1.1.1
- * Description: Added TestFile function to support the 'contract test' command, enabling pre-flight validation of code changes including UUID uniqueness and diff generation.
+ * Block-UUID: d0d5d818-5e72-4f21-9a1c-96b3c308d780
+ * Parent-UUID: b4f3a8fa-e1e5-48ce-87c1-d16f78cf9ab6
+ * Version: 1.3.0
+ * Description: Added TestFile function to support the 'contract test' command, enabling pre-flight validation of code changes including UUID uniqueness and diff generation. Updated UpdateFile and NewFile to accept and validate the authcode parameter for security.
  * Language: Go
  * Created-at: 2026-02-26T18:13:46.301Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.1.0), GLM-4.7 (v1.1.1)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
  */
 
 
@@ -36,6 +36,7 @@ const (
 	ExitTargetFileNotFound   = 13 // Target file not found (for update-file)
 	ExitTargetPathExists     = 14 // Target path already exists (for new-file)
 	ExitInvalidTargetPath    = 15 // Target path is not relative or escapes workdir
+	ExitInvalidAuthcode      = 16 // Invalid authorization code provided
 )
 
 // Error codes for the 'test' command
@@ -49,8 +50,8 @@ const (
 )
 
 // UpdateFile updates an existing traceable file using a contract.
-// It validates the Parent-UUID, performs an atomic write, and logs the provenance.
-func UpdateFile(contractUUID string, sourceFile string) error {
+// It validates the Authcode, Parent-UUID, performs an atomic write, and logs the provenance.
+func UpdateFile(contractUUID string, authcode string, sourceFile string) error {
 	ctx := context.Background()
 	engine := &search.RipgrepEngine{}
 
@@ -62,6 +63,11 @@ func UpdateFile(contractUUID string, sourceFile string) error {
 
 	if !isContractActive(contract) {
 		return &ContractError{Code: ExitContractExpired, Message: "Contract has expired"}
+	}
+
+	// SECURITY CHECK: Validate Authcode
+	if contract.Authcode != authcode {
+		return &ContractError{Code: ExitInvalidAuthcode, Message: "Invalid authorization code"}
 	}
 
 	// 2. Parse Source File (New Code)
@@ -138,8 +144,8 @@ func UpdateFile(contractUUID string, sourceFile string) error {
 }
 
 // NewFile creates a new traceable file using a contract.
-// It validates path safety and UUID uniqueness, then logs the provenance.
-func NewFile(contractUUID string, targetRelativePath string, sourceFile string) error {
+// It validates the Authcode, path safety and UUID uniqueness, then logs the provenance.
+func NewFile(contractUUID string, authcode string, targetRelativePath string, sourceFile string) error {
 	ctx := context.Background()
 	engine := &search.RipgrepEngine{}
 
@@ -151,6 +157,11 @@ func NewFile(contractUUID string, targetRelativePath string, sourceFile string) 
 
 	if !isContractActive(contract) {
 		return &ContractError{Code: ExitContractExpired, Message: "Contract has expired"}
+	}
+
+	// SECURITY CHECK: Validate Authcode
+	if contract.Authcode != authcode {
+		return &ContractError{Code: ExitInvalidAuthcode, Message: "Invalid authorization code"}
 	}
 
 	// 2. Validate Target Path (Relative & Safe)

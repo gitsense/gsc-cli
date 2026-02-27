@@ -1,12 +1,12 @@
 /**
  * Component: Chat Database Operations
- * Block-UUID: a5821070-b3de-4280-8ab1-4ed789e6d62b
- * Parent-UUID: 30108f7a-57ae-423c-a805-13277d39b11a
- * Version: 1.9.0
- * Description: Added UpsertContractMessage to support idempotent contract creation. This function checks for an existing contract message in the chat and updates it if found, or inserts a new one with anchor logic if not found.
+ * Block-UUID: 62d949cd-b5ac-4f45-a720-05d7b5706439
+ * Parent-UUID: 4edceaf2-2df4-4f97-82b8-0d9c3c561462
+ * Version: 1.10.1
+ * Description: Updated FormatContractMarkdown to include the Authcode in the generated table, ensuring the user can see the security code in the chat interface.
  * Language: Go
- * Created-at: 2026-02-20T04:31:47.873Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.8.1), GLM-4.7 (v1.9.0)
+ * Created-at: 2026-02-27T16:37:51.241Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.8.1), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.10.1)
  */
 
 
@@ -21,16 +21,6 @@ import (
 	"github.com/gitsense/gsc-cli/pkg/logger"
 	"github.com/google/uuid"
 )
-
-// ContractMessageData holds the data required to generate a contract message.
-// This struct is defined here to avoid circular dependencies with the manifest package.
-type ContractMessageData struct {
-	Description string
-	Workdir     string
-	ExpiresAt   time.Time
-	UUID        string
-	Status      string // "active", "cancelled", "expired"
-}
 
 // FormatContractMarkdown generates the Markdown content for a contract message.
 func FormatContractMarkdown(data ContractMessageData) string {

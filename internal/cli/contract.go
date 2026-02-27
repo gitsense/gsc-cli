@@ -1,12 +1,12 @@
 /**
  * Component: Contract CLI Commands
- * Block-UUID: 63d748ed-72cd-46cb-a028-69fdbe1ed135
- * Parent-UUID: 7a2a6699-9330-4da8-acb9-1b3764afce55
- * Version: 1.6.0
- * Description: Updated calls to FormatContractInfo and FormatContractTest to use the contract package instead of the output package, resolving the import cycle.
+ * Block-UUID: c98ebb36-1fdd-4dc9-a980-a9e8225400a0
+ * Parent-UUID: 63d748ed-72cd-46cb-a028-69fdbe1ed135
+ * Version: 1.7.0
+ * Description: Updated calls to FormatContractInfo and FormatContractTest to use the contract package instead of the output package, resolving the import cycle. Added --authcode flag to update-file and new-file commands to enforce security.
  * Language: Go
  * Created-at: 2026-02-27T16:15:48.626Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0)
  */
 
 
@@ -43,8 +43,9 @@ var (
 	contractRenewHours int
 
 	// Update/New file flags
-	contractUUID string
-	contractFile string
+	contractUUID         string
+	contractFile         string
+	contractAuthcodeExec string
 
 	// Info flags
 	contractInfoFormat   string
@@ -235,7 +236,7 @@ var updateFileCmd = &cobra.Command{
 	Short: "Update an existing traceable file using a contract",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
-		err := contract.UpdateFile(contractUUID, contractFile)
+		err := contract.UpdateFile(contractUUID, contractAuthcodeExec, contractFile)
 		if err != nil {
 			// Handle ContractError for specific exit codes
 			if cErr, ok := err.(*contract.ContractError); ok {
@@ -256,7 +257,7 @@ var newFileCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
 		targetPath := args[0]
-		err := contract.NewFile(contractUUID, targetPath, contractFile)
+		err := contract.NewFile(contractUUID, contractAuthcodeExec, targetPath, contractFile)
 		if err != nil {
 			// Handle ContractError for specific exit codes
 			if cErr, ok := err.(*contract.ContractError); ok {
@@ -351,14 +352,18 @@ func init() {
 	// Update-File Flags
 	updateFileCmd.Flags().StringVar(&contractUUID, "uuid", "", "Contract UUID (required)")
 	updateFileCmd.Flags().StringVar(&contractFile, "file", "", "Path to the file containing new code (required)")
+	updateFileCmd.Flags().StringVar(&contractAuthcodeExec, "authcode", "", "4-digit authorization code (required)")
 	updateFileCmd.MarkFlagRequired("uuid")
 	updateFileCmd.MarkFlagRequired("file")
+	updateFileCmd.MarkFlagRequired("authcode")
 
 	// New-File Flags
 	newFileCmd.Flags().StringVar(&contractUUID, "uuid", "", "Contract UUID (required)")
 	newFileCmd.Flags().StringVar(&contractFile, "file", "", "Path to the file containing new code (required)")
+	newFileCmd.Flags().StringVar(&contractAuthcodeExec, "authcode", "", "4-digit authorization code (required)")
 	newFileCmd.MarkFlagRequired("uuid")
 	newFileCmd.MarkFlagRequired("file")
+	newFileCmd.MarkFlagRequired("authcode")
 
 	// Info Flags
 	infoContractCmd.Flags().StringVarP(&contractInfoFormat, "format", "f", "human", "Output format (human, json)")
