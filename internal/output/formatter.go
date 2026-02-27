@@ -1,12 +1,12 @@
 /**
  * Component: Output Formatter
- * Block-UUID: 490b567d-a4ab-4ac0-9607-d888324b0b34
- * Parent-UUID: 494a7d28-020f-4727-be68-de6c97294f29
- * Version: 1.14.0
+ * Block-UUID: fa6ea9ea-22fd-4cf5-9a22-e4557a5a2e9e
+ * Parent-UUID: 490b567d-a4ab-4ac0-9607-d888324b0b34
+ * Version: 1.15.0
  * Description: Removed FormatContractInfo and FormatContractTest to resolve import cycle. These functions have been moved to internal/contract/manager.go.
  * Language: Go
- * Created-at: 2026-02-26T04:58:22.818Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), Gemini 3 Flash (v1.7.0), Gemini 3 Flash (v1.8.0), GLM-4.7 (v1.9.0), Gemini 3 Flash (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0)
+ * Created-at: 2026-02-27T07:04:22.864Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), Gemini 3 Flash (v1.7.0), Gemini 3 Flash (v1.8.0), GLM-4.7 (v1.9.0), Gemini 3 Flash (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0)
  */
 
 
@@ -240,7 +240,7 @@ func FormatContractList(contracts []ContractDisplay) string {
 	rows := make([][]string, len(contracts))
 	for i, c := range contracts {
 		rows[i] = []string{
-			c.UUID[:8], // Short UUID for display
+			c.UUID,
 			truncate(c.Description, 30),
 			truncate(c.Workdir, 40),
 			c.Status,
