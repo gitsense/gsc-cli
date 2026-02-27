@@ -75,7 +75,7 @@ func CreateContract(code string, description string, authcode string, workdir st
 		ChatUUID:    h.ChatUUID,
 		Status:      ContractActive,
 		CreatedAt:   now,
-		ExpiresAt:   now.Add(24 * time.Hour),
+		ExpiresAt:   now.Add(time.Duration(settings.DefaultContractTTL) * time.Hour),
 	}
 
 	// 4. Persist JSON

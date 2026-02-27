@@ -73,8 +73,8 @@ const ProvenanceFileName = "provenance.log"
 // ContractHandshakeConsumer is the consumer name for contract-related handshakes
 const ContractHandshakeConsumer = "gsc-contract"
 
-// DefaultContractTTL is the default time-to-live for a contract (24 hours)
-const DefaultContractTTL = 24
+// DefaultContractTTL is the default time-to-live for a contract (4 hours)
+const DefaultContractTTL = 4
 
 // GetGSCHome resolves the GSC_HOME directory. If required is true, it returns an
 // error if the environment variable is not set. If required is false, it falls
