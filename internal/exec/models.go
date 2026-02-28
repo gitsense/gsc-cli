@@ -1,12 +1,12 @@
 /**
  * Component: Exec Data Models
- * Block-UUID: be89efd0-a5eb-466c-a1a5-882c80fde459
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: e60a2595-3005-4007-88e3-dc8ac8267b37
+ * Parent-UUID: be89efd0-a5eb-466c-a1a5-882c80fde459
+ * Version: 1.1.0
  * Description: Defines the data structures for persisting execution metadata and flags, enabling the recovery and resend features of the exec command.
  * Language: Go
- * Created-at: 2026-02-23T03:11:00.000Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Created-at: 2026-02-28T17:11:31.131Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0)
  */
 
 
@@ -27,6 +27,7 @@ type ExecMetadata struct {
 type ExecFlags struct {
 	NoStdout bool `json:"no_stdout"`
 	NoStderr bool `json:"no_stderr"`
+	TimeoutSeconds int  `json:"timeout_seconds"`
 }
 
 // ExecOutput represents a saved execution output for listing purposes.

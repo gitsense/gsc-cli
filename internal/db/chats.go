@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Chat Database Operations
- * Block-UUID: 0259ed8c-16e4-4757-989c-2411c3c2e079
- * Parent-UUID: 62d949cd-b5ac-4f45-a720-05d7b5706439
- * Version: 1.11.0
+ * Block-UUID: f7bc13fc-938f-4ddc-8bf1-5086a046612b
+ * Parent-UUID: 0259ed8c-16e4-4757-989c-2411c3c2e079
+ * Version: 1.12.0
  * Description: Updated FormatContractMarkdown to include Whitelist and Execution Timeout in the contract message table for better transparency.
  * Language: Go
- * Created-at: 2026-02-28T16:53:26.104Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.8.1), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.10.1), Gemini 3 Flash (v1.11.0)
+ * Created-at: 2026-02-28T17:12:08.873Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.10.1), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0)
  */
 
 
@@ -514,13 +514,13 @@ func GetActiveManifests(db *sql.DB, owner, repo string) ([]PublishedManifest, er
 // GetGlobalRecentManifests retrieves the most recently published manifests across all repositories.
 func GetGlobalRecentManifests(db *sql.DB, limit int) ([]PublishedManifest, error) {
 	query := `
-		SELECT uuid, owner, repo, manifest_name, published_at 
-		FROM published_manifests 
-		WHERE deleted = 0 
-		ORDER BY published_at DESC 
+		SELECT uuid, owner, repo, manifest_name, published_at
+		FROM published_manifests
+		WHERE deleted = 0
+		ORDER BY published_at DESC
 		LIMIT ?`
 
-	rows, err := db.Query(limit)
+	rows, err := db.Query(query, limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query global recent manifests: %w", err)
 	}

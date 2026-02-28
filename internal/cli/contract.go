@@ -1,12 +1,12 @@
 /**
  * Component: Contract CLI Commands
- * Block-UUID: 10c7cd98-3e04-4aa9-8ea2-c95cb9e5f6f0
- * Parent-UUID: c98ebb36-1fdd-4dc9-a980-a9e8225400a0
- * Version: 1.8.0
+ * Block-UUID: b2199f42-592e-4985-907b-08cca854d05b
+ * Parent-UUID: 9483f5ee-4789-4bd7-909a-773b37333df7
+ * Version: 1.9.1
  * Description: Updated create command to support --whitelist, --no-whitelist, and --exec-timeout flags for the new security framework.
  * Language: Go
- * Created-at: 2026-02-27T16:15:48.626Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0)
+ * Created-at: 2026-02-28T17:15:35.380Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.9.1)
  */
 
 
@@ -22,10 +22,15 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"database/sql"
 
 	"github.com/spf13/cobra"
+	"github.com/gitsense/gsc-cli/internal/bridge/formatters"
+	"github.com/gitsense/gsc-cli/internal/db"
+	"github.com/gitsense/gsc-cli/internal/exec"
 	"github.com/gitsense/gsc-cli/internal/contract"
 	"github.com/gitsense/gsc-cli/internal/output"
+	"github.com/gitsense/gsc-cli/pkg/settings"
 )
 
 var (
@@ -59,6 +64,12 @@ var (
 	contractTestFormat   string
 	contractTestSanitize bool
 	contractTestFile     string
+
+	// Exec flags
+	contractExecUUID     string
+	contractExecAuthcode string
+	contractExecCmd      string
+	contractExecChat     bool
 )
 
 // contractCmd represents the base command for contract management
@@ -365,6 +376,105 @@ var testContractCmd = &cobra.Command{
 	},
 }
 
+// execContractCmd handles 'gsc contract exec'
+var execContractCmd = &cobra.Command{
+	Use:   "exec",
+	Short: "Execute a command within a contract's security context",
+	Long: `Executes a command in the contract's working directory, enforcing 
+whitelists and timeouts. Results can be enriched and sent to chat.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true
+
+		// 1. Load Contract
+		meta, err := contract.GetContract(contractExecUUID)
+		if err != nil {
+			return fmt.Errorf("failed to load contract: %w", err)
+		}
+
+		// 2. Validate Auth Code
+		if meta.Authcode != contractExecAuthcode {
+			return fmt.Errorf("invalid authorization code")
+		}
+
+		// 3. Validate Command against Whitelist
+		fields := strings.Fields(contractExecCmd)
+		if len(fields) == 0 {
+			return fmt.Errorf("no command provided")
+		}
+		binary := fields[0]
+
+		if !meta.NoWhitelist {
+			allowed := false
+			for _, w := range meta.Whitelist {
+				if w == binary {
+					allowed = true
+					break
+				}
+			}
+			if !allowed {
+				return fmt.Errorf("command '%s' is not whitelisted for this contract", binary)
+			}
+		}
+
+		// 4. Execute Command
+		executor := exec.NewExecutor(contractExecCmd, exec.ExecFlags{
+			TimeoutSeconds: meta.ExecTimeout,
+		})
+
+		result, err := executor.Run()
+		if err != nil {
+			return err
+		}
+
+		// 5. Resolve and Apply Formatter
+		finalOutput := result.Output
+		formatter := formatters.ResolveFormatter(binary)
+		if formatter != nil {
+			// Pre-process to capture context (like file path for cat)
+			formatter.PreProcess(fields[1:])
+			// Post-process the output
+			enriched, err := formatter.PostProcess(finalOutput)
+			if err == nil {
+				finalOutput = enriched
+			}
+		}
+
+		// 6. Handle Chat Insertion
+		if contractExecChat {
+			gscHome, _ := settings.GetGSCHome(false)
+			sqliteDB, err := db.OpenDB(settings.GetChatDatabasePath(gscHome))
+			if err != nil {
+				return fmt.Errorf("failed to open chat database: %w", err)
+			}
+			defer sqliteDB.Close()
+
+			// Format the final Markdown message
+			markdown := output.FormatBridgeMarkdown(contractExecCmd, result.Duration, "N/A", "text", finalOutput, result.ExitCode)
+
+			msg := &db.Message{
+				Type:       "gsc-cli-output",
+				Visibility: "human-public",
+				ChatID:     meta.ChatID,
+				ParentID:   meta.ContractMessageID, // Reply to the contract message
+				Level:      2,                      // Contract is level 1
+				Role:       "assistant",
+				RealModel:  sql.NullString{String: settings.RealModelNotes, Valid: true},
+				Temperature: sql.NullFloat64{Float64: 0, Valid: true},
+				Message:    sql.NullString{String: markdown, Valid: true},
+			}
+
+			msgID, err := db.InsertMessage(sqliteDB, msg)
+			if err != nil {
+				return fmt.Errorf("failed to insert message into chat: %w", err)
+			}
+			fmt.Printf("[BRIDGE] Output added to chat. Message ID: %d\n", msgID)
+		}
+
+		fmt.Print(finalOutput)
+		return nil
+	},
+}
+
 func init() {
 	// Create Flags
 	createContractCmd.Flags().StringVar(&contractCode, "code", "", "6-digit handshake code from chat (required)")
@@ -389,7 +499,7 @@ func init() {
 	updateFileCmd.Flags().StringVar(&contractUUID, "uuid", "", "Contract UUID (required)")
 	updateFileCmd.Flags().StringVar(&contractFile, "file", "", "Path to the file containing new code (required)")
 	updateFileCmd.Flags().StringVar(&contractAuthcodeExec, "authcode", "", "4-digit authorization code (required)")
-	updateContractCmd.MarkFlagRequired("uuid")
+	updateFileCmd.MarkFlagRequired("uuid")
 	updateContractCmd.MarkFlagRequired("file")
 	updateContractCmd.MarkFlagRequired("authcode")
 
@@ -397,7 +507,7 @@ func init() {
 	newFileCmd.Flags().StringVar(&contractUUID, "uuid", "", "Contract UUID (required)")
 	newFileCmd.Flags().StringVar(&contractFile, "file", "", "Path to the file containing new code (required)")
 	newFileCmd.Flags().StringVar(&contractAuthcodeExec, "authcode", "", "4-digit authorization code (required)")
-	newContractCmd.MarkFlagRequired("uuid")
+	newFileCmd.MarkFlagRequired("uuid")
 	newContractCmd.MarkFlagRequired("file")
 	newContractCmd.MarkFlagRequired("authcode")
 
@@ -411,6 +521,15 @@ func init() {
 	testContractCmd.Flags().StringVar(&contractTestFile, "file", "", "Path to the file containing new code to test (required)")
 	testContractCmd.MarkFlagRequired("file")
 
+	// Exec Flags
+	execContractCmd.Flags().StringVar(&contractExecUUID, "uuid", "", "Contract UUID (required)")
+	execContractCmd.Flags().StringVar(&contractExecAuthcode, "authcode", "", "4-digit authorization code (required)")
+	execContractCmd.Flags().StringVar(&contractExecCmd, "cmd", "", "Command to execute (required)")
+	execContractCmd.Flags().BoolVar(&contractExecChat, "chat", false, "Add output to chat")
+	execContractCmd.MarkFlagRequired("uuid")
+	execContractCmd.MarkFlagRequired("authcode")
+	execContractCmd.MarkFlagRequired("cmd")
+
 	// Add subcommands to base contract command
 	contractCmd.AddCommand(createContractCmd)
 	contractCmd.AddCommand(statusContractCmd)
@@ -421,6 +540,7 @@ func init() {
 	contractCmd.AddCommand(newFileCmd)
 	contractCmd.AddCommand(infoContractCmd)
 	contractCmd.AddCommand(testContractCmd)
+	contractCmd.AddCommand(execContractCmd)
 }
 
 // RegisterContractCommand adds the contract command to the root CLI
