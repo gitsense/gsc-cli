@@ -1,12 +1,12 @@
 /**
  * Component: Settings
- * Block-UUID: 99d7e8e3-601c-4687-8410-acfc42683306
- * Parent-UUID: 428e959b-88e8-4988-9b3b-726902e42896
- * Version: 1.8.0
+ * Block-UUID: 0b1b9437-eb33-4875-aa31-dc59d4e857da
+ * Parent-UUID: 99d7e8e3-601c-4687-8410-acfc42683306
+ * Version: 1.9.0
  * Description: Added DefaultExecTimeout and DefaultSafeSet constants to support the 'gsc contract exec' security framework and command whitelisting.
  * Language: Go
- * Created-at: 2026-02-26T18:21:22.185Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0), Gemini 3 Flash (v1.4.0), Gemini 3 Flash (v1.5.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), GLM-4.7 (v1.8.0)
+ * Created-at: 2026-02-28T18:01:07.174Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0), Gemini 3 Flash (v1.4.0), Gemini 3 Flash (v1.5.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0)
  */
 
 
@@ -91,6 +91,8 @@ var DefaultSafeSet = []string{
 	"git",
 	// Build & Runtime
 	"npm", "make", "go", "cargo", "python", "pip", "mvn", "gradle",
+	// Network
+	"curl", "wget",
 	// System Context
 	"pwd", "date", "whoami", "env",
 }

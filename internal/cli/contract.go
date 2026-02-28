@@ -1,12 +1,12 @@
 /**
  * Component: Contract CLI Commands
- * Block-UUID: b2199f42-592e-4985-907b-08cca854d05b
- * Parent-UUID: 9483f5ee-4789-4bd7-909a-773b37333df7
- * Version: 1.9.1
+ * Block-UUID: 0084fa37-8d9c-4189-b492-f072f64aba8e
+ * Parent-UUID: b4a71934-f77f-49b6-a7d0-26c72377a7df
+ * Version: 1.9.3
  * Description: Updated create command to support --whitelist, --no-whitelist, and --exec-timeout flags for the new security framework.
  * Language: Go
- * Created-at: 2026-02-28T17:15:35.380Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.9.1)
+ * Created-at: 2026-02-28T17:25:34.600Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.9.1), GLM-4.7 (v1.9.2), Gemini 3 Flash (v1.9.3)
  */
 
 
@@ -500,16 +500,16 @@ func init() {
 	updateFileCmd.Flags().StringVar(&contractFile, "file", "", "Path to the file containing new code (required)")
 	updateFileCmd.Flags().StringVar(&contractAuthcodeExec, "authcode", "", "4-digit authorization code (required)")
 	updateFileCmd.MarkFlagRequired("uuid")
-	updateContractCmd.MarkFlagRequired("file")
-	updateContractCmd.MarkFlagRequired("authcode")
+	updateFileCmd.MarkFlagRequired("file")
+	updateFileCmd.MarkFlagRequired("authcode")
 
 	// New-File Flags
 	newFileCmd.Flags().StringVar(&contractUUID, "uuid", "", "Contract UUID (required)")
 	newFileCmd.Flags().StringVar(&contractFile, "file", "", "Path to the file containing new code (required)")
 	newFileCmd.Flags().StringVar(&contractAuthcodeExec, "authcode", "", "4-digit authorization code (required)")
 	newFileCmd.MarkFlagRequired("uuid")
-	newContractCmd.MarkFlagRequired("file")
-	newContractCmd.MarkFlagRequired("authcode")
+	newFileCmd.MarkFlagRequired("file")
+	newFileCmd.MarkFlagRequired("authcode")
 
 	// Info Flags
 	infoContractCmd.Flags().StringVarP(&contractInfoFormat, "format", "f", "human", "Output format (human, json)")
