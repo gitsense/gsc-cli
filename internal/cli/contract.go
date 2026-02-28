@@ -1,18 +1,19 @@
 /**
  * Component: Contract CLI Commands
- * Block-UUID: c98ebb36-1fdd-4dc9-a980-a9e8225400a0
- * Parent-UUID: 63d748ed-72cd-46cb-a028-69fdbe1ed135
- * Version: 1.7.0
- * Description: Updated calls to FormatContractInfo and FormatContractTest to use the contract package instead of the output package, resolving the import cycle. Added --authcode flag to update-file and new-file commands to enforce security.
+ * Block-UUID: 10c7cd98-3e04-4aa9-8ea2-c95cb9e5f6f0
+ * Parent-UUID: c98ebb36-1fdd-4dc9-a980-a9e8225400a0
+ * Version: 1.8.0
+ * Description: Updated create command to support --whitelist, --no-whitelist, and --exec-timeout flags for the new security framework.
  * Language: Go
  * Created-at: 2026-02-27T16:15:48.626Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0)
  */
 
 
 package cli
 
 import (
+	"bufio"
 	"crypto/rand"
 	"fmt"
 	"math/big"
@@ -32,6 +33,9 @@ var (
 	contractCode        string
 	contractDescription string
 	contractAuthcode    string
+	contractWhitelistFile string
+	contractNoWhitelist   bool
+	contractExecTimeout   int
 
 	// List flags
 	contractStatus string
@@ -86,8 +90,37 @@ var createContractCmd = &cobra.Command{
 			contractAuthcode = fmt.Sprintf("%04d", n.Int64())
 		}
 
-		// Call manager
-		meta, err := contract.CreateContract(contractCode, contractDescription, contractAuthcode, workdir)
+		// Process Whitelist File if provided
+		var whitelist []string
+		if contractWhitelistFile != "" {
+			file, err := os.Open(contractWhitelistFile)
+			if err != nil {
+				return fmt.Errorf("failed to open whitelist file: %w", err)
+			}
+			defer file.Close()
+
+			scanner := bufio.NewScanner(file)
+			for scanner.Scan() {
+				line := strings.TrimSpace(scanner.Text())
+				if line != "" && !strings.HasPrefix(line, "#") {
+					whitelist = append(whitelist, line)
+				}
+			}
+			if err := scanner.Err(); err != nil {
+				return fmt.Errorf("failed to read whitelist file: %w", err)
+			}
+		}
+
+		// Call manager with new security parameters
+		meta, err := contract.CreateContract(
+			contractCode, 
+			contractDescription, 
+			contractAuthcode, 
+			workdir,
+			whitelist,
+			contractNoWhitelist,
+			contractExecTimeout,
+		)
 		if err != nil {
 			return err
 		}
@@ -337,6 +370,9 @@ func init() {
 	createContractCmd.Flags().StringVar(&contractCode, "code", "", "6-digit handshake code from chat (required)")
 	createContractCmd.Flags().StringVar(&contractDescription, "description", "", "Description of the contract's purpose (required)")
 	createContractCmd.Flags().StringVar(&contractAuthcode, "authcode", "", "4-digit authorization code (optional, random if not set)")
+	createContractCmd.Flags().StringVar(&contractWhitelistFile, "whitelist", "", "Path to a file containing a list of allowed commands (optional)")
+	createContractCmd.Flags().BoolVar(&contractNoWhitelist, "no-whitelist", false, "Disable whitelist checks (unrestricted mode)")
+	createContractCmd.Flags().IntVar(&contractExecTimeout, "exec-timeout", 60, "Execution timeout in seconds (default 60)")
 	createContractCmd.MarkFlagRequired("code")
 	createContractCmd.MarkFlagRequired("description")
 
@@ -353,17 +389,17 @@ func init() {
 	updateFileCmd.Flags().StringVar(&contractUUID, "uuid", "", "Contract UUID (required)")
 	updateFileCmd.Flags().StringVar(&contractFile, "file", "", "Path to the file containing new code (required)")
 	updateFileCmd.Flags().StringVar(&contractAuthcodeExec, "authcode", "", "4-digit authorization code (required)")
-	updateFileCmd.MarkFlagRequired("uuid")
-	updateFileCmd.MarkFlagRequired("file")
-	updateFileCmd.MarkFlagRequired("authcode")
+	updateContractCmd.MarkFlagRequired("uuid")
+	updateContractCmd.MarkFlagRequired("file")
+	updateContractCmd.MarkFlagRequired("authcode")
 
 	// New-File Flags
 	newFileCmd.Flags().StringVar(&contractUUID, "uuid", "", "Contract UUID (required)")
 	newFileCmd.Flags().StringVar(&contractFile, "file", "", "Path to the file containing new code (required)")
 	newFileCmd.Flags().StringVar(&contractAuthcodeExec, "authcode", "", "4-digit authorization code (required)")
-	newFileCmd.MarkFlagRequired("uuid")
-	newFileCmd.MarkFlagRequired("file")
-	newFileCmd.MarkFlagRequired("authcode")
+	newContractCmd.MarkFlagRequired("uuid")
+	newContractCmd.MarkFlagRequired("file")
+	newContractCmd.MarkFlagRequired("authcode")
 
 	// Info Flags
 	infoContractCmd.Flags().StringVarP(&contractInfoFormat, "format", "f", "human", "Output format (human, json)")

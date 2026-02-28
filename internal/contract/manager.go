@@ -1,12 +1,12 @@
 /**
  * Component: Contract Manager
- * Block-UUID: bc99e7a5-7dcf-40fd-9103-7cabb3d42a64
- * Parent-UUID: 37c524cf-fb0b-4180-90ba-e296e23fa3c4
- * Version: 1.3.2
- * Description: Improved CreateContract logic to prevent multiple active contracts for the same workspace and implemented chat idempotency by using UpsertContractMessage.
+ * Block-UUID: 888f8bc4-6585-4d96-932c-2d007feccef9
+ * Parent-UUID: bc99e7a5-7dcf-40fd-9103-7cabb3d42a64
+ * Version: 1.4.0
+ * Description: Updated CreateContract to accept and persist Whitelist, NoWhitelist, and ExecTimeout. Implemented logic to apply DefaultSafeSet and DefaultExecTimeout if not specified.
  * Language: Go
  * Created-at: 2026-02-27T17:01:48.830Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7), GLM-4.7 (v1.0.8), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0)
  */
 
 
@@ -31,7 +31,7 @@ import (
 
 // CreateContract initializes a new traceability contract using a valid handshake code.
 // It validates the workdir, persists the contract metadata, and inserts the contract message into the chat.
-func CreateContract(code string, description string, authcode string, workdir string) (*ContractMetadata, error) {
+func CreateContract(code string, description string, authcode string, workdir string, whitelist []string, noWhitelist bool, execTimeout int) (*ContractMetadata, error) {
 	// 1. Resolve GSC_HOME and Load Handshake
 	gscHome, err := settings.GetGSCHome(false)
 	if err != nil {
@@ -65,6 +65,22 @@ func CreateContract(code string, description string, authcode string, workdir st
 
 	// 3. Generate Metadata
 	now := time.Now()
+	
+	// Apply Defaults for Security Settings
+	finalWhitelist := whitelist
+	finalNoWhitelist := noWhitelist
+	finalExecTimeout := execTimeout
+
+	// If no whitelist provided and not unrestricted, use the default safe set
+	if len(finalWhitelist) == 0 && !finalNoWhitelist {
+		finalWhitelist = settings.DefaultSafeSet
+	}
+
+	// If timeout is 0 (default flag value), use the system default
+	if finalExecTimeout == 0 {
+		finalExecTimeout = settings.DefaultExecTimeout
+	}
+
 	meta := &ContractMetadata{
 		UUID:        uuid.New().String(),
 		Authcode:    authcode,
@@ -76,6 +92,9 @@ func CreateContract(code string, description string, authcode string, workdir st
 		Status:      ContractActive,
 		CreatedAt:   now,
 		ExpiresAt:   now.Add(time.Duration(settings.DefaultContractTTL) * time.Hour),
+		Whitelist:   finalWhitelist,
+		NoWhitelist: finalNoWhitelist,
+		ExecTimeout: finalExecTimeout,
 	}
 
 	// 4. Persist JSON

@@ -1,12 +1,12 @@
 /**
  * Component: Exec Command Executor
- * Block-UUID: c6f9c3d5-3227-49f5-83ad-a8aec9fca813
- * Parent-UUID: N/A
- * Version: 1.1.0
- * Description: Handles the execution of external commands, signal forwarding, output streaming to terminal and staging files, and persistence of execution metadata. Fixed unused context, missing parentheses in string conversion, and missing signal package imports.
+ * Block-UUID: 4f753b45-4b09-41ad-9d96-beb571154244
+ * Parent-UUID: c6f9c3d5-3227-49f5-83ad-a8aec9fca813
+ * Version: 1.2.0
+ * Description: Updated to support configurable execution timeouts via context.WithTimeout and enforce non-interactive execution by closing Stdin.
  * Language: Go
  * Created-at: 2026-02-23T03:12:00.000Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -82,7 +82,7 @@ func (e *Executor) Run() (*Result, error) {
 	}
 	defer logFile.Close()
 
-	// 4. Setup Multi-Writers (Terminal + File)
+	// 4. Setup Multi-Writers (Terminal + File + Buffer)
 	var stdoutBuf, stderrBuf bytes.Buffer
 	
 	// Writer for Stdout: Terminal + File + Buffer
@@ -91,8 +91,14 @@ func (e *Executor) Run() (*Result, error) {
 	// Writer for Stderr: Terminal + File + Buffer
 	stderrWriter := io.MultiWriter(os.Stderr, logFile, &stderrBuf)
 
-	// 5. Prepare Context and Command
-	ctx, cancel := context.WithCancel(context.Background())
+	// 5. Prepare Context and Command with Timeout
+	// Use the timeout from flags, or default to 60s if not specified
+	timeoutDuration := 60 * time.Second
+	if e.Flags.TimeoutSeconds > 0 {
+		timeoutDuration = time.Duration(e.Flags.TimeoutSeconds) * time.Second
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeoutDuration)
 	defer cancel()
 
 	shell, shellFlag := resolveShell()
@@ -100,13 +106,18 @@ func (e *Executor) Run() (*Result, error) {
 	cmd.Stdout = stdoutWriter
 	cmd.Stderr = stderrWriter
 	
+	// Enforce Non-Interactive Mode
+	// By setting Stdin to nil, we prevent commands from waiting for user input.
+	// This is a critical safety rail for the CLI Bridge execution.
+	cmd.Stdin = nil
+	
 	// Unix-specific for process group management
 	if runtime.GOOS != "windows" {
 		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	}
 
 	// 6. Start Command
-	logger.Debug("Starting command execution", "command", e.Command)
+	logger.Debug("Starting command execution", "command", e.Command, "timeout", timeoutDuration)
 	if err := cmd.Start(); err != nil {
 		return nil, NewExecError(ErrCodeCommandNotFound, "failed to start command", err)
 	}
@@ -142,9 +153,15 @@ func (e *Executor) Run() (*Result, error) {
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			exitCode = exitErr.ExitCode()
 		} else {
-			// Likely a signal interruption or context cancellation
-			exitCode = 1
-			logger.Debug("Command execution failed or interrupted", "error", err)
+			// Check if the error is due to context timeout
+			if ctx.Err() == context.DeadlineExceeded {
+				exitCode = 124 // Standard exit code for timeout (like GNU timeout)
+				logger.Debug("Command execution timed out", "error", err)
+			} else {
+				// Likely a signal interruption or context cancellation
+				exitCode = 1
+				logger.Debug("Command execution failed or interrupted", "error", err)
+			}
 		}
 	}
 

@@ -1,12 +1,12 @@
 /**
  * Component: Contract Models
- * Block-UUID: cc9cced2-90d6-484c-be9d-5d0a215f2b03
- * Parent-UUID: 8e5b16f3-65eb-4faa-9c06-f93d8c9d3fb2
- * Version: 1.3.0
- * Description: Added ContractInfoResult and ContractTestResult to support the 'info' and 'test' subcommands.
+ * Block-UUID: 18c1edf8-6005-4b29-8228-98f0ee8e9c1e
+ * Parent-UUID: cc9cced2-90d6-484c-be9d-5d0a215f2b03
+ * Version: 1.4.0
+ * Description: Added Whitelist, NoWhitelist, and ExecTimeout fields to ContractMetadata to support the new 'gsc contract exec' security framework.
  * Language: Go
  * Created-at: 2026-02-27T16:52:47.050Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0)
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
  */
 
 
@@ -35,6 +35,16 @@ type ContractMetadata struct {
 	Status           ContractStatus `json:"status"`
 	CreatedAt        time.Time      `json:"created_at"`
 	ExpiresAt        time.Time      `json:"expires_at"`
+	
+	// Execution Security Fields
+	// Whitelist is a list of allowed command binaries. If empty, the default safe set is used.
+	Whitelist []string `json:"whitelist"`
+	
+	// NoWhitelist, if true, bypasses all whitelist checks (unrestricted mode).
+	NoWhitelist bool `json:"no_whitelist"`
+	
+	// ExecTimeout is the maximum execution time in seconds for commands run under this contract.
+	ExecTimeout int `json:"exec_timeout"`
 }
 
 // ProvenanceStatus defines the state of a provenance log entry.
@@ -88,4 +98,3 @@ type ContractTestResult struct {
 	ParentUUID   string `json:"parent_uuid"`   // The parent UUID from the source file
 	IsUnique     bool   `json:"is_unique"`     // Whether the Block-UUID is unique
 }
-
