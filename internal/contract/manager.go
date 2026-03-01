@@ -1,12 +1,12 @@
 /**
  * Component: Contract Manager
- * Block-UUID: dfa871e5-6794-4d4b-bdfa-a270efeac3de
- * Parent-UUID: c7ace063-90e8-4cef-8c2c-95e2292c1eb6
- * Version: 1.7.0
- * Description: Updated CancelContract, RenewContract, and DeleteContract to use UpdateContractMessagesByUUID. This ensures that contract status changes are propagated to all forked chats by querying the meta JSON field instead of a single message ID.
+ * Block-UUID: 3b1fd97b-fbe8-4b2e-b1ec-26a93e5bb079
+ * Parent-UUID: dfa871e5-6794-4d4b-bdfa-a270efeac3de
+ * Version: 1.8.0
+ * Description: Updated CreateContract to accept and persist PreferredEditor and PreferredTerminal settings. Updated GetContractInfo and FormatContractInfo to include these workspace preferences in the output.
  * Language: Go
  * Created-at: 2026-03-01T16:31:54.274Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), Gemini 3 Flash (v1.8.0)
  */
 
 
@@ -31,7 +31,7 @@ import (
 
 // CreateContract initializes a new traceability contract using a valid handshake code.
 // It validates the workdir, persists the contract metadata, and inserts the contract message into the chat.
-func CreateContract(code string, description string, authcode string, workdir string, whitelist []string, noWhitelist bool, execTimeout int) (*ContractMetadata, error) {
+func CreateContract(code string, description string, authcode string, workdir string, whitelist []string, noWhitelist bool, execTimeout int, preferredEditor string, preferredTerminal string) (*ContractMetadata, error) {
 	// 1. Resolve GSC_HOME and Load Handshake
 	gscHome, err := settings.GetGSCHome(false)
 	if err != nil {
@@ -95,6 +95,8 @@ func CreateContract(code string, description string, authcode string, workdir st
 		Whitelist:   finalWhitelist,
 		NoWhitelist: finalNoWhitelist,
 		ExecTimeout: finalExecTimeout,
+		PreferredEditor:   preferredEditor,
+		PreferredTerminal: preferredTerminal,
 	}
 
 	// 4. Persist JSON
@@ -150,7 +152,6 @@ func CreateContract(code string, description string, authcode string, workdir st
 }
 
 // ListContracts retrieves all contracts from the global storage.
-// It performs a lazy expiration check, updating the status in memory if a contract has expired.
 func ListContracts() ([]ContractMetadata, error) {
 	contractDir, err := manifest.ResolveGlobalContractDir()
 	if err != nil {
@@ -175,8 +176,6 @@ func ListContracts() ([]ContractMetadata, error) {
 		// Lazy Expiration Check
 		if meta.Status == ContractActive && now.After(meta.ExpiresAt) {
 			meta.Status = ContractExpired
-			// Note: We do not persist this change to disk here to keep ListContracts read-only.
-			// The status will be updated if the user attempts to renew or if we add a cleanup job.
 		}
 
 		contracts = append(contracts, *meta)
@@ -192,9 +191,7 @@ func GetContract(uuid string) (*ContractMetadata, error) {
 }
 
 // GetContractByWorkdir retrieves the active contract for a specific working directory.
-// It returns an error if no active contract is found or if multiple active contracts exist for the same directory.
 func GetContractByWorkdir(workdir string) (*ContractMetadata, error) {
-	// Resolve to absolute path to ensure consistency
 	absWorkdir, err := filepath.Abs(workdir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve absolute path: %w", err)
@@ -224,16 +221,12 @@ func GetContractByWorkdir(workdir string) (*ContractMetadata, error) {
 }
 
 // GetContractInfo retrieves contract information for the 'info' command.
-// It applies sanitization rules if requested (e.g., converting absolute paths to relative).
 func GetContractInfo(uuid string, sanitize bool) (*ContractInfoResult, error) {
 	meta, err := GetContract(uuid)
 	if err != nil {
 		return nil, err
 	}
 
-	// Determine the effective status for display
-	// Cancelled contracts always show as cancelled, even if past expiration
-	// Only mark as expired if the contract is still active but past its expiration time
 	status := string(meta.Status)
 	if meta.Status != ContractCancelled && meta.Status == ContractActive && time.Now().After(meta.ExpiresAt) {
 		status = string(ContractExpired)
@@ -250,25 +243,22 @@ func GetContractInfo(uuid string, sanitize bool) (*ContractInfoResult, error) {
 		ExecTimeout: meta.ExecTimeout,
 		Whitelist:   meta.Whitelist,
 		NoWhitelist: meta.NoWhitelist,
+		PreferredEditor:   meta.PreferredEditor,
+		PreferredTerminal: meta.PreferredTerminal,
 	}
 
 	if sanitize {
-		// Try to make the workdir relative to the current working directory
 		cwd, err := os.Getwd()
 		if err == nil {
 			relPath, err := filepath.Rel(cwd, meta.Workdir)
 			if err == nil {
 				result.Workdir = relPath
 			} else {
-				// Fallback to basename if relative path calculation fails
 				result.Workdir = filepath.Base(meta.Workdir)
 			}
 		} else {
-			// Fallback to basename if CWD is unavailable
 			result.Workdir = filepath.Base(meta.Workdir)
 		}
-		
-		// Mask authcode if sanitizing output
 		result.Authcode = "****"
 	}
 
@@ -276,7 +266,6 @@ func GetContractInfo(uuid string, sanitize bool) (*ContractInfoResult, error) {
 }
 
 // CancelContract terminates a contract immediately.
-// It updates the local JSON file and the corresponding message in the Chat database.
 func CancelContract(uuid string) error {
 	meta, err := GetContract(uuid)
 	if err != nil {
@@ -287,15 +276,12 @@ func CancelContract(uuid string) error {
 		return fmt.Errorf("contract %s is already cancelled", uuid)
 	}
 
-	// Update Status
 	meta.Status = ContractCancelled
 
-	// Persist JSON
 	if err := saveContractMetadata(meta); err != nil {
 		return fmt.Errorf("failed to update contract metadata: %w", err)
 	}
 
-	// Update DB Message
 	gscHome, err := settings.GetGSCHome(false)
 	if err != nil {
 		return fmt.Errorf("failed to resolve GSC_HOME: %w", err)
@@ -318,7 +304,6 @@ func CancelContract(uuid string) error {
 		NoWhitelist: meta.NoWhitelist,
 	}
 
-	// Use UUID-based update to handle forked chats
 	if err := db.UpdateContractMessagesByUUID(sqliteDB, meta.UUID, dbData); err != nil {
 		return fmt.Errorf("failed to update contract message in database: %w", err)
 	}
@@ -328,7 +313,6 @@ func CancelContract(uuid string) error {
 }
 
 // RenewContract extends the expiration time of an active or expired contract.
-// It updates the local JSON file and the corresponding message in the Chat database.
 func RenewContract(uuid string, hours int) error {
 	meta, err := GetContract(uuid)
 	if err != nil {
@@ -339,7 +323,6 @@ func RenewContract(uuid string, hours int) error {
 		return fmt.Errorf("cannot renew a cancelled contract")
 	}
 
-	// Calculate new expiration
 	duration := time.Duration(hours) * time.Hour
 	newStart := time.Now()
 	if meta.ExpiresAt.After(newStart) {
@@ -347,17 +330,14 @@ func RenewContract(uuid string, hours int) error {
 	}
 	meta.ExpiresAt = newStart.Add(duration)
 
-	// Update Status if it was expired
 	if meta.Status == ContractExpired {
 		meta.Status = ContractActive
 	}
 
-	// Persist JSON
 	if err := saveContractMetadata(meta); err != nil {
 		return fmt.Errorf("failed to update contract metadata: %w", err)
 	}
 
-	// Update DB Message
 	gscHome, err := settings.GetGSCHome(false)
 	if err != nil {
 		return fmt.Errorf("failed to resolve GSC_HOME: %w", err)
@@ -380,7 +360,6 @@ func RenewContract(uuid string, hours int) error {
 		NoWhitelist: meta.NoWhitelist,
 	}
 
-	// Use UUID-based update to handle forked chats
 	if err := db.UpdateContractMessagesByUUID(sqliteDB, meta.UUID, dbData); err != nil {
 		return fmt.Errorf("failed to update contract message in database: %w", err)
 	}
@@ -389,20 +368,18 @@ func RenewContract(uuid string, hours int) error {
 	return nil
 }
 
-// DeleteContract removes a contract by deleting its JSON file and marking the database message as deleted.
+// DeleteContract removes a contract.
 func DeleteContract(uuid string) error {
 	meta, err := GetContract(uuid)
 	if err != nil {
 		return err
 	}
 
-	// Delete the JSON file
 	path := getContractPath(uuid)
 	if err := os.Remove(path); err != nil {
 		return fmt.Errorf("failed to delete contract file: %w", err)
 	}
 
-	// Update DB Message status to "deleted"
 	gscHome, err := settings.GetGSCHome(false)
 	if err != nil {
 		return fmt.Errorf("failed to resolve GSC_HOME: %w", err)
@@ -425,9 +402,7 @@ func DeleteContract(uuid string) error {
 		NoWhitelist: meta.NoWhitelist,
 	}
 
-	// Use UUID-based update to handle forked chats
 	if err := db.UpdateContractMessagesByUUID(sqliteDB, meta.UUID, dbData); err != nil {
-		// Log warning but don't fail, the file is already gone
 		logger.Warning("Failed to update contract message in database", "error", err)
 	}
 
@@ -510,6 +485,19 @@ func FormatContractInfo(info *ContractInfoResult, format string) string {
 		whitelistVal = fmt.Sprintf("`%s`", strings.Join(info.Whitelist, "`, `"))
 	}
 	sb.WriteString(fmt.Sprintf("  Whitelist:    %s\n", whitelistVal))
+
+	// Workspace Preferences
+	editor := info.PreferredEditor
+	if editor == "" {
+		editor = "None"
+	}
+	sb.WriteString(fmt.Sprintf("  Editor:       %s\n", editor))
+
+	terminal := info.PreferredTerminal
+	if terminal == "" {
+		terminal = "None"
+	}
+	sb.WriteString(fmt.Sprintf("  Terminal:     %s\n", terminal))
 	
 	return sb.String()
 }
@@ -525,8 +513,6 @@ func FormatContractTest(result *ContractTestResult, format string) string {
 	}
 
 	var sb strings.Builder
-
-	// 1. Contract Info Section
 	sb.WriteString("Contract Information:\n")
 	sb.WriteString(fmt.Sprintf("  UUID:         %s\n", result.UUID))
 	sb.WriteString(fmt.Sprintf("  Status:       %s\n", result.Status))
@@ -534,7 +520,6 @@ func FormatContractTest(result *ContractTestResult, format string) string {
 	sb.WriteString(fmt.Sprintf("  Workdir:      %s\n", result.Workdir))
 	sb.WriteString("\n")
 
-	// 2. Test Result Section
 	sb.WriteString("Contract Test Result:\n")
 	statusStr := "Success"
 	if !result.Success {
@@ -549,7 +534,6 @@ func FormatContractTest(result *ContractTestResult, format string) string {
 	sb.WriteString(fmt.Sprintf("  Message:      %s\n", result.Message))
 	sb.WriteString("\n")
 
-	// 3. File Details (if applicable)
 	if result.RelativePath != "" {
 		sb.WriteString(fmt.Sprintf("  File:         %s\n", result.RelativePath))
 	}
@@ -566,7 +550,6 @@ func FormatContractTest(result *ContractTestResult, format string) string {
 		sb.WriteString("\n")
 	}
 
-	// 4. Diff Section (if applicable)
 	if result.DiffUnified != "" {
 		sb.WriteString("Diff:\n")
 		sb.WriteString(result.DiffUnified)

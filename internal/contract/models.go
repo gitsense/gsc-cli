@@ -1,12 +1,12 @@
 /**
  * Component: Contract Models
- * Block-UUID: d14c8dd9-6409-4bb8-b827-60c8d4d5e38d
- * Parent-UUID: 18c1edf8-6005-4b29-8228-98f0ee8e9c1e
- * Version: 1.5.0
- * Description: Added ExecTimeout, Whitelist, and NoWhitelist fields to ContractInfoResult to support displaying security settings in 'gsc contract info'.
+ * Block-UUID: 9ac45e3c-7340-45e8-8b75-94847ab87846
+ * Parent-UUID: d14c8dd9-6409-4bb8-b827-60c8d4d5e38d
+ * Version: 1.6.0
+ * Description: Added PreferredEditor and PreferredTerminal to ContractMetadata. Added ReviewRequest and ReviewResult structs to support the AI code review data contract between the Web UI and CLI.
  * Language: Go
  * Created-at: 2026-02-27T16:52:47.050Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0)
  */
 
 
@@ -37,14 +37,34 @@ type ContractMetadata struct {
 	ExpiresAt        time.Time      `json:"expires_at"`
 	
 	// Execution Security Fields
-	// Whitelist is a list of allowed command binaries. If empty, the default safe set is used.
 	Whitelist []string `json:"whitelist"`
-	
-	// NoWhitelist, if true, bypasses all whitelist checks (unrestricted mode).
-	NoWhitelist bool `json:"no_whitelist"`
-	
-	// ExecTimeout is the maximum execution time in seconds for commands run under this contract.
-	ExecTimeout int `json:"exec_timeout"`
+	NoWhitelist bool      `json:"no_whitelist"`
+	ExecTimeout int       `json:"exec_timeout"`
+
+	// Workspace Preferences
+	PreferredEditor   string `json:"preferred_editor"`   // e.g., "zed", "vscode", "vim-iterm2"
+	PreferredTerminal string `json:"preferred_terminal"` // e.g., "iterm2", "terminal.app"
+}
+
+// ReviewRequest represents the data contract from the Web UI to the CLI.
+type ReviewRequest struct {
+	ContractUUID     string `json:"contract_uuid"`
+	Authcode         string `json:"authcode"`
+	Intent           string `json:"intent"` // "review", "terminal", "editor", "exec"
+	BlockUUID        string `json:"block_uuid,omitempty"`
+	ParentUUID       string `json:"parent_uuid,omitempty"`
+	Action           string `json:"action,omitempty"` // "source", "patch"
+	EditorOverride   string `json:"editor_override,omitempty"`
+	TerminalOverride string `json:"terminal_override,omitempty"`
+	Cmd              string `json:"cmd,omitempty"`
+}
+
+// ReviewResult represents the response from the CLI to the Web UI.
+type ReviewResult struct {
+	Success    bool   `json:"success"`
+	Message    string `json:"message"`
+	StagedPath string `json:"staged_path,omitempty"`
+	Command    string `json:"command,omitempty"`
 }
 
 // ProvenanceStatus defines the state of a provenance log entry.
@@ -74,16 +94,18 @@ type ProvenanceEntry struct {
 
 // ContractInfoResult represents the sanitized output of the 'contract info' command.
 type ContractInfoResult struct {
-	UUID        string    `json:"uuid"`
-	Description string    `json:"description"`
-	Workdir     string    `json:"workdir"`
-	Status      string    `json:"status"`
-	CreatedAt   time.Time `json:"created_at"`
-	ExpiresAt   time.Time `json:"expires_at"`
-	Authcode    string    `json:"authcode"`
-	ExecTimeout int       `json:"exec_timeout"`
-	Whitelist   []string  `json:"whitelist"`
-	NoWhitelist bool      `json:"no_whitelist"`
+	UUID              string    `json:"uuid"`
+	Description       string    `json:"description"`
+	Workdir           string    `json:"workdir"`
+	Status            string    `json:"status"`
+	CreatedAt         time.Time `json:"created_at"`
+	ExpiresAt         time.Time `json:"expires_at"`
+	Authcode          string    `json:"authcode"`
+	ExecTimeout       int       `json:"exec_timeout"`
+	Whitelist         []string  `json:"whitelist"`
+	NoWhitelist       bool      `json:"no_whitelist"`
+	PreferredEditor   string    `json:"preferred_editor"`
+	PreferredTerminal string    `json:"preferred_terminal"`
 }
 
 // ContractTestResult represents the output of the 'contract test' command.

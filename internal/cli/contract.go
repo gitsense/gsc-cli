@@ -1,12 +1,12 @@
 /**
  * Component: Contract CLI Commands
- * Block-UUID: 7564a7f3-9fc1-4dc0-a5e6-3d91288e6122
- * Parent-UUID: 7fc394a7-b39b-4799-b4eb-17dffc83a14e
- * Version: 1.10.0
- * Description: Updated execContractCmd to correctly identify the last message in a chat using a recursive SQL query, ensuring output is appended to the end of the conversation regardless of message deletions or reordering.
+ * Block-UUID: 83fa4067-ab5c-4f43-9564-cfd3fbd4c01b
+ * Parent-UUID: 7564a7f3-9fc1-4dc0-a5e6-3d91288e6122
+ * Version: 1.11.0
+ * Description: Updated create command to support --editor and --terminal flags for workspace preferences. Added the 'review' subcommand to handle intent-based requests (review, terminal, editor) from the Web UI, integrating with the new contract handler.
  * Language: Go
  * Created-at: 2026-03-01T16:32:10.291Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.9.1), GLM-4.7 (v1.9.2), Gemini 3 Flash (v1.9.3), Gemini 3 Flash (v1.9.4), Gemini 3 Flash (v1.9.5), GLM-4.7 (v1.9.6), GLM-4.7 (v1.9.7), GLM-4.7 (v1.9.8), GLM-4.7 (v1.10.0)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.9.1), GLM-4.7 (v1.9.2), Gemini 3 Flash (v1.9.3), Gemini 3 Flash (v1.9.4), Gemini 3 Flash (v1.9.5), GLM-4.7 (v1.9.6), GLM-4.7 (v1.9.7), GLM-4.7 (v1.9.8), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0)
  */
 
 
@@ -42,6 +42,8 @@ var (
 	contractWhitelistFile string
 	contractNoWhitelist   bool
 	contractExecTimeout   int
+	contractPreferredEditor   string
+	contractPreferredTerminal string
 
 	// List flags
 	contractStatus string
@@ -72,6 +74,15 @@ var (
 	contractExecAuthcode string
 	contractExecCmd      string
 	contractExecChat     bool
+
+	// Review flags
+	contractReviewIntent           string
+	contractReviewBlockUUID        string
+	contractReviewParentUUID       string
+	contractReviewAction           string
+	contractReviewEditorOverride   string
+	contractReviewTerminalOverride string
+	contractReviewCmd              string
 )
 
 // contractCmd represents the base command for contract management
@@ -88,13 +99,11 @@ var createContractCmd = &cobra.Command{
 	Short: "Create a new traceability contract for the current repository",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
-		// Resolve workdir to current directory
 		workdir, err := os.Getwd()
 		if err != nil {
 			return fmt.Errorf("failed to get current directory: %w", err)
 		}
 
-		// Generate random 4-digit authcode if not provided
 		if contractAuthcode == "" {
 			n, err := rand.Int(rand.Reader, big.NewInt(10000))
 			if err != nil {
@@ -103,7 +112,6 @@ var createContractCmd = &cobra.Command{
 			contractAuthcode = fmt.Sprintf("%04d", n.Int64())
 		}
 
-		// Process Whitelist File if provided
 		var whitelist []string
 		if contractWhitelistFile != "" {
 			file, err := os.Open(contractWhitelistFile)
@@ -124,7 +132,7 @@ var createContractCmd = &cobra.Command{
 			}
 		}
 
-		// Call manager with new security parameters
+		// Call manager with new security and workspace parameters
 		meta, err := contract.CreateContract(
 			contractCode, 
 			contractDescription, 
@@ -133,6 +141,8 @@ var createContractCmd = &cobra.Command{
 			whitelist,
 			contractNoWhitelist,
 			contractExecTimeout,
+			contractPreferredEditor,
+			contractPreferredTerminal,
 		)
 		if err != nil {
 			return err
@@ -152,16 +162,13 @@ var statusContractCmd = &cobra.Command{
 	Short: "Show the status of the contract for the current repository",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
-		// Resolve workdir to current directory
 		workdir, err := os.Getwd()
 		if err != nil {
 			return fmt.Errorf("failed to get current directory: %w", err)
 		}
 
-		// Call manager
 		meta, err := contract.GetContractByWorkdir(workdir)
 		if err != nil {
-			// Handle "no contract" gracefully (exit 0)
 			if strings.Contains(err.Error(), "no active contract") {
 				fmt.Println("No active contract found for this repository.")
 				fmt.Println("")
@@ -169,11 +176,9 @@ var statusContractCmd = &cobra.Command{
 				fmt.Println("  gsc contract create --code <6-digit-code> --description \"Purpose of contract\"")
 				return nil
 			}
-			// Other errors (like multiple contracts) should fail
 			return err
 		}
 
-		// Map to Display Format
 		display := output.ContractDisplay{
 			UUID:        meta.UUID,
 			Description: meta.Description,
@@ -182,7 +187,6 @@ var statusContractCmd = &cobra.Command{
 			ExpiresAt:   meta.ExpiresAt.Format(time.RFC3339),
 		}
 
-		// Output
 		fmt.Print(output.FormatContractStatus(display))
 		return nil
 	},
@@ -194,7 +198,6 @@ var listContractCmd = &cobra.Command{
 	Short: "List all traceability contracts",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
-		// If --all is set, override the status filter
 		if contractListAll {
 			contractStatus = "all"
 		}
@@ -203,13 +206,9 @@ var listContractCmd = &cobra.Command{
 			return err
 		}
 
-		// Filter by status
 		filtered := filterContracts(contracts, contractStatus)
-
-		// Sort
 		sortContracts(filtered, contractSort, contractOrder)
 
-		// Map to Display Format
 		displayContracts := make([]output.ContractDisplay, len(filtered))
 		for i, c := range filtered {
 			displayContracts[i] = output.ContractDisplay{
@@ -221,7 +220,6 @@ var listContractCmd = &cobra.Command{
 			}
 		}
 
-		// Output
 		if contractFormat == "json" {
 			output.FormatJSON(displayContracts)
 		} else {
@@ -243,7 +241,6 @@ var cancelContractCmd = &cobra.Command{
 			uuid = args[0]
 		}
 
-		// Smart Default: Find UUID by workdir if not provided
 		if uuid == "" {
 			foundUUID, err := findContractUUIDByWorkdir()
 			if err != nil {
@@ -268,7 +265,6 @@ var renewContractCmd = &cobra.Command{
 			uuid = args[0]
 		}
 
-		// Smart Default: Find UUID by workdir if not provided
 		if uuid == "" {
 			foundUUID, err := findContractUUIDByWorkdir()
 			if err != nil {
@@ -285,8 +281,6 @@ var renewContractCmd = &cobra.Command{
 var deleteContractCmd = &cobra.Command{
 	Use:   "delete [uuid]",
 	Short: "Delete a traceability contract",
-	Long: `Delete a traceability contract by removing its JSON file and marking the 
-corresponding message in the chat as deleted. This operation is irreversible.`,
 	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
@@ -295,7 +289,6 @@ corresponding message in the chat as deleted. This operation is irreversible.`,
 			uuid = args[0]
 		}
 
-		// Smart Default: Find UUID by workdir if not provided
 		if uuid == "" {
 			foundUUID, err := findContractUUIDByWorkdir()
 			if err != nil {
@@ -316,7 +309,6 @@ var updateFileCmd = &cobra.Command{
 		cmd.SilenceUsage = true
 		err := contract.UpdateFile(contractUUID, contractAuthcodeExec, contractFile)
 		if err != nil {
-			// Handle ContractError for specific exit codes
 			if cErr, ok := err.(*contract.ContractError); ok {
 				return &cliError{code: cErr.Code, message: cErr.Message}
 			}
@@ -337,7 +329,6 @@ var newFileCmd = &cobra.Command{
 		targetPath := args[0]
 		err := contract.NewFile(contractUUID, contractAuthcodeExec, targetPath, contractFile)
 		if err != nil {
-			// Handle ContractError for specific exit codes
 			if cErr, ok := err.(*contract.ContractError); ok {
 				return &cliError{code: cErr.Code, message: cErr.Message}
 			}
@@ -360,7 +351,6 @@ var infoContractCmd = &cobra.Command{
 			uuid = args[0]
 		}
 
-		// Smart Default: Find UUID by workdir if not provided
 		if uuid == "" {
 			foundUUID, err := findContractUUIDByWorkdir()
 			if err != nil {
@@ -391,7 +381,6 @@ var testContractCmd = &cobra.Command{
 			uuid = args[0]
 		}
 
-		// Smart Default: Find UUID by workdir if not provided
 		if uuid == "" {
 			foundUUID, err := findContractUUIDByWorkdir()
 			if err != nil {
@@ -414,24 +403,19 @@ var testContractCmd = &cobra.Command{
 var execContractCmd = &cobra.Command{
 	Use:   "exec",
 	Short: "Execute a command within a contract's security context",
-	Long: `Executes a command in the contract's working directory, enforcing 
-whitelists and timeouts. Results can be enriched and sent to chat.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
 		logger.Debug("execContractCmd started", "uuid", contractExecUUID, "cmd", contractExecCmd)
 
-		// 1. Load Contract
 		meta, err := contract.GetContract(contractExecUUID)
 		if err != nil {
 			return fmt.Errorf("failed to load contract: %w", err)
 		}
 
-		// 2. Validate Auth Code
 		if meta.Authcode != contractExecAuthcode {
 			return fmt.Errorf("invalid authorization code")
 		}
 
-		// 3. Validate Command against Whitelist
 		fields := strings.Fields(contractExecCmd)
 		if len(fields) == 0 {
 			return fmt.Errorf("no command provided")
@@ -451,37 +435,26 @@ whitelists and timeouts. Results can be enriched and sent to chat.`,
 			}
 		}
 
-		// 4. Execute Command
-		// Pass meta.Workdir to ensure the command runs in the contract's directory
 		executor := exec.NewExecutor(contractExecCmd, exec.ExecFlags{
 			TimeoutSeconds: meta.ExecTimeout,
 		}, meta.Workdir)
 
-		logger.Debug("Calling executor.Run()")
 		result, err := executor.Run()
 		if err != nil {
-			logger.Error("executor.Run() failed", "error", err)
 			return err
 		}
-		logger.Debug("executor.Run() completed", "exitCode", result.ExitCode)
 
-		// 5. Resolve and Apply Formatter
 		finalOutput := result.Output
 		formatter := formatters.ResolveFormatter(binary)
 		if formatter != nil {
-			logger.Debug("Applying formatter", "binary", binary)
-			// Pre-process to capture context (like file path for cat)
 			formatter.PreProcess(fields[1:])
-			// Post-process the output
 			enriched, err := formatter.PostProcess(finalOutput)
 			if err == nil {
 				finalOutput = enriched
 			}
 		}
 
-		// 6. Handle Chat Insertion
 		if contractExecChat {
-			logger.Debug("Handling chat insertion")
 			gscHome, _ := settings.GetGSCHome(false)
 			sqliteDB, err := db.OpenDB(settings.GetChatDatabasePath(gscHome))
 			if err != nil {
@@ -489,21 +462,19 @@ whitelists and timeouts. Results can be enriched and sent to chat.`,
 			}
 			defer sqliteDB.Close()
 
-			// Find the last message in the chat to ensure correct ordering
 			lastMessageID, err := db.GetLastMessageID(sqliteDB, meta.ChatID)
 			if err != nil {
 				return fmt.Errorf("failed to find last message: %w", err)
 			}
 
-			// Format the final Markdown message
 			markdown := output.FormatBridgeMarkdown(contractExecCmd, result.Duration, "N/A", "text", finalOutput, result.ExitCode)
 
 			msg := &db.Message{
 				Type:       "gsc-cli-output",
 				Visibility: "human-public",
 				ChatID:     meta.ChatID,
-				ParentID:   lastMessageID, // Reply to the last message
-				Level:      2,                      // Contract is level 1
+				ParentID:   lastMessageID,
+				Level:      2,
 				Role:       "assistant",
 				RealModel:  sql.NullString{String: settings.RealModelNotes, Valid: true},
 				Temperature: sql.NullFloat64{Float64: 0, Valid: true},
@@ -517,9 +488,48 @@ whitelists and timeouts. Results can be enriched and sent to chat.`,
 			fmt.Printf("[BRIDGE] Output added to chat. Message ID: %d\n", msgID)
 		}
 
-		// 7. Propagate Exit Code
 		if result.ExitCode != 0 {
 			return &cliError{code: result.ExitCode, message: fmt.Sprintf("command failed with exit code %d", result.ExitCode)}
+		}
+
+		return nil
+	},
+}
+
+// reviewContractCmd handles 'gsc contract review'
+var reviewContractCmd = &cobra.Command{
+	Use:   "review",
+	Short: "Handle intent-based workspace actions (review, terminal, editor)",
+	Long: `Processes requests from the Web UI to perform context-aware actions 
+like launching a terminal in the project root or staging AI code for review 
+in a proper editor.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true
+
+		req := contract.ReviewRequest{
+			ContractUUID:     contractUUID,
+			Authcode:         contractAuthcodeExec,
+			Intent:           contractReviewIntent,
+			BlockUUID:        contractReviewBlockUUID,
+			ParentUUID:       contractReviewParentUUID,
+			Action:           contractReviewAction,
+			EditorOverride:   contractReviewEditorOverride,
+			TerminalOverride: contractReviewTerminalOverride,
+			Cmd:              contractReviewCmd,
+		}
+
+		result, err := contract.HandleReview(req)
+		if err != nil {
+			return err
+		}
+
+		if result.Success {
+			fmt.Printf("Action successful: %s\n", result.Message)
+			if result.Command != "" {
+				fmt.Printf("Executed: %s\n", result.Command)
+			}
+		} else {
+			return fmt.Errorf("action failed: %s", result.Message)
 		}
 
 		return nil
@@ -534,6 +544,8 @@ func init() {
 	createContractCmd.Flags().StringVar(&contractWhitelistFile, "whitelist", "", "Path to a file containing a list of allowed commands (optional)")
 	createContractCmd.Flags().BoolVar(&contractNoWhitelist, "no-whitelist", false, "Disable whitelist checks (unrestricted mode)")
 	createContractCmd.Flags().IntVar(&contractExecTimeout, "exec-timeout", 60, "Execution timeout in seconds (default 60)")
+	createContractCmd.Flags().StringVar(&contractPreferredEditor, "editor", "", "Preferred editor for code review (e.g., zed, vscode, vim-iterm2)")
+	createContractCmd.Flags().StringVar(&contractPreferredTerminal, "terminal", "", "Preferred terminal for project access (e.g., iterm2, terminal.app)")
 	createContractCmd.MarkFlagRequired("code")
 	createContractCmd.MarkFlagRequired("description")
 
@@ -582,6 +594,20 @@ func init() {
 	execContractCmd.MarkFlagRequired("authcode")
 	execContractCmd.MarkFlagRequired("cmd")
 
+	// Review Flags
+	reviewContractCmd.Flags().StringVar(&contractUUID, "uuid", "", "Contract UUID (required)")
+	reviewContractCmd.Flags().StringVar(&contractAuthcodeExec, "authcode", "", "4-digit authorization code (required)")
+	reviewContractCmd.Flags().StringVar(&contractReviewIntent, "intent", "", "Action intent: review, terminal, editor, exec (required)")
+	reviewContractCmd.Flags().StringVar(&contractReviewBlockUUID, "block-uuid", "", "UUID of the AI code block")
+	reviewContractCmd.Flags().StringVar(&contractReviewParentUUID, "parent-uuid", "", "UUID of the parent code block")
+	reviewContractCmd.Flags().StringVar(&contractReviewAction, "action", "source", "Review action: source or patch")
+	reviewContractCmd.Flags().StringVar(&contractReviewEditorOverride, "editor-override", "", "Override contract editor")
+	reviewContractCmd.Flags().StringVar(&contractReviewTerminalOverride, "terminal-override", "", "Override contract terminal")
+	reviewContractCmd.Flags().StringVar(&contractReviewCmd, "cmd", "", "Raw command for exec intent")
+	reviewContractCmd.MarkFlagRequired("uuid")
+	reviewContractCmd.MarkFlagRequired("authcode")
+	reviewContractCmd.MarkFlagRequired("intent")
+
 	// Add subcommands to base contract command
 	contractCmd.AddCommand(createContractCmd)
 	contractCmd.AddCommand(statusContractCmd)
@@ -594,6 +620,7 @@ func init() {
 	contractCmd.AddCommand(infoContractCmd)
 	contractCmd.AddCommand(testContractCmd)
 	contractCmd.AddCommand(execContractCmd)
+	contractCmd.AddCommand(reviewContractCmd)
 }
 
 // RegisterContractCommand adds the contract command to the root CLI
@@ -656,7 +683,6 @@ func findContractUUIDByWorkdir() (string, error) {
 		return "", fmt.Errorf("failed to get current directory: %w", err)
 	}
 
-	// Resolve to absolute path
 	absCwd, err := filepath.Abs(cwd)
 	if err != nil {
 		return "", fmt.Errorf("failed to resolve absolute path: %w", err)
