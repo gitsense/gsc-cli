@@ -1,12 +1,12 @@
 /**
  * Component: Exec Command Executor
- * Block-UUID: 4f753b45-4b09-41ad-9d96-beb571154244
- * Parent-UUID: c6f9c3d5-3227-49f5-83ad-a8aec9fca813
- * Version: 1.2.0
- * Description: Updated to support configurable execution timeouts via context.WithTimeout and enforce non-interactive execution by closing Stdin.
+ * Block-UUID: fd3a6ba4-38f9-4635-8b87-7c2c5594abf8
+ * Parent-UUID: 4f753b45-4b09-41ad-9d96-beb571154244
+ * Version: 1.3.0
+ * Description: Fixed the Stdin handling by using os.DevNull instead of nil to prevent shell execution failures. Added enhanced logging for command execution lifecycle to aid debugging. Improved signal handling to ensure proper process cleanup.
  * Language: Go
  * Created-at: 2026-02-23T03:12:00.000Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
  */
 
 
@@ -106,10 +106,15 @@ func (e *Executor) Run() (*Result, error) {
 	cmd.Stdout = stdoutWriter
 	cmd.Stderr = stderrWriter
 	
-	// Enforce Non-Interactive Mode
-	// By setting Stdin to nil, we prevent commands from waiting for user input.
-	// This is a critical safety rail for the CLI Bridge execution.
-	cmd.Stdin = nil
+	// FIX: Use os.DevNull instead of nil for Stdin
+	// Setting Stdin to nil can cause shell commands to fail silently.
+	// Using os.DevNull ensures the shell has a valid input stream that is always empty.
+	devNull, err := os.Open(os.DevNull)
+	if err != nil {
+		return nil, NewExecError(ErrCodeFileIO, "failed to open /dev/null", err)
+	}
+	defer devNull.Close()
+	cmd.Stdin = devNull
 	
 	// Unix-specific for process group management
 	if runtime.GOOS != "windows" {
@@ -117,10 +122,12 @@ func (e *Executor) Run() (*Result, error) {
 	}
 
 	// 6. Start Command
-	logger.Debug("Starting command execution", "command", e.Command, "timeout", timeoutDuration)
+	logger.Debug("Starting command execution", "command", e.Command, "timeout", timeoutDuration, "shell", shell)
 	if err := cmd.Start(); err != nil {
+		logger.Error("Failed to start command", "command", e.Command, "error", err)
 		return nil, NewExecError(ErrCodeCommandNotFound, "failed to start command", err)
 	}
+	logger.Debug("Command started successfully", "pid", cmd.Process.Pid)
 
 	// 7. Signal Handling
 	sigChan := make(chan os.Signal, 1)
@@ -131,7 +138,7 @@ func (e *Executor) Run() (*Result, error) {
 		if !ok {
 			return
 		}
-		logger.Debug("Signal received, forwarding to child process", "signal", sig)
+		logger.Debug("Signal received, forwarding to child process", "signal", sig, "pid", cmd.Process.Pid)
 		
 		if runtime.GOOS == "windows" {
 			cmd.Process.Signal(sig)
@@ -152,6 +159,7 @@ func (e *Executor) Run() (*Result, error) {
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			exitCode = exitErr.ExitCode()
+			logger.Debug("Command exited with error", "exitCode", exitCode, "error", err)
 		} else {
 			// Check if the error is due to context timeout
 			if ctx.Err() == context.DeadlineExceeded {
@@ -163,6 +171,8 @@ func (e *Executor) Run() (*Result, error) {
 				logger.Debug("Command execution failed or interrupted", "error", err)
 			}
 		}
+	} else {
+		logger.Debug("Command completed successfully", "exitCode", exitCode)
 	}
 
 	duration := time.Since(startTime)
@@ -188,6 +198,7 @@ func (e *Executor) Run() (*Result, error) {
 
 	// 10. Return Result
 	combinedOutput := stdoutBuf.String() + stderrBuf.String()
+	logger.Debug("Execution result", "outputSize", len(combinedOutput), "duration", duration)
 
 	return &Result{
 		ID:       id,

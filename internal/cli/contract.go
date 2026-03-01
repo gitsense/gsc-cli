@@ -1,12 +1,12 @@
 /**
  * Component: Contract CLI Commands
- * Block-UUID: 0084fa37-8d9c-4189-b492-f072f64aba8e
- * Parent-UUID: b4a71934-f77f-49b6-a7d0-26c72377a7df
- * Version: 1.9.3
- * Description: Updated create command to support --whitelist, --no-whitelist, and --exec-timeout flags for the new security framework.
+ * Block-UUID: 2ca81d16-0cf2-4867-9ba4-362f802c62ed
+ * Parent-UUID: 02bfaf72-a89f-4319-9514-bea3408c0957
+ * Version: 1.9.5
+ * Description: Refactored execContractCmd to improve output handling and prevent duplicate printing. Added logic to propagate the sub-process exit code to the CLI caller. Added debug logging to trace the execution flow within the contract security context.
  * Language: Go
- * Created-at: 2026-02-28T17:25:34.600Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.9.1), GLM-4.7 (v1.9.2), Gemini 3 Flash (v1.9.3)
+ * Created-at: 2026-03-01T02:12:51.441Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.9.1), GLM-4.7 (v1.9.2), Gemini 3 Flash (v1.9.3), Gemini 3 Flash (v1.9.4), Gemini 3 Flash (v1.9.5)
  */
 
 
@@ -30,6 +30,7 @@ import (
 	"github.com/gitsense/gsc-cli/internal/exec"
 	"github.com/gitsense/gsc-cli/internal/contract"
 	"github.com/gitsense/gsc-cli/internal/output"
+	"github.com/gitsense/gsc-cli/pkg/logger"
 	"github.com/gitsense/gsc-cli/pkg/settings"
 )
 
@@ -384,6 +385,7 @@ var execContractCmd = &cobra.Command{
 whitelists and timeouts. Results can be enriched and sent to chat.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
+		logger.Debug("execContractCmd started", "uuid", contractExecUUID, "cmd", contractExecCmd)
 
 		// 1. Load Contract
 		meta, err := contract.GetContract(contractExecUUID)
@@ -421,15 +423,19 @@ whitelists and timeouts. Results can be enriched and sent to chat.`,
 			TimeoutSeconds: meta.ExecTimeout,
 		})
 
+		logger.Debug("Calling executor.Run()")
 		result, err := executor.Run()
 		if err != nil {
+			logger.Error("executor.Run() failed", "error", err)
 			return err
 		}
+		logger.Debug("executor.Run() completed", "exitCode", result.ExitCode)
 
 		// 5. Resolve and Apply Formatter
 		finalOutput := result.Output
 		formatter := formatters.ResolveFormatter(binary)
 		if formatter != nil {
+			logger.Debug("Applying formatter", "binary", binary)
 			// Pre-process to capture context (like file path for cat)
 			formatter.PreProcess(fields[1:])
 			// Post-process the output
@@ -441,6 +447,7 @@ whitelists and timeouts. Results can be enriched and sent to chat.`,
 
 		// 6. Handle Chat Insertion
 		if contractExecChat {
+			logger.Debug("Handling chat insertion")
 			gscHome, _ := settings.GetGSCHome(false)
 			sqliteDB, err := db.OpenDB(settings.GetChatDatabasePath(gscHome))
 			if err != nil {
@@ -470,7 +477,11 @@ whitelists and timeouts. Results can be enriched and sent to chat.`,
 			fmt.Printf("[BRIDGE] Output added to chat. Message ID: %d\n", msgID)
 		}
 
-		fmt.Print(finalOutput)
+		// 7. Propagate Exit Code
+		if result.ExitCode != 0 {
+			return &cliError{code: result.ExitCode, message: fmt.Sprintf("command failed with exit code %d", result.ExitCode)}
+		}
+
 		return nil
 	},
 }
