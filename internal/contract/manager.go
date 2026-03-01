@@ -1,12 +1,12 @@
 /**
  * Component: Contract Manager
- * Block-UUID: c7ace063-90e8-4cef-8c2c-95e2292c1eb6
- * Parent-UUID: f54f0d46-8bde-4b7b-b2b9-77d831c575a9
- * Version: 1.6.0
- * Description: Updated CreateContract to pass ExecTimeout, Whitelist, and NoWhitelist to the database layer. Updated GetContractInfo to map these fields and FormatContractInfo to display them.
+ * Block-UUID: dfa871e5-6794-4d4b-bdfa-a270efeac3de
+ * Parent-UUID: c7ace063-90e8-4cef-8c2c-95e2292c1eb6
+ * Version: 1.7.0
+ * Description: Updated CancelContract, RenewContract, and DeleteContract to use UpdateContractMessagesByUUID. This ensures that contract status changes are propagated to all forked chats by querying the meta JSON field instead of a single message ID.
  * Language: Go
  * Created-at: 2026-03-01T16:31:54.274Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0)
  */
 
 
@@ -318,7 +318,8 @@ func CancelContract(uuid string) error {
 		NoWhitelist: meta.NoWhitelist,
 	}
 
-	if err := db.UpdateContractMessage(sqliteDB, meta.ContractMessageID, dbData); err != nil {
+	// Use UUID-based update to handle forked chats
+	if err := db.UpdateContractMessagesByUUID(sqliteDB, meta.UUID, dbData); err != nil {
 		return fmt.Errorf("failed to update contract message in database: %w", err)
 	}
 
@@ -379,7 +380,8 @@ func RenewContract(uuid string, hours int) error {
 		NoWhitelist: meta.NoWhitelist,
 	}
 
-	if err := db.UpdateContractMessage(sqliteDB, meta.ContractMessageID, dbData); err != nil {
+	// Use UUID-based update to handle forked chats
+	if err := db.UpdateContractMessagesByUUID(sqliteDB, meta.UUID, dbData); err != nil {
 		return fmt.Errorf("failed to update contract message in database: %w", err)
 	}
 
@@ -423,7 +425,8 @@ func DeleteContract(uuid string) error {
 		NoWhitelist: meta.NoWhitelist,
 	}
 
-	if err := db.UpdateContractMessage(sqliteDB, meta.ContractMessageID, dbData); err != nil {
+	// Use UUID-based update to handle forked chats
+	if err := db.UpdateContractMessagesByUUID(sqliteDB, meta.UUID, dbData); err != nil {
 		// Log warning but don't fail, the file is already gone
 		logger.Warning("Failed to update contract message in database", "error", err)
 	}

@@ -1,12 +1,12 @@
 /**
  * Component: Chat Database Operations
- * Block-UUID: 39c79497-f93c-4bce-8a18-9a84b140b6ab
- * Parent-UUID: f7bc13fc-938f-4ddc-8bf1-5086a046612b
- * Version: 1.13.0
- * Description: Updated FormatContractMarkdown to include Whitelist and Execution Timeout in the contract message table for better transparency.
+ * Block-UUID: f8c62554-9b87-4c68-a6c8-212052d9453c
+ * Parent-UUID: 39c79497-f93c-4bce-8a18-9a84b140b6ab
+ * Version: 1.14.0
+ * Description: Updated contract message handling to store contract_uuid in the meta JSON field. Added UpdateContractMessagesByUUID to support bulk updates across forked chats. Modified InsertContractWithAnchor and UpdateContractMessage to populate the meta field.
  * Language: Go
- * Created-at: 2026-03-01T04:03:58.001Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.10.1), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0)
+ * Created-at: 2026-03-01T16:31:54.274Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.10.1), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0)
  */
 
 
@@ -14,6 +14,7 @@ package db
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -109,18 +110,25 @@ func InsertContractWithAnchor(db *sql.DB, chatID int64, data ContractMessageData
 		return 0, fmt.Errorf("failed to find original first message: %w", err)
 	}
 
-	// 3. Insert the Contract Message
+	// 3. Prepare Meta JSON
+	metaMap := map[string]string{"contract_uuid": data.UUID}
+	metaJSON, err := json.Marshal(metaMap)
+	if err != nil {
+		return 0, fmt.Errorf("failed to marshal meta JSON: %w", err)
+	}
+
+	// 4. Insert the Contract Message
 	markdown := FormatContractMarkdown(data)
 	now := time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
 
 	insertQuery := `
 		INSERT INTO messages (
 			type, deleted, visibility, chat_id, parent_id, level, 
-			model, real_model, temperature, role, message, created_at, updated_at
+			model, real_model, temperature, role, message, meta, created_at, updated_at
 		) VALUES (
 			?, ?, ?, ?, ?, ?, 
 			(SELECT main_model FROM chats WHERE id = ?), 
-			?, ?, ?, ?, ?, ?
+			?, ?, ?, ?, ?, ?, ?
 		)`
 
 	result, err := tx.Exec(
@@ -136,6 +144,7 @@ func InsertContractWithAnchor(db *sql.DB, chatID int64, data ContractMessageData
 		sql.NullFloat64{Float64: 0, Valid: true},             // Temperature
 		"assistant",        // Role
 		sql.NullString{String: markdown, Valid: true},        // Message
+		sql.NullString{String: string(metaJSON), Valid: true},// Meta
 		now,                // Created At
 		now,                // Updated At
 	)
@@ -149,7 +158,7 @@ func InsertContractWithAnchor(db *sql.DB, chatID int64, data ContractMessageData
 		return 0, fmt.Errorf("failed to get contract message ID: %w", err)
 	}
 
-	// 4. Re-parent the Original First Message to the Contract
+	// 5. Re-parent the Original First Message to the Contract
 	_, err = tx.Exec("UPDATE messages SET parent_id = ?, updated_at = ? WHERE id = ?", contractID, now, originalFirstID)
 	if err != nil {
 		return 0, fmt.Errorf("failed to re-parent original first message: %w", err)
@@ -176,18 +185,53 @@ func UpdateContractMessage(db *sql.DB, msgID int64, data ContractMessageData) er
 		return fmt.Errorf("failed to verify contract message: %w", err)
 	}
 
-	// 2. Generate new content
+	// 2. Prepare Meta JSON
+	metaMap := map[string]string{"contract_uuid": data.UUID}
+	metaJSON, err := json.Marshal(metaMap)
+	if err != nil {
+		return fmt.Errorf("failed to marshal meta JSON: %w", err)
+	}
+
+	// 3. Generate new content
 	markdown := FormatContractMarkdown(data)
 	now := time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
 
-	// 3. Update the message
-	query := `UPDATE messages SET message = ?, updated_at = ? WHERE id = ?`
-	_, err = db.Exec(query, sql.NullString{String: markdown, Valid: true}, now, msgID)
+	// 4. Update the message
+	query := `UPDATE messages SET message = ?, meta = ?, updated_at = ? WHERE id = ?`
+	_, err = db.Exec(query, sql.NullString{String: markdown, Valid: true}, sql.NullString{String: string(metaJSON), Valid: true}, now, msgID)
 	if err != nil {
 		return fmt.Errorf("failed to update contract message: %w", err)
 	}
 
 	logger.Debug("Contract message updated", "msg_id", msgID, "status", data.Status)
+	return nil
+}
+
+// UpdateContractMessagesByUUID updates all contract messages matching a specific contract UUID.
+// This is used to synchronize status across forked chats.
+func UpdateContractMessagesByUUID(db *sql.DB, contractUUID string, data ContractMessageData) error {
+	// 1. Prepare Meta JSON
+	metaMap := map[string]string{"contract_uuid": contractUUID}
+	metaJSON, err := json.Marshal(metaMap)
+	if err != nil {
+		return fmt.Errorf("failed to marshal meta JSON: %w", err)
+	}
+
+	// 2. Generate new content
+	markdown := FormatContractMarkdown(data)
+	now := time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
+
+	// 3. Update all matching messages
+	// We use json_extract to query the JSON field safely
+	query := `UPDATE messages SET message = ?, meta = ?, updated_at = ? WHERE type = 'gsc-cli-contract' AND json_extract(meta, '$.contract_uuid') = ?`
+	
+	result, err := db.Exec(query, sql.NullString{String: markdown, Valid: true}, sql.NullString{String: string(metaJSON), Valid: true}, now, contractUUID)
+	if err != nil {
+		return fmt.Errorf("failed to update contract messages by UUID: %w", err)
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	logger.Debug("Contract messages updated by UUID", "uuid", contractUUID, "rows_affected", rowsAffected)
 	return nil
 }
 
@@ -658,4 +702,3 @@ func GetLastMessageID(db *sql.DB, chatID int64) (int64, error) {
 	}
 	return lastID, nil
 }
-
