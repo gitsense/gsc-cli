@@ -1,12 +1,12 @@
 /**
  * Component: Contract Manager
- * Block-UUID: f54f0d46-8bde-4b7b-b2b9-77d831c575a9
- * Parent-UUID: 09dc11df-3fac-4def-834f-24e7d83d88b1
- * Version: 1.5.1
+ * Block-UUID: c7ace063-90e8-4cef-8c2c-95e2292c1eb6
+ * Parent-UUID: f54f0d46-8bde-4b7b-b2b9-77d831c575a9
+ * Version: 1.6.0
  * Description: Updated CreateContract to pass ExecTimeout, Whitelist, and NoWhitelist to the database layer. Updated GetContractInfo to map these fields and FormatContractInfo to display them.
  * Language: Go
- * Created-at: 2026-03-01T16:19:42.991Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1)
+ * Created-at: 2026-03-01T16:31:54.274Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0)
  */
 
 
@@ -384,6 +384,51 @@ func RenewContract(uuid string, hours int) error {
 	}
 
 	logger.Info("Contract renewed", "uuid", uuid, "new_expires_at", meta.ExpiresAt)
+	return nil
+}
+
+// DeleteContract removes a contract by deleting its JSON file and marking the database message as deleted.
+func DeleteContract(uuid string) error {
+	meta, err := GetContract(uuid)
+	if err != nil {
+		return err
+	}
+
+	// Delete the JSON file
+	path := getContractPath(uuid)
+	if err := os.Remove(path); err != nil {
+		return fmt.Errorf("failed to delete contract file: %w", err)
+	}
+
+	// Update DB Message status to "deleted"
+	gscHome, err := settings.GetGSCHome(false)
+	if err != nil {
+		return fmt.Errorf("failed to resolve GSC_HOME: %w", err)
+	}
+
+	sqliteDB, err := db.OpenDB(settings.GetChatDatabasePath(gscHome))
+	if err != nil {
+		return fmt.Errorf("failed to open chat database: %w", err)
+	}
+	defer sqliteDB.Close()
+
+	dbData := db.ContractMessageData{
+		Description: meta.Description,
+		Workdir:     meta.Workdir,
+		ExpiresAt:   meta.ExpiresAt,
+		UUID:        meta.UUID,
+		Status:      "deleted",
+		ExecTimeout: meta.ExecTimeout,
+		Whitelist:   meta.Whitelist,
+		NoWhitelist: meta.NoWhitelist,
+	}
+
+	if err := db.UpdateContractMessage(sqliteDB, meta.ContractMessageID, dbData); err != nil {
+		// Log warning but don't fail, the file is already gone
+		logger.Warning("Failed to update contract message in database", "error", err)
+	}
+
+	logger.Info("Contract deleted", "uuid", uuid)
 	return nil
 }
 

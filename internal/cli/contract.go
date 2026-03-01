@@ -1,12 +1,12 @@
 /**
  * Component: Contract CLI Commands
- * Block-UUID: 7fc394a7-b39b-4799-b4eb-17dffc83a14e
- * Parent-UUID: 592432f2-0c8f-4c91-9e96-e2bb0a65d422
- * Version: 1.9.8
+ * Block-UUID: 7564a7f3-9fc1-4dc0-a5e6-3d91288e6122
+ * Parent-UUID: 7fc394a7-b39b-4799-b4eb-17dffc83a14e
+ * Version: 1.10.0
  * Description: Updated execContractCmd to correctly identify the last message in a chat using a recursive SQL query, ensuring output is appended to the end of the conversation regardless of message deletions or reordering.
  * Language: Go
- * Created-at: 2026-03-01T16:24:23.841Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.9.1), GLM-4.7 (v1.9.2), Gemini 3 Flash (v1.9.3), Gemini 3 Flash (v1.9.4), Gemini 3 Flash (v1.9.5), GLM-4.7 (v1.9.6), GLM-4.7 (v1.9.7), GLM-4.7 (v1.9.8)
+ * Created-at: 2026-03-01T16:32:10.291Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.9.1), GLM-4.7 (v1.9.2), Gemini 3 Flash (v1.9.3), Gemini 3 Flash (v1.9.4), Gemini 3 Flash (v1.9.5), GLM-4.7 (v1.9.6), GLM-4.7 (v1.9.7), GLM-4.7 (v1.9.8), GLM-4.7 (v1.10.0)
  */
 
 
@@ -278,6 +278,33 @@ var renewContractCmd = &cobra.Command{
 		}
 
 		return contract.RenewContract(uuid, contractRenewHours)
+	},
+}
+
+// deleteContractCmd handles 'gsc contract delete [uuid]'
+var deleteContractCmd = &cobra.Command{
+	Use:   "delete [uuid]",
+	Short: "Delete a traceability contract",
+	Long: `Delete a traceability contract by removing its JSON file and marking the 
+corresponding message in the chat as deleted. This operation is irreversible.`,
+	Args:  cobra.MaximumNArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true
+		uuid := ""
+		if len(args) > 0 {
+			uuid = args[0]
+		}
+
+		// Smart Default: Find UUID by workdir if not provided
+		if uuid == "" {
+			foundUUID, err := findContractUUIDByWorkdir()
+			if err != nil {
+				return err
+			}
+			uuid = foundUUID
+		}
+
+		return contract.DeleteContract(uuid)
 	},
 }
 
@@ -560,6 +587,7 @@ func init() {
 	contractCmd.AddCommand(statusContractCmd)
 	contractCmd.AddCommand(listContractCmd)
 	contractCmd.AddCommand(cancelContractCmd)
+	contractCmd.AddCommand(deleteContractCmd)
 	contractCmd.AddCommand(renewContractCmd)
 	contractCmd.AddCommand(updateFileCmd)
 	contractCmd.AddCommand(newFileCmd)
