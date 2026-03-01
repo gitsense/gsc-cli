@@ -1,12 +1,12 @@
 /**
  * Component: Contract CLI Commands
- * Block-UUID: 5b4516e8-ad2b-4404-ab97-6d2f3a4a5c9d
- * Parent-UUID: 2ca81d16-0cf2-4867-9ba4-362f802c62ed
- * Version: 1.9.6
- * Description: Refactored execContractCmd to improve output handling and prevent duplicate printing. Added logic to propagate the sub-process exit code to the CLI caller. Added debug logging to trace the execution flow within the contract security context. Updated to pass the contract's Workdir to the executor to ensure commands run in the correct directory.
+ * Block-UUID: 592432f2-0c8f-4c91-9e96-e2bb0a65d422
+ * Parent-UUID: 5b4516e8-ad2b-4404-ab97-6d2f3a4a5c9d
+ * Version: 1.9.7
+ * Description: Updated execContractCmd to correctly identify the last message in a chat using a recursive SQL query, ensuring output is appended to the end of the conversation regardless of message deletions or reordering.
  * Language: Go
  * Created-at: 2026-03-01T02:12:51.441Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.9.1), GLM-4.7 (v1.9.2), Gemini 3 Flash (v1.9.3), Gemini 3 Flash (v1.9.4), Gemini 3 Flash (v1.9.5), GLM-4.7 (v1.9.6)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.9.1), GLM-4.7 (v1.9.2), Gemini 3 Flash (v1.9.3), Gemini 3 Flash (v1.9.4), Gemini 3 Flash (v1.9.5), GLM-4.7 (v1.9.6), GLM-4.7 (v1.9.7)
  */
 
 
@@ -456,6 +456,12 @@ whitelists and timeouts. Results can be enriched and sent to chat.`,
 			}
 			defer sqliteDB.Close()
 
+			// Find the last message in the chat to ensure correct ordering
+			lastMessageID, err := db.GetLastMessageID(sqliteDB, meta.ChatID)
+			if err != nil {
+				return fmt.Errorf("failed to find last message: %w", err)
+			}
+
 			// Format the final Markdown message
 			markdown := output.FormatBridgeMarkdown(contractExecCmd, result.Duration, "N/A", "text", finalOutput, result.ExitCode)
 
@@ -463,7 +469,7 @@ whitelists and timeouts. Results can be enriched and sent to chat.`,
 				Type:       "gsc-cli-output",
 				Visibility: "human-public",
 				ChatID:     meta.ChatID,
-				ParentID:   meta.ContractMessageID, // Reply to the contract message
+				ParentID:   lastMessageID, // Reply to the last message
 				Level:      2,                      // Contract is level 1
 				Role:       "assistant",
 				RealModel:  sql.NullString{String: settings.RealModelNotes, Valid: true},

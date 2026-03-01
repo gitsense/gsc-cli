@@ -1,12 +1,12 @@
 /**
  * Component: Chat Database Operations
- * Block-UUID: f7bc13fc-938f-4ddc-8bf1-5086a046612b
- * Parent-UUID: 0259ed8c-16e4-4757-989c-2411c3c2e079
- * Version: 1.12.0
+ * Block-UUID: 39c79497-f93c-4bce-8a18-9a84b140b6ab
+ * Parent-UUID: f7bc13fc-938f-4ddc-8bf1-5086a046612b
+ * Version: 1.13.0
  * Description: Updated FormatContractMarkdown to include Whitelist and Execution Timeout in the contract message table for better transparency.
  * Language: Go
- * Created-at: 2026-02-28T17:12:08.873Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.10.1), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0)
+ * Created-at: 2026-03-01T04:03:58.001Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.10.1), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0)
  */
 
 
@@ -616,3 +616,46 @@ func truncateString(s string, maxLen int) string {
 	}
 	return s
 }
+
+// GetLastMessageID retrieves the ID of the last message in a chat based on its position in the conversation tree.
+// It uses a recursive CTE to traverse the message hierarchy starting from the root (parent_id = 0)
+// and returns the ID of the message with the highest position.
+func GetLastMessageID(db *sql.DB, chatID int64) (int64, error) {
+	query := `
+	WITH RECURSIVE matched_messages AS (
+		SELECT
+			0 AS position,
+			id,
+			parent_id,
+			model
+		FROM
+			messages
+		WHERE
+			deleted = 0 AND
+			chat_id = ? AND
+			parent_id = 0
+		UNION
+		SELECT
+			position + 1 AS position,
+			m.id,
+			m.parent_id,
+			m.model
+		FROM
+			messages m
+		INNER JOIN matched_messages mm ON m.parent_id = mm.id
+		WHERE
+			m.chat_id = ? AND
+			deleted = 0
+	)
+	SELECT id FROM matched_messages
+	ORDER BY position DESC, model
+	LIMIT 1`
+
+	var lastID int64
+	err := db.QueryRow(query, chatID, chatID).Scan(&lastID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to find last message: %w", err)
+	}
+	return lastID, nil
+}
+
