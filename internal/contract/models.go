@@ -1,12 +1,12 @@
 /**
  * Component: Contract Models
- * Block-UUID: 18c1edf8-6005-4b29-8228-98f0ee8e9c1e
- * Parent-UUID: cc9cced2-90d6-484c-be9d-5d0a215f2b03
- * Version: 1.4.0
- * Description: Added Whitelist, NoWhitelist, and ExecTimeout fields to ContractMetadata to support the new 'gsc contract exec' security framework.
+ * Block-UUID: d14c8dd9-6409-4bb8-b827-60c8d4d5e38d
+ * Parent-UUID: 18c1edf8-6005-4b29-8228-98f0ee8e9c1e
+ * Version: 1.5.0
+ * Description: Added ExecTimeout, Whitelist, and NoWhitelist fields to ContractInfoResult to support displaying security settings in 'gsc contract info'.
  * Language: Go
  * Created-at: 2026-02-27T16:52:47.050Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
  */
 
 
@@ -81,6 +81,9 @@ type ContractInfoResult struct {
 	CreatedAt   time.Time `json:"created_at"`
 	ExpiresAt   time.Time `json:"expires_at"`
 	Authcode    string    `json:"authcode"`
+	ExecTimeout int       `json:"exec_timeout"`
+	Whitelist   []string  `json:"whitelist"`
+	NoWhitelist bool      `json:"no_whitelist"`
 }
 
 // ContractTestResult represents the output of the 'contract test' command.

@@ -1,12 +1,12 @@
 /**
  * Component: Contract Manager
- * Block-UUID: 888f8bc4-6585-4d96-932c-2d007feccef9
- * Parent-UUID: bc99e7a5-7dcf-40fd-9103-7cabb3d42a64
- * Version: 1.4.0
- * Description: Updated CreateContract to accept and persist Whitelist, NoWhitelist, and ExecTimeout. Implemented logic to apply DefaultSafeSet and DefaultExecTimeout if not specified.
+ * Block-UUID: 09dc11df-3fac-4def-834f-24e7d83d88b1
+ * Parent-UUID: 888f8bc4-6585-4d96-932c-2d007feccef9
+ * Version: 1.5.0
+ * Description: Updated CreateContract to pass ExecTimeout, Whitelist, and NoWhitelist to the database layer. Updated GetContractInfo to map these fields and FormatContractInfo to display them.
  * Language: Go
  * Created-at: 2026-02-27T17:01:48.830Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
  */
 
 
@@ -117,6 +117,9 @@ func CreateContract(code string, description string, authcode string, workdir st
 		ExpiresAt:   meta.ExpiresAt,
 		UUID:        meta.UUID,
 		Status:      string(meta.Status),
+		ExecTimeout: meta.ExecTimeout,
+		Whitelist:   meta.Whitelist,
+		NoWhitelist: meta.NoWhitelist,
 	}
 
 	// Use UpsertContractMessage to ensure only one contract message exists per chat
@@ -236,6 +239,9 @@ func GetContractInfo(uuid string, sanitize bool) (*ContractInfoResult, error) {
 		ExpiresAt:   meta.ExpiresAt,
 		Authcode:    meta.Authcode,
 		Workdir:     meta.Workdir,
+		ExecTimeout: meta.ExecTimeout,
+		Whitelist:   meta.Whitelist,
+		NoWhitelist: meta.NoWhitelist,
 	}
 
 	if sanitize {
@@ -299,6 +305,9 @@ func CancelContract(uuid string) error {
 		ExpiresAt:   meta.ExpiresAt,
 		UUID:        meta.UUID,
 		Status:      string(meta.Status),
+		ExecTimeout: meta.ExecTimeout,
+		Whitelist:   meta.Whitelist,
+		NoWhitelist: meta.NoWhitelist,
 	}
 
 	if err := db.UpdateContractMessage(sqliteDB, meta.ContractMessageID, dbData); err != nil {
@@ -357,6 +366,9 @@ func RenewContract(uuid string, hours int) error {
 		ExpiresAt:   meta.ExpiresAt,
 		UUID:        meta.UUID,
 		Status:      string(meta.Status),
+		ExecTimeout: meta.ExecTimeout,
+		Whitelist:   meta.Whitelist,
+		NoWhitelist: meta.NoWhitelist,
 	}
 
 	if err := db.UpdateContractMessage(sqliteDB, meta.ContractMessageID, dbData); err != nil {
@@ -433,6 +445,15 @@ func FormatContractInfo(info *ContractInfoResult, format string) string {
 	sb.WriteString(fmt.Sprintf("  Workdir:      %s\n", info.Workdir))
 	sb.WriteString(fmt.Sprintf("  Created At:   %s\n", info.CreatedAt.Format(time.RFC3339)))
 	sb.WriteString(fmt.Sprintf("  Expires At:   %s\n", info.ExpiresAt.Format(time.RFC3339)))
+	sb.WriteString(fmt.Sprintf("  Exec Timeout: %ds\n", info.ExecTimeout))
+	
+	whitelistVal := "Default Safe Set"
+	if info.NoWhitelist {
+		whitelistVal = "Unrestricted"
+	} else if len(info.Whitelist) > 0 {
+		whitelistVal = fmt.Sprintf("`%s`", strings.Join(info.Whitelist, "`, `"))
+	}
+	sb.WriteString(fmt.Sprintf("  Whitelist:    %s\n", whitelistVal))
 	
 	return sb.String()
 }
