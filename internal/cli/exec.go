@@ -1,12 +1,12 @@
 /**
  * Component: Exec CLI Command
- * Block-UUID: 58739f5b-8971-449f-9364-766be508446b
- * Parent-UUID: 2856b44f-dce4-4957-908e-24fa41a16148
- * Version: 1.1.0
- * Description: Defines the CLI interface for the 'exec' command, handling command execution, output persistence, recovery, and bridge integration. Fixed type mismatch in handleList by casting exec.ExecOutput to output.ExecOutput. Updated bridge.Execute calls to include the new exitCode argument.
+ * Block-UUID: 53afa5e5-56b0-44a8-9a4d-0e379149ff8a
+ * Parent-UUID: 58739f5b-8971-449f-9364-766be508446b
+ * Version: 1.2.0
+ * Description: Defines the CLI interface for the 'exec' command, handling command execution, output persistence, recovery, and bridge integration. Fixed type mismatch in handleList by casting exec.ExecOutput to output.ExecOutput. Updated bridge.Execute calls to include the new exitCode argument. Updated to pass the current working directory to the executor to match the new signature.
  * Language: Go
  * Created-at: 2026-02-23T03:13:00.000Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -188,7 +188,13 @@ func handleExecution(commandStr string) error {
 		NoStderr: execNoStderr,
 	}
 
-	runner := exec.NewExecutor(commandStr, flags)
+	// Get current working directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get current working directory: %w", err)
+	}
+
+	runner := exec.NewExecutor(commandStr, flags, cwd)
 
 	// 3. Execute
 	fmt.Printf("[GSC] Executing: %s\n", commandStr)

@@ -1,12 +1,12 @@
 /**
  * Component: Contract CLI Commands
- * Block-UUID: 2ca81d16-0cf2-4867-9ba4-362f802c62ed
- * Parent-UUID: 02bfaf72-a89f-4319-9514-bea3408c0957
- * Version: 1.9.5
- * Description: Refactored execContractCmd to improve output handling and prevent duplicate printing. Added logic to propagate the sub-process exit code to the CLI caller. Added debug logging to trace the execution flow within the contract security context.
+ * Block-UUID: 5b4516e8-ad2b-4404-ab97-6d2f3a4a5c9d
+ * Parent-UUID: 2ca81d16-0cf2-4867-9ba4-362f802c62ed
+ * Version: 1.9.6
+ * Description: Refactored execContractCmd to improve output handling and prevent duplicate printing. Added logic to propagate the sub-process exit code to the CLI caller. Added debug logging to trace the execution flow within the contract security context. Updated to pass the contract's Workdir to the executor to ensure commands run in the correct directory.
  * Language: Go
  * Created-at: 2026-03-01T02:12:51.441Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.9.1), GLM-4.7 (v1.9.2), Gemini 3 Flash (v1.9.3), Gemini 3 Flash (v1.9.4), Gemini 3 Flash (v1.9.5)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.9.1), GLM-4.7 (v1.9.2), Gemini 3 Flash (v1.9.3), Gemini 3 Flash (v1.9.4), Gemini 3 Flash (v1.9.5), GLM-4.7 (v1.9.6)
  */
 
 
@@ -419,9 +419,10 @@ whitelists and timeouts. Results can be enriched and sent to chat.`,
 		}
 
 		// 4. Execute Command
+		// Pass meta.Workdir to ensure the command runs in the contract's directory
 		executor := exec.NewExecutor(contractExecCmd, exec.ExecFlags{
 			TimeoutSeconds: meta.ExecTimeout,
-		})
+		}, meta.Workdir)
 
 		logger.Debug("Calling executor.Run()")
 		result, err := executor.Run()

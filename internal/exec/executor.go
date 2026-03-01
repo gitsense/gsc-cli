@@ -1,12 +1,12 @@
 /**
  * Component: Exec Command Executor
- * Block-UUID: fd3a6ba4-38f9-4635-8b87-7c2c5594abf8
- * Parent-UUID: 4f753b45-4b09-41ad-9d96-beb571154244
- * Version: 1.3.0
- * Description: Fixed the Stdin handling by using os.DevNull instead of nil to prevent shell execution failures. Added enhanced logging for command execution lifecycle to aid debugging. Improved signal handling to ensure proper process cleanup.
+ * Block-UUID: b23caa91-d05b-4c37-a2c7-3296dc21aa1f
+ * Parent-UUID: fd3a6ba4-38f9-4635-8b87-7c2c5594abf8
+ * Version: 1.4.0
+ * Description: Fixed the Stdin handling by using os.DevNull instead of nil to prevent shell execution failures. Added enhanced logging for command execution lifecycle to aid debugging. Improved signal handling to ensure proper process cleanup. Added Workdir support to allow execution in specific directories (e.g., contract workdir).
  * Language: Go
  * Created-at: 2026-02-23T03:12:00.000Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
  */
 
 
@@ -36,6 +36,7 @@ import (
 type Executor struct {
 	Command string
 	Flags   ExecFlags
+	Workdir string // Workdir specifies the working directory for the command
 }
 
 // Result contains the outcome of an execution.
@@ -49,10 +50,11 @@ type Result struct {
 }
 
 // NewExecutor creates a new Executor instance.
-func NewExecutor(command string, flags ExecFlags) *Executor {
+func NewExecutor(command string, flags ExecFlags, workdir string) *Executor {
 	return &Executor{
 		Command: command,
 		Flags:   flags,
+		Workdir: workdir,
 	}
 }
 
@@ -116,13 +118,19 @@ func (e *Executor) Run() (*Result, error) {
 	defer devNull.Close()
 	cmd.Stdin = devNull
 	
+	// Set Working Directory if provided
+	if e.Workdir != "" {
+		cmd.Dir = e.Workdir
+		logger.Debug("Setting working directory", "dir", e.Workdir)
+	}
+	
 	// Unix-specific for process group management
 	if runtime.GOOS != "windows" {
 		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	}
 
 	// 6. Start Command
-	logger.Debug("Starting command execution", "command", e.Command, "timeout", timeoutDuration, "shell", shell)
+	logger.Debug("Starting command execution", "command", e.Command, "timeout", timeoutDuration, "shell", shell, "workdir", e.Workdir)
 	if err := cmd.Start(); err != nil {
 		logger.Error("Failed to start command", "command", e.Command, "error", err)
 		return nil, NewExecError(ErrCodeCommandNotFound, "failed to start command", err)
