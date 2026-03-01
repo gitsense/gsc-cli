@@ -163,6 +163,7 @@ var statusContractCmd = &cobra.Command{
 			// Handle "no contract" gracefully (exit 0)
 			if strings.Contains(err.Error(), "no active contract") {
 				fmt.Println("No active contract found for this repository.")
+				fmt.Println("")
 				fmt.Println("To create a new contract, run:")
 				fmt.Println("  gsc contract create --code <6-digit-code> --description \"Purpose of contract\"")
 				return nil

@@ -1,12 +1,12 @@
 /**
  * Component: Contract Manager
- * Block-UUID: 09dc11df-3fac-4def-834f-24e7d83d88b1
- * Parent-UUID: 888f8bc4-6585-4d96-932c-2d007feccef9
- * Version: 1.5.0
+ * Block-UUID: f54f0d46-8bde-4b7b-b2b9-77d831c575a9
+ * Parent-UUID: 09dc11df-3fac-4def-834f-24e7d83d88b1
+ * Version: 1.5.1
  * Description: Updated CreateContract to pass ExecTimeout, Whitelist, and NoWhitelist to the database layer. Updated GetContractInfo to map these fields and FormatContractInfo to display them.
  * Language: Go
- * Created-at: 2026-02-27T17:01:48.830Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
+ * Created-at: 2026-03-01T16:19:42.991Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1)
  */
 
 
@@ -231,10 +231,18 @@ func GetContractInfo(uuid string, sanitize bool) (*ContractInfoResult, error) {
 		return nil, err
 	}
 
+	// Determine the effective status for display
+	// Cancelled contracts always show as cancelled, even if past expiration
+	// Only mark as expired if the contract is still active but past its expiration time
+	status := string(meta.Status)
+	if meta.Status != ContractCancelled && meta.Status == ContractActive && time.Now().After(meta.ExpiresAt) {
+		status = string(ContractExpired)
+	}
+
 	result := &ContractInfoResult{
 		UUID:        meta.UUID,
 		Description: meta.Description,
-		Status:      string(meta.Status),
+		Status:      status,
 		CreatedAt:   meta.CreatedAt,
 		ExpiresAt:   meta.ExpiresAt,
 		Authcode:    meta.Authcode,
