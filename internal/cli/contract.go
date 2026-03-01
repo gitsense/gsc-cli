@@ -1,12 +1,12 @@
 /**
  * Component: Contract CLI Commands
- * Block-UUID: 83fa4067-ab5c-4f43-9564-cfd3fbd4c01b
- * Parent-UUID: 7564a7f3-9fc1-4dc0-a5e6-3d91288e6122
- * Version: 1.11.0
+ * Block-UUID: 9dff435f-b2af-4eae-97c4-855f7d66e59e
+ * Parent-UUID: 83fa4067-ab5c-4f43-9564-cfd3fbd4c01b
+ * Version: 1.12.0
  * Description: Updated create command to support --editor and --terminal flags for workspace preferences. Added the 'review' subcommand to handle intent-based requests (review, terminal, editor) from the Web UI, integrating with the new contract handler.
  * Language: Go
- * Created-at: 2026-03-01T16:32:10.291Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.9.1), GLM-4.7 (v1.9.2), Gemini 3 Flash (v1.9.3), Gemini 3 Flash (v1.9.4), Gemini 3 Flash (v1.9.5), GLM-4.7 (v1.9.6), GLM-4.7 (v1.9.7), GLM-4.7 (v1.9.8), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0)
+ * Created-at: 2026-03-01T18:38:51.240Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.9.1), GLM-4.7 (v1.9.2), Gemini 3 Flash (v1.9.3), Gemini 3 Flash (v1.9.4), Gemini 3 Flash (v1.9.5), GLM-4.7 (v1.9.6), GLM-4.7 (v1.9.7), GLM-4.7 (v1.9.8), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0)
  */
 
 
@@ -110,6 +110,24 @@ var createContractCmd = &cobra.Command{
 				return fmt.Errorf("failed to generate random authcode: %w", err)
 			}
 			contractAuthcode = fmt.Sprintf("%04d", n.Int64())
+		}
+
+		// Validate Preferred Editor
+		if contractPreferredEditor != "" {
+			if _, exists := settings.DefaultEditorTemplates[contractPreferredEditor]; !exists {
+				return fmt.Errorf("unsupported editor '%s'. Available editors: %s", 
+					contractPreferredEditor, 
+					strings.Join(getMapKeys(settings.DefaultEditorTemplates), ", "))
+			}
+		}
+
+		// Validate Preferred Terminal
+		if contractPreferredTerminal != "" {
+			if _, exists := settings.DefaultTerminalTemplates[contractPreferredTerminal]; !exists {
+				return fmt.Errorf("unsupported terminal '%s'. Available terminals: %s", 
+					contractPreferredTerminal, 
+					strings.Join(getMapKeys(settings.DefaultTerminalTemplates), ", "))
+			}
 		}
 
 		var whitelist []string
@@ -544,8 +562,8 @@ func init() {
 	createContractCmd.Flags().StringVar(&contractWhitelistFile, "whitelist", "", "Path to a file containing a list of allowed commands (optional)")
 	createContractCmd.Flags().BoolVar(&contractNoWhitelist, "no-whitelist", false, "Disable whitelist checks (unrestricted mode)")
 	createContractCmd.Flags().IntVar(&contractExecTimeout, "exec-timeout", 60, "Execution timeout in seconds (default 60)")
-	createContractCmd.Flags().StringVar(&contractPreferredEditor, "editor", "", "Preferred editor for code review (e.g., zed, vscode, vim-iterm2)")
-	createContractCmd.Flags().StringVar(&contractPreferredTerminal, "terminal", "", "Preferred terminal for project access (e.g., iterm2, terminal.app)")
+	createContractCmd.Flags().StringVar(&contractPreferredEditor, "editor", "", fmt.Sprintf("Preferred editor for code review (Available: %s)", strings.Join(getMapKeys(settings.DefaultEditorTemplates), ", ")))
+	createContractCmd.Flags().StringVar(&contractPreferredTerminal, "terminal", "", fmt.Sprintf("Preferred terminal for project access (Available: %s)", strings.Join(getMapKeys(settings.DefaultTerminalTemplates), ", ")))
 	createContractCmd.MarkFlagRequired("code")
 	createContractCmd.MarkFlagRequired("description")
 
@@ -718,4 +736,14 @@ type cliError struct {
 
 func (e *cliError) Error() string {
 	return e.message
+}
+
+// getMapKeys returns a sorted slice of keys from a map
+func getMapKeys(m map[string]string) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }
