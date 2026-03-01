@@ -1,12 +1,12 @@
 /**
  * Component: Contract CLI Commands
- * Block-UUID: 592432f2-0c8f-4c91-9e96-e2bb0a65d422
- * Parent-UUID: 5b4516e8-ad2b-4404-ab97-6d2f3a4a5c9d
- * Version: 1.9.7
+ * Block-UUID: 7fc394a7-b39b-4799-b4eb-17dffc83a14e
+ * Parent-UUID: 592432f2-0c8f-4c91-9e96-e2bb0a65d422
+ * Version: 1.9.8
  * Description: Updated execContractCmd to correctly identify the last message in a chat using a recursive SQL query, ensuring output is appended to the end of the conversation regardless of message deletions or reordering.
  * Language: Go
- * Created-at: 2026-03-01T02:12:51.441Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.9.1), GLM-4.7 (v1.9.2), Gemini 3 Flash (v1.9.3), Gemini 3 Flash (v1.9.4), Gemini 3 Flash (v1.9.5), GLM-4.7 (v1.9.6), GLM-4.7 (v1.9.7)
+ * Created-at: 2026-03-01T16:24:23.841Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.9.1), GLM-4.7 (v1.9.2), Gemini 3 Flash (v1.9.3), Gemini 3 Flash (v1.9.4), Gemini 3 Flash (v1.9.5), GLM-4.7 (v1.9.6), GLM-4.7 (v1.9.7), GLM-4.7 (v1.9.8)
  */
 
 
@@ -48,6 +48,7 @@ var (
 	contractSort   string
 	contractOrder  string
 	contractFormat string
+	contractListAll bool
 
 	// Renew flags
 	contractRenewHours int
@@ -193,6 +194,10 @@ var listContractCmd = &cobra.Command{
 	Short: "List all traceability contracts",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
+		// If --all is set, override the status filter
+		if contractListAll {
+			contractStatus = "all"
+		}
 		contracts, err := contract.ListContracts()
 		if err != nil {
 			return err
@@ -510,6 +515,7 @@ func init() {
 	listContractCmd.Flags().StringVar(&contractSort, "sort", "expires", "Sort field (expires, created, description)")
 	listContractCmd.Flags().StringVar(&contractOrder, "order", "asc", "Sort order (asc, desc)")
 	listContractCmd.Flags().StringVarP(&contractFormat, "format", "f", "human", "Output format (human, json)")
+	listContractCmd.Flags().BoolVar(&contractListAll, "all", false, "List all contracts regardless of status (overrides --status)")
 
 	// Renew Flags
 	renewContractCmd.Flags().IntVar(&contractRenewHours, "hours", 24, "Number of hours to extend the expiration")
