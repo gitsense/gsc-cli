@@ -1,12 +1,12 @@
 /**
  * Component: Exec Command Executor
- * Block-UUID: b23caa91-d05b-4c37-a2c7-3296dc21aa1f
- * Parent-UUID: fd3a6ba4-38f9-4635-8b87-7c2c5594abf8
- * Version: 1.4.0
+ * Block-UUID: ce7afdb7-20b2-4c7e-b8d7-822806fee2db
+ * Parent-UUID: b23caa91-d05b-4c37-a2c7-3296dc21aa1f
+ * Version: 1.5.0
  * Description: Fixed the Stdin handling by using os.DevNull instead of nil to prevent shell execution failures. Added enhanced logging for command execution lifecycle to aid debugging. Improved signal handling to ensure proper process cleanup. Added Workdir support to allow execution in specific directories (e.g., contract workdir).
  * Language: Go
- * Created-at: 2026-02-23T03:12:00.000Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
+ * Created-at: 2026-03-02T17:04:29.076Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.5.0)
  */
 
 
@@ -87,11 +87,17 @@ func (e *Executor) Run() (*Result, error) {
 	// 4. Setup Multi-Writers (Terminal + File + Buffer)
 	var stdoutBuf, stderrBuf bytes.Buffer
 	
-	// Writer for Stdout: Terminal + File + Buffer
-	stdoutWriter := io.MultiWriter(os.Stdout, logFile, &stdoutBuf)
-	
-	// Writer for Stderr: Terminal + File + Buffer
-	stderrWriter := io.MultiWriter(os.Stderr, logFile, &stderrBuf)
+	var stdoutWriter, stderrWriter io.Writer
+
+	if e.Flags.Silent {
+		// Only write to log file and buffer, skip os.Stdout/Stderr
+		stdoutWriter = io.MultiWriter(logFile, &stdoutBuf)
+		stderrWriter = io.MultiWriter(logFile, &stderrBuf)
+	} else {
+		// Standard behavior: Terminal + File + Buffer
+		stdoutWriter = io.MultiWriter(os.Stdout, logFile, &stdoutBuf)
+		stderrWriter = io.MultiWriter(os.Stderr, logFile, &stderrBuf)
+	}
 
 	// 5. Prepare Context and Command with Timeout
 	// Use the timeout from flags, or default to 60s if not specified

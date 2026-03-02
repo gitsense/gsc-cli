@@ -1,12 +1,12 @@
 /**
  * Component: Contract Intent Handler
- * Block-UUID: 8ecb05cd-fc86-4d7f-a5bc-3322639b5865
- * Parent-UUID: f149d168-3fce-428e-b87c-ad5fd0ac64ba
- * Version: 1.6.2
+ * Block-UUID: 1f137340-6db4-41ba-ba94-e9b9060569c0
+ * Parent-UUID: 8ecb05cd-fc86-4d7f-a5bc-3322639b5865
+ * Version: 1.7.0
  * Description: Fixed compilation error in StageCodeBlock where an error return was missing the string value. Maintained the 15-second timeout increase for terminal/editor launches.
  * Language: Go
- * Created-at: 2026-03-02T16:53:47.068Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), Gemini 3 Flash (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.6.1), Gemini 3 Flash (v1.6.2)
+ * Created-at: 2026-03-02T17:05:03.632Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), Gemini 3 Flash (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.6.1), Gemini 3 Flash (v1.6.2), Gemini 3 Flash (v1.7.0)
  */
 
 
@@ -109,7 +109,7 @@ func handleTerminalIntent(meta *ContractMetadata, override string) (LaunchResult
 	cmdStr := fmt.Sprintf(template, meta.Workdir)
 	
 	// Increased timeout to 15s to allow for slow AppleScript/App startup
-	executor := exec.NewExecutor(cmdStr, exec.ExecFlags{TimeoutSeconds: 15}, meta.Workdir)
+	executor := exec.NewExecutor(cmdStr, exec.ExecFlags{TimeoutSeconds: 15, Silent: true}, meta.Workdir)
 	result, err := executor.Run()
 	if err != nil {
 		return LaunchResult{}, fmt.Errorf("failed to launch terminal: %w", err)
@@ -149,7 +149,7 @@ func handleEditorRootIntent(meta *ContractMetadata, override string) (LaunchResu
 	cmdStr := fmt.Sprintf(template, meta.Workdir)
 	
 	// Increased timeout to 15s to allow for slow AppleScript/App startup
-	executor := exec.NewExecutor(cmdStr, exec.ExecFlags{TimeoutSeconds: 15}, meta.Workdir)
+	executor := exec.NewExecutor(cmdStr, exec.ExecFlags{TimeoutSeconds: 15, Silent: true}, meta.Workdir)
 	result, err := executor.Run()
 	if err != nil {
 		return LaunchResult{}, fmt.Errorf("failed to launch editor: %w", err)
