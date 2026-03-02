@@ -1,12 +1,12 @@
 /**
  * Component: Contract Models
- * Block-UUID: 9ac45e3c-7340-45e8-8b75-94847ab87846
- * Parent-UUID: d14c8dd9-6409-4bb8-b827-60c8d4d5e38d
- * Version: 1.6.0
- * Description: Added PreferredEditor and PreferredTerminal to ContractMetadata. Added ReviewRequest and ReviewResult structs to support the AI code review data contract between the Web UI and CLI.
+ * Block-UUID: b80eccfd-3bb7-4dac-ac76-2f651470e978
+ * Parent-UUID: 4cf9ad1a-cf27-417a-a0be-61e13cc13abe
+ * Version: 1.8.0
+ * Description: Renamed 'Intent' to 'Alias' in LaunchRequest. Consolidated EditorOverride and TerminalOverride into AppOverride. Added LaunchCapabilities struct to support the --list discovery feature.
  * Language: Go
  * Created-at: 2026-02-27T16:52:47.050Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0)
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), GLM-4.7 (v1.8.0)
  */
 
 
@@ -46,25 +46,43 @@ type ContractMetadata struct {
 	PreferredTerminal string `json:"preferred_terminal"` // e.g., "iterm2", "terminal.app"
 }
 
-// ReviewRequest represents the data contract from the Web UI to the CLI.
-type ReviewRequest struct {
-	ContractUUID     string `json:"contract_uuid"`
-	Authcode         string `json:"authcode"`
-	Intent           string `json:"intent"` // "review", "terminal", "editor", "exec"
-	BlockUUID        string `json:"block_uuid,omitempty"`
-	ParentUUID       string `json:"parent_uuid,omitempty"`
-	Action           string `json:"action,omitempty"` // "source", "patch"
-	EditorOverride   string `json:"editor_override,omitempty"`
-	TerminalOverride string `json:"terminal_override,omitempty"`
-	Cmd              string `json:"cmd,omitempty"`
+// LaunchRequest represents the data contract from the Web UI to the CLI for the 'launch' command.
+type LaunchRequest struct {
+	ContractUUID string `json:"contract_uuid"`
+	Authcode     string `json:"authcode"`
+	Alias        string `json:"alias"` // "review", "terminal", "editor", "exec"
+	BlockUUID    string `json:"block_uuid,omitempty"`
+	ParentUUID   string `json:"parent_uuid,omitempty"`
+	Action       string `json:"action,omitempty"` // "source", "patch"
+	AppOverride  string `json:"app_override,omitempty"` // Overrides preferred app (e.g., "zed", "iterm2")
+	Cmd          string `json:"cmd,omitempty"`
 }
 
-// ReviewResult represents the response from the CLI to the Web UI.
-type ReviewResult struct {
+// LaunchResult represents the response from the CLI to the Web UI for the 'launch' command.
+type LaunchResult struct {
 	Success    bool   `json:"success"`
 	Message    string `json:"message"`
 	StagedPath string `json:"staged_path,omitempty"`
 	Command    string `json:"command,omitempty"`
+}
+
+// LaunchCapabilities represents the response for 'gsc contract launch --list'.
+type LaunchCapabilities struct {
+	Aliases  []AliasDefinition `json:"aliases"`
+	Apps     AppDefinitions    `json:"apps"`
+	Commands []string          `json:"commands"`
+}
+
+// AliasDefinition defines a workflow alias.
+type AliasDefinition struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
+// AppDefinitions groups available apps by category.
+type AppDefinitions struct {
+	Editors   []string `json:"editors"`
+	Terminals []string `json:"terminals"`
 }
 
 // ProvenanceStatus defines the state of a provenance log entry.

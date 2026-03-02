@@ -1,12 +1,12 @@
 /**
  * Component: Chat Database Models
- * Block-UUID: 296815a9-966d-4dd1-8d3f-7d802b36771c
- * Parent-UUID: 16f66ffe-c5bb-4d7d-bd64-e5d9ea38a84b
- * Version: 1.5.0
- * Description: Data structures mapping to the GitSense Chat SQLite schema. Updated ContractMessageData to include Whitelist, NoWhitelist, and ExecTimeout for security transparency.
+ * Block-UUID: 125e09f0-7f09-415b-b569-af53addb579f
+ * Parent-UUID: 296815a9-966d-4dd1-8d3f-7d802b36771c
+ * Version: 1.6.0
+ * Description: Added PreferredEditor and PreferredTerminal fields to ContractMessageData to support workspace preferences in the contract message.
  * Language: Go
  * Created-at: 2026-02-20T04:31:47.873Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0)
  */
 
 
@@ -113,4 +113,8 @@ type ContractMessageData struct {
 	Whitelist   []string // List of allowed commands
 	NoWhitelist bool     // If true, bypass whitelist checks
 	ExecTimeout int      // Execution timeout in seconds
+
+	// Workspace Preferences
+	PreferredEditor   string // e.g., "zed", "vscode", "vim-iterm2"
+	PreferredTerminal string // e.g., "iterm2", "terminal.app"
 }

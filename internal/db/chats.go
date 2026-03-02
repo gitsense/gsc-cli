@@ -1,12 +1,12 @@
 /**
  * Component: Chat Database Operations
- * Block-UUID: f8c62554-9b87-4c68-a6c8-212052d9453c
- * Parent-UUID: 39c79497-f93c-4bce-8a18-9a84b140b6ab
- * Version: 1.14.0
- * Description: Updated contract message handling to store contract_uuid in the meta JSON field. Added UpdateContractMessagesByUUID to support bulk updates across forked chats. Modified InsertContractWithAnchor and UpdateContractMessage to populate the meta field.
+ * Block-UUID: 808a9d9a-9156-4e29-8b80-d81db49d37f8
+ * Parent-UUID: f8c62554-9b87-4c68-a6c8-212052d9453c
+ * Version: 1.15.0
+ * Description: Updated FormatContractMarkdown to include Editor and Terminal rows in the table. Added a blurb below the table with instructions on how to retrieve the auth code.
  * Language: Go
  * Created-at: 2026-03-01T16:31:54.274Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.10.1), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0)
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.10.1), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0)
  */
 
 
@@ -41,7 +41,7 @@ func FormatContractMarkdown(data ContractMessageData) string {
 	// Whitelist Display Logic
 	whitelistVal := "Default Safe Set"
 	if data.NoWhitelist {
-		whitelistVal = "🔓 Unrestricted"
+		whitelistVal = "Unrestricted"
 	} else if len(data.Whitelist) > 0 {
 		whitelistVal = fmt.Sprintf("`%s`", strings.Join(data.Whitelist, "`, `"))
 	}
@@ -52,6 +52,9 @@ func FormatContractMarkdown(data ContractMessageData) string {
 	
 	sb.WriteString(fmt.Sprintf("| **Expires At** | %s |\n", data.ExpiresAt.Format(time.RFC3339)))
 	sb.WriteString(fmt.Sprintf("| **Status** | %s |\n", data.Status))
+
+	// Informational Blurb
+	sb.WriteString(fmt.Sprintf("\n> **Note:** To retrieve your authorization code, run `gsc contract info %s`\n", data.UUID))
 
 	return sb.String()
 }

@@ -1,12 +1,12 @@
 /**
  * Component: Contract Manager
- * Block-UUID: 3b1fd97b-fbe8-4b2e-b1ec-26a93e5bb079
- * Parent-UUID: dfa871e5-6794-4d4b-bdfa-a270efeac3de
- * Version: 1.8.0
- * Description: Updated CreateContract to accept and persist PreferredEditor and PreferredTerminal settings. Updated GetContractInfo and FormatContractInfo to include these workspace preferences in the output.
+ * Block-UUID: e133d4b3-f1c8-41f1-8ebe-1c90df1c450e
+ * Parent-UUID: 3b1fd97b-fbe8-4b2e-b1ec-26a93e5bb079
+ * Version: 1.9.0
+ * Description: Updated CreateContract to populate PreferredEditor and PreferredTerminal in the ContractMessageData struct for database persistence.
  * Language: Go
  * Created-at: 2026-03-01T16:31:54.274Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), Gemini 3 Flash (v1.8.0)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), Gemini 3 Flash (v1.8.0), GLM-4.7 (v1.9.0)
  */
 
 
@@ -122,6 +122,8 @@ func CreateContract(code string, description string, authcode string, workdir st
 		ExecTimeout: meta.ExecTimeout,
 		Whitelist:   meta.Whitelist,
 		NoWhitelist: meta.NoWhitelist,
+		PreferredEditor:   meta.PreferredEditor,
+		PreferredTerminal: meta.PreferredTerminal,
 	}
 
 	// Use UpsertContractMessage to ensure only one contract message exists per chat

@@ -1,12 +1,12 @@
 /**
  * Component: Contract CLI Commands
- * Block-UUID: 9dff435f-b2af-4eae-97c4-855f7d66e59e
- * Parent-UUID: 83fa4067-ab5c-4f43-9564-cfd3fbd4c01b
- * Version: 1.12.0
- * Description: Updated create command to support --editor and --terminal flags for workspace preferences. Added the 'review' subcommand to handle intent-based requests (review, terminal, editor) from the Web UI, integrating with the new contract handler.
+ * Block-UUID: 124df023-80c5-43b9-9626-5c424f16a0c4
+ * Parent-UUID: 42e7117b-a4a5-4d1a-abb0-aa89a25b57ad
+ * Version: 1.14.0
+ * Description: Renamed 'intent' to 'alias' in launch command flags and variables. Consolidated editor/terminal overrides into 'app-override'. Added --list flag to launch command to retrieve available aliases, apps, and commands.
  * Language: Go
  * Created-at: 2026-03-01T18:38:51.240Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.9.1), GLM-4.7 (v1.9.2), Gemini 3 Flash (v1.9.3), Gemini 3 Flash (v1.9.4), Gemini 3 Flash (v1.9.5), GLM-4.7 (v1.9.6), GLM-4.7 (v1.9.7), GLM-4.7 (v1.9.8), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.9.1), GLM-4.7 (v1.9.2), Gemini 3 Flash (v1.9.3), Gemini 3 Flash (v1.9.4), Gemini 3 Flash (v1.9.5), GLM-4.7 (v1.9.6), GLM-4.7 (v1.9.7), GLM-4.7 (v1.9.8), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), Gemini 3 Flash (v1.13.0), GLM-4.7 (v1.14.0)
  */
 
 
@@ -75,14 +75,14 @@ var (
 	contractExecCmd      string
 	contractExecChat     bool
 
-	// Review flags
-	contractReviewIntent           string
-	contractReviewBlockUUID        string
-	contractReviewParentUUID       string
-	contractReviewAction           string
-	contractReviewEditorOverride   string
-	contractReviewTerminalOverride string
-	contractReviewCmd              string
+	// Launch flags
+	contractLaunchAlias           string
+	contractLaunchBlockUUID        string
+	contractLaunchParentUUID       string
+	contractLaunchAction           string
+	contractLaunchAppOverride      string
+	contractLaunchCmd              string
+	contractLaunchList             bool
 )
 
 // contractCmd represents the base command for contract management
@@ -337,7 +337,7 @@ var updateFileCmd = &cobra.Command{
 	},
 }
 
-// newFileCmd handles 'gsc contract new-file'
+// newFileCmd handles 'gsc contract new-file [target-relative-path]'
 var newFileCmd = &cobra.Command{
 	Use:   "new-file [target-relative-path]",
 	Short: "Create a new traceable file using a contract",
@@ -514,29 +514,46 @@ var execContractCmd = &cobra.Command{
 	},
 }
 
-// reviewContractCmd handles 'gsc contract review'
-var reviewContractCmd = &cobra.Command{
-	Use:   "review",
-	Short: "Handle intent-based workspace actions (review, terminal, editor)",
+// launchContractCmd handles 'gsc contract launch'
+var launchContractCmd = &cobra.Command{
+	Use:   "launch [alias]",
+	Short: "Launch workspace tools (terminal, editor, review)",
 	Long: `Processes requests from the Web UI to perform context-aware actions 
 like launching a terminal in the project root or staging AI code for review 
 in a proper editor.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
 
-		req := contract.ReviewRequest{
-			ContractUUID:     contractUUID,
-			Authcode:         contractAuthcodeExec,
-			Intent:           contractReviewIntent,
-			BlockUUID:        contractReviewBlockUUID,
-			ParentUUID:       contractReviewParentUUID,
-			Action:           contractReviewAction,
-			EditorOverride:   contractReviewEditorOverride,
-			TerminalOverride: contractReviewTerminalOverride,
-			Cmd:              contractReviewCmd,
+		// Handle --list flag
+		if contractLaunchList {
+			caps := contract.GetLaunchCapabilities()
+			output.FormatJSON(caps)
+			return nil
 		}
 
-		result, err := contract.HandleReview(req)
+		// Validate required flags if not listing
+		if contractUUID == "" {
+			return fmt.Errorf("--uuid is required")
+		}
+		if contractAuthcodeExec == "" {
+			return fmt.Errorf("--authcode is required")
+		}
+		if contractLaunchAlias == "" {
+			return fmt.Errorf("--alias is required")
+		}
+
+		req := contract.LaunchRequest{
+			ContractUUID: contractUUID,
+			Authcode:     contractAuthcodeExec,
+			Alias:        contractLaunchAlias,
+			BlockUUID:    contractLaunchBlockUUID,
+			ParentUUID:   contractLaunchParentUUID,
+			Action:       contractLaunchAction,
+			AppOverride:  contractLaunchAppOverride,
+			Cmd:          contractLaunchCmd,
+		}
+
+		result, err := contract.HandleLaunch(req)
 		if err != nil {
 			return err
 		}
@@ -612,19 +629,16 @@ func init() {
 	execContractCmd.MarkFlagRequired("authcode")
 	execContractCmd.MarkFlagRequired("cmd")
 
-	// Review Flags
-	reviewContractCmd.Flags().StringVar(&contractUUID, "uuid", "", "Contract UUID (required)")
-	reviewContractCmd.Flags().StringVar(&contractAuthcodeExec, "authcode", "", "4-digit authorization code (required)")
-	reviewContractCmd.Flags().StringVar(&contractReviewIntent, "intent", "", "Action intent: review, terminal, editor, exec (required)")
-	reviewContractCmd.Flags().StringVar(&contractReviewBlockUUID, "block-uuid", "", "UUID of the AI code block")
-	reviewContractCmd.Flags().StringVar(&contractReviewParentUUID, "parent-uuid", "", "UUID of the parent code block")
-	reviewContractCmd.Flags().StringVar(&contractReviewAction, "action", "source", "Review action: source or patch")
-	reviewContractCmd.Flags().StringVar(&contractReviewEditorOverride, "editor-override", "", "Override contract editor")
-	reviewContractCmd.Flags().StringVar(&contractReviewTerminalOverride, "terminal-override", "", "Override contract terminal")
-	reviewContractCmd.Flags().StringVar(&contractReviewCmd, "cmd", "", "Raw command for exec intent")
-	reviewContractCmd.MarkFlagRequired("uuid")
-	reviewContractCmd.MarkFlagRequired("authcode")
-	reviewContractCmd.MarkFlagRequired("intent")
+	// Launch Flags
+	launchContractCmd.Flags().StringVar(&contractUUID, "uuid", "", "Contract UUID (required)")
+	launchContractCmd.Flags().StringVar(&contractAuthcodeExec, "authcode", "", "4-digit authorization code (required)")
+	launchContractCmd.Flags().StringVar(&contractLaunchAlias, "alias", "", "Action alias: review, terminal, editor, exec (required)")
+	launchContractCmd.Flags().StringVar(&contractLaunchBlockUUID, "block-uuid", "", "UUID of the AI code block")
+	launchContractCmd.Flags().StringVar(&contractLaunchParentUUID, "parent-uuid", "", "UUID of the parent code block")
+	launchContractCmd.Flags().StringVar(&contractLaunchAction, "action", "source", "Review action: source or patch")
+	launchContractCmd.Flags().StringVar(&contractLaunchAppOverride, "app-override", "", "Override contract app (e.g., zed, iterm2)")
+	launchContractCmd.Flags().StringVar(&contractLaunchCmd, "cmd", "", "Raw command for exec alias")
+	launchContractCmd.Flags().BoolVar(&contractLaunchList, "list", false, "List available aliases, apps, and commands")
 
 	// Add subcommands to base contract command
 	contractCmd.AddCommand(createContractCmd)
@@ -638,7 +652,7 @@ func init() {
 	contractCmd.AddCommand(infoContractCmd)
 	contractCmd.AddCommand(testContractCmd)
 	contractCmd.AddCommand(execContractCmd)
-	contractCmd.AddCommand(reviewContractCmd)
+	contractCmd.AddCommand(launchContractCmd)
 }
 
 // RegisterContractCommand adds the contract command to the root CLI

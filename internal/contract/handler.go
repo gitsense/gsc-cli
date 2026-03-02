@@ -1,12 +1,12 @@
 /**
  * Component: Contract Intent Handler
- * Block-UUID: 8d3156b4-c99c-4a6f-8cd3-b4993e287902
- * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: Implements the core logic for handling intent-based requests from the Web UI. Includes file resolution via ripgrep, AI code staging, and context-aware launching of terminals and editors.
+ * Block-UUID: 59fac317-cd51-4bf4-92c8-558f2485f6ea
+ * Parent-UUID: 38ccc720-8841-403c-8a37-f606b1334aaf
+ * Version: 1.2.0
+ * Description: Renamed 'Intent' to 'Alias' in HandleLaunch and consolidated EditorOverride/TerminalOverride into AppOverride. Added GetLaunchCapabilities function to support the --list discovery feature.
  * Language: Go
  * Created-at: 2026-03-01T18:26:49.477Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -26,26 +26,26 @@ import (
 	"github.com/gitsense/gsc-cli/pkg/settings"
 )
 
-// HandleReview processes a ReviewRequest and executes the appropriate workspace action.
-func HandleReview(req ReviewRequest) (ReviewResult, error) {
+// HandleLaunch processes a LaunchRequest and executes the appropriate workspace action.
+func HandleLaunch(req LaunchRequest) (LaunchResult, error) {
 	// 1. Load and Validate Contract
 	meta, err := GetContract(req.ContractUUID)
 	if err != nil {
-		return ReviewResult{}, fmt.Errorf("failed to load contract: %w", err)
+		return LaunchResult{}, fmt.Errorf("failed to load contract: %w", err)
 	}
 
 	if meta.Authcode != req.Authcode {
-		return ReviewResult{}, fmt.Errorf("invalid authorization code")
+		return LaunchResult{}, fmt.Errorf("invalid authorization code")
 	}
 
-	// 2. Handle Intent
-	switch req.Intent {
+	// 2. Handle Alias
+	switch req.Alias {
 	case "terminal":
-		return handleTerminalIntent(meta, req.TerminalOverride)
+		return handleTerminalIntent(meta, req.AppOverride)
 	case "editor":
 		// If no BlockUUID, we are just opening the editor in the project root
 		if req.BlockUUID == "" {
-			return handleEditorRootIntent(meta, req.EditorOverride)
+			return handleEditorRootIntent(meta, req.AppOverride)
 		}
 		// Otherwise, proceed to full review logic
 		return handleReviewIntent(meta, req)
@@ -54,24 +54,55 @@ func HandleReview(req ReviewRequest) (ReviewResult, error) {
 	case "exec":
 		return handleExecIntent(meta, req.Cmd)
 	default:
-		return ReviewResult{}, fmt.Errorf("unsupported intent: %s", req.Intent)
+		return LaunchResult{}, fmt.Errorf("unsupported alias: %s", req.Alias)
+	}
+}
+
+// GetLaunchCapabilities returns the available aliases, apps, and commands for discovery.
+func GetLaunchCapabilities() LaunchCapabilities {
+	// 1. Define Aliases
+	aliases := []AliasDefinition{
+		{Name: "terminal", Description: "Launch an interactive terminal"},
+		{Name: "editor", Description: "Open the project in an editor"},
+		{Name: "review", Description: "Review staged AI code"},
+		{Name: "exec", Description: "Execute a raw command"},
+	}
+
+	// 2. Extract Apps
+	editors := make([]string, 0, len(settings.DefaultEditorTemplates))
+	for k := range settings.DefaultEditorTemplates {
+		editors = append(editors, k)
+	}
+
+	terminals := make([]string, 0, len(settings.DefaultTerminalTemplates))
+	for k := range settings.DefaultTerminalTemplates {
+		terminals = append(terminals, k)
+	}
+
+	// 3. Commands
+	commands := settings.DefaultSafeSet
+
+	return LaunchCapabilities{
+		Aliases:  aliases,
+		Apps:     AppDefinitions{Editors: editors, Terminals: terminals},
+		Commands: commands,
 	}
 }
 
 // handleTerminalIntent launches the preferred terminal in the contract's workdir.
-func handleTerminalIntent(meta *ContractMetadata, override string) (ReviewResult, error) {
+func handleTerminalIntent(meta *ContractMetadata, override string) (LaunchResult, error) {
 	term := meta.PreferredTerminal
 	if override != "" {
 		term = override
 	}
 
 	if term == "" {
-		return ReviewResult{}, fmt.Errorf("no preferred terminal configured for this contract")
+		return LaunchResult{}, fmt.Errorf("no preferred terminal configured for this contract")
 	}
 
 	template, ok := settings.DefaultTerminalTemplates[term]
 	if !ok {
-		return ReviewResult{}, fmt.Errorf("unsupported terminal: %s", term)
+		return LaunchResult{}, fmt.Errorf("unsupported terminal: %s", term)
 	}
 
 	// Terminals usually open in a directory, so we pass "." as the path
@@ -80,10 +111,10 @@ func handleTerminalIntent(meta *ContractMetadata, override string) (ReviewResult
 	executor := exec.NewExecutor(cmdStr, exec.ExecFlags{TimeoutSeconds: 5}, meta.Workdir)
 	_, err := executor.Run()
 	if err != nil {
-		return ReviewResult{}, fmt.Errorf("failed to launch terminal: %w", err)
+		return LaunchResult{}, fmt.Errorf("failed to launch terminal: %w", err)
 	}
 
-	return ReviewResult{
+	return LaunchResult{
 		Success: true,
 		Message: fmt.Sprintf("Launched %s in %s", term, meta.Workdir),
 		Command: cmdStr,
@@ -91,19 +122,19 @@ func handleTerminalIntent(meta *ContractMetadata, override string) (ReviewResult
 }
 
 // handleEditorRootIntent launches the preferred editor in the contract's workdir.
-func handleEditorRootIntent(meta *ContractMetadata, override string) (ReviewResult, error) {
+func handleEditorRootIntent(meta *ContractMetadata, override string) (LaunchResult, error) {
 	editor := meta.PreferredEditor
 	if override != "" {
 		editor = override
 	}
 
 	if editor == "" {
-		return ReviewResult{}, fmt.Errorf("no preferred editor configured for this contract")
+		return LaunchResult{}, fmt.Errorf("no preferred editor configured for this contract")
 	}
 
 	template, ok := settings.DefaultEditorTemplates[editor]
 	if !ok {
-		return ReviewResult{}, fmt.Errorf("unsupported editor: %s", editor)
+		return LaunchResult{}, fmt.Errorf("unsupported editor: %s", editor)
 	}
 
 	// Opening the root directory
@@ -112,10 +143,10 @@ func handleEditorRootIntent(meta *ContractMetadata, override string) (ReviewResu
 	executor := exec.NewExecutor(cmdStr, exec.ExecFlags{TimeoutSeconds: 5}, meta.Workdir)
 	_, err := executor.Run()
 	if err != nil {
-		return ReviewResult{}, fmt.Errorf("failed to launch editor: %w", err)
+		return LaunchResult{}, fmt.Errorf("failed to launch editor: %w", err)
 	}
 
-	return ReviewResult{
+	return LaunchResult{
 		Success: true,
 		Message: fmt.Sprintf("Launched %s in %s", editor, meta.Workdir),
 		Command: cmdStr,
@@ -123,27 +154,27 @@ func handleEditorRootIntent(meta *ContractMetadata, override string) (ReviewResu
 }
 
 // handleReviewIntent stages AI code and launches an editor for review.
-func handleReviewIntent(meta *ContractMetadata, req ReviewRequest) (ReviewResult, error) {
+func handleReviewIntent(meta *ContractMetadata, req LaunchRequest) (LaunchResult, error) {
 	// 1. Resolve Target File via Parent-UUID
 	targetFile, err := ResolveFileByParentUUID(req.ParentUUID, meta.Workdir)
 	if err != nil {
-		return ReviewResult{}, err
+		return LaunchResult{}, err
 	}
 
 	// 2. Fetch and Stage Code Block
 	stagedPath, err := StageCodeBlock(req.BlockUUID, targetFile)
 	if err != nil {
-		return ReviewResult{}, err
+		return LaunchResult{}, err
 	}
 
 	// 3. Resolve Editor Command
 	editor := meta.PreferredEditor
-	if req.EditorOverride != "" {
-		editor = req.EditorOverride
+	if req.AppOverride != "" {
+		editor = req.AppOverride
 	}
 
 	if editor == "" {
-		return ReviewResult{
+		return LaunchResult{
 			Success:    true,
 			Message:    "Code staged successfully, but no editor is configured.",
 			StagedPath: stagedPath,
@@ -152,7 +183,7 @@ func handleReviewIntent(meta *ContractMetadata, req ReviewRequest) (ReviewResult
 
 	template, ok := settings.DefaultEditorTemplates[editor]
 	if !ok {
-		return ReviewResult{}, fmt.Errorf("unsupported editor: %s", editor)
+		return LaunchResult{}, fmt.Errorf("unsupported editor: %s", editor)
 	}
 
 	// Construct command with the staged file path
@@ -162,10 +193,10 @@ func handleReviewIntent(meta *ContractMetadata, req ReviewRequest) (ReviewResult
 	executor := exec.NewExecutor(cmdStr, exec.ExecFlags{TimeoutSeconds: 0}, meta.Workdir)
 	_, err = executor.Run()
 	if err != nil {
-		return ReviewResult{}, fmt.Errorf("failed to launch editor: %w", err)
+		return LaunchResult{}, fmt.Errorf("failed to launch editor: %w", err)
 	}
 
-	return ReviewResult{
+	return LaunchResult{
 		Success:    true,
 		Message:    fmt.Sprintf("Review started in %s", editor),
 		StagedPath: stagedPath,
@@ -174,15 +205,15 @@ func handleReviewIntent(meta *ContractMetadata, req ReviewRequest) (ReviewResult
 }
 
 // handleExecIntent runs a raw command in the contract context.
-func handleExecIntent(meta *ContractMetadata, cmdStr string) (ReviewResult, error) {
+func handleExecIntent(meta *ContractMetadata, cmdStr string) (LaunchResult, error) {
 	if cmdStr == "" {
-		return ReviewResult{}, fmt.Errorf("no command provided")
+		return LaunchResult{}, fmt.Errorf("no command provided")
 	}
 
 	executor := exec.NewExecutor(cmdStr, exec.ExecFlags{TimeoutSeconds: meta.ExecTimeout}, meta.Workdir)
 	result, err := executor.Run()
 	if err != nil {
-		return ReviewResult{}, err
+		return LaunchResult{}, err
 	}
 
 	msg := "Command executed successfully"
@@ -190,7 +221,7 @@ func handleExecIntent(meta *ContractMetadata, cmdStr string) (ReviewResult, erro
 		msg = fmt.Sprintf("Command failed with exit code %d", result.ExitCode)
 	}
 
-	return ReviewResult{
+	return LaunchResult{
 		Success: result.ExitCode == 0,
 		Message: msg,
 		Command: cmdStr,
