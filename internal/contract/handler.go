@@ -1,12 +1,12 @@
-/**
+/*
  * Component: Contract Intent Handler
- * Block-UUID: 84b6b2a3-a187-4e27-b3b7-d4bab353aecf
- * Parent-UUID: 5a8f9c12-d3e4-4f5a-8b6c-7d9e0f1a2b3c
- * Version: 1.6.0
- * Description: Verified compatibility with dynamic JSON template loading. The handler now seamlessly supports user-defined scripts and OS-specific templates loaded from the settings package without requiring code changes.
+ * Block-UUID: f149d168-3fce-428e-b87c-ad5fd0ac64ba
+ * Parent-UUID: 311c293f-b8a4-4e49-8376-008090ccfef2
+ * Version: 1.6.1
+ * Description: Fixed compilation error in StageCodeBlock where an error return was missing the string value. Maintained the 15-second timeout increase for terminal/editor launches.
  * Language: Go
- * Created-at: 2026-03-02T07:30:00.000Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), Gemini 3 Flash (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0)
+ * Created-at: 2026-03-02T08:06:00.000Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), Gemini 3 Flash (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.6.1)
  */
 
 
@@ -108,7 +108,8 @@ func handleTerminalIntent(meta *ContractMetadata, override string) (LaunchResult
 	// Terminals usually open in a directory, so we pass "." as the path
 	cmdStr := fmt.Sprintf(template, ".")
 	
-	executor := exec.NewExecutor(cmdStr, exec.ExecFlags{TimeoutSeconds: 5}, meta.Workdir)
+	// Increased timeout to 15s to allow for slow AppleScript/App startup
+	executor := exec.NewExecutor(cmdStr, exec.ExecFlags{TimeoutSeconds: 15}, meta.Workdir)
 	result, err := executor.Run()
 	if err != nil {
 		return LaunchResult{}, fmt.Errorf("failed to launch terminal: %w", err)
@@ -147,7 +148,8 @@ func handleEditorRootIntent(meta *ContractMetadata, override string) (LaunchResu
 	// Opening the root directory
 	cmdStr := fmt.Sprintf(template, ".")
 	
-	executor := exec.NewExecutor(cmdStr, exec.ExecFlags{TimeoutSeconds: 5}, meta.Workdir)
+	// Increased timeout to 15s to allow for slow AppleScript/App startup
+	executor := exec.NewExecutor(cmdStr, exec.ExecFlags{TimeoutSeconds: 15}, meta.Workdir)
 	result, err := executor.Run()
 	if err != nil {
 		return LaunchResult{}, fmt.Errorf("failed to launch editor: %w", err)

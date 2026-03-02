@@ -106,7 +106,7 @@ func LoadTemplates() error {
 		return fmt.Errorf("failed to resolve GSC_HOME: %w", err)
 	}
 
-	templatesDir := filepath.Join(gscHome, "templates")
+	templatesDir := filepath.Join(gscHome, "data", "templates")
 
 	// 1. Ensure templates directory exists
 	if err := os.MkdirAll(templatesDir, 0755); err != nil {
