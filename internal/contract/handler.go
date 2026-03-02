@@ -1,12 +1,12 @@
 /**
  * Component: Contract Intent Handler
- * Block-UUID: 59fac317-cd51-4bf4-92c8-558f2485f6ea
- * Parent-UUID: 38ccc720-8841-403c-8a37-f606b1334aaf
- * Version: 1.2.0
+ * Block-UUID: 5a8f9c12-d3e4-4f5a-8b6c-7d9e0f1a2b3c
+ * Parent-UUID: 8598ef78-e2c6-4ca4-8493-743c2c5a60ee
+ * Version: 1.5.0
  * Description: Renamed 'Intent' to 'Alias' in HandleLaunch and consolidated EditorOverride/TerminalOverride into AppOverride. Added GetLaunchCapabilities function to support the --list discovery feature.
  * Language: Go
- * Created-at: 2026-03-01T18:26:49.477Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0)
+ * Created-at: 2026-03-02T06:19:19.266Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), Gemini 3 Flash (v1.4.0), GLM-4.7 (v1.5.0)
  */
 
 
@@ -109,14 +109,21 @@ func handleTerminalIntent(meta *ContractMetadata, override string) (LaunchResult
 	cmdStr := fmt.Sprintf(template, ".")
 	
 	executor := exec.NewExecutor(cmdStr, exec.ExecFlags{TimeoutSeconds: 5}, meta.Workdir)
-	_, err := executor.Run()
+	result, err := executor.Run()
 	if err != nil {
 		return LaunchResult{}, fmt.Errorf("failed to launch terminal: %w", err)
 	}
 
+	msg := fmt.Sprintf("Launched %s in %s", term, meta.Workdir)
+	if result.ExitCode != 0 {
+		msg = fmt.Sprintf("Failed to launch %s: %s", term, getExitCodeDescription(result.ExitCode))
+	}
+
 	return LaunchResult{
-		Success: true,
-		Message: fmt.Sprintf("Launched %s in %s", term, meta.Workdir),
+		Success: result.ExitCode == 0,
+		Message: msg,
+		Alias:   "terminal",
+		Workdir: meta.Workdir,
 		Command: cmdStr,
 	}, nil
 }
@@ -141,14 +148,21 @@ func handleEditorRootIntent(meta *ContractMetadata, override string) (LaunchResu
 	cmdStr := fmt.Sprintf(template, ".")
 	
 	executor := exec.NewExecutor(cmdStr, exec.ExecFlags{TimeoutSeconds: 5}, meta.Workdir)
-	_, err := executor.Run()
+	result, err := executor.Run()
 	if err != nil {
 		return LaunchResult{}, fmt.Errorf("failed to launch editor: %w", err)
 	}
 
+	msg := fmt.Sprintf("Launched %s in %s", editor, meta.Workdir)
+	if result.ExitCode != 0 {
+		msg = fmt.Sprintf("Failed to launch %s: %s", editor, getExitCodeDescription(result.ExitCode))
+	}
+
 	return LaunchResult{
-		Success: true,
-		Message: fmt.Sprintf("Launched %s in %s", editor, meta.Workdir),
+		Success: result.ExitCode == 0,
+		Message: msg,
+		Alias:   "editor",
+		Workdir: meta.Workdir,
 		Command: cmdStr,
 	}, nil
 }
@@ -177,6 +191,8 @@ func handleReviewIntent(meta *ContractMetadata, req LaunchRequest) (LaunchResult
 		return LaunchResult{
 			Success:    true,
 			Message:    "Code staged successfully, but no editor is configured.",
+			Alias:      "review",
+			Workdir:    meta.Workdir,
 			StagedPath: stagedPath,
 		}, nil
 	}
@@ -191,14 +207,21 @@ func handleReviewIntent(meta *ContractMetadata, req LaunchRequest) (LaunchResult
 
 	// 4. Execute (with extended timeout for editors)
 	executor := exec.NewExecutor(cmdStr, exec.ExecFlags{TimeoutSeconds: 0}, meta.Workdir)
-	_, err = executor.Run()
+	result, err := executor.Run()
 	if err != nil {
 		return LaunchResult{}, fmt.Errorf("failed to launch editor: %w", err)
 	}
 
+	msg := fmt.Sprintf("Review started in %s", editor)
+	if result.ExitCode != 0 {
+		msg = fmt.Sprintf("Failed to start review in %s: %s", editor, getExitCodeDescription(result.ExitCode))
+	}
+
 	return LaunchResult{
-		Success:    true,
-		Message:    fmt.Sprintf("Review started in %s", editor),
+		Success:    result.ExitCode == 0,
+		Message:    msg,
+		Alias:      "review",
+		Workdir:    meta.Workdir,
 		StagedPath: stagedPath,
 		Command:    cmdStr,
 	}, nil
@@ -218,12 +241,14 @@ func handleExecIntent(meta *ContractMetadata, cmdStr string) (LaunchResult, erro
 
 	msg := "Command executed successfully"
 	if result.ExitCode != 0 {
-		msg = fmt.Sprintf("Command failed with exit code %d", result.ExitCode)
+		msg = fmt.Sprintf("Command failed: %s", getExitCodeDescription(result.ExitCode))
 	}
 
 	return LaunchResult{
 		Success: result.ExitCode == 0,
 		Message: msg,
+		Alias:   "exec",
+		Workdir: meta.Workdir,
 		Command: cmdStr,
 	}, nil
 }
@@ -364,4 +389,26 @@ func extractCodeBlock(markdown string, uuid string) (string, string) {
 	}
 
 	return code, ext
+}
+
+// getExitCodeDescription maps common shell exit codes to human-readable strings.
+func getExitCodeDescription(code int) string {
+	switch code {
+	case 1:
+		return "general error"
+	case 2:
+		return "shell misuse"
+	case 126:
+		return "permission denied"
+	case 127:
+		return "command not found"
+	case 130:
+		return "interrupted"
+	case 137:
+		return "killed"
+	case 255:
+		return "exit status out of range"
+	default:
+		return fmt.Sprintf("exit code %d", code)
+	}
 }

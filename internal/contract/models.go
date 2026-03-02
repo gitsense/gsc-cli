@@ -1,12 +1,12 @@
 /**
  * Component: Contract Models
- * Block-UUID: b80eccfd-3bb7-4dac-ac76-2f651470e978
- * Parent-UUID: 4cf9ad1a-cf27-417a-a0be-61e13cc13abe
- * Version: 1.8.0
+ * Block-UUID: 38c376f1-4685-43ed-9078-45bd729e779b
+ * Parent-UUID: b80eccfd-3bb7-4dac-ac76-2f651470e978
+ * Version: 1.9.0
  * Description: Renamed 'Intent' to 'Alias' in LaunchRequest. Consolidated EditorOverride and TerminalOverride into AppOverride. Added LaunchCapabilities struct to support the --list discovery feature.
  * Language: Go
- * Created-at: 2026-02-27T16:52:47.050Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), GLM-4.7 (v1.8.0)
+ * Created-at: 2026-03-02T06:10:42.825Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0)
  */
 
 
@@ -62,6 +62,8 @@ type LaunchRequest struct {
 type LaunchResult struct {
 	Success    bool   `json:"success"`
 	Message    string `json:"message"`
+	Alias      string `json:"alias"`
+	Workdir    string `json:"workdir"`
 	StagedPath string `json:"staged_path,omitempty"`
 	Command    string `json:"command,omitempty"`
 }

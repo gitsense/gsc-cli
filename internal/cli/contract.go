@@ -1,12 +1,12 @@
 /**
  * Component: Contract CLI Commands
- * Block-UUID: 124df023-80c5-43b9-9626-5c424f16a0c4
- * Parent-UUID: 42e7117b-a4a5-4d1a-abb0-aa89a25b57ad
- * Version: 1.14.0
+ * Block-UUID: eacdb80e-9ddc-426f-8fc2-5fda991a6932
+ * Parent-UUID: 124df023-80c5-43b9-9626-5c424f16a0c4
+ * Version: 1.15.0
  * Description: Renamed 'intent' to 'alias' in launch command flags and variables. Consolidated editor/terminal overrides into 'app-override'. Added --list flag to launch command to retrieve available aliases, apps, and commands.
  * Language: Go
- * Created-at: 2026-03-01T18:38:51.240Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.9.1), GLM-4.7 (v1.9.2), Gemini 3 Flash (v1.9.3), Gemini 3 Flash (v1.9.4), Gemini 3 Flash (v1.9.5), GLM-4.7 (v1.9.6), GLM-4.7 (v1.9.7), GLM-4.7 (v1.9.8), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), Gemini 3 Flash (v1.13.0), GLM-4.7 (v1.14.0)
+ * Created-at: 2026-03-02T06:11:44.695Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.9.1), GLM-4.7 (v1.9.2), Gemini 3 Flash (v1.9.3), Gemini 3 Flash (v1.9.4), Gemini 3 Flash (v1.9.5), GLM-4.7 (v1.9.6), GLM-4.7 (v1.9.7), GLM-4.7 (v1.9.8), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), Gemini 3 Flash (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0)
  */
 
 
@@ -555,18 +555,17 @@ in a proper editor.`,
 
 		result, err := contract.HandleLaunch(req)
 		if err != nil {
+			// Return a JSON error response so the Node.js service can parse it
+			errorResult := contract.LaunchResult{
+				Success: false,
+				Message: err.Error(),
+				Alias:   req.Alias,
+			}
+			output.FormatJSON(errorResult)
 			return err
 		}
-
-		if result.Success {
-			fmt.Printf("Action successful: %s\n", result.Message)
-			if result.Command != "" {
-				fmt.Printf("Executed: %s\n", result.Command)
-			}
-		} else {
-			return fmt.Errorf("action failed: %s", result.Message)
-		}
-
+		
+		output.FormatJSON(result)
 		return nil
 	},
 }
