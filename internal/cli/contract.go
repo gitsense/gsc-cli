@@ -1,12 +1,12 @@
 /**
  * Component: Contract CLI Commands
- * Block-UUID: ab22b90a-1fe4-4e00-bb96-09193ac498c7
- * Parent-UUID: eb30fafb-854e-4818-b269-33a0b01fbd75
- * Version: 1.17.0
- * Description: Added --review flag to gsc contract create to allow users to specify a preferred review tool (e.g., vimdiff, zed --diff).
+ * Block-UUID: 34ee1b69-c7cd-4157-ab5d-58805fc3bff3
+ * Parent-UUID: e14045bf-1d41-4e94-a180-ada76289197c
+ * Version: 1.18.1
+ * Description: Fixed typo in init() function where updateContractCmd was used instead of updateFileCmd for flag requirements.
  * Language: Go
  * Created-at: 2026-03-02T07:30:00.000Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.9.1), GLM-4.7 (v1.9.2), Gemini 3 Flash (v1.9.3), Gemini 3 Flash (v1.9.4), Gemini 3 Flash (v1.9.5), GLM-4.7 (v1.9.6), GLM-4.7 (v1.9.7), GLM-4.7 (v1.9.8), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), Gemini 3 Flash (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.17.0)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.9.1), GLM-4.7 (v1.9.2), Gemini 3 Flash (v1.9.3), Gemini 3 Flash (v1.9.4), Gemini 3 Flash (v1.9.5), GLM-4.7 (v1.9.6), GLM-4.7 (v1.9.7), GLM-4.7 (v1.9.8), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), Gemini 3 Flash (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.18.1)
  */
 
 
@@ -25,6 +25,7 @@ import (
 	"database/sql"
 
 	"github.com/spf13/cobra"
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/gitsense/gsc-cli/internal/bridge/formatters"
 	"github.com/gitsense/gsc-cli/internal/db"
 	"github.com/gitsense/gsc-cli/internal/exec"
@@ -111,6 +112,63 @@ var createContractCmd = &cobra.Command{
 				return fmt.Errorf("failed to generate random authcode: %w", err)
 			}
 			contractAuthcode = fmt.Sprintf("%04d", n.Int64())
+		}
+
+		// ==========================================
+		// Interactive Setup Wizard
+		// ==========================================
+		// If any of the workspace preferences are missing, prompt the user.
+		// This ensures the "Review & Save" feature is configured.
+		if contractPreferredEditor == "" || contractPreferredTerminal == "" || contractPreferredReview == "" {
+			fmt.Println("\n--- Workspace Configuration ---")
+			fmt.Println("Let's configure your preferred tools for the AI review workflow.")
+			
+			// 1. Prepare Options (Dynamic based on OS)
+			editorOptions := getSortedKeys(settings.DefaultEditorTemplates)
+			terminalOptions := getSortedKeys(settings.DefaultTerminalTemplates)
+
+			// 2. Prompt for Editor
+			if contractPreferredEditor == "" {
+				prompt := &survey.Select{
+					Message: "Choose your preferred code editor:",
+					Options: editorOptions,
+				}
+				if err := survey.AskOne(prompt, &contractPreferredEditor); err != nil {
+					return fmt.Errorf("prompt failed: %w", err)
+				}
+			}
+
+			// 3. Prompt for Terminal
+			if contractPreferredTerminal == "" {
+				prompt := &survey.Select{
+					Message: "Choose your preferred terminal:",
+					Options: terminalOptions,
+				}
+				if err := survey.AskOne(prompt, &contractPreferredTerminal); err != nil {
+					return fmt.Errorf("prompt failed: %w", err)
+				}
+			}
+
+			// 4. Prompt for Review Tool
+			// Smart Default: Use the selected Editor if it's a valid review tool
+			if contractPreferredReview == "" {
+				defaultReview := contractPreferredEditor
+				// Ensure the default is actually in the list of valid editors
+				if _, exists := settings.DefaultEditorTemplates[defaultReview]; !exists {
+					defaultReview = "" // Fallback to no default if invalid
+				}
+
+				prompt := &survey.Select{
+					Message: "Choose your preferred tool for reviewing AI code:",
+					Options: editorOptions, // Review tools are usually editors
+					Default: defaultReview,
+				}
+				if err := survey.AskOne(prompt, &contractPreferredReview); err != nil {
+					return fmt.Errorf("prompt failed: %w", err)
+				}
+			}
+			
+			fmt.Println("-----------------------------\n")
 		}
 
 		// Validate Preferred Editor
@@ -771,4 +829,9 @@ func getMapKeys(m map[string]string) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+// getSortedKeys returns a sorted slice of keys from a map (alias for getMapKeys for clarity in wizard)
+func getSortedKeys(m map[string]string) []string {
+	return getMapKeys(m)
 }
