@@ -1,0 +1,19 @@
+{
+  "editors": {
+    "zed": "zed %s",
+    "vscode": "code %s",
+    "cursor": "cursor %s",
+    "vim": "vim %s",
+    "nvim": "nvim %s",
+    "subl": "subl %s",
+    "mate": "mate %s"
+  },
+  "terminals": {
+    "iterm2": "open -a iTerm %s",
+    "terminal.app": "open -a Terminal %s",
+    "warp": "open -a Warp %s",
+    "alacritty": "open -a Alacritty %s",
+    "iterm2-vim": "osascript -e 'tell application \"iTerm\" to create window with default profile command \"cd %s && vim\"'",
+    "iterm2-nvim": "osascript -e 'tell application \"iTerm\" to create window with default profile command \"cd %s && nvim\"'"
+  }
+}

@@ -1,12 +1,12 @@
 /**
  * Component: Contract Intent Handler
- * Block-UUID: 5a8f9c12-d3e4-4f5a-8b6c-7d9e0f1a2b3c
- * Parent-UUID: 8598ef78-e2c6-4ca4-8493-743c2c5a60ee
- * Version: 1.5.0
- * Description: Renamed 'Intent' to 'Alias' in HandleLaunch and consolidated EditorOverride/TerminalOverride into AppOverride. Added GetLaunchCapabilities function to support the --list discovery feature.
+ * Block-UUID: 84b6b2a3-a187-4e27-b3b7-d4bab353aecf
+ * Parent-UUID: 5a8f9c12-d3e4-4f5a-8b6c-7d9e0f1a2b3c
+ * Version: 1.6.0
+ * Description: Verified compatibility with dynamic JSON template loading. The handler now seamlessly supports user-defined scripts and OS-specific templates loaded from the settings package without requiring code changes.
  * Language: Go
- * Created-at: 2026-03-02T06:19:19.266Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), Gemini 3 Flash (v1.4.0), GLM-4.7 (v1.5.0)
+ * Created-at: 2026-03-02T07:30:00.000Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), Gemini 3 Flash (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0)
  */
 
 
