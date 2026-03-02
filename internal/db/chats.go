@@ -139,7 +139,7 @@ func InsertContractWithAnchor(db *sql.DB, chatID int64, data ContractMessageData
 		insertQuery,
 		"gsc-cli-contract", // Type
 		0,                  // Deleted
-		"human-public",     // Visibility
+		"public",           // Visibility
 		chatID,
 		systemID,           // Parent ID (System)
 		1,                  // Level (Same as original first message)

@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Contract Intent Handler
- * Block-UUID: f149d168-3fce-428e-b87c-ad5fd0ac64ba
- * Parent-UUID: 311c293f-b8a4-4e49-8376-008090ccfef2
- * Version: 1.6.1
+ * Block-UUID: 8ecb05cd-fc86-4d7f-a5bc-3322639b5865
+ * Parent-UUID: f149d168-3fce-428e-b87c-ad5fd0ac64ba
+ * Version: 1.6.2
  * Description: Fixed compilation error in StageCodeBlock where an error return was missing the string value. Maintained the 15-second timeout increase for terminal/editor launches.
  * Language: Go
- * Created-at: 2026-03-02T08:06:00.000Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), Gemini 3 Flash (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.6.1)
+ * Created-at: 2026-03-02T16:53:47.068Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), Gemini 3 Flash (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.6.1), Gemini 3 Flash (v1.6.2)
  */
 
 
@@ -105,8 +105,8 @@ func handleTerminalIntent(meta *ContractMetadata, override string) (LaunchResult
 		return LaunchResult{}, fmt.Errorf("unsupported terminal: %s", term)
 	}
 
-	// Terminals usually open in a directory, so we pass "." as the path
-	cmdStr := fmt.Sprintf(template, ".")
+	// Pass the absolute workdir to ensure external apps (like iTerm2) resolve the path correctly
+	cmdStr := fmt.Sprintf(template, meta.Workdir)
 	
 	// Increased timeout to 15s to allow for slow AppleScript/App startup
 	executor := exec.NewExecutor(cmdStr, exec.ExecFlags{TimeoutSeconds: 15}, meta.Workdir)
@@ -145,8 +145,8 @@ func handleEditorRootIntent(meta *ContractMetadata, override string) (LaunchResu
 		return LaunchResult{}, fmt.Errorf("unsupported editor: %s", editor)
 	}
 
-	// Opening the root directory
-	cmdStr := fmt.Sprintf(template, ".")
+	// Pass the absolute workdir to ensure the editor opens the correct project root
+	cmdStr := fmt.Sprintf(template, meta.Workdir)
 	
 	// Increased timeout to 15s to allow for slow AppleScript/App startup
 	executor := exec.NewExecutor(cmdStr, exec.ExecFlags{TimeoutSeconds: 15}, meta.Workdir)

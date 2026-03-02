@@ -10,11 +10,11 @@
   },
   "terminals": {
     "iterm2": "open -a iTerm %s",
-    "iterm2-new": "osascript -e 'tell application \"iTerm\" to create window with default profile'",
+    "iterm2-new": "osascript -e 'tell application \"iTerm\" to create window with default profile command \"cd %s && clear\"'",
     "terminal.app": "open -a Terminal %s",
     "warp": "open -a Warp %s",
     "alacritty": "open -a Alacritty %s",
-    "iterm2-vim": "osascript -e 'tell application \"iTerm\" to tell (create window with default profile) to tell current session to write text \"vim\"'",
+    "iterm2-vim": "osascript -e 'tell application \"iTerm\" to create window with default profile command \"cd %s && vim\"'",
     "iterm2-nvim": "osascript -e 'tell application \"iTerm\" to create window with default profile command \"cd %s && nvim\"'"
   }
 }

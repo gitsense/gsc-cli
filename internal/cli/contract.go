@@ -489,7 +489,7 @@ var execContractCmd = &cobra.Command{
 
 			msg := &db.Message{
 				Type:       "gsc-cli-output",
-				Visibility: "human-public",
+				Visibility: "public",
 				ChatID:     meta.ChatID,
 				ParentID:   lastMessageID,
 				Level:      2,
