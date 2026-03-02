@@ -1,12 +1,12 @@
 /**
  * Component: Contract Manager
- * Block-UUID: e133d4b3-f1c8-41f1-8ebe-1c90df1c450e
- * Parent-UUID: 3b1fd97b-fbe8-4b2e-b1ec-26a93e5bb079
- * Version: 1.9.0
- * Description: Updated CreateContract to populate PreferredEditor and PreferredTerminal in the ContractMessageData struct for database persistence.
+ * Block-UUID: e2f07a68-e730-4a00-aed8-24e27206a497
+ * Parent-UUID: e133d4b3-f1c8-41f1-8ebe-1c90df1c450e
+ * Version: 1.10.0
+ * Description: Updated CreateContract to accept and persist PreferredReview. Updated GetContractInfo and FormatContractInfo to display the new preference. Ensured PreferredReview is preserved in CancelContract, RenewContract, and DeleteContract.
  * Language: Go
  * Created-at: 2026-03-01T16:31:54.274Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), Gemini 3 Flash (v1.8.0), GLM-4.7 (v1.9.0)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), Gemini 3 Flash (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0)
  */
 
 
@@ -31,7 +31,7 @@ import (
 
 // CreateContract initializes a new traceability contract using a valid handshake code.
 // It validates the workdir, persists the contract metadata, and inserts the contract message into the chat.
-func CreateContract(code string, description string, authcode string, workdir string, whitelist []string, noWhitelist bool, execTimeout int, preferredEditor string, preferredTerminal string) (*ContractMetadata, error) {
+func CreateContract(code string, description string, authcode string, workdir string, whitelist []string, noWhitelist bool, execTimeout int, preferredEditor string, preferredTerminal string, preferredReview string) (*ContractMetadata, error) {
 	// 1. Resolve GSC_HOME and Load Handshake
 	gscHome, err := settings.GetGSCHome(false)
 	if err != nil {
@@ -97,6 +97,7 @@ func CreateContract(code string, description string, authcode string, workdir st
 		ExecTimeout: finalExecTimeout,
 		PreferredEditor:   preferredEditor,
 		PreferredTerminal: preferredTerminal,
+		PreferredReview:   preferredReview,
 	}
 
 	// 4. Persist JSON
@@ -124,6 +125,7 @@ func CreateContract(code string, description string, authcode string, workdir st
 		NoWhitelist: meta.NoWhitelist,
 		PreferredEditor:   meta.PreferredEditor,
 		PreferredTerminal: meta.PreferredTerminal,
+		PreferredReview:   meta.PreferredReview,
 	}
 
 	// Use UpsertContractMessage to ensure only one contract message exists per chat
@@ -247,6 +249,7 @@ func GetContractInfo(uuid string, sanitize bool) (*ContractInfoResult, error) {
 		NoWhitelist: meta.NoWhitelist,
 		PreferredEditor:   meta.PreferredEditor,
 		PreferredTerminal: meta.PreferredTerminal,
+		PreferredReview:   meta.PreferredReview,
 	}
 
 	if sanitize {
@@ -304,6 +307,9 @@ func CancelContract(uuid string) error {
 		ExecTimeout: meta.ExecTimeout,
 		Whitelist:   meta.Whitelist,
 		NoWhitelist: meta.NoWhitelist,
+		PreferredEditor:   meta.PreferredEditor,
+		PreferredTerminal: meta.PreferredTerminal,
+		PreferredReview:   meta.PreferredReview,
 	}
 
 	if err := db.UpdateContractMessagesByUUID(sqliteDB, meta.UUID, dbData); err != nil {
@@ -360,6 +366,9 @@ func RenewContract(uuid string, hours int) error {
 		ExecTimeout: meta.ExecTimeout,
 		Whitelist:   meta.Whitelist,
 		NoWhitelist: meta.NoWhitelist,
+		PreferredEditor:   meta.PreferredEditor,
+		PreferredTerminal: meta.PreferredTerminal,
+		PreferredReview:   meta.PreferredReview,
 	}
 
 	if err := db.UpdateContractMessagesByUUID(sqliteDB, meta.UUID, dbData); err != nil {
@@ -402,6 +411,9 @@ func DeleteContract(uuid string) error {
 		ExecTimeout: meta.ExecTimeout,
 		Whitelist:   meta.Whitelist,
 		NoWhitelist: meta.NoWhitelist,
+		PreferredEditor:   meta.PreferredEditor,
+		PreferredTerminal: meta.PreferredTerminal,
+		PreferredReview:   meta.PreferredReview,
 	}
 
 	if err := db.UpdateContractMessagesByUUID(sqliteDB, meta.UUID, dbData); err != nil {
@@ -500,6 +512,12 @@ func FormatContractInfo(info *ContractInfoResult, format string) string {
 		terminal = "None"
 	}
 	sb.WriteString(fmt.Sprintf("  Terminal:     %s\n", terminal))
+
+	review := info.PreferredReview
+	if review == "" {
+		review = "None"
+	}
+	sb.WriteString(fmt.Sprintf("  Review Tool:  %s\n", review))
 	
 	return sb.String()
 }

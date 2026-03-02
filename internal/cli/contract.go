@@ -1,12 +1,12 @@
 /**
  * Component: Contract CLI Commands
- * Block-UUID: eb30fafb-854e-4818-b269-33a0b01fbd75
- * Parent-UUID: eacdb80e-9ddc-426f-8fc2-5fda991a6932
- * Version: 1.16.0
- * Description: Verified compatibility with dynamic JSON template loading. The CLI validation and help text generation now automatically reflect user-defined templates and scripts loaded from the settings package.
+ * Block-UUID: ab22b90a-1fe4-4e00-bb96-09193ac498c7
+ * Parent-UUID: eb30fafb-854e-4818-b269-33a0b01fbd75
+ * Version: 1.17.0
+ * Description: Added --review flag to gsc contract create to allow users to specify a preferred review tool (e.g., vimdiff, zed --diff).
  * Language: Go
  * Created-at: 2026-03-02T07:30:00.000Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.9.1), GLM-4.7 (v1.9.2), Gemini 3 Flash (v1.9.3), Gemini 3 Flash (v1.9.4), Gemini 3 Flash (v1.9.5), GLM-4.7 (v1.9.6), GLM-4.7 (v1.9.7), GLM-4.7 (v1.9.8), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), Gemini 3 Flash (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.9.1), GLM-4.7 (v1.9.2), Gemini 3 Flash (v1.9.3), Gemini 3 Flash (v1.9.4), Gemini 3 Flash (v1.9.5), GLM-4.7 (v1.9.6), GLM-4.7 (v1.9.7), GLM-4.7 (v1.9.8), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), Gemini 3 Flash (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.17.0)
  */
 
 
@@ -44,6 +44,7 @@ var (
 	contractExecTimeout   int
 	contractPreferredEditor   string
 	contractPreferredTerminal string
+	contractPreferredReview   string
 
 	// List flags
 	contractStatus string
@@ -130,6 +131,15 @@ var createContractCmd = &cobra.Command{
 			}
 		}
 
+		// Validate Preferred Review
+		if contractPreferredReview != "" {
+			if _, exists := settings.DefaultEditorTemplates[contractPreferredReview]; !exists {
+				return fmt.Errorf("unsupported review tool '%s'. Available tools: %s", 
+					contractPreferredReview, 
+					strings.Join(getMapKeys(settings.DefaultEditorTemplates), ", "))
+			}
+		}
+
 		var whitelist []string
 		if contractWhitelistFile != "" {
 			file, err := os.Open(contractWhitelistFile)
@@ -161,6 +171,7 @@ var createContractCmd = &cobra.Command{
 			contractExecTimeout,
 			contractPreferredEditor,
 			contractPreferredTerminal,
+			contractPreferredReview,
 		)
 		if err != nil {
 			return err
@@ -580,6 +591,7 @@ func init() {
 	createContractCmd.Flags().IntVar(&contractExecTimeout, "exec-timeout", 60, "Execution timeout in seconds (default 60)")
 	createContractCmd.Flags().StringVar(&contractPreferredEditor, "editor", "", fmt.Sprintf("Preferred editor for code review (Available: %s)", strings.Join(getMapKeys(settings.DefaultEditorTemplates), ", ")))
 	createContractCmd.Flags().StringVar(&contractPreferredTerminal, "terminal", "", fmt.Sprintf("Preferred terminal for project access (Available: %s)", strings.Join(getMapKeys(settings.DefaultTerminalTemplates), ", ")))
+	createContractCmd.Flags().StringVar(&contractPreferredReview, "review", "", fmt.Sprintf("Preferred tool for code review (Available: %s)", strings.Join(getMapKeys(settings.DefaultEditorTemplates), ", ")))
 	createContractCmd.MarkFlagRequired("code")
 	createContractCmd.MarkFlagRequired("description")
 

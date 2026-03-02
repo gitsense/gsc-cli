@@ -1,12 +1,12 @@
 /**
  * Component: Contract Intent Handler
- * Block-UUID: 1f137340-6db4-41ba-ba94-e9b9060569c0
- * Parent-UUID: 8ecb05cd-fc86-4d7f-a5bc-3322639b5865
- * Version: 1.7.0
- * Description: Fixed compilation error in StageCodeBlock where an error return was missing the string value. Maintained the 15-second timeout increase for terminal/editor launches.
+ * Block-UUID: 6790b9be-0cbe-417a-9826-15f3a9403649
+ * Parent-UUID: 1f137340-6db4-41ba-ba94-e9b9060569c0
+ * Version: 1.8.0
+ * Description: Updated handleReviewIntent to prioritize PreferredReview over PreferredEditor when launching the review tool.
  * Language: Go
  * Created-at: 2026-03-02T17:05:03.632Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), Gemini 3 Flash (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.6.1), Gemini 3 Flash (v1.6.2), Gemini 3 Flash (v1.7.0)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), Gemini 3 Flash (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.6.1), Gemini 3 Flash (v1.6.2), Gemini 3 Flash (v1.7.0), GLM-4.7 (v1.8.0)
  */
 
 
@@ -184,7 +184,10 @@ func handleReviewIntent(meta *ContractMetadata, req LaunchRequest) (LaunchResult
 	}
 
 	// 3. Resolve Editor Command
-	editor := meta.PreferredEditor
+	editor := meta.PreferredReview
+	if editor == "" {
+		editor = meta.PreferredEditor
+	}
 	if req.AppOverride != "" {
 		editor = req.AppOverride
 	}

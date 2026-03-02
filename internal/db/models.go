@@ -1,12 +1,12 @@
 /**
  * Component: Chat Database Models
- * Block-UUID: 125e09f0-7f09-415b-b569-af53addb579f
- * Parent-UUID: 296815a9-966d-4dd1-8d3f-7d802b36771c
- * Version: 1.6.0
- * Description: Added PreferredEditor and PreferredTerminal fields to ContractMessageData to support workspace preferences in the contract message.
+ * Block-UUID: f4d1ba5d-07c9-4270-91b4-906cc7965964
+ * Parent-UUID: 125e09f0-7f09-415b-b569-af53addb579f
+ * Version: 1.7.0
+ * Description: Added PreferredReview field to ContractMessageData to support specialized review tools (e.g., vimdiff, zed --diff).
  * Language: Go
  * Created-at: 2026-02-20T04:31:47.873Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0)
  */
 
 
@@ -117,4 +117,5 @@ type ContractMessageData struct {
 	// Workspace Preferences
 	PreferredEditor   string // e.g., "zed", "vscode", "vim-iterm2"
 	PreferredTerminal string // e.g., "iterm2", "terminal.app"
+	PreferredReview   string // e.g., "vimdiff", "zed --diff"
 }
