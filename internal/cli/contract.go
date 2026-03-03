@@ -1,12 +1,12 @@
 /**
  * Component: Contract CLI Commands
- * Block-UUID: a2bf92bc-5be5-41a2-9b8a-630d588a2fa5
- * Parent-UUID: 2bf9f8c7-f371-4036-8de8-df92291c6ea5
- * Version: 1.21.0
+ * Block-UUID: 8e0dcb67-22a6-4b24-92bb-bb4913849390
+ * Parent-UUID: a2bf92bc-5be5-41a2-9b8a-630d588a2fa5
+ * Version: 1.22.0
  * Description: Added the --raw flag to the 'dump' subcommand. This allows users to disable smart trimming and preserve the exact LLM output. The trim preference is passed to the orchestrator.
  * Language: Go
- * Created-at: 2026-03-03T04:36:18.000Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.9.1), GLM-4.7 (v1.9.2), Gemini 3 Flash (v1.9.3), Gemini 3 Flash (v1.9.4), Gemini 3 Flash (v1.9.5), GLM-4.7 (v1.9.6), GLM-4.7 (v1.9.7), GLM-4.7 (v1.9.8), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), Gemini 3 Flash (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.18.1), Gemini 3 Flash (v1.19.0), GLM-4.7 (v1.20.0), GLM-4.7 (v1.21.0)
+ * Created-at: 2026-03-03T16:06:42.828Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.9.1), GLM-4.7 (v1.9.2), Gemini 3 Flash (v1.9.3), Gemini 3 Flash (v1.9.4), Gemini 3 Flash (v1.9.5), GLM-4.7 (v1.9.6), GLM-4.7 (v1.9.7), GLM-4.7 (v1.9.8), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), Gemini 3 Flash (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.18.1), Gemini 3 Flash (v1.19.0), GLM-4.7 (v1.20.0), GLM-4.7 (v1.21.0), Gemini 3 Flash (v1.22.0)
  */
 
 
@@ -371,6 +371,30 @@ var renewContractCmd = &cobra.Command{
 	},
 }
 
+// completeContractCmd handles 'gsc contract complete [uuid]'
+var completeContractCmd = &cobra.Command{
+	Use:   "complete [uuid]",
+	Short: "Mark an active traceability contract as finished/done",
+	Args:  cobra.MaximumNArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true
+		uuid := ""
+		if len(args) > 0 {
+			uuid = args[0]
+		}
+
+		if uuid == "" {
+			foundUUID, err := findContractUUIDByWorkdir()
+			if err != nil {
+				return err
+			}
+			uuid = foundUUID
+		}
+
+		return contract.CompleteContract(uuid)
+	},
+}
+
 // deleteContractCmd handles 'gsc contract delete [uuid]'
 var deleteContractCmd = &cobra.Command{
 	Use:   "delete [uuid]",
@@ -707,7 +731,7 @@ func init() {
 	createContractCmd.MarkFlagRequired("description")
 
 	// List Flags
-	listContractCmd.Flags().StringVar(&contractStatus, "status", "active", "Comma-separated list of statuses (active, expired, cancelled, all)")
+	listContractCmd.Flags().StringVar(&contractStatus, "status", "active", "Comma-separated list of statuses (active, expired, cancelled, done, all)")
 	listContractCmd.Flags().StringVar(&contractSort, "sort", "expires", "Sort field (expires, created, description)")
 	listContractCmd.Flags().StringVar(&contractOrder, "order", "asc", "Sort order (asc, desc)")
 	listContractCmd.Flags().StringVarP(&contractFormat, "format", "f", "human", "Output format (human, json)")
@@ -776,6 +800,7 @@ func init() {
 	contractCmd.AddCommand(cancelContractCmd)
 	contractCmd.AddCommand(deleteContractCmd)
 	contractCmd.AddCommand(renewContractCmd)
+	contractCmd.AddCommand(completeContractCmd)
 	contractCmd.AddCommand(updateFileCmd)
 	contractCmd.AddCommand(newFileCmd)
 	contractCmd.AddCommand(infoContractCmd)

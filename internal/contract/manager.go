@@ -1,12 +1,12 @@
 /**
  * Component: Contract Manager
- * Block-UUID: e2f07a68-e730-4a00-aed8-24e27206a497
- * Parent-UUID: e133d4b3-f1c8-41f1-8ebe-1c90df1c450e
- * Version: 1.10.0
+ * Block-UUID: 1d9374e1-8e54-4db2-b758-51bc5382952e
+ * Parent-UUID: e2f07a68-e730-4a00-aed8-24e27206a497
+ * Version: 1.11.0
  * Description: Updated CreateContract to accept and persist PreferredReview. Updated GetContractInfo and FormatContractInfo to display the new preference. Ensured PreferredReview is preserved in CancelContract, RenewContract, and DeleteContract.
  * Language: Go
- * Created-at: 2026-03-01T16:31:54.274Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), Gemini 3 Flash (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0)
+ * Created-at: 2026-03-03T16:05:46.100Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), Gemini 3 Flash (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0)
  */
 
 
@@ -320,6 +320,57 @@ func CancelContract(uuid string) error {
 	return nil
 }
 
+// CompleteContract marks a contract as finished/done.
+// This state prevents further edits but preserves the contract for historical reference and dumping.
+func CompleteContract(uuid string) error {
+	meta, err := GetContract(uuid)
+	if err != nil {
+		return err
+	}
+
+	if meta.Status == ContractDone {
+		return fmt.Errorf("contract %s is already marked as done", uuid)
+	}
+
+	meta.Status = ContractDone
+
+	if err := saveContractMetadata(meta); err != nil {
+		return fmt.Errorf("failed to update contract metadata: %w", err)
+	}
+
+	gscHome, err := settings.GetGSCHome(false)
+	if err != nil {
+		return fmt.Errorf("failed to resolve GSC_HOME: %w", err)
+	}
+
+	sqliteDB, err := db.OpenDB(settings.GetChatDatabasePath(gscHome))
+	if err != nil {
+		return fmt.Errorf("failed to open chat database: %w", err)
+	}
+	defer sqliteDB.Close()
+
+	dbData := db.ContractMessageData{
+		Description: meta.Description,
+		Workdir:     meta.Workdir,
+		ExpiresAt:   meta.ExpiresAt,
+		UUID:        meta.UUID,
+		Status:      string(meta.Status),
+		ExecTimeout: meta.ExecTimeout,
+		Whitelist:   meta.Whitelist,
+		NoWhitelist: meta.NoWhitelist,
+		PreferredEditor:   meta.PreferredEditor,
+		PreferredTerminal: meta.PreferredTerminal,
+		PreferredReview:   meta.PreferredReview,
+	}
+
+	if err := db.UpdateContractMessagesByUUID(sqliteDB, meta.UUID, dbData); err != nil {
+		return fmt.Errorf("failed to update contract message in database: %w", err)
+	}
+
+	logger.Info("Contract marked as done", "uuid", uuid)
+	return nil
+}
+
 // RenewContract extends the expiration time of an active or expired contract.
 func RenewContract(uuid string, hours int) error {
 	meta, err := GetContract(uuid)
@@ -338,7 +389,7 @@ func RenewContract(uuid string, hours int) error {
 	}
 	meta.ExpiresAt = newStart.Add(duration)
 
-	if meta.Status == ContractExpired {
+	if meta.Status == ContractExpired || meta.Status == ContractDone {
 		meta.Status = ContractActive
 	}
 

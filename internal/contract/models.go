@@ -1,12 +1,12 @@
-/**
+/*
  * Component: Contract Models
- * Block-UUID: 4b6ba222-01b0-4c96-acf4-3b12b84b9830
- * Parent-UUID: 566f4ee8-a648-4cc9-ac86-4434dbfcb4db
- * Version: 1.11.0
- * Description: Updated LaunchRequest Action field documentation to reflect support for dump types (tree, text, mapped) in addition to review actions (source, patch).
+ * Block-UUID: 35bfab3b-5c8c-4e96-aeeb-a6c32972084b
+ * Parent-UUID: 4b6ba222-01b0-4c96-acf4-3b12b84b9830
+ * Version: 1.12.0
+ * Description: Added ContractDone status to the ContractStatus enum to support marking projects as finished while preserving their history.
  * Language: Go
  * Created-at: 2026-03-03T02:23:17.722Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0)
+ * Authors: Gemini 3 Flash (v1.0.0), ..., Gemini 3 Flash (v1.11.0), Gemini 3 Flash (v1.12.0)
  */
 
 
@@ -21,6 +21,7 @@ const (
 	ContractActive    ContractStatus = "active"
 	ContractCancelled ContractStatus = "cancelled"
 	ContractExpired   ContractStatus = "expired"
+	ContractDone      ContractStatus = "done"
 )
 
 // ContractMetadata represents a traceability contract stored in ~/.gitsense/contracts.
