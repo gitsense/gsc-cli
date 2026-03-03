@@ -1,12 +1,12 @@
 /**
  * Component: Contract Dump Orchestrator
- * Block-UUID: 3f8a9b2c-1d4e-5f6a-9b8c-0d1e2f3a4b5c
- * Parent-UUID: 298ee9a5-840e-44a2-8624-63a8d47d5146
- * Version: 2.1.0
+ * Block-UUID: 99085959-89e1-4484-a810-1fbbd916be1f
+ * Parent-UUID: 3f8a9b2c-1d4e-5f6a-9b8c-0d1e2f3a4b5c
+ * Version: 2.2.0
  * Description: Refactored ExecuteDump to support the 'merged' dump type. Added Pass 0 to build a global MergedNode tree, calculate metrics (ChatCount, MaxSubtreeTimestamp), and handle sorting strategies (recency, popularity, chronological). The orchestrator now traverses the merged tree instead of individual chats for the 'merged' type.
  * Language: Go
- * Created-at: 2026-03-03T18:36:42.574Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.0.1), GLM-4.7 (v2.1.0)
+ * Created-at: 2026-03-03T18:40:51.647Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0)
  */
 
 
@@ -183,11 +183,15 @@ func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, inclu
 
 				patchedCode, err := ApplyPatch(sourceCode, patch.ExecutableCode)
 				if err != nil {
-					logger.Warning("Failed to apply patch", "target_uuid", patch.TargetBlockUUID, "error", err)
 					if debugPatch {
-						if writeErr := WriteDebugArtifacts(sourceCode, patch.ExecutableCode, patch.TargetBlockUUID, err); writeErr != nil {
+						debugPath, writeErr := WriteDebugArtifacts(sourceCode, patch.ExecutableCode, patch.TargetBlockUUID, err)
+						if writeErr != nil {
 							logger.Error("Failed to write debug artifacts", "error", writeErr)
+						} else {
+							logger.Warning("Failed to apply patch", "target_uuid", patch.TargetBlockUUID, "error", err, "debug_dir", debugPath)
 						}
+					} else {
+						logger.Warning("Failed to apply patch", "target_uuid", patch.TargetBlockUUID, "error", err)
 					}
 					continue
 				}
@@ -391,11 +395,15 @@ func executeMergedDump(chats []db.Chat, sqliteDB *sql.DB, writer DumpWriter, out
 
 				patchedCode, err := ApplyPatch(sourceCode, patch.ExecutableCode)
 				if err != nil {
-					logger.Warning("Failed to apply patch", "target_uuid", patch.TargetBlockUUID, "error", err)
 					if debugPatch {
-						if writeErr := WriteDebugArtifacts(sourceCode, patch.ExecutableCode, patch.TargetBlockUUID, err); writeErr != nil {
+						debugPath, writeErr := WriteDebugArtifacts(sourceCode, patch.ExecutableCode, patch.TargetBlockUUID, err)
+						if writeErr != nil {
 							logger.Error("Failed to write debug artifacts", "error", writeErr)
+						} else {
+							logger.Warning("Failed to apply patch", "target_uuid", patch.TargetBlockUUID, "error", err, "debug_dir", debugPath)
 						}
+					} else {
+						logger.Warning("Failed to apply patch", "target_uuid", patch.TargetBlockUUID, "error", err)
 					}
 					continue
 				}
