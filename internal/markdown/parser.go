@@ -1,12 +1,12 @@
 /**
  * Component: Markdown Parser Utility
- * Block-UUID: 49104405-e2fa-4a96-aa66-6f49142bc6a4
- * Parent-UUID: 8e4995ca-5df6-4952-8282-0655d3d3ce69
- * Version: 1.5.0
+ * Block-UUID: 0901ea0a-f9ce-4d5d-bbbd-a3865bd54e7b
+ * Parent-UUID: abc2011f-0f9b-4cae-92f6-dfd3f2c5c7f8
+ * Version: 1.5.2
  * Description: Added smart trimming logic to splitHeaderAndCode. It now removes leading/trailing blank lines and trailing whitespace from executable code while preserving semantic indentation. The ExtractCodeBlocks function now accepts a trim boolean to control this behavior.
  * Language: Go
- * Created-at: 2026-03-03T04:34:36.912Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0), Gemini 3 Flash (v1.3.0), Gemini 3 Flash (v1.4.0), Gemini 3 Flash (v1.5.0)
+ * Created-at: 2026-03-03T07:27:26.588Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0), Gemini 3 Flash (v1.3.0), Gemini 3 Flash (v1.4.0), Gemini 3 Flash (v1.5.0), Gemini 3 Flash (v1.5.1), GLM-4.7 (v1.5.2)
  */
 
 
@@ -72,6 +72,7 @@ var (
 	reTargetBlockUUID = regexp.MustCompile(`(?m)Target-Block-UUID:\s*([a-fA-F0-9-]{36}|{{GS-UUID}})`)
 	reSourceVersion   = regexp.MustCompile(`(?m)Source-Version:\s*(\d+\.\d+\.\d+)`)
 	reTargetVersion   = regexp.MustCompile(`(?m)Target-Version:\s*(\d+\.\d+\.\d+)`)
+	rePatchLanguage   = regexp.MustCompile(`(?m)# Language:\s*(.*)`)
 )
 
 // ExtractCodeBlocks parses a markdown string and returns structured blocks and patches.
@@ -146,7 +147,7 @@ func parsePatchBlock(raw string, idx int, trim bool) PatchBlock {
 
 	patch := PatchBlock{
 		Index:          idx,
-		Language:       "diff",
+		Language:       "",
 		RawHeader:      header,
 		ExecutableCode: code,
 	}
@@ -162,6 +163,13 @@ func parsePatchBlock(raw string, idx int, trim bool) PatchBlock {
 		for _, a := range strings.Split(m[1], ",") {
 			patch.Authors = append(patch.Authors, strings.TrimSpace(a))
 		}
+	}
+
+	// Extract Language from Patch Metadata Header
+	if m := rePatchLanguage.FindStringSubmatch(header); len(m) > 1 {
+		patch.Language = strings.TrimSpace(m[1])
+	} else {
+		patch.Language = "diff" // Fallback for malformed patches
 	}
 	return patch
 }
@@ -230,5 +238,5 @@ func isCommentLine(line string) bool {
 	       strings.HasPrefix(line, "#") ||
 	       strings.HasPrefix(line, "<!--") ||
 	       strings.HasPrefix(line, "=") ||
-	       strings.HasPrefix(line, "--") // SQL
+	       (strings.HasPrefix(line, "--") && !strings.HasPrefix(line, "---")) // SQL but not Diff
 }
