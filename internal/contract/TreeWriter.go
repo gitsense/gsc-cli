@@ -1,12 +1,12 @@
-/**
+/*
  * Component: Tree Dump Writer
- * Block-UUID: 6b6a4e3e-1d2d-4936-a8e1-6cd6f7722313
- * Parent-UUID: 87cbcada-b41d-47d4-9c17-e9f335b46b6e
- * Version: 1.5.0
- * Description: Updated WriteBlock and WritePatch to accept the trim boolean flag. The actual trimming logic is handled by the parser, so the writer simply persists the content provided in the block struct.
+ * Block-UUID: 44cbe7a8-e91c-41b2-82dd-435db25eee1c
+ * Parent-UUID: 6b6a4e3e-1d2d-4936-a8e1-6cd6f7722313
+ * Version: 1.6.0
+ * Description: Implemented WritePatchedFile to support the persistence of verified patch results in the conversational tree. Added logic to generate descriptive filenames for patched artifacts.
  * Language: Go
- * Created-at: 2026-03-03T04:39:27.000Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
+ * Created-at: 2026-03-03T05:24:09.303Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0)
  */
 
 
@@ -86,6 +86,23 @@ func (w *TreeWriter) WritePatch(msgDir string, patch markdown.PatchBlock, trim b
 	// Combine header and diff content
 	// Note: patch.ExecutableCode is already processed (trimmed or raw) by the parser
 	content := patch.RawHeader + "\n\n\n" + patch.ExecutableCode
+	path := filepath.Join(msgDir, filename)
+	return os.WriteFile(path, []byte(content), 0644)
+}
+
+// WritePatchedFile persists the result of a successful patch application.
+// This is a "result" file and does not include the GitSense metadata header.
+func (w *TreeWriter) WritePatchedFile(msgDir string, patch markdown.PatchBlock, content string) error {
+	// Determine filename: patched_<idx>_<uuid>.ext
+	filename := fmt.Sprintf("%03d_patched", patch.Index + 1)
+	if patch.TargetBlockUUID != "" {
+		// Truncate UUID to first 8 characters for readability
+		filename += "_" + patch.TargetBlockUUID[:8]
+	}
+	
+	// We use the language from the patch block to determine the extension
+	filename += getExtension(patch.Language)
+
 	path := filepath.Join(msgDir, filename)
 	return os.WriteFile(path, []byte(content), 0644)
 }

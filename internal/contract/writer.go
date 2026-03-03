@@ -1,12 +1,12 @@
 /*
  * Component: Dump Writer Interface
- * Block-UUID: 9c341414-0f51-4bc3-a99a-1016e7d80e9a
- * Parent-UUID: 2906ebf3-de4e-4b6e-a262-768f6b187535
- * Version: 1.1.0
- * Description: Updated WriteBlock and WritePatch signatures to accept a trim boolean. This allows implementations to decide whether to apply smart trimming or preserve raw content.
+ * Block-UUID: f0918a9d-8969-4773-8271-e5b361e953ef
+ * Parent-UUID: 9c341414-0f51-4bc3-a99a-1016e7d80e9a
+ * Version: 1.2.0
+ * Description: Added WritePatchedFile to the DumpWriter interface. This allows the orchestrator to persist the result of a successful patch application during the dump process.
  * Language: Go
- * Created-at: 2026-03-03T04:38:31.000Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0)
+ * Created-at: 2026-03-03T05:23:16.318Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0)
  */
 
 
@@ -36,4 +36,8 @@ type DumpWriter interface {
 	// WritePatch handles the persistence of a patch block.
 	// The trim flag determines if smart trimming should be applied.
 	WritePatch(msgDir string, patch markdown.PatchBlock, trim bool) error
+
+	// WritePatchedFile persists the result of a successful patch application.
+	// This is a "result" file and typically does not include the GitSense metadata header.
+	WritePatchedFile(msgDir string, patch markdown.PatchBlock, content string) error
 }

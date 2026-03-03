@@ -5,6 +5,7 @@ go 1.21
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/agnivade/levenshtein v1.2.1
+	github.com/bluekeyes/go-gitdiff v0.8.1
 	github.com/bmatcuk/doublestar/v4 v4.10.0
 	github.com/google/uuid v1.3.0
 	github.com/mattn/go-isatty v0.0.16
