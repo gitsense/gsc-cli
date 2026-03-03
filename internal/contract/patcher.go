@@ -1,12 +1,12 @@
 /**
  * Component: GitSense Patch Engine
- * Block-UUID: 05eebcb9-39df-4ac1-aa31-de44a52cb44f
- * Parent-UUID: 5f2b33bb-4cd9-49d2-96e3-e1b438f704fd
- * Version: 1.8.0
+ * Block-UUID: dc720df8-031a-4252-83ab-fd141db0ba85
+ * Parent-UUID: 05eebcb9-39df-4ac1-aa31-de44a52cb44f
+ * Version: 1.9.0
  * Description: Fixed normalizeHunkOffsets to correctly calculate the header offset by counting actual comment lines in the patch metadata, rather than using a hardcoded constant. This makes the patcher robust to variable-length headers.
  * Language: Go
- * Created-at: 2026-03-03T07:42:22.534Z
- * Authors: GLM-4.7 (v1.0.0), Gemini 3 Flash (v1.1.0), Claude Haiku 4.5 (v1.2.0), GLM-4.7 (v1.3.0), Gemini 3 Flash (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), Gemini 3 Flash (v1.6.1), Gemini 3 Flash (v1.7.0), Gemini 3 Flash (v1.8.0)
+ * Created-at: 2026-03-03T18:37:08.355Z
+ * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v1.8.0), GLM-4.7 (v1.9.0)
  */
 
 
@@ -14,8 +14,12 @@ package contract
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/bluekeyes/go-gitdiff/gitdiff"
 	"github.com/gitsense/gsc-cli/pkg/logger"
@@ -101,4 +105,58 @@ func ApplyPatch(originalSource string, patchExecutableCode string) (string, erro
 	}
 
 	return output.String(), nil
+}
+
+// WriteDebugArtifacts persists the source and patch content to a debug directory
+// to help diagnose patch application failures.
+func WriteDebugArtifacts(sourceCode string, patchContent string, targetUUID string, patchError error) error {
+	// 1. Resolve Debug Directory
+	gscHome, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("failed to get home directory: %w", err)
+	}
+	
+	debugDir := filepath.Join(gscHome, ".gitsense", "debug")
+	if err := os.MkdirAll(debugDir, 0755); err != nil {
+		return fmt.Errorf("failed to create debug directory: %w", err)
+	}
+
+	// 2. Create Unique Session Directory
+	timestamp := time.Now().Format("20060102-150405")
+	sessionDir := filepath.Join(debugDir, fmt.Sprintf("patch_%s_%s", targetUUID[:8], timestamp))
+	if err := os.MkdirAll(sessionDir, 0755); err != nil {
+		return fmt.Errorf("failed to create session directory: %w", err)
+	}
+
+	// 3. Write Source Code
+	if err := os.WriteFile(filepath.Join(sessionDir, "source.txt"), []byte(sourceCode), 0644); err != nil {
+		return fmt.Errorf("failed to write source.txt: %w", err)
+	}
+
+	// 4. Write Patch Content
+	if err := os.WriteFile(filepath.Join(sessionDir, "patch.diff"), []byte(patchContent), 0644); err != nil {
+		return fmt.Errorf("failed to write patch.diff: %w", err)
+	}
+
+	// 5. Write Metadata
+	metadata := map[string]interface{}{
+		"target_uuid": targetUUID,
+		"error":       patchError.Error(),
+		"timestamp":   time.Now().Format(time.RFC3339),
+	}
+	metaBytes, err := json.MarshalIndent(metadata, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal metadata: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(sessionDir, "metadata.json"), metaBytes, 0644); err != nil {
+		return fmt.Errorf("failed to write metadata.json: %w", err)
+	}
+
+	// 6. Write Test Script
+	script := "#!/bin/bash\nset -e\necho \"Applying patch...\"\npatch source.txt < patch.diff\necho \"Exit code: $?\"\n"
+	if err := os.WriteFile(filepath.Join(sessionDir, "apply_test.sh"), []byte(script), 0755); err != nil {
+		return fmt.Errorf("failed to write apply_test.sh: %w", err)
+	}
+
+	return nil
 }

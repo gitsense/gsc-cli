@@ -1,12 +1,12 @@
 /**
  * Component: Contract CLI Commands
- * Block-UUID: 8c8e8e8e-8e8e-8e8e-8e8e-8e8e8e8e8e8e
- * Parent-UUID: f729100f-4bc8-4444-ba9c-56a50516abd2
- * Version: 1.23.2
+ * Block-UUID: 45c74bac-c845-4b7f-921e-6b104d3929a3
+ * Parent-UUID: 8c8e8e8e-8e8e-8e8e-8e8e-8e8e8e8e8e8e
+ * Version: 1.24.0
  * Description: Added --sort flag to the dump command and updated ExecuteDump call to support the new 'merged' dump type and sorting strategies (recency, popularity, chronological).
  * Language: Go
- * Created-at: 2026-03-03T17:37:44.205Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.23.1), GLM-4.7 (v1.23.2)
+ * Created-at: 2026-03-03T18:35:02.869Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.23.2), Gemini 3 Flash (v1.24.0)
  */
 
 
@@ -92,6 +92,7 @@ var (
 	contractDumpSort   string
 	contractDumpOutput string
 	contractDumpIncludeSystem bool
+	contractDumpDebugPatch bool
 	contractDumpRaw    bool
 )
 
@@ -710,7 +711,7 @@ and organizes them into a directory structure for local review and search.`,
 		// 4. Execute
 		// Note: !contractDumpRaw means trim is true by default
 		logger.Info("Generating conversational dump...", "type", contractDumpType, "sort", contractDumpSort, "output", outputDir, "trim", !contractDumpRaw)
-		if err := contract.ExecuteDump(uuid, writer, outputDir, contractDumpIncludeSystem, !contractDumpRaw, contractDumpType, contractDumpSort); err != nil {
+		if err := contract.ExecuteDump(uuid, writer, outputDir, contractDumpIncludeSystem, !contractDumpRaw, contractDumpType, contractDumpSort, contractDumpDebugPatch); err != nil {
 			return err
 		}
 
@@ -795,6 +796,7 @@ func init() {
 	dumpContractCmd.Flags().StringVar(&contractDumpSort, "sort", "recency", "Sort mode for merged type: recency, popularity, chronological")
 	dumpContractCmd.Flags().StringVarP(&contractDumpOutput, "output", "o", "", "Output directory (default: ~/.gitsense/dumps/<uuid>)")
 	dumpContractCmd.Flags().BoolVar(&contractDumpIncludeSystem, "include-system", false, "Include the system message in the dump (default: false)")
+	dumpContractCmd.Flags().BoolVar(&contractDumpDebugPatch, "debug-patch", false, "Enable patch debugging (persists source and diff artifacts on failure)")
 	dumpContractCmd.Flags().BoolVar(&contractDumpRaw, "raw", false, "Disable smart trimming (preserve exact LLM output)")
 
 	// Add subcommands to base contract command

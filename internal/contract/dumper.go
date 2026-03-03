@@ -1,12 +1,12 @@
 /**
  * Component: Contract Dump Orchestrator
- * Block-UUID: 298ee9a5-840e-44a2-8624-63a8d47d5146
- * Parent-UUID: 621367c4-520d-408a-9bf7-b2079d2833de
- * Version: 2.0.1
+ * Block-UUID: 3f8a9b2c-1d4e-5f6a-9b8c-0d1e2f3a4b5c
+ * Parent-UUID: 298ee9a5-840e-44a2-8624-63a8d47d5146
+ * Version: 2.1.0
  * Description: Refactored ExecuteDump to support the 'merged' dump type. Added Pass 0 to build a global MergedNode tree, calculate metrics (ChatCount, MaxSubtreeTimestamp), and handle sorting strategies (recency, popularity, chronological). The orchestrator now traverses the merged tree instead of individual chats for the 'merged' type.
  * Language: Go
- * Created-at: 2026-03-03T17:28:22.164Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), Gemini 3 Flash (v1.8.0), Gemini 3 Flash (v1.8.1), Gemini 3 Flash (v1.8.2), Gemini 3 Flash (v1.9.0), Gemini 3 Flash (v2.0.0), GLM-4.7 (v2.0.1)
+ * Created-at: 2026-03-03T18:36:42.574Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.0.1), GLM-4.7 (v2.1.0)
  */
 
 
@@ -41,7 +41,7 @@ type MergedNode struct {
 
 // ExecuteDump coordinates the full dump process for a given contract.
 // It supports both 'tree' and 'merged' strategies.
-func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, includeSystem bool, trim bool, dumpType string, sortMode string) error {
+func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, includeSystem bool, trim bool, dumpType string, sortMode string, debugPatch bool) error {
 	// 1. Initialize Output
 	if err := writer.Prepare(outputDir); err != nil {
 		return fmt.Errorf("failed to prepare dump directory: %w", err)
@@ -91,7 +91,7 @@ func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, inclu
 	// STRATEGY SELECTION
 	// ==========================================
 	if dumpType == "merged" {
-		return executeMergedDump(chats, sqliteDB, writer, outputDir, includeSystem, trim, sortMode, blockMap)
+		return executeMergedDump(chats, sqliteDB, writer, outputDir, includeSystem, trim, sortMode, blockMap, debugPatch)
 	}
 
 	// ==========================================
@@ -184,6 +184,11 @@ func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, inclu
 				patchedCode, err := ApplyPatch(sourceCode, patch.ExecutableCode)
 				if err != nil {
 					logger.Warning("Failed to apply patch", "target_uuid", patch.TargetBlockUUID, "error", err)
+					if debugPatch {
+						if writeErr := WriteDebugArtifacts(sourceCode, patch.ExecutableCode, patch.TargetBlockUUID, err); writeErr != nil {
+							logger.Error("Failed to write debug artifacts", "error", writeErr)
+						}
+					}
 					continue
 				}
 
@@ -205,7 +210,8 @@ func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, inclu
 }
 
 // executeMergedDump implements the logic for the 'merged' dump type.
-func executeMergedDump(chats []db.Chat, sqliteDB *sql.DB, writer DumpWriter, outputDir string, includeSystem bool, trim bool, sortMode string, blockMap map[string]string) error {
+func executeMergedDump(chats []db.Chat, sqliteDB *sql.DB, writer DumpWriter, outputDir string, includeSystem bool, trim bool, sortMode string, blockMap map[string]string, debugPatch bool) error {
+
 	// ==========================================
 	// PASS 0: Build Merged Tree & Calculate Metrics
 	// ==========================================
@@ -386,6 +392,11 @@ func executeMergedDump(chats []db.Chat, sqliteDB *sql.DB, writer DumpWriter, out
 				patchedCode, err := ApplyPatch(sourceCode, patch.ExecutableCode)
 				if err != nil {
 					logger.Warning("Failed to apply patch", "target_uuid", patch.TargetBlockUUID, "error", err)
+					if debugPatch {
+						if writeErr := WriteDebugArtifacts(sourceCode, patch.ExecutableCode, patch.TargetBlockUUID, err); writeErr != nil {
+							logger.Error("Failed to write debug artifacts", "error", writeErr)
+						}
+					}
 					continue
 				}
 

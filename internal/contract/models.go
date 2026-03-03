@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Contract Models
- * Block-UUID: 02a82c7e-8dd4-439e-a7c8-f279aaa6b049
- * Parent-UUID: 35bfab3b-5c8c-4e96-aeeb-a6c32972084b
- * Version: 1.13.0
+ * Block-UUID: 12241c3c-c019-48f0-9726-faf0722ef3aa
+ * Parent-UUID: 02a82c7e-8dd4-439e-a7c8-f279aaa6b049
+ * Version: 1.14.0
  * Description: Added Sort field to LaunchRequest to support sorting strategies for the 'merged' dump type.
  * Language: Go
- * Created-at: 2026-03-03T02:23:17.722Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., Gemini 3 Flash (v1.11.0), Gemini 3 Flash (v1.12.0), Gemini 3 Flash (v1.13.0)
+ * Created-at: 2026-03-03T18:35:47.821Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., Gemini 3 Flash (v1.13.0), Gemini 3 Flash (v1.14.0)
  */
 
 
@@ -59,6 +59,7 @@ type LaunchRequest struct {
 	AppOverride  string `json:"app_override,omitempty"` // Overrides preferred app (e.g., "zed", "iterm2")
 	Cmd          string `json:"cmd,omitempty"`
 	Sort         string `json:"sort,omitempty"` // Sort mode for 'merged' dump type
+	DebugPatch   bool   `json:"debug_patch,omitempty"` // Enable patch debugging artifacts
 }
 
 // LaunchResult represents the response from the CLI to the Web UI for the 'launch' command.
