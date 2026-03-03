@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Dump Writer Interface
- * Block-UUID: f0918a9d-8969-4773-8271-e5b361e953ef
- * Parent-UUID: 9c341414-0f51-4bc3-a99a-1016e7d80e9a
- * Version: 1.2.0
+ * Block-UUID: f1a0998b-3727-455e-9b62-3688434912f2
+ * Parent-UUID: f0918a9d-8969-4773-8271-e5b361e953ef
+ * Version: 1.3.0
  * Description: Added WritePatchedFile to the DumpWriter interface. This allows the orchestrator to persist the result of a successful patch application during the dump process.
  * Language: Go
- * Created-at: 2026-03-03T05:23:16.318Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0)
+ * Created-at: 2026-03-03T07:37:57.416Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), Gemini 3 Flash (v1.3.0)
  */
 
 
@@ -38,6 +38,6 @@ type DumpWriter interface {
 	WritePatch(msgDir string, patch markdown.PatchBlock, trim bool) error
 
 	// WritePatchedFile persists the result of a successful patch application.
-	// This is a "result" file and typically does not include the GitSense metadata header.
-	WritePatchedFile(msgDir string, patch markdown.PatchBlock, content string) error
+	// The header is prepended to the content to maintain traceability.
+	WritePatchedFile(msgDir string, patch markdown.PatchBlock, header string, content string) error
 }

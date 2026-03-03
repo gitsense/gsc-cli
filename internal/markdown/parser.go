@@ -1,12 +1,12 @@
 /**
  * Component: Markdown Parser Utility
- * Block-UUID: 0901ea0a-f9ce-4d5d-bbbd-a3865bd54e7b
- * Parent-UUID: abc2011f-0f9b-4cae-92f6-dfd3f2c5c7f8
- * Version: 1.5.2
+ * Block-UUID: e4b4e576-10da-42a2-b788-d4f55be5a35b
+ * Parent-UUID: 0901ea0a-f9ce-4d5d-bbbd-a3865bd54e7b
+ * Version: 1.6.0
  * Description: Added smart trimming logic to splitHeaderAndCode. It now removes leading/trailing blank lines and trailing whitespace from executable code while preserving semantic indentation. The ExtractCodeBlocks function now accepts a trim boolean to control this behavior.
  * Language: Go
- * Created-at: 2026-03-03T07:27:26.588Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0), Gemini 3 Flash (v1.3.0), Gemini 3 Flash (v1.4.0), Gemini 3 Flash (v1.5.0), Gemini 3 Flash (v1.5.1), GLM-4.7 (v1.5.2)
+ * Created-at: 2026-03-03T07:37:28.018Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0), Gemini 3 Flash (v1.3.0), Gemini 3 Flash (v1.4.0), Gemini 3 Flash (v1.5.0), Gemini 3 Flash (v1.5.1), GLM-4.7 (v1.5.2), Gemini 3 Flash (v1.6.0)
  */
 
 
@@ -177,58 +177,31 @@ func parsePatchBlock(raw string, idx int, trim bool) PatchBlock {
 // splitHeaderAndCode separates the comment-based metadata header from the executable code.
 // It applies "Smart Trim" to the executable code if the trim flag is true.
 func splitHeaderAndCode(raw string, trim bool) (string, string) {
-	lines := strings.Split(raw, "\n")
+	// The GitSense spec mandates exactly TWO BLANK LINES between the header and code.
+	// This translates to three consecutive newline characters.
+	parts := strings.SplitN(raw, "\n\n\n", 2)
 	
-	codeStartIdx := -1
-
-	// 1. Find where the code actually starts (first non-comment, non-blank line)
-	for i, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if trimmed != "" && !isCommentLine(trimmed) {
-			codeStartIdx = i
-			break
-		}
+	if len(parts) < 2 {
+		return "", raw
 	}
 
-	if codeStartIdx == -1 {
-		return strings.Join(lines, "\n"), ""
-	}
-
-	// 2. Backtrack from codeStartIdx to find the last comment line of the header
-	headerEndIdx := -1
-	for i := codeStartIdx - 1; i >= 0; i-- {
-		if isCommentLine(strings.TrimSpace(lines[i])) {
-			headerEndIdx = i
-			break
-		}
-	}
-
-	var header string
-	if headerEndIdx != -1 {
-		header = strings.Join(lines[:headerEndIdx+1], "\n")
-	}
-
-	// 3. Extract and Smart Trim the code
-	codeLines := lines[codeStartIdx:]
+	header := parts[0]
+	code := parts[1]
 	
 	if trim {
+		codeLines := strings.Split(code, "\n")
 		// Trim trailing whitespace from each line
 		for i := range codeLines {
 			codeLines[i] = strings.TrimRight(codeLines[i], " \t\r")
 		}
-
 		// Trim trailing blank lines from the block
 		lastLine := len(codeLines) - 1
 		for lastLine >= 0 && strings.TrimSpace(codeLines[lastLine]) == "" {
 			lastLine--
 		}
-		
-		code := strings.Join(codeLines[:lastLine+1], "\n")
-		return header, code
+		code = strings.Join(codeLines[:lastLine+1], "\n")
 	}
-
-	// If not trimming, return the raw code
-	return header, strings.Join(codeLines, "\n")
+	return header, code
 }
 
 func isCommentLine(line string) bool {

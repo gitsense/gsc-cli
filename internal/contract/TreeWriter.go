@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Tree Dump Writer
- * Block-UUID: 44cbe7a8-e91c-41b2-82dd-435db25eee1c
- * Parent-UUID: 6b6a4e3e-1d2d-4936-a8e1-6cd6f7722313
- * Version: 1.6.0
+ * Block-UUID: ee69a04d-81f9-4f2c-9179-7ea0a0e8cce8
+ * Parent-UUID: 44cbe7a8-e91c-41b2-82dd-435db25eee1c
+ * Version: 1.7.0
  * Description: Implemented WritePatchedFile to support the persistence of verified patch results in the conversational tree. Added logic to generate descriptive filenames for patched artifacts.
  * Language: Go
- * Created-at: 2026-03-03T05:24:09.303Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0)
+ * Created-at: 2026-03-03T07:38:31.693Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0)
  */
 
 
@@ -92,7 +92,7 @@ func (w *TreeWriter) WritePatch(msgDir string, patch markdown.PatchBlock, trim b
 
 // WritePatchedFile persists the result of a successful patch application.
 // This is a "result" file and does not include the GitSense metadata header.
-func (w *TreeWriter) WritePatchedFile(msgDir string, patch markdown.PatchBlock, content string) error {
+func (w *TreeWriter) WritePatchedFile(msgDir string, patch markdown.PatchBlock, header string, content string) error {
 	// Determine filename: patched_<idx>_<uuid>.ext
 	filename := fmt.Sprintf("%03d_patched", patch.Index + 1)
 	if patch.TargetBlockUUID != "" {
@@ -103,8 +103,9 @@ func (w *TreeWriter) WritePatchedFile(msgDir string, patch markdown.PatchBlock, 
 	// We use the language from the patch block to determine the extension
 	filename += getExtension(patch.Language)
 
+	fullContent := header + "\n\n\n" + content
 	path := filepath.Join(msgDir, filename)
-	return os.WriteFile(path, []byte(content), 0644)
+	return os.WriteFile(path, []byte(fullContent), 0644)
 }
 
 // formatChatName sanitizes and truncates the chat name to a maximum length.
