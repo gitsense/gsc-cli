@@ -1,12 +1,12 @@
-/**
+/*
  * Component: Settings and Configuration Manager
- * Block-UUID: d72cd4fa-0f8c-4c55-9326-69ab43b2164f
- * Parent-UUID: 062cf4d5-4a53-4cf8-9175-61e6e4a0ecb4
- * Version: 3.0.0
- * Description: Refactored to use Go's embed package for default templates. The templates and README are now embedded directly into the binary at build time, removing hardcoded Go logic and simplifying maintenance.
+ * Block-UUID: dc816fe6-6737-44e7-acab-d916ca78482d
+ * Parent-UUID: d72cd4fa-0f8c-4c55-9326-69ab43b2164f
+ * Version: 3.1.0
+ * Description: Added SortRecency, SortPopularity, and SortChronological constants to support the new 'merged' dump type sorting strategies.
  * Language: Go
  * Created-at: 2026-03-02T07:50:00.000Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0), Gemini 3 Flash (v1.4.0), Gemini 3 Flash (v1.5.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), Gemini 3 Flash (v1.10.0), GLM-4.7 (v2.0.0), GLM-4.7 (v3.0.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0), Gemini 3 Flash (v1.4.0), Gemini 3 Flash (v1.5.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), Gemini 3 Flash (v1.10.0), GLM-4.7 (v2.0.0), GLM-4.7 (v3.0.0), Gemini 3 Flash (v3.1.0)
  */
 
 
@@ -54,6 +54,11 @@ const ProvenanceFileName = "provenance.log"
 const ContractHandshakeConsumer = "gsc-contract"
 const DefaultContractTTL = 4
 const DefaultExecTimeout = 60
+
+// Sort Modes for the 'merged' dump type
+const SortRecency = "recency"
+const SortPopularity = "popularity"
+const SortChronological = "chronological"
 
 // DefaultSafeSet is the list of commands allowed by default when no whitelist is specified.
 var DefaultSafeSet = []string{

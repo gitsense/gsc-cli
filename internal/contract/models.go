@@ -1,12 +1,12 @@
 /*
  * Component: Contract Models
- * Block-UUID: 35bfab3b-5c8c-4e96-aeeb-a6c32972084b
- * Parent-UUID: 4b6ba222-01b0-4c96-acf4-3b12b84b9830
- * Version: 1.12.0
- * Description: Added ContractDone status to the ContractStatus enum to support marking projects as finished while preserving their history.
+ * Block-UUID: 02a82c7e-8dd4-439e-a7c8-f279aaa6b049
+ * Parent-UUID: 35bfab3b-5c8c-4e96-aeeb-a6c32972084b
+ * Version: 1.13.0
+ * Description: Added Sort field to LaunchRequest to support sorting strategies for the 'merged' dump type.
  * Language: Go
  * Created-at: 2026-03-03T02:23:17.722Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., Gemini 3 Flash (v1.11.0), Gemini 3 Flash (v1.12.0)
+ * Authors: Gemini 3 Flash (v1.0.0), ..., Gemini 3 Flash (v1.11.0), Gemini 3 Flash (v1.12.0), Gemini 3 Flash (v1.13.0)
  */
 
 
@@ -58,6 +58,7 @@ type LaunchRequest struct {
 	Action       string `json:"action,omitempty"` // "source", "patch" (review) or "tree", "text", "mapped" (dump)
 	AppOverride  string `json:"app_override,omitempty"` // Overrides preferred app (e.g., "zed", "iterm2")
 	Cmd          string `json:"cmd,omitempty"`
+	Sort         string `json:"sort,omitempty"` // Sort mode for 'merged' dump type
 }
 
 // LaunchResult represents the response from the CLI to the Web UI for the 'launch' command.

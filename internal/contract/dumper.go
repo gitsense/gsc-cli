@@ -1,22 +1,26 @@
-/**
+/*
  * Component: Contract Dump Orchestrator
- * Block-UUID: 093b40ed-b5df-42c0-9786-ce5299ec76c7
- * Parent-UUID: 4bc1b270-cf8a-42d5-85c9-cfc594adc300
- * Version: 1.9.0
- * Description: Refactored ExecuteDump to implement a two-pass logic. Pass 1 indexes all code blocks and patches. Pass 2 generates the filesystem tree and applies patches. Includes generateCodeHeaderFromPatch to reconstruct language-specific GitSense headers for patched files.
+ * Block-UUID: 621367c4-520d-408a-9bf7-b2079d2833de
+ * Parent-UUID: 093b40ed-b5df-42c0-9786-ce5299ec76c7
+ * Version: 2.0.0
+ * Description: Refactored ExecuteDump to support the 'merged' dump type. Added Pass 0 to build a global MergedNode tree, calculate metrics (ChatCount, MaxSubtreeTimestamp), and handle sorting strategies (recency, popularity, chronological). The orchestrator now traverses the merged tree instead of individual chats for the 'merged' type.
  * Language: Go
  * Created-at: 2026-03-03T07:38:59.550Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), Gemini 3 Flash (v1.8.0), Gemini 3 Flash (v1.8.1), Gemini 3 Flash (v1.8.2), Gemini 3 Flash (v1.9.0)
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), Gemini 3 Flash (v1.8.0), Gemini 3 Flash (v1.8.1), Gemini 3 Flash (v1.8.2), Gemini 3 Flash (v1.9.0), Gemini 3 Flash (v2.0.0)
  */
 
 
 package contract
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
+	"time"
 
 	"github.com/gitsense/gsc-cli/internal/db"
 	"github.com/gitsense/gsc-cli/internal/markdown"
@@ -24,20 +28,19 @@ import (
 	"github.com/gitsense/gsc-cli/pkg/settings"
 )
 
-// GetDefaultDumpDir returns the standard path for contract dumps: ~/.gitsense/dumps/<uuid>
-func GetDefaultDumpDir(uuid string) string {
-	gscHome, _ := settings.GetGSCHome(false)
-	
-	shortUUID := uuid
-	if len(shortUUID) > 12 {
-		shortUUID = shortUUID[:12]
-	}
-	
-	return filepath.Join(gscHome, "dumps", shortUUID)
+// MergedNode represents a unique message in the merged tree.
+type MergedNode struct {
+	Message          db.Message
+	Hash             string
+	Chats            []db.Chat
+	Children         []*MergedNode
+	ChatCount        int
+	MaxSubtreeTime   time.Time
 }
 
-// ExecuteDump coordinates the full dump process for a given contract using a two-pass approach.
-func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, includeSystem bool, trim bool) error {
+// ExecuteDump coordinates the full dump process for a given contract.
+// It supports both 'tree' and 'merged' strategies.
+func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, includeSystem bool, trim bool, dumpType string, sortMode string) error {
 	// 1. Initialize Output
 	if err := writer.Prepare(outputDir); err != nil {
 		return fmt.Errorf("failed to prepare dump directory: %w", err)
@@ -84,10 +87,16 @@ func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, inclu
 	blockMap := make(map[string]string)
 
 	// ==========================================
-	// PASS 1: Indexing (The Intent Library)
+	// STRATEGY SELECTION
 	// ==========================================
-	// We scan all messages to find every code block and patch to ensure 
-	// we can resolve patches even if the source appears later in the chat.
+	if dumpType == "merged" {
+		return executeMergedDump(chats, sqliteDB, writer, outputDir, includeSystem, trim, sortMode, blockMap)
+	}
+
+	// ==========================================
+	// LEGACY 'TREE' STRATEGY
+	// ==========================================
+	// PASS 1: Indexing
 	for _, chat := range chats {
 		messages, err := db.GetMessagesRecursive(sqliteDB, chat.ID)
 		if err != nil {
@@ -112,9 +121,7 @@ func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, inclu
 		}
 	}
 
-	// ==========================================
-	// PASS 2: Generation (The Filesystem Tree)
-	// ==========================================
+	// PASS 2: Generation
 	for _, chat := range chats {
 		logger.Info("Dumping chat", "name", chat.Name, "id", chat.ID)
 
@@ -159,12 +166,10 @@ func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, inclu
 
 			// Process patches and generate "patched" files
 			for _, patch := range result.Patches {
-				// 1. Write the .diff file
 				if err := writer.WritePatch(absMsgDir, patch, trim); err != nil {
 					return err
 				}
 
-				// 2. Attempt to generate the .patched file
 				if patch.SourceBlockUUID == "" {
 					continue
 				}
@@ -181,13 +186,11 @@ func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, inclu
 					continue
 				}
 
-				// 3. Persist the patched result with a reconstructed Code Block header
 				header := generateCodeHeaderFromPatch(patch)
 				if err := writer.WritePatchedFile(absMsgDir, patch, header, patchedCode); err != nil {
 					return err
 				}
 
-				// 4. Update the map to support Patch Chaining
 				if patch.TargetBlockUUID != "" {
 					blockMap[patch.TargetBlockUUID] = patchedCode
 				}
@@ -198,6 +201,240 @@ func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, inclu
 	}
 
 	return nil
+}
+
+// executeMergedDump implements the logic for the 'merged' dump type.
+func executeMergedDump(chats []db.Chat, sqliteDB *sql.DB, writer DumpWriter, outputDir string, includeSystem bool, trim bool, sortMode string, blockMap map[string]string) error {
+	// ==========================================
+	// PASS 0: Build Merged Tree & Calculate Metrics
+	// ==========================================
+	// Map: Hash -> MergedNode
+	nodeMap := make(map[string]*MergedNode)
+	// Map: ChatID -> MessageID -> Message (for parent lookup)
+	chatMessages := make(map[int64]map[int64]db.Message)
+
+	// 1. Fetch and Index all messages
+	for _, chat := range chats {
+		messages, err := db.GetMessagesRecursive(sqliteDB, chat.ID)
+		if err != nil {
+			return fmt.Errorf("failed to fetch messages for chat %d: %w", chat.ID, err)
+		}
+
+		chatMessages[chat.ID] = make(map[int64]db.Message)
+		for _, msg := range messages {
+			chatMessages[chat.ID][msg.ID] = msg
+
+			hash := calculateMessageHash(msg)
+			if node, exists := nodeMap[hash]; exists {
+				// Node already exists (duplicate message), just add chat
+				node.Chats = append(node.Chats, chat)
+			} else {
+				// Create new node
+				nodeMap[hash] = &MergedNode{
+					Message:        msg,
+					Hash:           hash,
+					Chats:          []db.Chat{chat},
+					ChatCount:      1,
+					MaxSubtreeTime: msg.UpdatedAt,
+				}
+			}
+		}
+	}
+
+	// 2. Build Tree Structure (Link Children to Parents)
+	// We iterate through all nodes and find their parent in the global map
+	var roots []*MergedNode
+	for _, node := range nodeMap {
+		// If parent_id is 0, it's a root (System message)
+		if node.Message.ParentID == 0 {
+			roots = append(roots, node)
+			continue
+		}
+
+		// Find parent message in the same chat
+		parentMsg, ok := chatMessages[node.Message.ChatID][node.Message.ParentID]
+		if !ok {
+			logger.Warning("Parent message not found in chat", "msg_id", node.Message.ID, "parent_id", node.Message.ParentID)
+			continue
+		}
+
+		// Find parent node in global map using parent's hash
+		parentHash := calculateMessageHash(parentMsg)
+		parentNode, ok := nodeMap[parentHash]
+		if !ok {
+			logger.Warning("Parent node not found in global map", "msg_id", node.Message.ID, "parent_hash", parentHash)
+			continue
+		}
+
+		// Link
+		parentNode.Children = append(parentNode.Children, node)
+	}
+
+	// 3. Calculate Metrics (MaxSubtreeTime) recursively
+	calculateMetrics(roots)
+
+	// ==========================================
+	// PASS 1: Indexing (Global)
+	// ==========================================
+	// We traverse the merged tree to populate the blockMap
+	var traverseForIndexing func(nodes []*MergedNode)
+	traverseForIndexing = func(nodes []*MergedNode) {
+		for _, node := range nodes {
+			if !node.Message.Message.Valid {
+				continue
+			}
+
+			result, err := markdown.ExtractCodeBlocks(node.Message.Message.String, trim)
+			if err != nil {
+				continue
+			}
+
+			for _, block := range result.Blocks {
+				if block.BlockUUID != "" {
+					blockMap[block.BlockUUID] = block.ExecutableCode
+				}
+			}
+
+			traverseForIndexing(node.Children)
+		}
+	}
+	traverseForIndexing(roots)
+
+	// ==========================================
+	// PASS 2: Generation (Sorted)
+	// ==========================================
+	var traverseForGeneration func(nodes []*MergedNode, rank int)
+	traverseForGeneration = func(nodes []*MergedNode, rank int) {
+		// Sort children based on sortMode
+		sort.Slice(nodes, func(i, j int) bool {
+			switch sortMode {
+			case settings.SortRecency:
+				return nodes[i].MaxSubtreeTime.After(nodes[j].MaxSubtreeTime)
+			case settings.SortPopularity:
+				return nodes[i].ChatCount > nodes[j].ChatCount
+			case settings.SortChronological:
+				return nodes[i].Message.CreatedAt.Before(nodes[j].Message.CreatedAt)
+			default:
+				return nodes[i].Message.CreatedAt.Before(nodes[j].Message.CreatedAt)
+			}
+		})
+
+		for i, node := range nodes {
+			if !node.Message.Message.Valid {
+				continue
+			}
+
+			if !includeSystem && node.Message.Role == "system" {
+				traverseForGeneration(node.Children, 1) // Continue recursion but don't write
+				continue
+			}
+
+			// Inject metrics into MergedWriter if applicable
+			if mw, ok := writer.(*MergedWriter); ok {
+				mw.SetMetrics(i+1, node.ChatCount)
+			}
+
+			// Use a dummy chat for GetMessageDir since MergedWriter ignores it
+			dummyChat := db.Chat{ID: 0, Name: "merged"}
+			relMsgDir := writer.GetMessageDir(dummyChat, node.Message, 0)
+			absMsgDir := filepath.Join(outputDir, relMsgDir)
+
+			if err := os.MkdirAll(absMsgDir, 0755); err != nil {
+				logger.Error("Failed to create directory", "path", absMsgDir, "error", err)
+				continue
+			}
+
+			if err := writer.WriteMessage(absMsgDir, node.Message); err != nil {
+				logger.Error("Failed to write message", "error", err)
+			}
+
+			if err := writer.WriteProvenance(absMsgDir, node.Chats); err != nil {
+				logger.Error("Failed to write provenance", "error", err)
+			}
+
+			result, err := markdown.ExtractCodeBlocks(node.Message.Message.String, trim)
+			if err != nil {
+				logger.Warning("Failed to parse markdown for message", "id", node.Message.ID, "error", err)
+				traverseForGeneration(node.Children, 1)
+				continue
+			}
+
+			// Write standard code blocks
+			for _, block := range result.Blocks {
+				if err := writer.WriteBlock(absMsgDir, block, trim); err != nil {
+					logger.Error("Failed to write block", "error", err)
+				}
+			}
+
+			// Process patches and generate "patched" files
+			for _, patch := range result.Patches {
+				if err := writer.WritePatch(absMsgDir, patch, trim); err != nil {
+					logger.Error("Failed to write patch", "error", err)
+				}
+
+				if patch.SourceBlockUUID == "" {
+					continue
+				}
+
+				sourceCode, ok := blockMap[patch.SourceBlockUUID]
+				if !ok {
+					logger.Warning("Source block not found for patch", "source_uuid", patch.SourceBlockUUID, "msg_id", node.Message.ID)
+					continue
+				}
+
+				patchedCode, err := ApplyPatch(sourceCode, patch.ExecutableCode)
+				if err != nil {
+					logger.Warning("Failed to apply patch", "target_uuid", patch.TargetBlockUUID, "error", err)
+					continue
+				}
+
+				header := generateCodeHeaderFromPatch(patch)
+				if err := writer.WritePatchedFile(absMsgDir, patch, header, patchedCode); err != nil {
+					logger.Error("Failed to write patched file", "error", err)
+				}
+
+				if patch.TargetBlockUUID != "" {
+					blockMap[patch.TargetBlockUUID] = patchedCode
+				}
+			}
+
+			// Recurse into children
+			traverseForGeneration(node.Children, 1)
+		}
+	}
+
+	traverseForGeneration(roots, 1)
+	return nil
+}
+
+// calculateMetrics recursively calculates MaxSubtreeTime for all nodes.
+func calculateMetrics(nodes []*MergedNode) {
+	for _, node := range nodes {
+		if len(node.Children) == 0 {
+			node.MaxSubtreeTime = node.Message.UpdatedAt
+			continue
+		}
+
+		calculateMetrics(node.Children)
+		maxTime := node.Message.UpdatedAt
+		for _, child := range node.Children {
+			if child.MaxSubtreeTime.After(maxTime) {
+				maxTime = child.MaxSubtreeTime
+			}
+		}
+		node.MaxSubtreeTime = maxTime
+	}
+}
+
+// calculateMessageHash generates a deterministic hash for a message.
+func calculateMessageHash(msg db.Message) string {
+	h := sha256.New()
+	h.Write([]byte(msg.Role))
+	if msg.Message.Valid {
+		h.Write([]byte(msg.Message.String))
+	}
+	h.Write([]byte(msg.CreatedAt.Format(time.RFC3339)))
+	return hex.EncodeToString(h.Sum(nil))[:8]
 }
 
 // generateCodeHeaderFromPatch constructs a Code Block header from a PatchBlock.

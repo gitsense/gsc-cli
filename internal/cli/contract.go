@@ -1,12 +1,12 @@
 /**
  * Component: Contract CLI Commands
- * Block-UUID: 8e0dcb67-22a6-4b24-92bb-bb4913849390
- * Parent-UUID: a2bf92bc-5be5-41a2-9b8a-630d588a2fa5
- * Version: 1.22.0
- * Description: Added the --raw flag to the 'dump' subcommand. This allows users to disable smart trimming and preserve the exact LLM output. The trim preference is passed to the orchestrator.
+ * Block-UUID: 0c97b9f9-a2e4-466c-8c6c-c147c20cbe1b
+ * Parent-UUID: 8e0dcb67-22a6-4b24-92bb-bb4913849390
+ * Version: 1.23.0
+ * Description: Added --sort flag to the dump command and updated ExecuteDump call to support the new 'merged' dump type and sorting strategies (recency, popularity, chronological).
  * Language: Go
  * Created-at: 2026-03-03T16:06:42.828Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.9.1), GLM-4.7 (v1.9.2), Gemini 3 Flash (v1.9.3), Gemini 3 Flash (v1.9.4), Gemini 3 Flash (v1.9.5), GLM-4.7 (v1.9.6), GLM-4.7 (v1.9.7), GLM-4.7 (v1.9.8), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), Gemini 3 Flash (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.18.1), Gemini 3 Flash (v1.19.0), GLM-4.7 (v1.20.0), GLM-4.7 (v1.21.0), Gemini 3 Flash (v1.22.0)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.9.1), GLM-4.7 (v1.9.2), Gemini 3 Flash (v1.9.3), Gemini 3 Flash (v1.9.4), Gemini 3 Flash (v1.9.5), GLM-4.7 (v1.9.6), GLM-4.7 (v1.9.7), GLM-4.7 (v1.9.8), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), Gemini 3 Flash (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.18.1), Gemini 3 Flash (v1.19.0), GLM-4.7 (v1.20.0), GLM-4.7 (v1.21.0), Gemini 3 Flash (v1.22.0), Gemini 3 Flash (v1.23.0)
  */
 
 
@@ -89,6 +89,7 @@ var (
 	// Dump flags
 	contractDumpUUID   string
 	contractDumpType   string
+	contractDumpSort   string
 	contractDumpOutput string
 	contractDumpIncludeSystem bool
 	contractDumpRaw    bool
@@ -700,14 +701,16 @@ and organizes them into a directory structure for local review and search.`,
 		switch contractDumpType {
 		case "tree":
 			writer = &contract.TreeWriter{}
+		case "merged":
+			writer = &contract.MergedWriter{}
 		default:
-			return fmt.Errorf("unsupported dump type: %s (currently only 'tree' is supported)", contractDumpType)
+			return fmt.Errorf("unsupported dump type: %s (supported: tree, merged)", contractDumpType)
 		}
 
 		// 4. Execute
 		// Note: !contractDumpRaw means trim is true by default
-		logger.Info("Generating conversational dump...", "type", contractDumpType, "output", outputDir, "trim", !contractDumpRaw)
-		if err := contract.ExecuteDump(uuid, writer, outputDir, contractDumpIncludeSystem, !contractDumpRaw); err != nil {
+		logger.Info("Generating conversational dump...", "type", contractDumpType, "sort", contractDumpSort, "output", outputDir, "trim", !contractDumpRaw)
+		if err := contract.ExecuteDump(uuid, writer, outputDir, contractDumpIncludeSystem, !contractDumpRaw, contractDumpType, contractDumpSort); err != nil {
 			return err
 		}
 
@@ -788,7 +791,8 @@ func init() {
 
 	// Dump Flags
 	dumpContractCmd.Flags().StringVar(&contractDumpUUID, "uuid", "", "Contract UUID (optional if in workdir)")
-	dumpContractCmd.Flags().StringVar(&contractDumpType, "type", "tree", "Dump strategy: tree (default)")
+	dumpContractCmd.Flags().StringVar(&contractDumpType, "type", "tree", "Dump strategy: tree (default), merged")
+	dumpContractCmd.Flags().StringVar(&contractDumpSort, "sort", "recency", "Sort mode for merged type: recency (default), popularity, chronological")
 	dumpContractCmd.Flags().StringVarP(&contractDumpOutput, "output", "o", "", "Output directory (default: ~/.gitsense/dumps/<uuid>)")
 	dumpContractCmd.Flags().BoolVar(&contractDumpIncludeSystem, "include-system", false, "Include the system message in the dump (default: false)")
 	dumpContractCmd.Flags().BoolVar(&contractDumpRaw, "raw", false, "Disable smart trimming (preserve exact LLM output)")

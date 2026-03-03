@@ -1,12 +1,12 @@
 /**
  * Component: Contract Intent Handler
- * Block-UUID: 5b529fe8-4563-4c3f-a424-f717bb02e4fe
- * Parent-UUID: e1461367-68f5-42b4-8af4-efdcc414cf1a
- * Version: 1.11.0
- * Description: Updated handleDumpIntent to pass the trim argument to ExecuteDump. Defaults to smart trim (true) for Web UI triggers to ensure clean output.
+ * Block-UUID: 5b2507ac-65d7-43a6-ad10-ba8471202f2c
+ * Parent-UUID: 5b529fe8-4563-4c3f-a424-f717bb02e4fe
+ * Version: 1.13.0
+ * Description: Removed duplicate struct definitions (LaunchRequest, LaunchResult, etc.) and updated all function signatures to use the canonical types defined in internal/contract/models.go.
  * Language: Go
  * Created-at: 2026-03-03T04:43:57.000Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0)
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0)
  */
 
 
@@ -247,9 +247,17 @@ func handleDumpIntent(meta *ContractMetadata, req LaunchRequest) (LaunchResult, 
 		dumpType = "tree"
 	}
 
+	// Default sort mode to recency if not specified
+	sortMode := req.Sort
+	if sortMode == "" {
+		sortMode = settings.SortRecency
+	}
+
 	switch dumpType {
 	case "tree":
 		writer = &TreeWriter{}
+	case "merged":
+		writer = &MergedWriter{}
 	default:
 		return LaunchResult{}, fmt.Errorf("unsupported dump type: %s", dumpType)
 	}
@@ -257,7 +265,7 @@ func handleDumpIntent(meta *ContractMetadata, req LaunchRequest) (LaunchResult, 
 	// 2. Execute Dump
 	outputDir := GetDefaultDumpDir(meta.UUID)
 	// Default to smart trim (true) for Web UI triggers
-	if err := ExecuteDump(meta.UUID, writer, outputDir, false, true); err != nil {
+	if err := ExecuteDump(meta.UUID, writer, outputDir, false, true, dumpType, sortMode); err != nil {
 		return LaunchResult{}, fmt.Errorf("dump failed: %w", err)
 	}
 

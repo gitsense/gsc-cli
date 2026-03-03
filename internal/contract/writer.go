@@ -1,12 +1,12 @@
-/**
+/*
  * Component: Dump Writer Interface
- * Block-UUID: f1a0998b-3727-455e-9b62-3688434912f2
- * Parent-UUID: f0918a9d-8969-4773-8271-e5b361e953ef
- * Version: 1.3.0
- * Description: Added WritePatchedFile to the DumpWriter interface. This allows the orchestrator to persist the result of a successful patch application during the dump process.
+ * Block-UUID: 5edf749d-9b86-4bf1-80fa-a9b4c9b40aab
+ * Parent-UUID: f1a0998b-3727-455e-9b62-3688434912f2
+ * Version: 1.4.0
+ * Description: Added WriteProvenance to the DumpWriter interface. This method allows the orchestrator to persist the list of chats associated with a specific message, which is essential for the 'merged' dump type.
  * Language: Go
  * Created-at: 2026-03-03T07:37:57.416Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), Gemini 3 Flash (v1.3.0)
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), Gemini 3 Flash (v1.3.0), Gemini 3 Flash (v1.4.0)
  */
 
 
@@ -28,6 +28,10 @@ type DumpWriter interface {
 
 	// WriteMessage handles the persistence of the raw message content (message.md).
 	WriteMessage(msgDir string, msg db.Message) error
+
+	// WriteProvenance persists the chat metadata (provenance) for a message.
+	// This is used by the 'merged' type to create the <n>_chats.md file.
+	WriteProvenance(msgDir string, chats []db.Chat) error
 
 	// WriteBlock handles the persistence of a code block.
 	// The trim flag determines if smart trimming should be applied.

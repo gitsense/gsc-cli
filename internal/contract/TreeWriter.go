@@ -1,12 +1,12 @@
-/**
+/*
  * Component: Tree Dump Writer
- * Block-UUID: ee69a04d-81f9-4f2c-9179-7ea0a0e8cce8
- * Parent-UUID: 44cbe7a8-e91c-41b2-82dd-435db25eee1c
- * Version: 1.7.0
- * Description: Implemented WritePatchedFile to support the persistence of verified patch results in the conversational tree. Added logic to generate descriptive filenames for patched artifacts.
+ * Block-UUID: da8312de-3dd5-4543-94b5-bb99f1d7fe82
+ * Parent-UUID: ee69a04d-81f9-4f2c-9179-7ea0a0e8cce8
+ * Version: 1.8.0
+ * Description: Implemented WriteProvenance as a no-op to maintain compliance with the updated DumpWriter interface. The 'tree' type does not utilize provenance files.
  * Language: Go
  * Created-at: 2026-03-03T07:38:31.693Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0)
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), Gemini 3 Flash (v1.8.0)
  */
 
 
@@ -50,6 +50,11 @@ func (w *TreeWriter) GetMessageDir(chat db.Chat, msg db.Message, visibleIndex in
 func (w *TreeWriter) WriteMessage(msgDir string, msg db.Message) error {
 	path := filepath.Join(msgDir, "message.md")
 	return os.WriteFile(path, []byte(msg.Message.String), 0644)
+}
+
+// WriteProvenance is a no-op for the TreeWriter as provenance files are specific to the MergedWriter.
+func (w *TreeWriter) WriteProvenance(msgDir string, chats []db.Chat) error {
+	return nil
 }
 
 // WriteBlock persists a code block, including its traceability header.
