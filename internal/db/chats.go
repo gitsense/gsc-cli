@@ -99,14 +99,14 @@ func InsertContractWithAnchor(db *sql.DB, chatID int64, data ContractMessageData
 
 	// 1. Find the System Message (Level 0)
 	var systemID int64
-	err = tx.QueryRow("SELECT id FROM messages WHERE chat_id = ? AND role = 'system' ORDER BY id ASC LIMIT 1", chatID).Scan(&systemID)
+	err = tx.QueryRow("SELECT id FROM messages WHERE chat_id = ? AND role = 'system' and deleted = 0 ORDER BY id ASC LIMIT 1", chatID).Scan(&systemID)
 	if err != nil {
 		return 0, fmt.Errorf("failed to find system message: %w", err)
 	}
 
 	// 2. Find the Original First Message (Child of System)
 	var originalFirstID int64
-	err = tx.QueryRow("SELECT id FROM messages WHERE chat_id = ? AND parent_id = ? ORDER BY id ASC LIMIT 1", chatID, systemID).Scan(&originalFirstID)
+	err = tx.QueryRow("SELECT id FROM messages WHERE chat_id = ? AND parent_id = ? AND deleted = 0 ORDER BY id ASC LIMIT 1", chatID, systemID).Scan(&originalFirstID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return 0, fmt.Errorf("no first message found to re-parent")
@@ -164,7 +164,7 @@ func InsertContractWithAnchor(db *sql.DB, chatID int64, data ContractMessageData
 	}
 
 	// 5. Re-parent the Original First Message to the Contract
-	_, err = tx.Exec("UPDATE messages SET parent_id = ?, updated_at = ? WHERE id = ?", contractID, now, originalFirstID)
+	_, err = tx.Exec("UPDATE messages SET parent_id = ?, updated_at = ? WHERE id = ? AND delted = 0", contractID, now, originalFirstID)
 	if err != nil {
 		return 0, fmt.Errorf("failed to re-parent original first message: %w", err)
 	}
@@ -202,7 +202,7 @@ func UpdateContractMessage(db *sql.DB, msgID int64, data ContractMessageData) er
 	now := time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
 
 	// 4. Update the message
-	query := `UPDATE messages SET message = ?, meta = ?, updated_at = ? WHERE id = ?`
+	query := `UPDATE messages SET message = ?, meta = ?, updated_at = ? WHERE id = ? AND deleted = 0`
 	_, err = db.Exec(query, sql.NullString{String: markdown, Valid: true}, sql.NullString{String: string(metaJSON), Valid: true}, now, msgID)
 	if err != nil {
 		return fmt.Errorf("failed to update contract message: %w", err)
@@ -228,7 +228,7 @@ func UpdateContractMessagesByUUID(db *sql.DB, contractUUID string, data Contract
 
 	// 3. Update all matching messages
 	// We use json_extract to query the JSON field safely
-	query := `UPDATE messages SET message = ?, meta = ?, updated_at = ? WHERE type = 'gsc-cli-contract' AND json_extract(meta, '$.contract_uuid') = ?`
+	query := `UPDATE messages SET message = ?, meta = ?, updated_at = ? WHERE type = 'gsc-cli-contract' AND json_extract(meta, '$.contract_uuid') = ? AND deleted = 0`
 	
 	result, err := db.Exec(query, sql.NullString{String: markdown, Valid: true}, sql.NullString{String: string(metaJSON), Valid: true}, now, contractUUID)
 	if err != nil {
@@ -366,7 +366,7 @@ func FindMessageByRoleAndType(db *sql.DB, chatID int64, role string, msgType str
 
 // UpdateMessage updates the content of an existing message.
 func UpdateMessage(db *sql.DB, id int64, content string) error {
-	query := `UPDATE messages SET message = ?, updated_at = ? WHERE id = ?`
+	query := `UPDATE messages SET message = ?, updated_at = ? WHERE id = ? AND deleted = 0`
 	now := time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
 	
 	truncatedContent := truncateString(content, 100)
@@ -490,7 +490,7 @@ func FindManifestByHash(db *sql.DB, hash string) (*PublishedManifest, error) {
 
 // UpdateManifestTimestamp updates the published_at timestamp for an existing manifest (the "bump" logic).
 func UpdateManifestTimestamp(db *sql.DB, id int64) error {
-	query := `UPDATE published_manifests SET published_at = ? WHERE id = ?`
+	query := `UPDATE published_manifests SET published_at = ? WHERE id = ? AND deleted = 0`
 	now := time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
 	
 	result, err := db.Exec(query, now, id)
@@ -505,7 +505,7 @@ func UpdateManifestTimestamp(db *sql.DB, id int64) error {
 
 // DeletePublishedManifest performs a soft delete on a manifest record.
 func DeletePublishedManifest(db *sql.DB, uuidStr string) error {
-	query := `UPDATE published_manifests SET deleted = 1 WHERE uuid = ?`
+	query := `UPDATE published_manifests SET deleted = 1 WHERE uuid = ? AND deleted = 0`
 	_, err := db.Exec(query, uuidStr)
 	if err != nil {
 		return fmt.Errorf("failed to delete published manifest: %w", err)
