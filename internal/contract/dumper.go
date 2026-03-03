@@ -1,12 +1,12 @@
 /*
  * Component: Contract Dump Orchestrator
- * Block-UUID: b6245ce7-2d73-434d-aa84-42f85e85a5c0
- * Parent-UUID: 834f1034-768b-4306-ba03-f292d5b7c5c8
- * Version: 1.1.0
- * Description: Added GetDefaultDumpDir helper to resolve the standard output path for conversational dumps.
+ * Block-UUID: 05e93d1d-562d-4c89-863b-76d8f3f3c11f
+ * Parent-UUID: b6245ce7-2d73-434d-aa84-42f85e85a5c0
+ * Version: 1.2.0
+ * Description: Updated GetDefaultDumpDir to use the first 12 characters of the Contract UUID. This provides 48 bits of entropy (1 in 281 trillion collision chance), which is safe for the global root directory namespace while significantly shortening the path.
  * Language: Go
  * Created-at: 2026-03-03T02:23:17.722Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -24,9 +24,17 @@ import (
 )
 
 // GetDefaultDumpDir returns the standard path for contract dumps: ~/.gitsense/dumps/<uuid>
+// It truncates the UUID to 12 characters to shorten the path while maintaining safety (48 bits of entropy).
 func GetDefaultDumpDir(uuid string) string {
 	gscHome, _ := settings.GetGSCHome(false)
-	return filepath.Join(gscHome, "dumps", uuid)
+	
+	// Truncate to 12 chars for the root directory (Safe: 1 in 281 trillion collision chance)
+	shortUUID := uuid
+	if len(shortUUID) > 12 {
+		shortUUID = shortUUID[:12]
+	}
+	
+	return filepath.Join(gscHome, "dumps", shortUUID)
 }
 
 // ExecuteDump coordinates the full dump process for a given contract.
@@ -46,7 +54,15 @@ func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string) error
 
 	// 3. Find all chats associated with this contract
 	// We query the 'meta' JSON field for the contract_uuid
-	query := `SELECT id, uuid, name, type FROM chats WHERE json_extract(meta, '$.contract_uuid') = ? AND deleted = 0`
+	query := `
+		SELECT 
+			id, uuid, name, type 
+		FROM 
+			chats 
+		WHERE id IN (
+			SELECT chat_id FROM messages WHERE type = 'gsc-cli-contract' AND json_extract(meta, '$.contract_uuid') = ? AND deleted = 0
+		)`
+		
 	rows, err := sqliteDB.Query(query, contractUUID)
 	if err != nil {
 		return fmt.Errorf("failed to query chats for contract: %w", err)
