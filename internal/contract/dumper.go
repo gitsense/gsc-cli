@@ -1,12 +1,12 @@
 /**
  * Component: Contract Dump Orchestrator
- * Block-UUID: 762a78c7-7e7e-428f-82d2-59f9610c2ffa
- * Parent-UUID: 0e6efd67-e8f0-43aa-9a2a-3b423ff6cdcb
- * Version: 1.4.0
- * Description: Updated message processing loop to track a visibleIndex counter. This ensures that when system messages are excluded, the directory numbering starts at 002, providing a clear signal to the user about the hidden context.
+ * Block-UUID: 771fa35a-9dbc-4624-8da5-c437fc50efec
+ * Parent-UUID: 762a78c7-7e7e-428f-82d2-59f9610c2ffa
+ * Version: 1.5.0
+ * Description: Updated ExecuteDump to accept and pass the trim preference to the writer interface. This allows the orchestrator to control whether code blocks are smart-trimmed or preserved raw.
  * Language: Go
- * Created-at: 2026-03-03T04:22:22.000Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.4.0)
+ * Created-at: 2026-03-03T04:37:48.000Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
  */
 
 
@@ -38,7 +38,7 @@ func GetDefaultDumpDir(uuid string) string {
 }
 
 // ExecuteDump coordinates the full dump process for a given contract.
-func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, includeSystem bool) error {
+func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, includeSystem bool, trim bool) error {
 	// 1. Initialize Output
 	if err := writer.Prepare(outputDir); err != nil {
 		return fmt.Errorf("failed to prepare dump directory: %w", err)
@@ -119,20 +119,23 @@ func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, inclu
 			}
 
 			// Extract and write blocks
-			result, err := markdown.ExtractCodeBlocks(msg.Message.String)
+			// Pass the trim preference to the parser
+			result, err := markdown.ExtractCodeBlocks(msg.Message.String, trim)
 			if err != nil {
 				logger.Warning("Failed to parse markdown for message", "id", msg.ID, "error", err)
 				continue
 			}
 
 			for _, block := range result.Blocks {
-				if err := writer.WriteBlock(absMsgDir, block); err != nil {
+				// Pass trim preference to the writer
+				if err := writer.WriteBlock(absMsgDir, block, trim); err != nil {
 					return err
 				}
 			}
 
 			for _, patch := range result.Patches {
-				if err := writer.WritePatch(absMsgDir, patch); err != nil {
+				// Pass trim preference to the writer
+				if err := writer.WritePatch(absMsgDir, patch, trim); err != nil {
 					return err
 				}
 			}

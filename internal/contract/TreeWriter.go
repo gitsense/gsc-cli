@@ -1,12 +1,12 @@
 /**
  * Component: Tree Dump Writer
- * Block-UUID: 87cbcada-b41d-47d4-9c17-e9f335b46b6e
- * Parent-UUID: 1acda5f8-ce03-4794-be5b-eab6fe850dde
- * Version: 1.4.0
- * Description: Updated directory naming strategy for improved UX. Chat names are now truncated to 30 characters. Message directories use a simplified format (e.g., 002_asst) without timestamps, and roles are abbreviated (asst, syst, user). Visible indexing now starts at 002 if system messages are excluded.
+ * Block-UUID: 6b6a4e3e-1d2d-4936-a8e1-6cd6f7722313
+ * Parent-UUID: 87cbcada-b41d-47d4-9c17-e9f335b46b6e
+ * Version: 1.5.0
+ * Description: Updated WriteBlock and WritePatch to accept the trim boolean flag. The actual trimming logic is handled by the parser, so the writer simply persists the content provided in the block struct.
  * Language: Go
- * Created-at: 2026-03-03T04:22:22.000Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
+ * Created-at: 2026-03-03T04:39:27.000Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
  */
 
 
@@ -53,7 +53,9 @@ func (w *TreeWriter) WriteMessage(msgDir string, msg db.Message) error {
 }
 
 // WriteBlock persists a code block, including its traceability header.
-func (w *TreeWriter) WriteBlock(msgDir string, block markdown.CodeBlock) error {
+// The trim flag is passed to satisfy the interface, but the actual trimming
+// is handled by the parser before this method is called.
+func (w *TreeWriter) WriteBlock(msgDir string, block markdown.CodeBlock, trim bool) error {
 	// Determine filename: block_<idx>_<uuid>.ext or block_<idx>.ext
 	filename := fmt.Sprintf("%03d_block", block.Index + 1)
 	if block.BlockUUID != "" {
@@ -63,13 +65,16 @@ func (w *TreeWriter) WriteBlock(msgDir string, block markdown.CodeBlock) error {
 	filename += getExtension(block.Language)
 
 	// Combine header and code for full context
+	// Note: block.ExecutableCode is already processed (trimmed or raw) by the parser
 	content := block.RawHeader + "\n\n\n" + block.ExecutableCode
 	path := filepath.Join(msgDir, filename)
 	return os.WriteFile(path, []byte(content), 0644)
 }
 
 // WritePatch persists a patch block, including its metadata header.
-func (w *TreeWriter) WritePatch(msgDir string, patch markdown.PatchBlock) error {
+// The trim flag is passed to satisfy the interface, but the actual trimming
+// is handled by the parser before this method is called.
+func (w *TreeWriter) WritePatch(msgDir string, patch markdown.PatchBlock, trim bool) error {
 	// Determine filename: patch_<idx>_<uuid>.diff or patch_<idx>.diff
 	filename := fmt.Sprintf("%03d_patch", patch.Index + 1)
 	if patch.TargetBlockUUID != "" {
@@ -79,6 +84,7 @@ func (w *TreeWriter) WritePatch(msgDir string, patch markdown.PatchBlock) error 
 	filename += ".diff"
 
 	// Combine header and diff content
+	// Note: patch.ExecutableCode is already processed (trimmed or raw) by the parser
 	content := patch.RawHeader + "\n\n\n" + patch.ExecutableCode
 	path := filepath.Join(msgDir, filename)
 	return os.WriteFile(path, []byte(content), 0644)

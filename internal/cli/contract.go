@@ -1,12 +1,12 @@
 /**
  * Component: Contract CLI Commands
- * Block-UUID: 2bf9f8c7-f371-4036-8de8-df92291c6ea5
- * Parent-UUID: 94a1f5f4-bc1f-4cc7-90ea-fc1df916f4dd
- * Version: 1.20.0
- * Description: Added the 'dump' subcommand to 'gsc contract' to support generating conversational filesystem trees. Default strategy is 'tree'.
+ * Block-UUID: a2bf92bc-5be5-41a2-9b8a-630d588a2fa5
+ * Parent-UUID: 2bf9f8c7-f371-4036-8de8-df92291c6ea5
+ * Version: 1.21.0
+ * Description: Added the --raw flag to the 'dump' subcommand. This allows users to disable smart trimming and preserve the exact LLM output. The trim preference is passed to the orchestrator.
  * Language: Go
- * Created-at: 2026-03-03T04:11:10.716Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.9.1), GLM-4.7 (v1.9.2), Gemini 3 Flash (v1.9.3), Gemini 3 Flash (v1.9.4), Gemini 3 Flash (v1.9.5), GLM-4.7 (v1.9.6), GLM-4.7 (v1.9.7), GLM-4.7 (v1.9.8), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), Gemini 3 Flash (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.18.1), Gemini 3 Flash (v1.19.0), GLM-4.7 (v1.20.0)
+ * Created-at: 2026-03-03T04:36:18.000Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.9.1), GLM-4.7 (v1.9.2), Gemini 3 Flash (v1.9.3), Gemini 3 Flash (v1.9.4), Gemini 3 Flash (v1.9.5), GLM-4.7 (v1.9.6), GLM-4.7 (v1.9.7), GLM-4.7 (v1.9.8), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), Gemini 3 Flash (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.18.1), Gemini 3 Flash (v1.19.0), GLM-4.7 (v1.20.0), GLM-4.7 (v1.21.0)
  */
 
 
@@ -91,6 +91,7 @@ var (
 	contractDumpType   string
 	contractDumpOutput string
 	contractDumpIncludeSystem bool
+	contractDumpRaw    bool
 )
 
 // contractCmd represents the base command for contract management
@@ -680,8 +681,9 @@ and organizes them into a directory structure for local review and search.`,
 		}
 
 		// 4. Execute
-		logger.Info("Generating conversational dump...", "type", contractDumpType, "output", outputDir)
-		if err := contract.ExecuteDump(uuid, writer, outputDir, contractDumpIncludeSystem); err != nil {
+		// Note: !contractDumpRaw means trim is true by default
+		logger.Info("Generating conversational dump...", "type", contractDumpType, "output", outputDir, "trim", !contractDumpRaw)
+		if err := contract.ExecuteDump(uuid, writer, outputDir, contractDumpIncludeSystem, !contractDumpRaw); err != nil {
 			return err
 		}
 
@@ -765,6 +767,7 @@ func init() {
 	dumpContractCmd.Flags().StringVar(&contractDumpType, "type", "tree", "Dump strategy: tree (default)")
 	dumpContractCmd.Flags().StringVarP(&contractDumpOutput, "output", "o", "", "Output directory (default: ~/.gitsense/dumps/<uuid>)")
 	dumpContractCmd.Flags().BoolVar(&contractDumpIncludeSystem, "include-system", false, "Include the system message in the dump (default: false)")
+	dumpContractCmd.Flags().BoolVar(&contractDumpRaw, "raw", false, "Disable smart trimming (preserve exact LLM output)")
 
 	// Add subcommands to base contract command
 	contractCmd.AddCommand(createContractCmd)
