@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Markdown Parser Utility
- * Block-UUID: 1a4e44d5-416f-48e8-afe2-c41c2100f772
- * Parent-UUID: bff7c451-3b95-4503-aac7-000d54814d58
- * Version: 1.4.0
+ * Block-UUID: 8e4995ca-5df6-4952-8282-0655d3d3ce69
+ * Parent-UUID: 1a4e44d5-416f-48e8-afe2-c41c2100f772
+ * Version: 1.4.1
  * Description: Updated parsing logic to strictly separate RawHeader and ExecutableCode. The RawHeader now contains only the comment block, allowing for perfect reconstruction using the '\n\n\n' separator (two blank lines) as per the GitSense protocol.
  * Language: Go
- * Created-at: 2026-03-03T01:29:36.950Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0), Gemini 3 Flash (v1.3.0), Gemini 3 Flash (v1.4.0)
+ * Created-at: 2026-03-03T02:51:21.077Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0), Gemini 3 Flash (v1.3.0), Gemini 3 Flash (v1.4.0), Gemini 3 Flash (v1.4.1)
  */
 
 
@@ -77,7 +77,8 @@ var (
 // ExtractCodeBlocks parses a markdown string and returns structured blocks and patches.
 func ExtractCodeBlocks(content string) (*ParseResult, error) {
 	md := goldmark.New()
-	reader := text.NewReader([]byte(content))
+	source := []byte(content)
+	reader := text.NewReader(source)
 	doc := md.Parser().Parse(reader)
 
 	result := &ParseResult{
@@ -89,13 +90,13 @@ func ExtractCodeBlocks(content string) (*ParseResult, error) {
 	ast.Walk(doc, func(node ast.Node, entering bool) (ast.WalkStatus, error) {
 		if entering && node.Kind() == ast.KindFencedCodeBlock {
 			cb := node.(*ast.FencedCodeBlock)
-			lang := string(cb.Language(reader))
+			lang := string(cb.Language(source))
 			
 			var sb strings.Builder
 			lines := cb.Lines()
 			for i := 0; i < lines.Len(); i++ {
 				line := lines.At(i)
-				sb.Write(line.Value(reader))
+				sb.Write(line.Value(source))
 			}
 			rawContent := sb.String()
 
@@ -169,7 +170,6 @@ func parsePatchBlock(raw string, idx int) PatchBlock {
 func splitHeaderAndCode(raw string) (string, string) {
 	lines := strings.Split(raw, "\n")
 	
-	var headerLines []string
 	codeStartIdx := -1
 
 	// 1. Find where the code actually starts
