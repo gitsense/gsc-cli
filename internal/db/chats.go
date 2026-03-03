@@ -164,7 +164,7 @@ func InsertContractWithAnchor(db *sql.DB, chatID int64, data ContractMessageData
 	}
 
 	// 5. Re-parent the Original First Message to the Contract
-	_, err = tx.Exec("UPDATE messages SET parent_id = ?, updated_at = ? WHERE id = ? AND delted = 0", contractID, now, originalFirstID)
+	_, err = tx.Exec("UPDATE messages SET parent_id = ?, updated_at = ? WHERE id = ? AND deleted = 0", contractID, now, originalFirstID)
 	if err != nil {
 		return 0, fmt.Errorf("failed to re-parent original first message: %w", err)
 	}
