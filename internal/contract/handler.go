@@ -1,12 +1,12 @@
 /**
  * Component: Contract Intent Handler
- * Block-UUID: 6790b9be-0cbe-417a-9826-15f3a9403649
- * Parent-UUID: 1f137340-6db4-41ba-ba94-e9b9060569c0
- * Version: 1.8.0
- * Description: Updated handleReviewIntent to prioritize PreferredReview over PreferredEditor when launching the review tool.
+ * Block-UUID: 730bb858-7659-43ca-94b5-1614032d6a8a
+ * Parent-UUID: 6790b9be-0cbe-417a-9826-15f3a9403649
+ * Version: 1.9.0
+ * Description: Added handleDumpIntent to support the 'dump' alias from the Web UI. This coordinates the conversational filesystem generation and launches a terminal in the resulting directory. Updated handleTerminalIntent to accept an optional custom command string.
  * Language: Go
- * Created-at: 2026-03-02T17:05:03.632Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), Gemini 3 Flash (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.6.1), Gemini 3 Flash (v1.6.2), Gemini 3 Flash (v1.7.0), GLM-4.7 (v1.8.0)
+ * Created-at: 2026-03-03T02:23:17.722Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), Gemini 3 Flash (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.6.1), Gemini 3 Flash (v1.6.2), Gemini 3 Flash (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0)
  */
 
 
@@ -41,7 +41,7 @@ func HandleLaunch(req LaunchRequest) (LaunchResult, error) {
 	// 2. Handle Alias
 	switch req.Alias {
 	case "terminal":
-		return handleTerminalIntent(meta, req.AppOverride)
+		return handleTerminalIntent(meta, req.AppOverride, "")
 	case "editor":
 		// If no BlockUUID, we are just opening the editor in the project root
 		if req.BlockUUID == "" {
@@ -51,6 +51,8 @@ func HandleLaunch(req LaunchRequest) (LaunchResult, error) {
 		return handleReviewIntent(meta, req)
 	case "review":
 		return handleReviewIntent(meta, req)
+	case "dump":
+		return handleDumpIntent(meta, req)
 	case "exec":
 		return handleExecIntent(meta, req.Cmd)
 	default:
@@ -66,6 +68,7 @@ func GetLaunchCapabilities() LaunchCapabilities {
 		{Name: "editor", Description: "Open the project in an editor"},
 		{Name: "review", Description: "Review staged AI code"},
 		{Name: "exec", Description: "Execute a raw command"},
+		{Name: "dump", Description: "Dump chat history to a filesystem tree"},
 	}
 
 	// 2. Extract Apps
@@ -90,7 +93,8 @@ func GetLaunchCapabilities() LaunchCapabilities {
 }
 
 // handleTerminalIntent launches the preferred terminal in the contract's workdir.
-func handleTerminalIntent(meta *ContractMetadata, override string) (LaunchResult, error) {
+// If cmdStr is provided, it overrides the default behavior (used by dump).
+func handleTerminalIntent(meta *ContractMetadata, override string, cmdStr string) (LaunchResult, error) {
 	term := meta.PreferredTerminal
 	if override != "" {
 		term = override
@@ -105,9 +109,11 @@ func handleTerminalIntent(meta *ContractMetadata, override string) (LaunchResult
 		return LaunchResult{}, fmt.Errorf("unsupported terminal: %s", term)
 	}
 
-	// Pass the absolute workdir to ensure external apps (like iTerm2) resolve the path correctly
-	cmdStr := fmt.Sprintf(template, meta.Workdir)
-	
+	// If no custom command provided, use the default workdir launch
+	if cmdStr == "" {
+		cmdStr = fmt.Sprintf(template, meta.Workdir)
+	}
+
 	// Increased timeout to 15s to allow for slow AppleScript/App startup
 	executor := exec.NewExecutor(cmdStr, exec.ExecFlags{TimeoutSeconds: 15, Silent: true}, meta.Workdir)
 	result, err := executor.Run()
@@ -115,7 +121,7 @@ func handleTerminalIntent(meta *ContractMetadata, override string) (LaunchResult
 		return LaunchResult{}, fmt.Errorf("failed to launch terminal: %w", err)
 	}
 
-	msg := fmt.Sprintf("Launched %s in %s", term, meta.Workdir)
+	msg := fmt.Sprintf("Launched %s", term)
 	if result.ExitCode != 0 {
 		msg = fmt.Sprintf("Failed to launch %s: %s", term, getExitCodeDescription(result.ExitCode))
 	}
@@ -230,6 +236,36 @@ func handleReviewIntent(meta *ContractMetadata, req LaunchRequest) (LaunchResult
 		StagedPath: stagedPath,
 		Command:    cmdStr,
 	}, nil
+}
+
+// handleDumpIntent coordinates the dump and launches a terminal in the dump directory.
+func handleDumpIntent(meta *ContractMetadata, req LaunchRequest) (LaunchResult, error) {
+	// 1. Select Strategy (Default to Tree)
+	var writer DumpWriter
+	dumpType := req.Action
+	if dumpType == "" {
+		dumpType = "tree"
+	}
+
+	switch dumpType {
+	case "tree":
+		writer = &TreeWriter{}
+	default:
+		return LaunchResult{}, fmt.Errorf("unsupported dump type: %s", dumpType)
+	}
+
+	// 2. Execute Dump
+	outputDir := GetDefaultDumpDir(meta.UUID)
+	if err := ExecuteDump(meta.UUID, writer, outputDir); err != nil {
+		return LaunchResult{}, fmt.Errorf("dump failed: %w", err)
+	}
+
+	// 3. Launch Terminal in the Dump Directory
+	// We override the workdir for the terminal launch to the dump directory
+	cmdStr := fmt.Sprintf("cd %s && clear && tree -C .", outputDir)
+	
+	// We use the terminal launcher but point it to the dump directory instead of the project workdir
+	return handleTerminalIntent(meta, req.AppOverride, cmdStr)
 }
 
 // handleExecIntent runs a raw command in the contract context.

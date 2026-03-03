@@ -11,6 +11,7 @@ require (
 	github.com/sergi/go-diff v1.0.0
 	github.com/spf13/cobra v1.8.0
 	github.com/src-d/enry/v2 v2.1.0
+	github.com/yuin/goldmark v1.4.13
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.28.0

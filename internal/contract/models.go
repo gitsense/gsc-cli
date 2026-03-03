@@ -1,12 +1,12 @@
 /**
  * Component: Contract Models
- * Block-UUID: 566f4ee8-a648-4cc9-ac86-4434dbfcb4db
- * Parent-UUID: 38c376f1-4685-43ed-9078-45bd729e779b
- * Version: 1.10.0
- * Description: Renamed 'Intent' to 'Alias' in LaunchRequest. Consolidated EditorOverride and TerminalOverride into AppOverride. Added LaunchCapabilities struct to support the --list discovery feature.
+ * Block-UUID: 4b6ba222-01b0-4c96-acf4-3b12b84b9830
+ * Parent-UUID: 566f4ee8-a648-4cc9-ac86-4434dbfcb4db
+ * Version: 1.11.0
+ * Description: Updated LaunchRequest Action field documentation to reflect support for dump types (tree, text, mapped) in addition to review actions (source, patch).
  * Language: Go
- * Created-at: 2026-03-02T19:20:28.693Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.10.0)
+ * Created-at: 2026-03-03T02:23:17.722Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0)
  */
 
 
@@ -51,10 +51,10 @@ type ContractMetadata struct {
 type LaunchRequest struct {
 	ContractUUID string `json:"contract_uuid"`
 	Authcode     string `json:"authcode"`
-	Alias        string `json:"alias"` // "review", "terminal", "editor", "exec"
+	Alias        string `json:"alias"` // "review", "terminal", "editor", "exec", "dump"
 	BlockUUID    string `json:"block_uuid,omitempty"`
 	ParentUUID   string `json:"parent_uuid,omitempty"`
-	Action       string `json:"action,omitempty"` // "source", "patch"
+	Action       string `json:"action,omitempty"` // "source", "patch" (review) or "tree", "text", "mapped" (dump)
 	AppOverride  string `json:"app_override,omitempty"` // Overrides preferred app (e.g., "zed", "iterm2")
 	Cmd          string `json:"cmd,omitempty"`
 }

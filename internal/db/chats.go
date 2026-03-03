@@ -1,12 +1,12 @@
 /**
  * Component: Chat Database Operations
- * Block-UUID: 808a9d9a-9156-4e29-8b80-d81db49d37f8
- * Parent-UUID: f8c62554-9b87-4c68-a6c8-212052d9453c
- * Version: 1.15.0
- * Description: Updated FormatContractMarkdown to include Editor and Terminal rows in the table. Added a blurb below the table with instructions on how to retrieve the auth code.
+ * Block-UUID: 2f30df95-b4ec-40ec-b18d-faf2c83031ff
+ * Parent-UUID: 808a9d9a-9156-4e29-8b80-d81db49d37f8
+ * Version: 1.16.0
+ * Description: Added GetMessagesRecursive to retrieve the full conversation thread in the correct hierarchical order using a recursive CTE. This is essential for generating accurate conversational filesystem trees.
  * Language: Go
  * Created-at: 2026-03-01T16:31:54.274Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.10.1), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0)
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), Gemini 3 Flash (v1.16.0)
  */
 
 
@@ -128,7 +128,8 @@ func InsertContractWithAnchor(db *sql.DB, chatID int64, data ContractMessageData
 	insertQuery := `
 		INSERT INTO messages (
 			type, deleted, visibility, chat_id, parent_id, level, 
-			model, real_model, temperature, role, message, meta, created_at, updated_at
+			model, 
+			real_model, temperature, role, message, meta, created_at, updated_at
 		) VALUES (
 			?, ?, ?, ?, ?, ?, 
 			(SELECT main_model FROM chats WHERE id = ?), 
@@ -705,4 +706,61 @@ func GetLastMessageID(db *sql.DB, chatID int64) (int64, error) {
 		return 0, fmt.Errorf("failed to find last message: %w", err)
 	}
 	return lastID, nil
+}
+
+// GetMessagesRecursive retrieves all messages in a chat, ordered by their position in the conversation tree.
+// It uses a recursive CTE to traverse from the root (parent_id = 0) down to the leaves.
+func GetMessagesRecursive(dbConn *sql.DB, chatID int64) ([]Message, error) {
+	query := `
+	WITH RECURSIVE conversation_tree AS (
+		SELECT
+			0 AS position,
+			id, type, deleted, visibility, chat_id, parent_id, level, 
+			role, message, created_at, updated_at
+		FROM
+			messages
+		WHERE
+			deleted = 0 AND
+			chat_id = ? AND
+			parent_id = 0
+		UNION ALL
+		SELECT
+			ct.position + 1,
+			m.id, m.type, m.deleted, m.visibility, m.chat_id, m.parent_id, m.level, 
+			m.role, m.message, m.created_at, m.updated_at
+		FROM
+			messages m
+		INNER JOIN conversation_tree ct ON m.parent_id = ct.id
+		WHERE
+			m.chat_id = ? AND
+			m.deleted = 0
+	)
+	SELECT * FROM conversation_tree ORDER BY position ASC, created_at ASC`
+
+	rows, err := dbConn.Query(query, chatID, chatID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query conversation tree: %w", err)
+	}
+	defer rows.Close()
+
+	var messages []Message
+	for rows.Next() {
+		var m Message
+		var createdAtStr, updatedAtStr string
+		err := rows.Scan(
+			new(int), // position (discard)
+			&m.ID, &m.Type, &m.Deleted, &m.Visibility, &m.ChatID, &m.ParentID, &m.Level,
+			&m.Role, &m.Message, &createdAtStr, &updatedAtStr,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan message row: %w", err)
+		}
+		
+		m.CreatedAt, _ = time.Parse("2006-01-02T15:04:05.000Z", createdAtStr)
+		m.UpdatedAt, _ = time.Parse("2006-01-02T15:04:05.000Z", updatedAtStr)
+		
+		messages = append(messages, m)
+	}
+
+	return messages, nil
 }

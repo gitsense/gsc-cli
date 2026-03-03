@@ -1,12 +1,12 @@
 /**
  * Component: Contract CLI Commands
- * Block-UUID: 34ee1b69-c7cd-4157-ab5d-58805fc3bff3
- * Parent-UUID: e14045bf-1d41-4e94-a180-ada76289197c
- * Version: 1.18.1
- * Description: Fixed typo in init() function where updateContractCmd was used instead of updateFileCmd for flag requirements.
+ * Block-UUID: 94a1f5f4-bc1f-4cc7-90ea-fc1df916f4dd
+ * Parent-UUID: 34ee1b69-c7cd-4157-ab5d-58805fc3bff3
+ * Version: 1.19.0
+ * Description: Added the 'dump' subcommand to 'gsc contract' to support generating conversational filesystem trees. Default strategy is 'tree'.
  * Language: Go
- * Created-at: 2026-03-02T07:30:00.000Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.9.1), GLM-4.7 (v1.9.2), Gemini 3 Flash (v1.9.3), Gemini 3 Flash (v1.9.4), Gemini 3 Flash (v1.9.5), GLM-4.7 (v1.9.6), GLM-4.7 (v1.9.7), GLM-4.7 (v1.9.8), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), Gemini 3 Flash (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.18.1)
+ * Created-at: 2026-03-03T02:23:17.722Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.9.1), GLM-4.7 (v1.9.2), Gemini 3 Flash (v1.9.3), Gemini 3 Flash (v1.9.4), Gemini 3 Flash (v1.9.5), GLM-4.7 (v1.9.6), GLM-4.7 (v1.9.7), GLM-4.7 (v1.9.8), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), Gemini 3 Flash (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.18.1), Gemini 3 Flash (v1.19.0)
  */
 
 
@@ -85,6 +85,11 @@ var (
 	contractLaunchAppOverride      string
 	contractLaunchCmd              string
 	contractLaunchList             bool
+
+	// Dump flags
+	contractDumpUUID   string
+	contractDumpType   string
+	contractDumpOutput string
 )
 
 // contractCmd represents the base command for contract management
@@ -639,6 +644,51 @@ in a proper editor.`,
 	},
 }
 
+// dumpContractCmd handles 'gsc contract dump'
+var dumpContractCmd = &cobra.Command{
+	Use:   "dump",
+	Short: "Dump chat history into a navigable filesystem tree",
+	Long: `Extracts all code blocks and messages from chats associated with a contract 
+and organizes them into a directory structure for local review and search.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true
+
+		// 1. Resolve UUID
+		uuid := contractDumpUUID
+		if uuid == "" {
+			foundUUID, err := findContractUUIDByWorkdir()
+			if err != nil {
+				return err
+			}
+			uuid = foundUUID
+		}
+
+		// 2. Resolve Output Directory
+		outputDir := contractDumpOutput
+		if outputDir == "" {
+			outputDir = contract.GetDefaultDumpDir(uuid)
+		}
+
+		// 3. Select Strategy
+		var writer contract.DumpWriter
+		switch contractDumpType {
+		case "tree":
+			writer = &contract.TreeWriter{}
+		default:
+			return fmt.Errorf("unsupported dump type: %s (currently only 'tree' is supported)", contractDumpType)
+		}
+
+		// 4. Execute
+		logger.Info("Generating conversational dump...", "type", contractDumpType, "output", outputDir)
+		if err := contract.ExecuteDump(uuid, writer, outputDir); err != nil {
+			return err
+		}
+
+		fmt.Printf("Dump complete: %s\n", outputDir)
+		return nil
+	},
+}
+
 func init() {
 	// Create Flags
 	createContractCmd.Flags().StringVar(&contractCode, "code", "", "6-digit handshake code from chat (required)")
@@ -709,6 +759,11 @@ func init() {
 	launchContractCmd.Flags().StringVar(&contractLaunchCmd, "cmd", "", "Raw command for exec alias")
 	launchContractCmd.Flags().BoolVar(&contractLaunchList, "list", false, "List available aliases, apps, and commands")
 
+	// Dump Flags
+	dumpContractCmd.Flags().StringVar(&contractDumpUUID, "uuid", "", "Contract UUID (optional if in workdir)")
+	dumpContractCmd.Flags().StringVar(&contractDumpType, "type", "tree", "Dump strategy: tree (default)")
+	dumpContractCmd.Flags().StringVarP(&contractDumpOutput, "output", "o", "", "Output directory (default: ~/.gitsense/dumps/<uuid>)")
+
 	// Add subcommands to base contract command
 	contractCmd.AddCommand(createContractCmd)
 	contractCmd.AddCommand(statusContractCmd)
@@ -722,6 +777,7 @@ func init() {
 	contractCmd.AddCommand(testContractCmd)
 	contractCmd.AddCommand(execContractCmd)
 	contractCmd.AddCommand(launchContractCmd)
+	contractCmd.AddCommand(dumpContractCmd)
 }
 
 // RegisterContractCommand adds the contract command to the root CLI
