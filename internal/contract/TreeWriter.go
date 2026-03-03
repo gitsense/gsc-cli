@@ -1,12 +1,12 @@
 /**
  * Component: Tree Dump Writer
- * Block-UUID: 1acda5f8-ce03-4794-be5b-eab6fe850dde
- * Parent-UUID: 6971ad23-c452-4615-8785-08d43c802eb2
- * Version: 1.3.0
- * Description: Updated filename generation to truncate UUIDs to the first 8 characters for better readability while maintaining uniqueness.
+ * Block-UUID: 87cbcada-b41d-47d4-9c17-e9f335b46b6e
+ * Parent-UUID: 1acda5f8-ce03-4794-be5b-eab6fe850dde
+ * Version: 1.4.0
+ * Description: Updated directory naming strategy for improved UX. Chat names are now truncated to 30 characters. Message directories use a simplified format (e.g., 002_asst) without timestamps, and roles are abbreviated (asst, syst, user). Visible indexing now starts at 002 if system messages are excluded.
  * Language: Go
- * Created-at: 2026-03-03T03:51:45.811Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
+ * Created-at: 2026-03-03T04:22:22.000Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
  */
 
 
@@ -23,6 +23,8 @@ import (
 	"github.com/gitsense/gsc-cli/internal/markdown"
 )
 
+const maxChatNameLength = 30
+
 // TreeWriter implements the DumpWriter interface for the conversational tree strategy.
 type TreeWriter struct{}
 
@@ -37,11 +39,11 @@ func (w *TreeWriter) Prepare(outputDir string) error {
 }
 
 // GetMessageDir generates the directory path for a specific message.
-// Format: chat_<id>_<sanitized_name>/<pos>_<timestamp>_<role>/
-func (w *TreeWriter) GetMessageDir(chat db.Chat, msg db.Message, position int) string {
-	safeName := sanitizeName(chat.Name)
-	timestamp := msg.CreatedAt.Format("2006-01-02T15-04-05")
-	return fmt.Sprintf("chat_%d_%s/%02d_%s_%s", chat.ID, safeName, position, timestamp, msg.Role)
+// Format: chat_<id>_<truncated_name>/<visible_index>_<abbreviated_role>/
+func (w *TreeWriter) GetMessageDir(chat db.Chat, msg db.Message, visibleIndex int) string {
+	safeName := formatChatName(chat.Name)
+	role := abbreviateRole(msg.Role)
+	return fmt.Sprintf("chat_%d_%s/%03d_%s", chat.ID, safeName, visibleIndex, role)
 }
 
 // WriteMessage persists the raw markdown content of the message.
@@ -82,10 +84,33 @@ func (w *TreeWriter) WritePatch(msgDir string, patch markdown.PatchBlock) error 
 	return os.WriteFile(path, []byte(content), 0644)
 }
 
-// sanitizeName replaces unsafe characters in chat names with underscores.
-func sanitizeName(name string) string {
+// formatChatName sanitizes and truncates the chat name to a maximum length.
+func formatChatName(name string) string {
 	reg := regexp.MustCompile(`[^a-zA-Z0-9_-]`)
-	return reg.ReplaceAllString(name, "_")
+	safe := reg.ReplaceAllString(name, "_")
+	
+	if len(safe) > maxChatNameLength {
+		return safe[:maxChatNameLength] + "..."
+	}
+	return safe
+}
+
+// abbreviateRole maps full role names to 4-character codes.
+func abbreviateRole(role string) string {
+	switch strings.ToLower(role) {
+	case "assistant":
+		return "asst"
+	case "system":
+		return "syst"
+	case "user":
+		return "user"
+	default:
+		// Fallback: take first 4 chars
+		if len(role) > 4 {
+			return role[:4]
+		}
+		return role
+	}
 }
 
 // getExtension maps a language string to a file extension.

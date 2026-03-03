@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Contract Dump Orchestrator
- * Block-UUID: 05e93d1d-562d-4c89-863b-76d8f3f3c11f
- * Parent-UUID: b6245ce7-2d73-434d-aa84-42f85e85a5c0
- * Version: 1.2.0
- * Description: Updated GetDefaultDumpDir to use the first 12 characters of the Contract UUID. This provides 48 bits of entropy (1 in 281 trillion collision chance), which is safe for the global root directory namespace while significantly shortening the path.
+ * Block-UUID: 762a78c7-7e7e-428f-82d2-59f9610c2ffa
+ * Parent-UUID: 0e6efd67-e8f0-43aa-9a2a-3b423ff6cdcb
+ * Version: 1.4.0
+ * Description: Updated message processing loop to track a visibleIndex counter. This ensures that when system messages are excluded, the directory numbering starts at 002, providing a clear signal to the user about the hidden context.
  * Language: Go
- * Created-at: 2026-03-03T02:23:17.722Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0)
+ * Created-at: 2026-03-03T04:22:22.000Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.4.0)
  */
 
 
@@ -38,7 +38,7 @@ func GetDefaultDumpDir(uuid string) string {
 }
 
 // ExecuteDump coordinates the full dump process for a given contract.
-func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string) error {
+func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, includeSystem bool) error {
 	// 1. Initialize Output
 	if err := writer.Prepare(outputDir); err != nil {
 		return fmt.Errorf("failed to prepare dump directory: %w", err)
@@ -92,13 +92,21 @@ func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string) error
 			return fmt.Errorf("failed to fetch messages for chat %d: %w", chat.ID, err)
 		}
 
-		for pos, msg := range messages {
+		// Track the visible index for directory naming
+		visibleIndex := 1
+
+		for _, msg := range messages {
 			if !msg.Message.Valid {
 				continue
 			}
 
-			// Determine directory for this message
-			relMsgDir := writer.GetMessageDir(chat, msg, pos)
+			// Skip system messages unless explicitly requested
+			if !includeSystem && msg.Role == "system" {
+				continue
+			}
+
+			// Determine directory for this message using the visible index
+			relMsgDir := writer.GetMessageDir(chat, msg, visibleIndex)
 			absMsgDir := filepath.Join(outputDir, relMsgDir)
 
 			if err := os.MkdirAll(absMsgDir, 0755); err != nil {
@@ -128,6 +136,9 @@ func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string) error
 					return err
 				}
 			}
+
+			// Increment visible index only for messages actually written
+			visibleIndex++
 		}
 	}
 

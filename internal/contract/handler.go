@@ -1,12 +1,12 @@
 /**
  * Component: Contract Intent Handler
- * Block-UUID: 730bb858-7659-43ca-94b5-1614032d6a8a
- * Parent-UUID: 6790b9be-0cbe-417a-9826-15f3a9403649
- * Version: 1.9.0
+ * Block-UUID: e1461367-68f5-42b4-8af4-efdcc414cf1a
+ * Parent-UUID: 730bb858-7659-43ca-94b5-1614032d6a8a
+ * Version: 1.10.0
  * Description: Added handleDumpIntent to support the 'dump' alias from the Web UI. This coordinates the conversational filesystem generation and launches a terminal in the resulting directory. Updated handleTerminalIntent to accept an optional custom command string.
  * Language: Go
- * Created-at: 2026-03-03T02:23:17.722Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), Gemini 3 Flash (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.6.1), Gemini 3 Flash (v1.6.2), Gemini 3 Flash (v1.7.0), GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0)
+ * Created-at: 2026-03-03T04:13:06.135Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.10.0)
  */
 
 
@@ -256,7 +256,7 @@ func handleDumpIntent(meta *ContractMetadata, req LaunchRequest) (LaunchResult, 
 
 	// 2. Execute Dump
 	outputDir := GetDefaultDumpDir(meta.UUID)
-	if err := ExecuteDump(meta.UUID, writer, outputDir); err != nil {
+	if err := ExecuteDump(meta.UUID, writer, outputDir, false); err != nil {
 		return LaunchResult{}, fmt.Errorf("dump failed: %w", err)
 	}
 
