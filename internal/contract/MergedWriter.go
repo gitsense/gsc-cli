@@ -1,25 +1,22 @@
-/*
+/**
  * Component: Merged Dump Writer
- * Block-UUID: 7276c2f7-9504-4048-bcbd-703038fb9ed7
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 3b8154e0-0fc2-4c7e-8f0f-f2949303192c
+ * Parent-UUID: 8e764a94-6efd-49a5-9579-5ddcd12342f6
+ * Version: 1.0.2
  * Description: Implements the DumpWriter interface for the 'merged' strategy. It generates a squashed filesystem tree where duplicate messages are unified. Directory names follow the <rank>_<count>_<role>_<hash> convention, and provenance files (<n>_chats.md) are generated for each node.
  * Language: Go
- * Created-at: 2026-03-03T17:15:00.000Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Created-at: 2026-03-03T17:32:45.109Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2)
  */
 
 
 package contract
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/gitsense/gsc-cli/internal/db"
 	"github.com/gitsense/gsc-cli/internal/markdown"
@@ -122,18 +119,6 @@ func (w *MergedWriter) WritePatchedFile(msgDir string, patch markdown.PatchBlock
 	fullContent := header + "\n\n\n" + content
 	path := filepath.Join(msgDir, filename)
 	return os.WriteFile(path, []byte(fullContent), 0644)
-}
-
-// calculateMessageHash generates a deterministic hash for a message based on its role, content, and creation time.
-// This ensures that messages with identical content across different chats resolve to the same hash.
-func calculateMessageHash(msg db.Message) string {
-	h := sha256.New()
-	h.Write([]byte(msg.Role))
-	if msg.Message.Valid {
-		h.Write([]byte(msg.Message.String))
-	}
-	h.Write([]byte(msg.CreatedAt.Format(time.RFC3339)))
-	return hex.EncodeToString(h.Sum(nil))[:8]
 }
 
 // pluralize returns "s" if n is not 1, otherwise an empty string.

@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Contract Dump Orchestrator
- * Block-UUID: 621367c4-520d-408a-9bf7-b2079d2833de
- * Parent-UUID: 093b40ed-b5df-42c0-9786-ce5299ec76c7
- * Version: 2.0.0
+ * Block-UUID: 298ee9a5-840e-44a2-8624-63a8d47d5146
+ * Parent-UUID: 621367c4-520d-408a-9bf7-b2079d2833de
+ * Version: 2.0.1
  * Description: Refactored ExecuteDump to support the 'merged' dump type. Added Pass 0 to build a global MergedNode tree, calculate metrics (ChatCount, MaxSubtreeTimestamp), and handle sorting strategies (recency, popularity, chronological). The orchestrator now traverses the merged tree instead of individual chats for the 'merged' type.
  * Language: Go
- * Created-at: 2026-03-03T07:38:59.550Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), Gemini 3 Flash (v1.8.0), Gemini 3 Flash (v1.8.1), Gemini 3 Flash (v1.8.2), Gemini 3 Flash (v1.9.0), Gemini 3 Flash (v2.0.0)
+ * Created-at: 2026-03-03T17:28:22.164Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), Gemini 3 Flash (v1.8.0), Gemini 3 Flash (v1.8.1), Gemini 3 Flash (v1.8.2), Gemini 3 Flash (v1.9.0), Gemini 3 Flash (v2.0.0), GLM-4.7 (v2.0.1)
  */
 
 
@@ -16,6 +16,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"database/sql"
 	"os"
 	"path/filepath"
 	"sort"

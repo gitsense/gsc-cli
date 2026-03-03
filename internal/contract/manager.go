@@ -1,12 +1,12 @@
 /**
  * Component: Contract Manager
- * Block-UUID: 1d9374e1-8e54-4db2-b758-51bc5382952e
- * Parent-UUID: e2f07a68-e730-4a00-aed8-24e27206a497
- * Version: 1.11.0
+ * Block-UUID: edf4533e-a88a-47e1-85c9-04e17842f2c4
+ * Parent-UUID: 1d9374e1-8e54-4db2-b758-51bc5382952e
+ * Version: 1.12.0
  * Description: Updated CreateContract to accept and persist PreferredReview. Updated GetContractInfo and FormatContractInfo to display the new preference. Ensured PreferredReview is preserved in CancelContract, RenewContract, and DeleteContract.
  * Language: Go
- * Created-at: 2026-03-03T16:05:46.100Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), Gemini 3 Flash (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0)
+ * Created-at: 2026-03-03T17:30:44.053Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), Gemini 3 Flash (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0)
  */
 
 
@@ -571,6 +571,12 @@ func FormatContractInfo(info *ContractInfoResult, format string) string {
 	sb.WriteString(fmt.Sprintf("  Review Tool:  %s\n", review))
 	
 	return sb.String()
+}
+
+// GetDefaultDumpDir returns the default output directory for a contract dump.
+func GetDefaultDumpDir(uuid string) string {
+	gscHome, _ := settings.GetGSCHome(false)
+	return filepath.Join(gscHome, "dumps", uuid)
 }
 
 // FormatContractTest formats the output for the 'contract test' command.

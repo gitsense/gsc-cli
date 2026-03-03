@@ -23,7 +23,7 @@ import (
 	"github.com/gitsense/gsc-cli/internal/markdown"
 )
 
-const maxChatNameLength = 30
+const maxChatNameLength = 20
 
 // TreeWriter implements the DumpWriter interface for the conversational tree strategy.
 type TreeWriter struct{}
