@@ -1,18 +1,19 @@
 /**
  * Component: Contract Dump Orchestrator
- * Block-UUID: 99085959-89e1-4484-a810-1fbbd916be1f
- * Parent-UUID: 3f8a9b2c-1d4e-5f6a-9b8c-0d1e2f3a4b5c
- * Version: 2.2.0
+ * Block-UUID: ea3f0cb9-4d2f-47c8-bb43-2c43d07438b4
+ * Parent-UUID: 99085959-89e1-4484-a810-1fbbd916be1f
+ * Version: 2.3.0
  * Description: Refactored ExecuteDump to support the 'merged' dump type. Added Pass 0 to build a global MergedNode tree, calculate metrics (ChatCount, MaxSubtreeTimestamp), and handle sorting strategies (recency, popularity, chronological). The orchestrator now traverses the merged tree instead of individual chats for the 'merged' type.
  * Language: Go
- * Created-at: 2026-03-03T18:40:51.647Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0)
+ * Created-at: 2026-03-03T19:22:00.669Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0)
  */
 
 
 package contract
 
 import (
+	"errors"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -184,7 +185,17 @@ func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, inclu
 				patchedCode, err := ApplyPatch(sourceCode, patch.ExecutableCode)
 				if err != nil {
 					if debugPatch {
-						debugPath, writeErr := WriteDebugArtifacts(sourceCode, patch.ExecutableCode, patch.TargetBlockUUID, err)
+						var pErr *PatchError
+						phase1Diff := patch.ExecutableCode
+						phase2Diff := ""
+						
+						// Extract diffs from the error if it's a PatchError
+						if errors.As(err, &pErr) {
+							phase1Diff = pErr.Phase1Diff
+							phase2Diff = pErr.Phase2Diff
+						}
+
+						debugPath, writeErr := WriteDebugArtifacts(sourceCode, phase1Diff, phase2Diff, patch.TargetBlockUUID, err)
 						if writeErr != nil {
 							logger.Error("Failed to write debug artifacts", "error", writeErr)
 						} else {
@@ -396,7 +407,17 @@ func executeMergedDump(chats []db.Chat, sqliteDB *sql.DB, writer DumpWriter, out
 				patchedCode, err := ApplyPatch(sourceCode, patch.ExecutableCode)
 				if err != nil {
 					if debugPatch {
-						debugPath, writeErr := WriteDebugArtifacts(sourceCode, patch.ExecutableCode, patch.TargetBlockUUID, err)
+						var pErr *PatchError
+						phase1Diff := patch.ExecutableCode
+						phase2Diff := ""
+
+						// Extract diffs from the error if it's a PatchError
+						if errors.As(err, &pErr) {
+							phase1Diff = pErr.Phase1Diff
+							phase2Diff = pErr.Phase2Diff
+						}
+
+						debugPath, writeErr := WriteDebugArtifacts(sourceCode, phase1Diff, phase2Diff, patch.TargetBlockUUID, err)
 						if writeErr != nil {
 							logger.Error("Failed to write debug artifacts", "error", writeErr)
 						} else {
