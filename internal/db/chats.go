@@ -1,12 +1,12 @@
 /**
  * Component: Chat Database Operations
- * Block-UUID: fc382911-c27a-4e4e-aa2c-a49739cd8aa3
- * Parent-UUID: 8c9d2e3f-4a5b-6c7d-8e9f-0a1b2c3d4e5f
- * Version: 1.18.0
+ * Block-UUID: 1a8466e6-9994-4a4e-beca-72965c6b0b97
+ * Parent-UUID: 332a8849-d768-424b-8229-9729527df76b
+ * Version: 1.20.0
  * Description: Added GetMessagesRecursive to retrieve the full conversation thread in the correct hierarchical order using a recursive CTE. This is essential for generating accurate conversational filesystem trees.
  * Language: Go
- * Created-at: 2026-03-04T02:31:19.088Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), Gemini 3 Flash (v1.16.0), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0)
+ * Created-at: 2026-03-04T17:00:28.279Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), Gemini 3 Flash (v1.16.0), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.19.0), GLM-4.7 (v1.20.0)
  */
 
 
@@ -242,10 +242,10 @@ func UpdateContractMessagesByUUID(db *sql.DB, contractUUID string, data Contract
 
 // GetMessage retrieves a message by its ID.
 func GetMessage(db *sql.DB, id int64) (*Message, error) {
-	query := `SELECT id, chat_id, level FROM messages WHERE id = ? AND deleted = 0`
+	query := `SELECT id, chat_id, level, message, meta FROM messages WHERE id = ? AND deleted = 0`
 	
 	var msg Message
-	err := db.QueryRow(query, id).Scan(&msg.ID, &msg.ChatID, &msg.Level)
+	err := db.QueryRow(query, id).Scan(&msg.ID, &msg.ChatID, &msg.Level, &msg.Message, &msg.Meta)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("message with ID %d not found", id)

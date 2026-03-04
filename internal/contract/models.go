@@ -1,12 +1,12 @@
 /**
  * Component: Contract Models
- * Block-UUID: ce6ee81c-cebd-4e72-a311-f4f6ec08b959
- * Parent-UUID: 12241c3c-c019-48f0-9726-faf0722ef3aa
- * Version: 1.15.0
- * Description: Added MappedDumpResult, MappedFileEntry, and Provenance structs to support the 'mapped' dump type. These structures define the JSON response format for the CLI and the schema for the provenance.json sidecar files.
+ * Block-UUID: ee5ad23d-03b1-49b7-853e-abd67e634672
+ * Parent-UUID: ce6ee81c-cebd-4e72-a311-f4f6ec08b959
+ * Version: 1.16.0
+ * Description: Added ShadowWorkspace struct to define the metadata schema for the shadow workspace manifest. Updated MappedDumpResult to include validation fields (Exists, Valid, ExpiresAt) to support the --validate flag and frontend status checks.
  * Language: Go
- * Created-at: 2026-03-03T18:35:47.821Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., Gemini 3 Flash (v1.13.0), Gemini 3 Flash (v1.14.0), Gemini 3 Flash (v1.15.0)
+ * Created-at: 2026-03-04T18:35:47.821Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., Gemini 3 Flash (v1.13.0), Gemini 3 Flash (v1.14.0), Gemini 3 Flash (v1.15.0), GLM-4.7 (v1.16.0)
  */
 
 
@@ -176,10 +176,14 @@ type MappedDumpStats struct {
 }
 
 // MappedDumpResult is the JSON response structure for the 'mapped' dump command.
+// It supports both generation and validation modes.
 type MappedDumpResult struct {
 	Success  bool             `json:"success"`
+	Exists   bool             `json:"exists"`   // True if the workspace directory was found (validation mode)
+	Valid    bool             `json:"valid"`    // True if the workspace is not expired (validation mode)
 	Hash     string           `json:"hash"`      // The message hash (directory name)
 	RootDir  string           `json:"root_dir"`  // Absolute path to the dump directory
+	ExpiresAt string           `json:"expires_at"` // ISO 8601 expiration timestamp
 	Stats    MappedDumpStats  `json:"stats"`
 	Files    []MappedFileEntry `json:"files"`
 	Error    *DumpError       `json:"error,omitempty"` // Present if Success is false
@@ -189,6 +193,17 @@ type MappedDumpResult struct {
 type DumpError struct {
 	Code    string `json:"code"`    // e.g., "INVALID_MESSAGE_ID"
 	Message string `json:"message"` // Human-readable description
+}
+
+// ShadowWorkspace represents the metadata stored at the root of a mapped dump.
+// It acts as the "Source of Truth" for the shadow workspace's validity and contents.
+type ShadowWorkspace struct {
+	Hash         string            `json:"hash"`          // The message hash (directory name)
+	MessageID    int64             `json:"message_id"`    // The ID of the message
+	ContractUUID string            `json:"contract_uuid"` // The contract UUID
+	CreatedAt    string            `json:"created_at"`    // ISO 8601 timestamp
+	ExpiresAt    string            `json:"expires_at"`    // ISO 8601 timestamp
+	Files        []MappedFileEntry `json:"files"`         // Cached list of files for the UI
 }
 
 // Provenance represents the content of the provenance.json sidecar file.

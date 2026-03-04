@@ -1,12 +1,12 @@
 /**
  * Component: Mapped Dump Writer
- * Block-UUID: 3af4de63-3a87-4792-8420-31279f031e43
- * Parent-UUID: 59a3aeaa-661d-4eb9-982a-9a6f9d5e1ecc
- * Version: 1.1.0
- * Description: Updated WriteMessage to generate a message.json sidecar file containing database identifiers (id, chat_id, uuid, role, parent_id, created_at) to improve traceability and eliminate the need to parse directory names.
+ * Block-UUID: d554d373-1426-42e4-b22a-fac18ef0f73c
+ * Parent-UUID: 5a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
+ * Version: 1.4.0
+ * Description: Fixed WriteProvenanceJSON to use ParentUUID for path resolution instead of BlockUUID, ensuring provenance files are written to the correct mapped directory.
  * Language: Go
- * Created-at: 2026-03-04T04:33:14.119Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0)
+ * Created-at: 2026-03-04T16:42:20.879Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
  */
 
 
@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/gitsense/gsc-cli/internal/db"
 	"github.com/gitsense/gsc-cli/internal/markdown"
@@ -86,7 +87,7 @@ func (w *MappedWriter) WriteProvenance(msgDir string, chats []db.Chat) error {
 // If the block is mapped, it writes to mapped/<path>/proposed.<ext>.
 // If unmapped, it writes to unmapped/snippets/ or unmapped/components/.
 func (w *MappedWriter) WriteBlock(msgDir string, block markdown.CodeBlock, trim bool) error {
-	relPath, isMapped := w.PathMap[block.BlockUUID]
+	relPath, isMapped := w.PathMap[block.ParentUUID]
 	
 	var targetDir string
 	var filename string
@@ -135,7 +136,7 @@ func (w *MappedWriter) WritePatch(msgDir string, patch markdown.PatchBlock, trim
 // WritePatchedFile persists the result of a successful patch application.
 // This becomes the 'proposed.<ext>' file in the mapped directory.
 func (w *MappedWriter) WritePatchedFile(msgDir string, patch markdown.PatchBlock, header string, content string) error {
-	relPath, isMapped := w.PathMap[patch.TargetBlockUUID]
+	relPath, isMapped := w.PathMap[patch.SourceBlockUUID]
 	if !isMapped {
 		// If the target isn't mapped, we treat it as an unmapped component
 		targetDir := filepath.Join(msgDir, "unmapped", "components", patch.Component)
@@ -155,7 +156,21 @@ func (w *MappedWriter) WritePatchedFile(msgDir string, patch markdown.PatchBlock
 	}
 
 	filename := "proposed" + getExtension(patch.Language)
-	fullContent := header + "\n\n\n" + content
+
+	// Strip the existing header from the patched content to prevent duplication.
+	// The 'content' variable contains the full patched file (old header + code).
+	// We split on the standard GitSense separator "\n\n\n".
+	parts := strings.SplitN(content, "\n\n\n", 2)
+	var cleanCode string
+	if len(parts) == 2 {
+		cleanCode = parts[1]
+	} else {
+		// If the separator is not found, assume the content is already clean or malformed.
+		// In this case, we use the content as-is to avoid data loss.
+		cleanCode = content
+	}
+
+	fullContent := header + "\n\n\n" + cleanCode
 	return os.WriteFile(filepath.Join(targetDir, filename), []byte(fullContent), 0644)
 }
 
@@ -172,7 +187,7 @@ func (w *MappedWriter) WriteSourceFile(msgDir string, relPath string, content st
 
 // WriteProvenanceJSON persists the structured provenance data for a specific file.
 func (w *MappedWriter) WriteProvenanceJSON(msgDir string, data Provenance) error {
-	relPath, isMapped := w.PathMap[data.BlockUUID]
+	relPath, isMapped := w.PathMap[data.ParentUUID]
 	
 	var targetDir string
 	if isMapped {

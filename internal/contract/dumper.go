@@ -1,12 +1,12 @@
 /**
  * Component: Contract Dump Orchestrator
- * Block-UUID: 21fab1b4-1f15-48c5-a288-a79ec0746a92
- * Parent-UUID: d39e5e66-7b38-476e-a539-63f3e5724f3b
- * Version: 2.7.0
- * Description: Added pre-scan logic to calculate total artifacts for progress tracking. Implemented message-level checklists showing processed/remaining files. Added full code logging for debugging.
+ * Block-UUID: b1e34061-0b5e-46db-8b50-2ca4cf17fa08
+ * Parent-UUID: 2170f79e-29ad-44fc-a1e1-a4ab027dd55c
+ * Version: 2.10.0
+ * Description: Added validation logic to executeMappedDump to support the --validate flag. Implemented auto-extension of expired shadow workspaces. Added logic to write workspace.json (ShadowWorkspace manifest) after a successful dump, including the file list for UI caching.
  * Language: Go
- * Created-at: 2026-03-04T15:41:01.773Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.6.2), GLM-4.7 (v2.7.0)
+ * Created-at: 2026-03-04T20:25:46.999Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.8.0), GLM-4.7 (v2.9.0), GLM-4.7 (v2.10.0)
  */
 
 
@@ -16,6 +16,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"database/sql"
@@ -44,10 +45,12 @@ type MergedNode struct {
 
 // ExecuteDump coordinates the full dump process for a given contract.
 // It supports 'tree', 'merged', and 'mapped' strategies.
-func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, includeSystem bool, trim bool, dumpType string, sortMode string, debugPatch bool, messageID int64) (*MappedDumpResult, error) {
-	// 1. Initialize Output
-	if err := writer.Prepare(outputDir); err != nil {
-		return nil, fmt.Errorf("failed to prepare output directory: %w", err)
+func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, includeSystem bool, trim bool, dumpType string, sortMode string, debugPatch bool, messageID int64, validate bool) (*MappedDumpResult, error) {
+	// 1. Initialize Output (Skip if validating to avoid deleting the workspace)
+	if !validate {
+		if err := writer.Prepare(outputDir); err != nil {
+			return nil, fmt.Errorf("failed to prepare output directory: %w", err)
+		}
 	}
 
 	// 2. Open Database
@@ -91,7 +94,7 @@ func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, inclu
 	// STRATEGY SELECTION
 	// ==========================================
 	if dumpType == "mapped" {
-		return executeMappedDump(contractUUID, chats, sqliteDB, writer, outputDir, includeSystem, trim, debugPatch, messageID)
+		return executeMappedDump(contractUUID, chats, sqliteDB, writer, outputDir, includeSystem, trim, debugPatch, messageID, validate)
 	}
 
 	if dumpType == "merged" {
@@ -233,7 +236,81 @@ func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, inclu
 
 // executeMappedDump implements the logic for the 'mapped' dump type.
 // It creates a shadow workspace where code blocks are mapped to their project paths.
-func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, writer DumpWriter, outputDir string, includeSystem bool, trim bool, debugPatch bool, messageID int64) (*MappedDumpResult, error) {
+func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, writer DumpWriter, outputDir string, includeSystem bool, trim bool, debugPatch bool, messageID int64, validate bool) (*MappedDumpResult, error) {
+	// ==========================================
+	// VALIDATION PHASE (If --validate is set)
+	// ==========================================
+	if validate {
+		manifestPath := filepath.Join(outputDir, "workspace.json")
+		
+		// Check if manifest exists
+		if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
+			// Workspace does not exist
+			return &MappedDumpResult{
+				Success: false,
+				Exists:  false,
+				Valid:   false,
+				Error:   &DumpError{Code: "NOT_FOUND", Message: "Shadow workspace not found"},
+			}, nil
+		}
+
+		// Read manifest
+		data, err := os.ReadFile(manifestPath)
+		if err != nil {
+			return &MappedDumpResult{
+				Success: false,
+				Exists:  false,
+				Valid:   false,
+				Error:   &DumpError{Code: "READ_ERROR", Message: "Failed to read workspace manifest"},
+			}, nil
+		}
+
+		var ws ShadowWorkspace
+		if err := json.Unmarshal(data, &ws); err != nil {
+			return &MappedDumpResult{
+				Success: false,
+				Exists:  false,
+				Valid:   false,
+				Error:   &DumpError{Code: "CORRUPT_MANIFEST", Message: "Failed to parse workspace manifest"},
+			}, nil
+		}
+
+		// Check Expiration
+		expiresAt, _ := time.Parse(time.RFC3339, ws.ExpiresAt)
+		isExpired := time.Now().After(expiresAt)
+
+		if isExpired {
+			logger.Info("Shadow workspace expired, auto-extending", "hash", ws.Hash)
+			// Auto-extend by 24 hours
+			newExpiry := time.Now().Add(24 * time.Hour)
+			ws.ExpiresAt = newExpiry.Format(time.RFC3339)
+			
+			// Write updated manifest back
+			newData, err := json.MarshalIndent(ws, "", "  ")
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal updated manifest: %w", err)
+			}
+			if err := os.WriteFile(manifestPath, newData, 0644); err != nil {
+				return nil, fmt.Errorf("failed to write updated manifest: %w", err)
+			}
+		}
+
+		// Return cached data
+		return &MappedDumpResult{
+			Success:  true,
+			Exists:   true,
+			Valid:    true,
+			Hash:     ws.Hash,
+			RootDir:  outputDir,
+			ExpiresAt: ws.ExpiresAt,
+			Files:    ws.Files,
+		}, nil
+	}
+
+	// ==========================================
+	// GENERATION PHASE
+	// ==========================================
+	
 	// 1. Fetch Messages
 	var messages []db.Message
 	var dumpHash string
@@ -261,9 +338,7 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 		logger.Info("Full Contract Mode", "total_messages", len(messages))
 	}
 
-	// ==========================================
 	// PASS 0: Pre-scan for Total Artifact Count
-	// ==========================================
 	totalArtifacts := 0
 	for _, msg := range messages {
 		if !msg.Message.Valid {
@@ -296,6 +371,12 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 				parentUUIDs[block.ParentUUID] = true
 			}
 		}
+		// Also check patches for SourceBlockUUIDs
+		for _, patch := range result.Patches {
+			if patch.SourceBlockUUID != "" && patch.SourceBlockUUID != "N/A" {
+				parentUUIDs[patch.SourceBlockUUID] = true
+			}
+		}
 	}
 
 	// Convert map to slice
@@ -307,12 +388,14 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 	logger.Info("Discovery Phase: Starting", "unique_parent_uuids", len(uuidList))
 
 	// Resolve paths using ripgrep
-	// We need the workdir. We can get it from the first chat's context or assume CWD.
-	// For now, assume CWD is the workdir (standard for CLI usage).
-	workdir, err := os.Getwd()
+	// We need the workdir from the contract metadata to support execution from any directory.
+	meta, err := GetContract(contractUUID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get working directory: %w", err)
+		return nil, fmt.Errorf("failed to load contract metadata: %w", err)
 	}
+	workdir := meta.Workdir
+
+	logger.Debug("Using contract workdir for discovery", "uuid", contractUUID, "workdir", workdir)
 
 	engine := &search.RipgrepEngine{}
 	pathMap, err := engine.ResolvePathsByUUIDs(context.Background(), workdir, uuidList)
@@ -600,6 +683,30 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 	}
 
 	logger.Info("Mapped Dump Complete", "hash", dumpHash, "mappable", result.Stats.Mappable, "unmappable", result.Stats.Unmappable)
+
+	// ==========================================
+	// WRITE WORKSPACE MANIFEST
+	// ==========================================
+	manifest := ShadowWorkspace{
+		Hash:         dumpHash,
+		MessageID:    messageID, // 0 if full contract
+		ContractUUID: contractUUID,
+		CreatedAt:    time.Now().Format(time.RFC3339),
+		ExpiresAt:    time.Now().Add(24 * time.Hour).Format(time.RFC3339),
+		Files:        result.Files,
+	}
+
+	manifestData, err := json.MarshalIndent(manifest, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal workspace manifest: %w", err)
+	}
+
+	manifestPath := filepath.Join(outputDir, "workspace.json")
+	if err := os.WriteFile(manifestPath, manifestData, 0644); err != nil {
+		return nil, fmt.Errorf("failed to write workspace manifest: %w", err)
+	}
+
+	logger.Info("Workspace manifest written", "path", manifestPath)
 
 	return result, nil
 }

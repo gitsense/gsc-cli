@@ -1,12 +1,12 @@
 /**
  * Component: Contract CLI Commands
- * Block-UUID: 07aff45c-e140-408c-8516-fe823c4b1c2e
- * Parent-UUID: 8f9c8d2e-3f4a-4b5c-9d6e-0f1a2b3c4d5e
- * Version: 1.26.0
- * Description: Refactored dump command to use subcommands (tree, merged, mapped) for better discoverability and scoped flags. Removed --type flag in favor of positional subcommands.
+ * Block-UUID: 87b265a7-02fc-48b9-9978-be85803f814b
+ * Parent-UUID: 07aff45c-e140-408c-8516-fe823c4b1c2e
+ * Version: 1.27.0
+ * Description: Added --validate flag to dump mapped command to support shadow workspace validation. Implemented dump prune command to remove expired shadow workspaces. Updated ExecuteDump call signature to include validate parameter.
  * Language: Go
  * Created-at: 2026-03-04T04:40:27.188Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.23.2), Gemini 3 Flash (v1.24.0), Gemini 3 Flash (v1.25.0), GLM-4.7 (v1.26.0)
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.23.2), Gemini 3 Flash (v1.24.0), Gemini 3 Flash (v1.25.0), GLM-4.7 (v1.26.0), GLM-4.7 (v1.27.0)
  */
 
 
@@ -15,6 +15,7 @@ package cli
 import (
 	"bufio"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"os"
@@ -99,6 +100,7 @@ var (
 
 	// Dump flags (Mapped specific)
 	contractDumpMessageID int64
+	contractDumpValidate  bool
 )
 
 // contractCmd represents the base command for contract management
@@ -724,7 +726,7 @@ the raw message, code blocks, and patch results.`,
 		// 4. Execute
 		logger.Info("Generating conversational dump...", "type", "tree", "output", outputDir, "trim", !contractDumpRaw)
 		
-		_, err = contract.ExecuteDump(uuid, writer, outputDir, contractDumpIncludeSystem, !contractDumpRaw, "tree", "", contractDumpDebugPatch, 0)
+		_, err = contract.ExecuteDump(uuid, writer, outputDir, contractDumpIncludeSystem, !contractDumpRaw, "tree", "", contractDumpDebugPatch, 0, false)
 		
 		// 5. Handle Output Format
 		if contractDumpFormat == "json" {
@@ -775,7 +777,7 @@ by popularity or recency. It provides a condensed view of the conversation.`,
 		// 4. Execute
 		logger.Info("Generating merged dump...", "type", "merged", "sort", contractDumpSort, "output", outputDir, "trim", !contractDumpRaw)
 		
-		_, err = contract.ExecuteDump(uuid, writer, outputDir, contractDumpIncludeSystem, !contractDumpRaw, "merged", contractDumpSort, contractDumpDebugPatch, 0)
+		_, err = contract.ExecuteDump(uuid, writer, outputDir, contractDumpIncludeSystem, !contractDumpRaw, "merged", contractDumpSort, contractDumpDebugPatch, 0, false)
 		
 		// 5. Handle Output Format
 		if contractDumpFormat == "json" {
@@ -824,9 +826,9 @@ workspace that shows how files evolved across the conversation.`,
 		writer := &contract.MappedWriter{}
 
 		// 4. Execute
-		logger.Info("Generating mapped dump...", "type", "mapped", "output", outputDir, "trim", !contractDumpRaw)
+		logger.Info("Generating mapped dump...", "type", "mapped", "output", outputDir, "trim", !contractDumpRaw, "validate", contractDumpValidate)
 		
-		result, err := contract.ExecuteDump(uuid, writer, outputDir, contractDumpIncludeSystem, !contractDumpRaw, "mapped", "", contractDumpDebugPatch, contractDumpMessageID)
+		result, err := contract.ExecuteDump(uuid, writer, outputDir, contractDumpIncludeSystem, !contractDumpRaw, "mapped", "", contractDumpDebugPatch, contractDumpMessageID, contractDumpValidate)
 		
 		// 5. Handle Output Format
 		if contractDumpFormat == "json" {
@@ -849,6 +851,38 @@ workspace that shows how files evolved across the conversation.`,
 			return err
 		}
 		
+		// ==========================================
+		// VALIDATION MODE (Human Output)
+		// ==========================================
+		if contractDumpValidate {
+			if !result.Exists {
+				fmt.Println("✗ No shadow workspace found for this message.")
+				fmt.Printf("  Run 'gsc contract dump mapped --message-id %d' to initialize.\n", contractDumpMessageID)
+				return nil
+			}
+
+			if result.Valid {
+				fmt.Println("✓ Shadow workspace is valid")
+				fmt.Printf("  Hash:       %s\n", result.Hash)
+				fmt.Printf("  Location:   %s\n", result.RootDir)
+				
+				// Calculate time remaining
+				expiresAt, _ := time.Parse(time.RFC3339, result.ExpiresAt)
+				duration := time.Until(expiresAt)
+				fmt.Printf("  Expires:    %s (in %s)\n", expiresAt.Format(time.RFC3339), duration.Round(time.Minute))
+				
+				fmt.Printf("  Files:      %d mapped, %d unmapped\n", result.Stats.Mappable, result.Stats.Unmappable)
+			} else {
+				// This case shouldn't happen with auto-extend, but handle it
+				fmt.Println("✗ Shadow workspace is invalid")
+				fmt.Printf("  Reason: %s\n", result.Error.Message)
+			}
+			return nil
+		}
+
+		// ==========================================
+		// GENERATION MODE (Human Output)
+		// ==========================================
 		if result != nil {
 			// Print human-readable summary for mapped dump
 			fmt.Printf("✓ Mapped Dump Generated\n")
@@ -874,6 +908,81 @@ workspace that shows how files evolved across the conversation.`,
 			fmt.Printf("Dump complete: %s\n", outputDir)
 		}
 
+		return nil
+	},
+}
+
+// dumpPruneCmd handles 'gsc contract dump prune'
+var dumpPruneCmd = &cobra.Command{
+	Use:   "prune",
+	Short: "Remove expired shadow workspaces",
+	Long: `Scans the dumps directory for shadow workspaces that have expired
+and removes them to free up disk space.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true
+
+		gscHome, _ := settings.GetGSCHome(false)
+		dumpsRoot := filepath.Join(gscHome, settings.DumpsRelPath)
+
+		// Check if dumps directory exists
+		if _, err := os.Stat(dumpsRoot); os.IsNotExist(err) {
+			fmt.Println("No dumps directory found.")
+			return nil
+		}
+
+		deletedCount := 0
+		now := time.Now()
+
+		// Walk the dumps directory
+		err := filepath.Walk(dumpsRoot, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+
+			// We are looking for workspace.json files
+			if info.Name() != "workspace.json" {
+				return nil
+			}
+
+			// Read the manifest
+			data, err := os.ReadFile(path)
+			if err != nil {
+				logger.Warning("Failed to read workspace manifest", "path", path, "error", err)
+				return nil
+			}
+
+			var ws contract.ShadowWorkspace
+			if err := json.Unmarshal(data, &ws); err != nil {
+				logger.Warning("Failed to parse workspace manifest", "path", path, "error", err)
+				return nil
+			}
+
+			// Check expiration
+			expiresAt, err := time.Parse(time.RFC3339, ws.ExpiresAt)
+			if err != nil {
+				logger.Warning("Invalid expiration date in manifest", "path", path, "error", err)
+				return nil
+			}
+
+			if now.After(expiresAt) {
+				// Delete the parent directory (the hash directory)
+				workspaceDir := filepath.Dir(path)
+				if err := os.RemoveAll(workspaceDir); err != nil {
+					logger.Warning("Failed to delete expired workspace", "path", workspaceDir, "error", err)
+				} else {
+					deletedCount++
+					fmt.Printf("Deleted expired workspace: %s\n", filepath.Base(workspaceDir))
+				}
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			return fmt.Errorf("failed to walk dumps directory: %w", err)
+		}
+
+		fmt.Printf("\nPrune complete. Removed %d expired workspace(s).\n", deletedCount)
 		return nil
 	},
 }
@@ -973,11 +1082,13 @@ func init() {
 
 	// Mapped Specific Flags
 	dumpMappedCmd.Flags().Int64Var(&contractDumpMessageID, "message-id", 0, "Filter dump to a specific message ID")
+	dumpMappedCmd.Flags().BoolVar(&contractDumpValidate, "validate", false, "Validate an existing shadow workspace instead of generating a new one")
 
 	// Register Subcommands
 	dumpContractCmd.AddCommand(dumpTreeCmd)
 	dumpContractCmd.AddCommand(dumpMergedCmd)
 	dumpContractCmd.AddCommand(dumpMappedCmd)
+	dumpContractCmd.AddCommand(dumpPruneCmd)
 
 	// Add subcommands to base contract command
 	contractCmd.AddCommand(createContractCmd)
