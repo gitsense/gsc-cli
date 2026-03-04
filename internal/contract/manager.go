@@ -576,7 +576,7 @@ func FormatContractInfo(info *ContractInfoResult, format string) string {
 // GetDefaultDumpDir returns the default output directory for a contract dump.
 func GetDefaultDumpDir(uuid string) string {
 	gscHome, _ := settings.GetGSCHome(false)
-	return filepath.Join(gscHome, "dumps", uuid)
+	return filepath.Join(gscHome, "data", "dumps", uuid)
 }
 
 // FormatContractTest formats the output for the 'contract test' command.

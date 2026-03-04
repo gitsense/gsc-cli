@@ -1,12 +1,12 @@
 /**
  * Component: Chat Database Operations
- * Block-UUID: 2f30df95-b4ec-40ec-b18d-faf2c83031ff
- * Parent-UUID: 808a9d9a-9156-4e29-8b80-d81db49d37f8
- * Version: 1.16.0
+ * Block-UUID: fc382911-c27a-4e4e-aa2c-a49739cd8aa3
+ * Parent-UUID: 8c9d2e3f-4a5b-6c7d-8e9f-0a1b2c3d4e5f
+ * Version: 1.18.0
  * Description: Added GetMessagesRecursive to retrieve the full conversation thread in the correct hierarchical order using a recursive CTE. This is essential for generating accurate conversational filesystem trees.
  * Language: Go
- * Created-at: 2026-03-01T16:31:54.274Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), Gemini 3 Flash (v1.16.0)
+ * Created-at: 2026-03-04T02:31:19.088Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), Gemini 3 Flash (v1.16.0), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0)
  */
 
 
@@ -708,6 +708,25 @@ func GetLastMessageID(db *sql.DB, chatID int64) (int64, error) {
 	return lastID, nil
 }
 
+// parseFlexibleTime attempts to parse a timestamp string supporting both 'T' and space separators.
+func parseFlexibleTime(s string) time.Time {
+	// Try ISO 8601 with 'T' separator
+	t, err := time.Parse("2006-01-02T15:04:05.999999999Z", s)
+	if err == nil {
+		return t
+	}
+
+	// Try format with space separator
+	t, err = time.Parse("2006-01-02 15:04:05.999999999Z", s)
+	if err == nil {
+		return t
+	}
+
+	// If both fail, return zero time and log a warning
+	logger.Warning("Failed to parse timestamp", "value", s)
+	return time.Time{}
+}
+
 // GetMessagesRecursive retrieves all messages in a chat, ordered by their position in the conversation tree.
 // It uses a recursive CTE to traverse from the root (parent_id = 0) down to the leaves.
 func GetMessagesRecursive(dbConn *sql.DB, chatID int64) ([]Message, error) {
@@ -756,8 +775,8 @@ func GetMessagesRecursive(dbConn *sql.DB, chatID int64) ([]Message, error) {
 			return nil, fmt.Errorf("failed to scan message row: %w", err)
 		}
 		
-		m.CreatedAt, _ = time.Parse("2006-01-02T15:04:05.000Z", createdAtStr)
-		m.UpdatedAt, _ = time.Parse("2006-01-02T15:04:05.000Z", updatedAtStr)
+		m.CreatedAt = parseFlexibleTime(createdAtStr)
+		m.UpdatedAt = parseFlexibleTime(updatedAtStr)
 		
 		messages = append(messages, m)
 	}

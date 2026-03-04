@@ -1,12 +1,12 @@
 /**
  * Component: Merged Dump Writer
- * Block-UUID: e0f26185-7850-4e19-9aed-a143824743a1
- * Parent-UUID: 3b8154e0-0fc2-4c7e-8f0f-f2949303192c
- * Version: 1.0.3
+ * Block-UUID: 7764bf3b-38ee-4925-b625-20bd0b228326
+ * Parent-UUID: 5b8c9d2e-3f4a-4b5c-9d6e-0f1a2b3c4d5e
+ * Version: 1.0.6
  * Description: Implements the DumpWriter interface for the 'merged' strategy. It generates a squashed filesystem tree where duplicate messages are unified. Directory names follow the <rank>_<count>_<role>_<hash> convention, and provenance files (<n>_chats.md) are generated for each node.
  * Language: Go
- * Created-at: 2026-03-04T01:41:01.763Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), Gemini 3 Flash (v1.0.3)
+ * Created-at: 2026-03-04T02:19:44.766Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), Gemini 3 Flash (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6)
  */
 
 
@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/gitsense/gsc-cli/internal/db"
+	"github.com/gitsense/gsc-cli/pkg/logger"
 	"github.com/gitsense/gsc-cli/internal/markdown"
 )
 
@@ -50,8 +51,28 @@ func (w *MergedWriter) GetMessageDir(chat db.Chat, msg db.Message, position int)
 	role := abbreviateRole(msg.Role)
 	hash := calculateMessageHash(msg)
 	
-	// Format: 001_003_syst_a1b2c3d4
-	return fmt.Sprintf("%03d_%03d_%s_%s", w.rank, w.count, role, hash)
+	// Debug logging to diagnose zero-time issues
+	logger.Debug("MergedWriter: GetMessageDir", "msg_id", msg.ID, "updated_at", msg.UpdatedAt, "created_at", msg.CreatedAt)
+
+	// Use UpdatedAt, fallback to CreatedAt if zero
+	timestamp := msg.UpdatedAt
+	if timestamp.IsZero() {
+		logger.Debug("MergedWriter: UpdatedAt is zero, falling back to CreatedAt", "msg_id", msg.ID)
+		timestamp = msg.CreatedAt
+	}
+	
+	if timestamp.IsZero() {
+		logger.Warning("MergedWriter: Both UpdatedAt and CreatedAt are zero", "msg_id", msg.ID)
+	}
+	
+	// Format: YYYY-MM-DD/HH/rank_count_role_hash
+	dateStr := timestamp.Format("2006-01-02")
+	hourStr := timestamp.Format("15")
+	path := fmt.Sprintf("%s/%s/%03d_%03d_%s_%s", dateStr, hourStr, w.rank, w.count, role, hash)
+	
+	logger.Debug("MergedWriter: Generated path", "msg_id", msg.ID, "path", path)
+	
+	return path
 }
 
 // WriteMessage persists the raw markdown content of the message.
