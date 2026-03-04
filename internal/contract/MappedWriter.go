@@ -1,12 +1,12 @@
 /**
  * Component: Mapped Dump Writer
- * Block-UUID: 59a3aeaa-661d-4eb9-982a-9a6f9d5e1ecc
- * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: Implements the DumpWriter interface for the 'mapped' strategy. It organizes code blocks by their project-relative paths, creating a shadow workspace with 'source' and 'proposed' versions of each file, along with provenance sidecars.
+ * Block-UUID: 3af4de63-3a87-4792-8420-31279f031e43
+ * Parent-UUID: 59a3aeaa-661d-4eb9-982a-9a6f9d5e1ecc
+ * Version: 1.1.0
+ * Description: Updated WriteMessage to generate a message.json sidecar file containing database identifiers (id, chat_id, uuid, role, parent_id, created_at) to improve traceability and eliminate the need to parse directory names.
  * Language: Go
  * Created-at: 2026-03-04T04:33:14.119Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0)
  */
 
 
@@ -50,9 +50,31 @@ func (w *MappedWriter) GetMessageDir(chat db.Chat, msg db.Message, position int)
 }
 
 // WriteMessage persists the raw markdown content of the message.
+// It now also creates a message.json sidecar for database traceability.
 func (w *MappedWriter) WriteMessage(msgDir string, msg db.Message) error {
+	// 1. Write message.md
 	path := filepath.Join(msgDir, "message.md")
-	return os.WriteFile(path, []byte(msg.Message.String), 0644)
+	if err := os.WriteFile(path, []byte(msg.Message.String), 0644); err != nil {
+		return err
+	}
+
+	// 2. Write message.json
+	metadata := map[string]interface{}{
+		"id":         msg.ID,
+		"chat_id":    msg.ChatID,
+		"type":       msg.Type,
+		"role":       msg.Role,
+		"parent_id":  msg.ParentID,
+		"created_at": msg.CreatedAt,
+	}
+
+	jsonData, err := json.MarshalIndent(metadata, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal message metadata: %w", err)
+	}
+
+	jsonPath := filepath.Join(msgDir, "message.json")
+	return os.WriteFile(jsonPath, jsonData, 0644)
 }
 
 // WriteProvenance is a no-op for MappedWriter.

@@ -1,18 +1,19 @@
 /*
  * Component: Tree Dump Writer
- * Block-UUID: 22151be8-3a6f-4892-8d74-99623949ae81
- * Parent-UUID: da8312de-3dd5-4543-94b5-bb99f1d7fe82
- * Version: 1.9.0
- * Description: Implemented WriteSourceFile and WriteProvenanceJSON as no-ops to maintain compliance with the updated DumpWriter interface. The 'tree' type does not utilize the mapped shadow workspace features.
+ * Block-UUID: e693669f-fbf3-47ff-82cf-16ee8fe20a1c
+ * Parent-UUID: 22151be8-3a6f-4892-8d74-99623949ae81
+ * Version: 1.10.0
+ * Description: Updated WriteMessage to generate a message.json sidecar file containing database identifiers (id, chat_id, uuid, role, parent_id, created_at) to improve traceability and eliminate the need to parse directory names.
  * Language: Go
  * Created-at: 2026-03-03T07:38:31.693Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), Gemini 3 Flash (v1.8.0), Gemini 3 Flash (v1.9.0)
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), Gemini 3 Flash (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.10.0)
  */
 
 
 package contract
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -47,9 +48,31 @@ func (w *TreeWriter) GetMessageDir(chat db.Chat, msg db.Message, visibleIndex in
 }
 
 // WriteMessage persists the raw markdown content of the message.
+// It now also creates a message.json sidecar for database traceability.
 func (w *TreeWriter) WriteMessage(msgDir string, msg db.Message) error {
+	// 1. Write message.md
 	path := filepath.Join(msgDir, "message.md")
-	return os.WriteFile(path, []byte(msg.Message.String), 0644)
+	if err := os.WriteFile(path, []byte(msg.Message.String), 0644); err != nil {
+		return err
+	}
+
+	// 2. Write message.json
+	metadata := map[string]interface{}{
+		"id":         msg.ID,
+		"chat_id":    msg.ChatID,
+		"type":       msg.Type,
+		"role":       msg.Role,
+		"parent_id":  msg.ParentID,
+		"created_at": msg.CreatedAt,
+	}
+
+	jsonData, err := json.MarshalIndent(metadata, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal message metadata: %w", err)
+	}
+
+	jsonPath := filepath.Join(msgDir, "message.json")
+	return os.WriteFile(jsonPath, jsonData, 0644)
 }
 
 // WriteProvenance is a no-op for the TreeWriter as provenance files are specific to the MergedWriter.
