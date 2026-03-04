@@ -1,12 +1,12 @@
 /**
  * Component: Contract Dump Orchestrator
- * Block-UUID: 545075c7-3a57-478f-990f-af1f838ff3f1
- * Parent-UUID: 4da67bdb-9b19-4c61-b7dc-dff212374b32
- * Version: 2.6.1
+ * Block-UUID: d39e5e66-7b38-476e-a539-63f3e5724f3b
+ * Parent-UUID: 545075c7-3a57-478f-990f-af1f838ff3f1
+ * Version: 2.6.2
  * Description: Removed unused variable 'targetMessage' in executeMappedDump to resolve build error.
  * Language: Go
- * Created-at: 2026-03-04T01:34:28.487Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.4.1), Gemini 3 Flash (v2.4.2), Gemini 3 Flash (v2.5.0), GLM-4.7 (v2.6.0), GLM-4.7 (v2.6.1)
+ * Created-at: 2026-03-04T15:36:53.248Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.6.0), GLM-4.7 (v2.6.1), GLM-4.7 (v2.6.2)
  */
 
 
@@ -91,7 +91,7 @@ func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, inclu
 	// STRATEGY SELECTION
 	// ==========================================
 	if dumpType == "mapped" {
-		return executeMappedDump(chats, sqliteDB, writer, outputDir, includeSystem, trim, debugPatch, messageID)
+		return executeMappedDump(contractUUID, chats, sqliteDB, writer, outputDir, includeSystem, trim, debugPatch, messageID)
 	}
 
 	if dumpType == "merged" {
@@ -233,7 +233,7 @@ func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, inclu
 
 // executeMappedDump implements the logic for the 'mapped' dump type.
 // It creates a shadow workspace where code blocks are mapped to their project paths.
-func executeMappedDump(chats []db.Chat, sqliteDB *sql.DB, writer DumpWriter, outputDir string, includeSystem bool, trim bool, debugPatch bool, messageID int64) (*MappedDumpResult, error) {
+func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, writer DumpWriter, outputDir string, includeSystem bool, trim bool, debugPatch bool, messageID int64) (*MappedDumpResult, error) {
 	// 1. Fetch Messages
 	var messages []db.Message
 	var dumpHash string
@@ -392,7 +392,7 @@ func executeMappedDump(chats []db.Chat, sqliteDB *sql.DB, writer DumpWriter, out
 				Version:      block.Version,
 				ChatID:       msg.ChatID,
 				MessageID:    msg.ID,
-				ContractUUID: "", // TODO: Pass contract UUID if available
+				ContractUUID: contractUUID,
 				Model:        msg.RealModel.String,
 				Timestamp:    msg.CreatedAt.Format(time.RFC3339),
 				Action:       "full_code",
@@ -512,7 +512,7 @@ func executeMappedDump(chats []db.Chat, sqliteDB *sql.DB, writer DumpWriter, out
 				Version:      patch.TargetVersion,
 				ChatID:       msg.ChatID,
 				MessageID:    msg.ID,
-				ContractUUID: "",
+				ContractUUID: contractUUID,
 				Model:        msg.RealModel.String,
 				Timestamp:    msg.CreatedAt.Format(time.RFC3339),
 				Action:       "patch_applied",
