@@ -1,12 +1,12 @@
 /**
  * Component: GitSense Patch Engine
- * Block-UUID: 82d56715-1958-40be-8339-13ff83e21d78
- * Parent-UUID: 7a8f9c2d-3e4b-4a1f-8b5c-6d7e8f9a0b1c
- * Version: 1.14.1
- * Description: Implemented a multiphase patching strategy in ApplyPatch. It now attempts to apply the patch directly first, and if that fails (e.g., due to line number offsets from headers), it automatically calculates the header offset from the patch metadata and retries with adjusted hunk line numbers.
+ * Block-UUID: dc58143e-7ef5-4a2a-84dd-e3fb3641586f
+ * Parent-UUID: 82d56715-1958-40be-8339-13ff83e21d78
+ * Version: 1.15.0
+ * Description: Updated WriteDebugArtifacts to accept db.Message and db.Chat objects to include conversational context (message_context.md and chat_context.json) in the debug directory, eliminating the need for database queries during artifact generation.
  * Language: Go
  * Created-at: 2026-03-03T20:14:24.170Z
- * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.13.1), GLM-4.7 (v1.14.0), GLM-4.7 (v1.14.1)
+ * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.13.1), GLM-4.7 (v1.14.0), GLM-4.7 (v1.14.1), GLM-4.7 (v1.15.0)
  */
 
 
@@ -26,6 +26,7 @@ import (
 
 	"github.com/bluekeyes/go-gitdiff/gitdiff"
 	"github.com/gitsense/gsc-cli/pkg/logger"
+	"github.com/gitsense/gsc-cli/internal/db"
 	execpkg "github.com/gitsense/gsc-cli/internal/exec"
 )
 
@@ -265,8 +266,8 @@ func stripTrailingWhitespace(input string) string {
 }
 
 // WriteDebugArtifacts persists the source and patch content to a debug directory
-// to help diagnose patch application failures. It writes separate files for Phase 1 and Phase 2 diffs.
-func WriteDebugArtifacts(sourceCode string, phase1Diff string, phase2Diff string, targetUUID string, patchError error) (string, error) {
+// along with the conversational context (message and chat info).
+func WriteDebugArtifacts(msg db.Message, chat db.Chat, sourceCode string, phase1Diff string, phase2Diff string, targetUUID string, patchError error) (string, error) {
 	// 1. Resolve Debug Directory
 	gscHome, err := os.UserHomeDir()
 	if err != nil {
@@ -290,19 +291,43 @@ func WriteDebugArtifacts(sourceCode string, phase1Diff string, phase2Diff string
 		return "", fmt.Errorf("failed to write source.txt: %w", err)
 	}
 
-	// 4. Write Patch Content
+	// 4. Write Message Context
+	if msg.Message.Valid {
+		if err := os.WriteFile(filepath.Join(sessionDir, "message_context.md"), []byte(msg.Message.String), 0644); err != nil {
+			logger.Warning("Failed to write message_context.md", "error", err)
+		}
+	}
+
+	// 5. Write Chat Context
+	chatData := map[string]interface{}{
+		"chat_id":    chat.ID,
+		"chat_uuid":  chat.UUID,
+		"chat_name":  chat.Name,
+		"message_id": msg.ID,
+		"role":       msg.Role,
+		"created_at": msg.CreatedAt,
+	}
+	chatJSON, err := json.MarshalIndent(chatData, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal chat context: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(sessionDir, "chat_context.json"), chatJSON, 0644); err != nil {
+		logger.Warning("Failed to write chat_context.json", "error", err)
+	}
+
+	// 6. Write Patch Content
 	if err := os.WriteFile(filepath.Join(sessionDir, "patch_phase1.diff"), []byte(phase1Diff), 0644); err != nil {
 		return "", fmt.Errorf("failed to write patch_phase1.diff: %w", err)
 	}
 
-	// 5. Write Phase 2 Patch Content (if available)
+	// 7. Write Phase 2 Patch Content (if available)
 	if phase2Diff != "" {
 		if err := os.WriteFile(filepath.Join(sessionDir, "patch_phase2.diff"), []byte(phase2Diff), 0644); err != nil {
 			return "", fmt.Errorf("failed to write patch_phase2.diff: %w", err)
 		}
 	}
 
-	// 6. Write Metadata
+	// 8. Write Metadata
 	metadata := map[string]interface{}{
 		"target_uuid": targetUUID,
 		"error":       patchError.Error(),
@@ -325,7 +350,7 @@ func WriteDebugArtifacts(sourceCode string, phase1Diff string, phase2Diff string
 		return "", fmt.Errorf("failed to write metadata.json: %w", err)
 	}
 
-	// 7. Write Test Script
+	// 9. Write Test Script
 	var script strings.Builder
 	script.WriteString("#!/bin/bash\nset -e\n")
 	script.WriteString("echo \"=== Phase 1: Attempting original patch ===\"\n")

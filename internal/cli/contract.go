@@ -1,12 +1,12 @@
 /**
  * Component: Contract CLI Commands
- * Block-UUID: 8f9c8d2e-3f4a-4b5c-9d6e-0f1a2b3c4d5e
- * Parent-UUID: 45c74bac-c845-4b7f-921e-6b104d3929a3
- * Version: 1.25.0
- * Description: Added --sort flag to the dump command and updated ExecuteDump call to support the new 'merged' dump type and sorting strategies (recency, popularity, chronological).
+ * Block-UUID: 07aff45c-e140-408c-8516-fe823c4b1c2e
+ * Parent-UUID: 8f9c8d2e-3f4a-4b5c-9d6e-0f1a2b3c4d5e
+ * Version: 1.26.0
+ * Description: Refactored dump command to use subcommands (tree, merged, mapped) for better discoverability and scoped flags. Removed --type flag in favor of positional subcommands.
  * Language: Go
  * Created-at: 2026-03-04T04:40:27.188Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.23.2), Gemini 3 Flash (v1.24.0), Gemini 3 Flash (v1.25.0)
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.23.2), Gemini 3 Flash (v1.24.0), Gemini 3 Flash (v1.25.0), GLM-4.7 (v1.26.0)
  */
 
 
@@ -86,16 +86,19 @@ var (
 	contractLaunchCmd              string
 	contractLaunchList             bool
 
-	// Dump flags
+	// Dump flags (Shared)
 	contractDumpUUID   string
-	contractDumpType   string
-	contractDumpSort   string
 	contractDumpOutput string
 	contractDumpIncludeSystem bool
 	contractDumpDebugPatch bool
 	contractDumpRaw    bool
-	contractDumpMessageID int64
 	contractDumpFormat    string
+
+	// Dump flags (Merged specific)
+	contractDumpSort   string
+
+	// Dump flags (Mapped specific)
+	contractDumpMessageID int64
 )
 
 // contractCmd represents the base command for contract management
@@ -674,23 +677,38 @@ in a proper editor.`,
 	},
 }
 
-// dumpContractCmd handles 'gsc contract dump'
+// ==========================================
+// DUMP COMMANDS (Refactored to Subcommands)
+// ==========================================
+
+// dumpContractCmd is the parent command for dump strategies.
+// It acts as a container and displays help if no subcommand is provided.
 var dumpContractCmd = &cobra.Command{
 	Use:   "dump",
 	Short: "Dump chat history into a navigable filesystem tree",
 	Long: `Extracts all code blocks and messages from chats associated with a contract 
 and organizes them into a directory structure for local review and search.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		// If no subcommand is provided, show help
+		cmd.Help()
+	},
+}
+
+// dumpTreeCmd handles 'gsc contract dump tree'
+var dumpTreeCmd = &cobra.Command{
+	Use:     "tree",
+	Aliases: []string{"t"},
+	Short:   "Dump strategy: Conversational tree",
+	Long: `This strategy organizes artifacts by chat chronology, preserving the
+original conversation flow. Each message gets its own directory containing
+the raw message, code blocks, and patch results.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
 
 		// 1. Resolve UUID
-		uuid := contractDumpUUID
-		if uuid == "" {
-			foundUUID, err := findContractUUIDByWorkdir()
-			if err != nil {
-				return err
-			}
-			uuid = foundUUID
+		uuid, err := resolveDumpUUID(contractDumpUUID)
+		if err != nil {
+			return err
 		}
 
 		// 2. Resolve Output Directory
@@ -701,41 +719,128 @@ and organizes them into a directory structure for local review and search.`,
 		}
 
 		// 3. Select Strategy
-		var writer contract.DumpWriter
-		switch contractDumpType {
-		case "tree":
-			writer = &contract.TreeWriter{}
-		case "merged": // MergedWriter is defined in contract package
-			writer = &contract.MergedWriter{}
-		default:
-			return fmt.Errorf("unsupported dump type: %s (supported: tree, merged)", contractDumpType)
-		}
+		writer := &contract.TreeWriter{}
 
 		// 4. Execute
-		// Note: !contractDumpRaw means trim is true by default
-		logger.Info("Generating conversational dump...", "type", contractDumpType, "sort", contractDumpSort, "output", outputDir, "trim", !contractDumpRaw)
+		logger.Info("Generating conversational dump...", "type", "tree", "output", outputDir, "trim", !contractDumpRaw)
 		
-		result, err := contract.ExecuteDump(uuid, writer, outputDir, contractDumpIncludeSystem, !contractDumpRaw, contractDumpType, contractDumpSort, contractDumpDebugPatch, contractDumpMessageID)
+		_, err = contract.ExecuteDump(uuid, writer, outputDir, contractDumpIncludeSystem, !contractDumpRaw, "tree", "", contractDumpDebugPatch, 0)
 		
 		// 5. Handle Output Format
 		if contractDumpFormat == "json" {
 			if err != nil {
-				// Return JSON error
 				errorJSON := fmt.Sprintf(`{"success": false, "error": {"code": "EXECUTION_FAILED", "message": "%s"}}`, strings.ReplaceAll(err.Error(), `"`, `\"`))
 				fmt.Println(errorJSON)
-				return nil // Return nil to prevent Cobra from printing its own error
+				return nil
+			}
+			fmt.Printf(`{"success": true, "message": "Dump generated successfully", "root_dir": "%s"}`, outputDir)
+			return nil
+		}
+		
+		// Human Mode
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Dump complete: %s\n", outputDir)
+		return nil
+	},
+}
+
+// dumpMergedCmd handles 'gsc contract dump merged'
+var dumpMergedCmd = &cobra.Command{
+	Use:     "merged",
+	Aliases: []string{"m", "s"},
+	Short:   "Dump strategy: Merged/Squashed view",
+	Long: `This strategy merges duplicate messages across chats and sorts them
+by popularity or recency. It provides a condensed view of the conversation.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true
+
+		// 1. Resolve UUID
+		uuid, err := resolveDumpUUID(contractDumpUUID)
+		if err != nil {
+			return err
+		}
+
+		// 2. Resolve Output Directory
+		outputDir := contractDumpOutput
+		if outputDir == "" {
+			gscHome, _ := settings.GetGSCHome(false)
+			outputDir = filepath.Join(gscHome, settings.DumpsRelPath, uuid)
+		}
+
+		// 3. Select Strategy
+		writer := &contract.MergedWriter{}
+
+		// 4. Execute
+		logger.Info("Generating merged dump...", "type", "merged", "sort", contractDumpSort, "output", outputDir, "trim", !contractDumpRaw)
+		
+		_, err = contract.ExecuteDump(uuid, writer, outputDir, contractDumpIncludeSystem, !contractDumpRaw, "merged", contractDumpSort, contractDumpDebugPatch, 0)
+		
+		// 5. Handle Output Format
+		if contractDumpFormat == "json" {
+			if err != nil {
+				errorJSON := fmt.Sprintf(`{"success": false, "error": {"code": "EXECUTION_FAILED", "message": "%s"}}`, strings.ReplaceAll(err.Error(), `"`, `\"`))
+				fmt.Println(errorJSON)
+				return nil
+			}
+			fmt.Printf(`{"success": true, "message": "Dump generated successfully", "root_dir": "%s"}`, outputDir)
+			return nil
+		}
+		
+		// Human Mode
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Dump complete: %s\n", outputDir)
+		return nil
+	},
+}
+
+// dumpMappedCmd handles 'gsc contract dump mapped'
+var dumpMappedCmd = &cobra.Command{
+	Use:     "mapped",
+	Aliases: []string{"map", "shadow"},
+	Short:   "Dump strategy: Shadow workspace",
+	Long: `This strategy maps code blocks to their project paths, creating a shadow
+workspace that shows how files evolved across the conversation.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true
+
+		// 1. Resolve UUID
+		uuid, err := resolveDumpUUID(contractDumpUUID)
+		if err != nil {
+			return err
+		}
+
+		// 2. Resolve Output Directory
+		outputDir := contractDumpOutput
+		if outputDir == "" {
+			gscHome, _ := settings.GetGSCHome(false)
+			outputDir = filepath.Join(gscHome, settings.DumpsRelPath, uuid)
+		}
+
+		// 3. Select Strategy
+		writer := &contract.MappedWriter{}
+
+		// 4. Execute
+		logger.Info("Generating mapped dump...", "type", "mapped", "output", outputDir, "trim", !contractDumpRaw)
+		
+		result, err := contract.ExecuteDump(uuid, writer, outputDir, contractDumpIncludeSystem, !contractDumpRaw, "mapped", "", contractDumpDebugPatch, contractDumpMessageID)
+		
+		// 5. Handle Output Format
+		if contractDumpFormat == "json" {
+			if err != nil {
+				errorJSON := fmt.Sprintf(`{"success": false, "error": {"code": "EXECUTION_FAILED", "message": "%s"}}`, strings.ReplaceAll(err.Error(), `"`, `\"`))
+				fmt.Println(errorJSON)
+				return nil
 			}
 			
-			if contractDumpType == "mapped" {
-				if result == nil {
-					fmt.Println(`{"success": false, "error": {"code": "INTERNAL_ERROR", "message": "No result returned for mapped dump"}}`)
-					return nil
-				}
-				output.FormatJSON(result)
-			} else {
-				// For tree/merged, return a simple success JSON
-				fmt.Printf(`{"success": true, "message": "Dump generated successfully", "root_dir": "%s"}`, outputDir)
+			if result == nil {
+				fmt.Println(`{"success": false, "error": {"code": "INTERNAL_ERROR", "message": "No result returned for mapped dump"}}`)
+				return nil
 			}
+			output.FormatJSON(result)
 			return nil
 		}
 		
@@ -744,7 +849,7 @@ and organizes them into a directory structure for local review and search.`,
 			return err
 		}
 		
-		if contractDumpType == "mapped" && result != nil {
+		if result != nil {
 			// Print human-readable summary for mapped dump
 			fmt.Printf("✓ Mapped Dump Generated\n")
 			fmt.Printf("  Hash:       %s\n", result.Hash)
@@ -771,6 +876,14 @@ and organizes them into a directory structure for local review and search.`,
 
 		return nil
 	},
+}
+
+// resolveDumpUUID is a helper to resolve the contract UUID from flag or workdir.
+func resolveDumpUUID(uuid string) (string, error) {
+	if uuid != "" {
+		return uuid, nil
+	}
+	return findContractUUIDByWorkdir()
 }
 
 func init() {
@@ -843,16 +956,28 @@ func init() {
 	launchContractCmd.Flags().StringVar(&contractLaunchCmd, "cmd", "", "Raw command for exec alias")
 	launchContractCmd.Flags().BoolVar(&contractLaunchList, "list", false, "List available aliases, apps, and commands")
 
-	// Dump Flags
-	dumpContractCmd.Flags().StringVar(&contractDumpUUID, "uuid", "", "Contract UUID (optional if in workdir)")
-	dumpContractCmd.Flags().StringVar(&contractDumpType, "type", "tree", "Dump strategy: tree or merged")
-	dumpContractCmd.Flags().StringVar(&contractDumpSort, "sort", "recency", "Sort mode for merged type: recency, popularity, chronological")
-	dumpContractCmd.Flags().StringVarP(&contractDumpOutput, "output", "o", "", "Output directory (default: ~/.gitsense/dumps/<uuid>)")
-	dumpContractCmd.Flags().BoolVar(&contractDumpIncludeSystem, "include-system", false, "Include the system message in the dump (default: false)")
-	dumpContractCmd.Flags().BoolVar(&contractDumpDebugPatch, "debug-patch", false, "Enable patch debugging (persists source and diff artifacts on failure)")
-	dumpContractCmd.Flags().BoolVar(&contractDumpRaw, "raw", false, "Disable smart trimming (preserve exact LLM output)")
-	dumpContractCmd.Flags().Int64Var(&contractDumpMessageID, "message-id", 0, "Filter dump to a specific message ID (for 'mapped' type)")
-	dumpContractCmd.Flags().StringVarP(&contractDumpFormat, "format", "f", "human", "Output format: human or json (default: human)")
+	// ==========================================
+	// Dump Flags (Refactored)
+	// ==========================================
+	
+	// Parent Flags (Shared by all dump types)
+	dumpContractCmd.PersistentFlags().StringVar(&contractDumpUUID, "uuid", "", "Contract UUID (optional if in workdir)")
+	dumpContractCmd.PersistentFlags().StringVarP(&contractDumpOutput, "output", "o", "", "Output directory (default: ~/.gitsense/dumps/<uuid>)")
+	dumpContractCmd.PersistentFlags().BoolVar(&contractDumpIncludeSystem, "include-system", false, "Include the system message in the dump (default: false)")
+	dumpContractCmd.PersistentFlags().BoolVar(&contractDumpDebugPatch, "debug-patch", false, "Enable patch debugging (persists source and diff artifacts on failure)")
+	dumpContractCmd.PersistentFlags().BoolVar(&contractDumpRaw, "raw", false, "Disable smart trimming (preserve exact LLM output)")
+	dumpContractCmd.PersistentFlags().StringVarP(&contractDumpFormat, "format", "f", "human", "Output format: human or json (default: human)")
+
+	// Merged Specific Flags
+	dumpMergedCmd.Flags().StringVar(&contractDumpSort, "sort", "recency", "Sort mode for merged type: recency, popularity, chronological")
+
+	// Mapped Specific Flags
+	dumpMappedCmd.Flags().Int64Var(&contractDumpMessageID, "message-id", 0, "Filter dump to a specific message ID")
+
+	// Register Subcommands
+	dumpContractCmd.AddCommand(dumpTreeCmd)
+	dumpContractCmd.AddCommand(dumpMergedCmd)
+	dumpContractCmd.AddCommand(dumpMappedCmd)
 
 	// Add subcommands to base contract command
 	contractCmd.AddCommand(createContractCmd)

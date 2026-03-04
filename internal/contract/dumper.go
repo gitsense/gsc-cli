@@ -1,12 +1,12 @@
 /**
  * Component: Contract Dump Orchestrator
- * Block-UUID: cf535661-bd42-4679-8540-760588c199a1
- * Parent-UUID: c06e1aac-60e5-4b22-8ac9-fefe39cfa94b
- * Version: 2.5.1
- * Description: Added executeMappedDump to support the 'mapped' dump type. Updated ExecuteDump to accept an optional messageID for single-message filtering. Implemented the discovery pass using ripgrep to resolve Parent-UUIDs to project paths, enabling the 'Shadow Workspace' generation.
+ * Block-UUID: 545075c7-3a57-478f-990f-af1f838ff3f1
+ * Parent-UUID: 4da67bdb-9b19-4c61-b7dc-dff212374b32
+ * Version: 2.6.1
+ * Description: Removed unused variable 'targetMessage' in executeMappedDump to resolve build error.
  * Language: Go
- * Created-at: 2026-03-04T04:56:06.538Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.4.1), Gemini 3 Flash (v2.4.2), Gemini 3 Flash (v2.5.0), GLM-4.7 (v2.5.1)
+ * Created-at: 2026-03-04T01:34:28.487Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.4.1), Gemini 3 Flash (v2.4.2), Gemini 3 Flash (v2.5.0), GLM-4.7 (v2.6.0), GLM-4.7 (v2.6.1)
  */
 
 
@@ -202,7 +202,7 @@ func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, inclu
 							phase2Diff = pErr.Phase2Diff
 						}
 
-						debugPath, writeErr := WriteDebugArtifacts(sourceCode, phase1Diff, phase2Diff, patch.TargetBlockUUID, err)
+						debugPath, writeErr := WriteDebugArtifacts(msg, chat, sourceCode, phase1Diff, phase2Diff, patch.TargetBlockUUID, err)
 						if writeErr != nil {
 							logger.Error("Failed to write debug artifacts", "error", writeErr)
 						} else {
@@ -470,7 +470,20 @@ func executeMappedDump(chats []db.Chat, sqliteDB *sql.DB, writer DumpWriter, out
 						phase1Diff = pErr.Phase1Diff
 						phase2Diff = pErr.Phase2Diff
 					}
-					debugPath, writeErr := WriteDebugArtifacts(sourceCode, phase1Diff, phase2Diff, patch.TargetBlockUUID, err)
+					
+					// We need the chat for this message. 
+					// In mapped dump, we iterate over messages, but we don't have the chat object directly in the loop scope easily.
+					// We can look it up or pass it down. 
+					// Since we have the list of chats, we can find it.
+					var associatedChat db.Chat
+					for _, c := range chats {
+						if c.ID == msg.ChatID {
+							associatedChat = c
+							break
+						}
+					}
+
+					debugPath, writeErr := WriteDebugArtifacts(msg, associatedChat, sourceCode, phase1Diff, phase2Diff, patch.TargetBlockUUID, err)
 					if writeErr != nil {
 						logger.Error("Failed to write debug artifacts", "error", writeErr)
 					} else {
@@ -719,7 +732,13 @@ func executeMergedDump(chats []db.Chat, sqliteDB *sql.DB, writer DumpWriter, out
 							phase2Diff = pErr.Phase2Diff
 						}
 
-						debugPath, writeErr := WriteDebugArtifacts(sourceCode, phase1Diff, phase2Diff, patch.TargetBlockUUID, err)
+						// Use the first chat associated with this node for context
+						primaryChat := db.Chat{}
+						if len(node.Chats) > 0 {
+							primaryChat = node.Chats[0]
+						}
+
+						debugPath, writeErr := WriteDebugArtifacts(node.Message, primaryChat, sourceCode, phase1Diff, phase2Diff, patch.TargetBlockUUID, err)
 						if writeErr != nil {
 							logger.Error("Failed to write debug artifacts", "error", writeErr)
 						} else {
