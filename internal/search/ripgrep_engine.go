@@ -1,12 +1,12 @@
 /**
  * Component: Ripgrep Search Engine
- * Block-UUID: d60e3a1b-3134-4c7c-9a86-be0d6e4face3
- * Parent-UUID: 5b7424e0-942c-4836-a126-bb45a4d3b82b
- * Version: 2.5.1
- * Description: Ripgrep Search Engine
+ * Block-UUID: 1a1a762b-43b5-41f2-85fd-52e6dfd1a2e3
+ * Parent-UUID: d60e3a1b-3134-4c7c-9a86-be0d6e4face3
+ * Version: 2.6.0
+ * Description: Added debug logging to ResolvePathsByUUIDs to display the exact ripgrep command arguments and workdir before execution, aiding in troubleshooting discovery issues.
  * Language: Go
- * Created-at: 2026-03-04T04:37:10.965Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), Gemini 3 Flash (v2.3.0), Gemini 3 Flash (v2.3.1), GLM-4.7 (v2.4.0), Gemini 3 Flash (v2.4.1), Gemini 3 Flash (v2.5.0), Gemini 3 Flash (v2.5.1)
+ * Created-at: 2026-03-04T15:42:00.123Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), Gemini 3 Flash (v2.3.0), Gemini 3 Flash (v2.3.1), GLM-4.7 (v2.4.0), Gemini 3 Flash (v2.4.1), Gemini 3 Flash (v2.5.0), Gemini 3 Flash (v2.5.1), GLM-4.7 (v2.6.0)
  */
 
 
@@ -172,6 +172,9 @@ func (e *RipgrepEngine) ResolvePathsByUUIDs(ctx context.Context, workdir string,
 	for _, uuid := range uuids {
 		args = append(args, "-e", formatBlockUUIDPattern(uuid))
 	}
+
+	// DEBUG: Log the exact ripgrep command
+	logger.Debug("Executing Batch Ripgrep", "workdir", workdir, "args", strings.Join(args, " "))
 
 	cmd := exec.CommandContext(ctx, "rg", args...)
 	cmd.Dir = workdir

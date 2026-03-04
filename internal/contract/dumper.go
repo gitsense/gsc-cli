@@ -1,12 +1,12 @@
 /**
  * Component: Contract Dump Orchestrator
- * Block-UUID: d39e5e66-7b38-476e-a539-63f3e5724f3b
- * Parent-UUID: 545075c7-3a57-478f-990f-af1f838ff3f1
- * Version: 2.6.2
- * Description: Removed unused variable 'targetMessage' in executeMappedDump to resolve build error.
+ * Block-UUID: 21fab1b4-1f15-48c5-a288-a79ec0746a92
+ * Parent-UUID: d39e5e66-7b38-476e-a539-63f3e5724f3b
+ * Version: 2.7.0
+ * Description: Added pre-scan logic to calculate total artifacts for progress tracking. Implemented message-level checklists showing processed/remaining files. Added full code logging for debugging.
  * Language: Go
- * Created-at: 2026-03-04T15:36:53.248Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.6.0), GLM-4.7 (v2.6.1), GLM-4.7 (v2.6.2)
+ * Created-at: 2026-03-04T15:41:01.773Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.6.2), GLM-4.7 (v2.7.0)
  */
 
 
@@ -47,7 +47,7 @@ type MergedNode struct {
 func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, includeSystem bool, trim bool, dumpType string, sortMode string, debugPatch bool, messageID int64) (*MappedDumpResult, error) {
 	// 1. Initialize Output
 	if err := writer.Prepare(outputDir); err != nil {
-		return nil, fmt.Errorf("failed to prepare dump directory: %w", err)
+		return nil, fmt.Errorf("failed to prepare output directory: %w", err)
 	}
 
 	// 2. Open Database
@@ -246,6 +246,7 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 		}
 		messages = []db.Message{*msg}
 		dumpHash = calculateMessageHash(*msg)
+		logger.Info("Single Message Mode", "message_id", messageID, "hash", dumpHash)
 	} else {
 		// Full Contract Mode (Fetch all messages from all chats)
 		for _, chat := range chats {
@@ -257,7 +258,27 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 		}
 		// For full contract, use contract UUID as hash (simplified)
 		dumpHash = "full-contract"
+		logger.Info("Full Contract Mode", "total_messages", len(messages))
 	}
+
+	// ==========================================
+	// PASS 0: Pre-scan for Total Artifact Count
+	// ==========================================
+	totalArtifacts := 0
+	for _, msg := range messages {
+		if !msg.Message.Valid {
+			continue
+		}
+		if !includeSystem && msg.Role == "system" {
+			continue
+		}
+		result, err := markdown.ExtractCodeBlocks(msg.Message.String, trim)
+		if err != nil {
+			continue
+		}
+		totalArtifacts += len(result.Blocks) + len(result.Patches)
+	}
+	logger.Info("Pre-scan Complete", "total_artifacts_to_process", totalArtifacts)
 
 	// 2. Discovery Pass: Resolve Parent-UUIDs to Paths
 	// Collect all unique Parent-UUIDs from the messages
@@ -283,6 +304,8 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 		uuidList = append(uuidList, uuid)
 	}
 
+	logger.Info("Discovery Phase: Starting", "unique_parent_uuids", len(uuidList))
+
 	// Resolve paths using ripgrep
 	// We need the workdir. We can get it from the first chat's context or assume CWD.
 	// For now, assume CWD is the workdir (standard for CLI usage).
@@ -299,6 +322,8 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 		pathMap = make(map[string]string)
 	}
 
+	logger.Info("Discovery Phase: Complete", "resolved_count", len(pathMap), "unresolved_count", len(uuidList)-len(pathMap))
+
 	// Inject PathMap into MappedWriter
 	if mw, ok := writer.(*MappedWriter); ok {
 		mw.SetPathMap(pathMap)
@@ -314,6 +339,8 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 
 	// blockMap stores Block-UUID -> ExecutableCode content for patching
 	blockMap := make(map[string]string)
+	
+	processedArtifacts := 0
 
 	for _, msg := range messages {
 		if !msg.Message.Valid {
@@ -331,6 +358,11 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 			continue
 		}
 
+		logger.Info("Processing Message", "msg_id", msg.ID, "blocks_found", len(parseResult.Blocks), "patches_found", len(parseResult.Patches))
+
+		// Track files processed in this message for the checklist
+		var msgChecklist []string
+
 		// Process Code Blocks
 		for _, block := range parseResult.Blocks {
 			// Update blockMap for future patches
@@ -344,12 +376,14 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 			reason := ""
 			if isMapped {
 				status = MappedStatusMapped
+				logger.Debug("Block Mapped", "uuid", block.BlockUUID, "path", relPath)
 			} else {
 				if block.ParentUUID == "" || block.ParentUUID == "N/A" {
 					reason = "no_parent_uuid"
 				} else {
 					reason = "parent_not_found"
 				}
+				logger.Debug("Block Unmapped", "uuid", block.BlockUUID, "reason", reason)
 			}
 
 			// Add to result list
@@ -384,6 +418,10 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 				return nil, err
 			}
 
+			// Log Full Code
+			logger.Debug("Writing Full Code", "uuid", block.BlockUUID, "language", block.Language, "code_length", len(block.ExecutableCode))
+			logger.Debug("Code Content", "uuid", block.BlockUUID, "content", block.ExecutableCode)
+
 			// Write Provenance
 			prov := Provenance{
 				FilePath:     relPath,
@@ -401,6 +439,11 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 			if err := writer.WriteProvenanceJSON(outputDir, prov); err != nil {
 				logger.Warning("Failed to write provenance", "block_uuid", block.BlockUUID, "error", err)
 			}
+
+			// Add to checklist
+			checkItem := fmt.Sprintf("[x] %s (%s)", entry.Path, status)
+			msgChecklist = append(msgChecklist, checkItem)
+			processedArtifacts++
 		}
 
 		// Process Patches
@@ -421,8 +464,10 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 			reason := ""
 			if isMapped {
 				status = MappedStatusMapped
+				logger.Debug("Patch Mapped", "target_uuid", patch.TargetBlockUUID, "path", relPath)
 			} else {
 				reason = "parent_not_found"
+				logger.Debug("Patch Unmapped", "target_uuid", patch.TargetBlockUUID, "reason", reason)
 			}
 
 			// Add to result list
@@ -504,6 +549,10 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 				return nil, err
 			}
 
+			// Log Full Code (Patched)
+			logger.Debug("Writing Patched Code", "uuid", patch.TargetBlockUUID, "language", patch.Language, "code_length", len(patchedCode))
+			logger.Debug("Code Content", "uuid", patch.TargetBlockUUID, "content", patchedCode)
+
 			// Write Provenance
 			prov := Provenance{
 				FilePath:     relPath,
@@ -521,7 +570,24 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 			if err := writer.WriteProvenanceJSON(outputDir, prov); err != nil {
 				logger.Warning("Failed to write provenance", "block_uuid", patch.TargetBlockUUID, "error", err)
 			}
+
+			// Add to checklist
+			checkItem := fmt.Sprintf("[x] %s (%s)", entry.Path, status)
+			msgChecklist = append(msgChecklist, checkItem)
+			processedArtifacts++
 		}
+
+		// ==========================================
+		// MESSAGE CHECKLIST
+		// ==========================================
+		fmt.Println("\n--------------------------------------------------")
+		fmt.Printf("Message ID: %d Checklist\n", msg.ID)
+		fmt.Println("--------------------------------------------------")
+		for _, item := range msgChecklist {
+			fmt.Println(item)
+		}
+		fmt.Printf("Files Processed: %d | Files Remaining: %d\n", processedArtifacts, totalArtifacts-processedArtifacts)
+		fmt.Println("--------------------------------------------------\n")
 	}
 
 	// Calculate Stats
@@ -532,6 +598,8 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 			result.Stats.Unmappable++
 		}
 	}
+
+	logger.Info("Mapped Dump Complete", "hash", dumpHash, "mappable", result.Stats.Mappable, "unmappable", result.Stats.Unmappable)
 
 	return result, nil
 }
