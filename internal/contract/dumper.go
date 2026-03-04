@@ -1,12 +1,12 @@
 /**
  * Component: Contract Dump Orchestrator
- * Block-UUID: ea3f0cb9-4d2f-47c8-bb43-2c43d07438b4
- * Parent-UUID: 99085959-89e1-4484-a810-1fbbd916be1f
- * Version: 2.3.0
+ * Block-UUID: c1e0421f-9b4b-4301-a22a-6b6f08660f92
+ * Parent-UUID: f4cad3aa-e4c1-4efc-92f0-d6960e964cfb
+ * Version: 2.4.2
  * Description: Refactored ExecuteDump to support the 'merged' dump type. Added Pass 0 to build a global MergedNode tree, calculate metrics (ChatCount, MaxSubtreeTimestamp), and handle sorting strategies (recency, popularity, chronological). The orchestrator now traverses the merged tree instead of individual chats for the 'merged' type.
  * Language: Go
- * Created-at: 2026-03-03T19:22:00.669Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0)
+ * Created-at: 2026-03-04T01:34:28.487Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.4.1), Gemini 3 Flash (v2.4.2)
  */
 
 
@@ -250,6 +250,7 @@ func executeMergedDump(chats []db.Chat, sqliteDB *sql.DB, writer DumpWriter, out
 			if node, exists := nodeMap[hash]; exists {
 				// Node already exists (duplicate message), just add chat
 				node.Chats = append(node.Chats, chat)
+				node.ChatCount++
 			} else {
 				// Create new node
 				nodeMap[hash] = &MergedNode{
@@ -325,6 +326,7 @@ func executeMergedDump(chats []db.Chat, sqliteDB *sql.DB, writer DumpWriter, out
 	// ==========================================
 	// PASS 2: Generation (Sorted)
 	// ==========================================
+	globalRank := 0
 	var traverseForGeneration func(nodes []*MergedNode, rank int)
 	traverseForGeneration = func(nodes []*MergedNode, rank int) {
 		// Sort children based on sortMode
@@ -341,7 +343,7 @@ func executeMergedDump(chats []db.Chat, sqliteDB *sql.DB, writer DumpWriter, out
 			}
 		})
 
-		for i, node := range nodes {
+		for _, node := range nodes {
 			if !node.Message.Message.Valid {
 				continue
 			}
@@ -353,7 +355,8 @@ func executeMergedDump(chats []db.Chat, sqliteDB *sql.DB, writer DumpWriter, out
 
 			// Inject metrics into MergedWriter if applicable
 			if mw, ok := writer.(*MergedWriter); ok {
-				mw.SetMetrics(i+1, node.ChatCount)
+				globalRank++
+				mw.SetMetrics(globalRank, node.ChatCount)
 			}
 
 			// Use a dummy chat for GetMessageDir since MergedWriter ignores it

@@ -1,12 +1,12 @@
 /**
  * Component: Merged Dump Writer
- * Block-UUID: 3b8154e0-0fc2-4c7e-8f0f-f2949303192c
- * Parent-UUID: 8e764a94-6efd-49a5-9579-5ddcd12342f6
- * Version: 1.0.2
+ * Block-UUID: e0f26185-7850-4e19-9aed-a143824743a1
+ * Parent-UUID: 3b8154e0-0fc2-4c7e-8f0f-f2949303192c
+ * Version: 1.0.3
  * Description: Implements the DumpWriter interface for the 'merged' strategy. It generates a squashed filesystem tree where duplicate messages are unified. Directory names follow the <rank>_<count>_<role>_<hash> convention, and provenance files (<n>_chats.md) are generated for each node.
  * Language: Go
- * Created-at: 2026-03-03T17:32:45.109Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2)
+ * Created-at: 2026-03-04T01:41:01.763Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), Gemini 3 Flash (v1.0.3)
  */
 
 
@@ -61,7 +61,7 @@ func (w *MergedWriter) WriteMessage(msgDir string, msg db.Message) error {
 }
 
 // WriteProvenance persists the chat metadata (provenance) for a message.
-// It creates a <count>_chats.md file listing all chats that contain this message.
+// It creates a chats.md file listing all chats that contain this message.
 func (w *MergedWriter) WriteProvenance(msgDir string, chats []db.Chat) error {
 	if len(chats) == 0 {
 		return nil
@@ -78,7 +78,7 @@ func (w *MergedWriter) WriteProvenance(msgDir string, chats []db.Chat) error {
 		sb.WriteString(fmt.Sprintf("| %d | `%s` | %s |\n", c.ID, c.UUID, c.Name))
 	}
 
-	path := filepath.Join(msgDir, fmt.Sprintf("%d_chats.md", len(chats)))
+	path := filepath.Join(msgDir, "chats.md")
 	return os.WriteFile(path, []byte(sb.String()), 0644)
 }
 

@@ -1,12 +1,12 @@
 /**
  * Component: GitSense Patch Engine
- * Block-UUID: 761d2559-925f-45bf-922f-ec496c66ca92
- * Parent-UUID: 36289a49-7305-4ccd-93cb-9658131507bc
- * Version: 1.12.0
+ * Block-UUID: 82d56715-1958-40be-8339-13ff83e21d78
+ * Parent-UUID: 7a8f9c2d-3e4b-4a1f-8b5c-6d7e8f9a0b1c
+ * Version: 1.14.1
  * Description: Implemented a multiphase patching strategy in ApplyPatch. It now attempts to apply the patch directly first, and if that fails (e.g., due to line number offsets from headers), it automatically calculates the header offset from the patch metadata and retries with adjusted hunk line numbers.
  * Language: Go
- * Created-at: 2026-03-03T19:21:37.110Z
- * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0)
+ * Created-at: 2026-03-03T20:14:24.170Z
+ * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.13.1), GLM-4.7 (v1.14.0), GLM-4.7 (v1.14.1)
  */
 
 
@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -25,6 +26,7 @@ import (
 
 	"github.com/bluekeyes/go-gitdiff/gitdiff"
 	"github.com/gitsense/gsc-cli/pkg/logger"
+	execpkg "github.com/gitsense/gsc-cli/internal/exec"
 )
 
 // PatchError wraps a patching failure with details about the attempted phases.
@@ -92,6 +94,82 @@ func ApplyPatch(originalSource string, patchExecutableCode string) (string, erro
 			return patched, nil
 		}
 		logger.Debug("Phase 2 patch application failed", "error", err)
+	}
+
+	// Phase 2.5: Whitespace Normalization
+	// Attempt to apply by stripping trailing whitespace from both source and patch
+	logger.Debug("Phase 2 patch application failed, attempting Phase 2.5 (whitespace normalization)")
+	
+	// Determine which diff to use (prefer Phase 2 adjusted diff if available)
+	diffToNormalize := patchErr.Phase1Diff
+	if patchErr.Phase2Diff != "" {
+		diffToNormalize = patchErr.Phase2Diff
+	}
+
+	normalizedSource := stripTrailingWhitespace(originalSource)
+	normalizedDiff := stripTrailingWhitespace(diffToNormalize)
+
+	patched, err = tryApply(normalizedSource, normalizedDiff)
+	if err == nil {
+		logger.Info("Patch applied successfully after whitespace normalization")
+		return patched, nil
+	}
+	logger.Debug("Phase 2.5 patch application failed", "error", err)
+
+	// Phase 3: System Patch Tool Fallback
+	// Attempt to apply using the system 'patch' command if available
+	if _, err := exec.LookPath("patch"); err == nil {
+		logger.Debug("Phase 2.5 patch application failed, attempting Phase 3 (system patch tool)")
+		
+		// Determine which diff to use (prefer Phase 2 adjusted diff)
+		diffToApply := patchErr.Phase1Diff
+		if patchErr.Phase2Diff != "" {
+			diffToApply = patchErr.Phase2Diff
+		}
+
+		// Create temp directory
+		tempDir, err := os.MkdirTemp("", "gsc-patch-*")
+		if err != nil {
+			logger.Debug("Phase 3 failed to create temp directory", "error", err)
+			return "", patchErr
+		}
+		defer os.RemoveAll(tempDir) // Cleanup
+
+		// Write source file
+		sourcePath := filepath.Join(tempDir, "source.txt")
+		if err := os.WriteFile(sourcePath, []byte(originalSource), 0644); err != nil {
+			logger.Debug("Phase 3 failed to write source file", "error", err)
+			return "", patchErr
+		}
+
+		// Write patch file
+		patchPath := filepath.Join(tempDir, "patch.diff")
+		if err := os.WriteFile(patchPath, []byte(diffToApply), 0644); err != nil {
+			logger.Debug("Phase 3 failed to write patch file", "error", err)
+			return "", patchErr
+		}
+
+		// Execute patch command
+		// Using -f to force apply and avoid interactive prompts
+		executor := execpkg.NewExecutor("patch -f source.txt < patch.diff", execpkg.ExecFlags{Silent: true}, tempDir)
+		result, err := executor.Run()
+		if err != nil {
+			logger.Debug("Phase 3 execution failed", "error", err)
+			return "", patchErr
+		}
+
+		if result.ExitCode == 0 {
+			// Read patched file
+			patchedContent, err := os.ReadFile(sourcePath)
+			if err != nil {
+				logger.Debug("Phase 3 failed to read patched file", "error", err)
+				return "", patchErr
+			}
+			logger.Info("Patch applied successfully using system patch tool (Phase 3)")
+			return string(patchedContent), nil
+		}
+
+		logger.Debug("Phase 3 patch tool returned non-zero exit code", "exit_code", result.ExitCode)
 	}
 
 	return "", patchErr
@@ -169,6 +247,21 @@ func adjustHunkOffsets(diffStr string, delta int) string {
 
 		return fmt.Sprintf("@@ -%d,%s +%d,%s @@", adjOldStart, oldLen, adjNewStart, newLen)
 	})
+}
+
+// stripTrailingWhitespace removes trailing spaces and tabs from every line in a string.
+func stripTrailingWhitespace(input string) string {
+	lines := strings.Split(input, "\n")
+	for i, line := range lines {
+		lines[i] = strings.TrimRight(line, " \t")
+	}
+	
+	// Remove trailing empty lines
+	for len(lines) > 0 && lines[len(lines)-1] == "" {
+		lines = lines[:len(lines)-1]
+	}
+	
+	return strings.Join(lines, "\n")
 }
 
 // WriteDebugArtifacts persists the source and patch content to a debug directory
