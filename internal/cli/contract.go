@@ -1,12 +1,12 @@
 /**
  * Component: Contract CLI Commands
- * Block-UUID: 45c74bac-c845-4b7f-921e-6b104d3929a3
- * Parent-UUID: 8c8e8e8e-8e8e-8e8e-8e8e-8e8e8e8e8e8e
- * Version: 1.24.0
+ * Block-UUID: 8f9c8d2e-3f4a-4b5c-9d6e-0f1a2b3c4d5e
+ * Parent-UUID: 45c74bac-c845-4b7f-921e-6b104d3929a3
+ * Version: 1.25.0
  * Description: Added --sort flag to the dump command and updated ExecuteDump call to support the new 'merged' dump type and sorting strategies (recency, popularity, chronological).
  * Language: Go
- * Created-at: 2026-03-03T18:35:02.869Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.23.2), Gemini 3 Flash (v1.24.0)
+ * Created-at: 2026-03-04T04:40:27.188Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.23.2), Gemini 3 Flash (v1.24.0), Gemini 3 Flash (v1.25.0)
  */
 
 
@@ -94,6 +94,8 @@ var (
 	contractDumpIncludeSystem bool
 	contractDumpDebugPatch bool
 	contractDumpRaw    bool
+	contractDumpMessageID int64
+	contractDumpFormat    string
 )
 
 // contractCmd represents the base command for contract management
@@ -694,7 +696,8 @@ and organizes them into a directory structure for local review and search.`,
 		// 2. Resolve Output Directory
 		outputDir := contractDumpOutput
 		if outputDir == "" {
-			outputDir = contract.GetDefaultDumpDir(uuid)
+			gscHome, _ := settings.GetGSCHome(false)
+			outputDir = filepath.Join(gscHome, settings.DumpsRelPath, uuid)
 		}
 
 		// 3. Select Strategy
@@ -702,7 +705,7 @@ and organizes them into a directory structure for local review and search.`,
 		switch contractDumpType {
 		case "tree":
 			writer = &contract.TreeWriter{}
-		case "merged":
+		case "merged": // MergedWriter is defined in contract package
 			writer = &contract.MergedWriter{}
 		default:
 			return fmt.Errorf("unsupported dump type: %s (supported: tree, merged)", contractDumpType)
@@ -711,11 +714,61 @@ and organizes them into a directory structure for local review and search.`,
 		// 4. Execute
 		// Note: !contractDumpRaw means trim is true by default
 		logger.Info("Generating conversational dump...", "type", contractDumpType, "sort", contractDumpSort, "output", outputDir, "trim", !contractDumpRaw)
-		if err := contract.ExecuteDump(uuid, writer, outputDir, contractDumpIncludeSystem, !contractDumpRaw, contractDumpType, contractDumpSort, contractDumpDebugPatch); err != nil {
+		
+		result, err := contract.ExecuteDump(uuid, writer, outputDir, contractDumpIncludeSystem, !contractDumpRaw, contractDumpType, contractDumpSort, contractDumpDebugPatch, contractDumpMessageID)
+		
+		// 5. Handle Output Format
+		if contractDumpFormat == "json" {
+			if err != nil {
+				// Return JSON error
+				errorJSON := fmt.Sprintf(`{"success": false, "error": {"code": "EXECUTION_FAILED", "message": "%s"}}`, strings.ReplaceAll(err.Error(), `"`, `\"`))
+				fmt.Println(errorJSON)
+				return nil // Return nil to prevent Cobra from printing its own error
+			}
+			
+			if contractDumpType == "mapped" {
+				if result == nil {
+					fmt.Println(`{"success": false, "error": {"code": "INTERNAL_ERROR", "message": "No result returned for mapped dump"}}`)
+					return nil
+				}
+				output.FormatJSON(result)
+			} else {
+				// For tree/merged, return a simple success JSON
+				fmt.Printf(`{"success": true, "message": "Dump generated successfully", "root_dir": "%s"}`, outputDir)
+			}
+			return nil
+		}
+		
+		// Human Mode
+		if err != nil {
 			return err
 		}
+		
+		if contractDumpType == "mapped" && result != nil {
+			// Print human-readable summary for mapped dump
+			fmt.Printf("✓ Mapped Dump Generated\n")
+			fmt.Printf("  Hash:       %s\n", result.Hash)
+			fmt.Printf("  Location:   %s\n\n", result.RootDir)
+			
+			fmt.Printf("  Mapped Files (%d):\n", result.Stats.Mappable)
+			for _, f := range result.Files {
+				if f.Status == "mapped" {
+					fmt.Printf("    - %s\n", f.Path)
+				}
+			}
+			
+			if result.Stats.Unmappable > 0 {
+				fmt.Printf("\n  Unmapped Files (%d):\n", result.Stats.Unmappable)
+				for _, f := range result.Files {
+					if f.Status == "unmapped" {
+						fmt.Printf("    - %s (%s)\n", f.Path, f.Reason)
+					}
+				}
+			}
+		} else {
+			fmt.Printf("Dump complete: %s\n", outputDir)
+		}
 
-		fmt.Printf("Dump complete: %s\n", outputDir)
 		return nil
 	},
 }
@@ -798,6 +851,8 @@ func init() {
 	dumpContractCmd.Flags().BoolVar(&contractDumpIncludeSystem, "include-system", false, "Include the system message in the dump (default: false)")
 	dumpContractCmd.Flags().BoolVar(&contractDumpDebugPatch, "debug-patch", false, "Enable patch debugging (persists source and diff artifacts on failure)")
 	dumpContractCmd.Flags().BoolVar(&contractDumpRaw, "raw", false, "Disable smart trimming (preserve exact LLM output)")
+	dumpContractCmd.Flags().Int64Var(&contractDumpMessageID, "message-id", 0, "Filter dump to a specific message ID (for 'mapped' type)")
+	dumpContractCmd.Flags().StringVarP(&contractDumpFormat, "format", "f", "human", "Output format: human or json (default: human)")
 
 	// Add subcommands to base contract command
 	contractCmd.AddCommand(createContractCmd)

@@ -1,12 +1,12 @@
 /**
  * Component: Merged Dump Writer
- * Block-UUID: 7764bf3b-38ee-4925-b625-20bd0b228326
- * Parent-UUID: 5b8c9d2e-3f4a-4b5c-9d6e-0f1a2b3c4d5e
- * Version: 1.0.6
- * Description: Implements the DumpWriter interface for the 'merged' strategy. It generates a squashed filesystem tree where duplicate messages are unified. Directory names follow the <rank>_<count>_<role>_<hash> convention, and provenance files (<n>_chats.md) are generated for each node.
+ * Block-UUID: 3709dcd6-eba6-4b6a-bd57-c7604cb3bf77
+ * Parent-UUID: 7764bf3b-38ee-4925-b625-20bd0b228326
+ * Version: 1.0.7
+ * Description: Implemented WriteSourceFile and WriteProvenanceJSON as no-ops to maintain compliance with the updated DumpWriter interface. The 'merged' type does not utilize the mapped shadow workspace features.
  * Language: Go
  * Created-at: 2026-03-04T02:19:44.766Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), Gemini 3 Flash (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6)
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), Gemini 3 Flash (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7)
  */
 
 
@@ -140,6 +140,16 @@ func (w *MergedWriter) WritePatchedFile(msgDir string, patch markdown.PatchBlock
 	fullContent := header + "\n\n\n" + content
 	path := filepath.Join(msgDir, filename)
 	return os.WriteFile(path, []byte(fullContent), 0644)
+}
+
+// WriteSourceFile is a no-op for the MergedWriter as it does not support the mapped shadow workspace.
+func (w *MergedWriter) WriteSourceFile(msgDir string, relPath string, content string) error {
+	return nil
+}
+
+// WriteProvenanceJSON is a no-op for the MergedWriter as it does not support the mapped shadow workspace.
+func (w *MergedWriter) WriteProvenanceJSON(msgDir string, data Provenance) error {
+	return nil
 }
 
 // pluralize returns "s" if n is not 1, otherwise an empty string.

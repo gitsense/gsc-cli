@@ -1,21 +1,22 @@
 /**
  * Component: Contract Dump Orchestrator
- * Block-UUID: c1e0421f-9b4b-4301-a22a-6b6f08660f92
- * Parent-UUID: f4cad3aa-e4c1-4efc-92f0-d6960e964cfb
- * Version: 2.4.2
- * Description: Refactored ExecuteDump to support the 'merged' dump type. Added Pass 0 to build a global MergedNode tree, calculate metrics (ChatCount, MaxSubtreeTimestamp), and handle sorting strategies (recency, popularity, chronological). The orchestrator now traverses the merged tree instead of individual chats for the 'merged' type.
+ * Block-UUID: c06e1aac-60e5-4b22-8ac9-fefe39cfa94b
+ * Parent-UUID: c1e0421f-9b4b-4301-a22a-6b6f08660f92
+ * Version: 2.5.0
+ * Description: Added executeMappedDump to support the 'mapped' dump type. Updated ExecuteDump to accept an optional messageID for single-message filtering. Implemented the discovery pass using ripgrep to resolve Parent-UUIDs to project paths, enabling the 'Shadow Workspace' generation.
  * Language: Go
  * Created-at: 2026-03-04T01:34:28.487Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.4.1), Gemini 3 Flash (v2.4.2)
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.4.1), Gemini 3 Flash (v2.4.2), Gemini 3 Flash (v2.5.0)
  */
 
 
 package contract
 
 import (
-	"errors"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"database/sql"
 	"os"
@@ -26,6 +27,7 @@ import (
 
 	"github.com/gitsense/gsc-cli/internal/db"
 	"github.com/gitsense/gsc-cli/internal/markdown"
+	"github.com/gitsense/gsc-cli/internal/search"
 	"github.com/gitsense/gsc-cli/pkg/logger"
 	"github.com/gitsense/gsc-cli/pkg/settings"
 )
@@ -41,18 +43,18 @@ type MergedNode struct {
 }
 
 // ExecuteDump coordinates the full dump process for a given contract.
-// It supports both 'tree' and 'merged' strategies.
-func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, includeSystem bool, trim bool, dumpType string, sortMode string, debugPatch bool) error {
+// It supports 'tree', 'merged', and 'mapped' strategies.
+func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, includeSystem bool, trim bool, dumpType string, sortMode string, debugPatch bool, messageID int64) (*MappedDumpResult, error) {
 	// 1. Initialize Output
 	if err := writer.Prepare(outputDir); err != nil {
-		return fmt.Errorf("failed to prepare dump directory: %w", err)
+		return nil, fmt.Errorf("failed to prepare dump directory: %w", err)
 	}
 
 	// 2. Open Database
 	gscHome, _ := settings.GetGSCHome(false)
 	sqliteDB, err := db.OpenDB(settings.GetChatDatabasePath(gscHome))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer sqliteDB.Close()
 
@@ -68,7 +70,7 @@ func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, inclu
 		
 	rows, err := sqliteDB.Query(query, contractUUID)
 	if err != nil {
-		return fmt.Errorf("failed to query chats for contract: %w", err)
+		return nil, fmt.Errorf("failed to query chats for contract: %w", err)
 	}
 	defer rows.Close()
 
@@ -76,33 +78,38 @@ func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, inclu
 	for rows.Next() {
 		var c db.Chat
 		if err := rows.Scan(&c.ID, &c.UUID, &c.Name, &c.Type); err != nil {
-			return err
+			return nil, err
 		}
 		chats = append(chats, c)
 	}
 
 	if len(chats) == 0 {
-		return fmt.Errorf("no chats found for contract %s", contractUUID)
+		return nil, fmt.Errorf("no chats found for contract %s", contractUUID)
 	}
-
-	// blockMap stores Block-UUID -> ExecutableCode content
-	blockMap := make(map[string]string)
 
 	// ==========================================
 	// STRATEGY SELECTION
 	// ==========================================
+	if dumpType == "mapped" {
+		return executeMappedDump(chats, sqliteDB, writer, outputDir, includeSystem, trim, debugPatch, messageID)
+	}
+
 	if dumpType == "merged" {
-		return executeMergedDump(chats, sqliteDB, writer, outputDir, includeSystem, trim, sortMode, blockMap, debugPatch)
+		// Merged dump doesn't return MappedDumpResult
+		err := executeMergedDump(chats, sqliteDB, writer, outputDir, includeSystem, trim, sortMode, make(map[string]string), debugPatch)
+		return nil, err
 	}
 
 	// ==========================================
 	// LEGACY 'TREE' STRATEGY
 	// ==========================================
 	// PASS 1: Indexing
+	blockMap := make(map[string]string)
+
 	for _, chat := range chats {
 		messages, err := db.GetMessagesRecursive(sqliteDB, chat.ID)
 		if err != nil {
-			return fmt.Errorf("failed to fetch messages for indexing chat %d: %w", chat.ID, err)
+			return nil, fmt.Errorf("failed to fetch messages for indexing chat %d: %w", chat.ID, err)
 		}
 
 		for _, msg := range messages {
@@ -129,7 +136,7 @@ func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, inclu
 
 		messages, err := db.GetMessagesRecursive(sqliteDB, chat.ID)
 		if err != nil {
-			return fmt.Errorf("failed to fetch messages for generating chat %d: %w", chat.ID, err)
+			return nil, fmt.Errorf("failed to fetch messages for generating chat %d: %w", chat.ID, err)
 		}
 
 		visibleIndex := 1
@@ -146,11 +153,11 @@ func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, inclu
 			absMsgDir := filepath.Join(outputDir, relMsgDir)
 
 			if err := os.MkdirAll(absMsgDir, 0755); err != nil {
-				return err
+				return nil, err
 			}
 
 			if err := writer.WriteMessage(absMsgDir, msg); err != nil {
-				return err
+				return nil, err
 			}
 
 			result, err := markdown.ExtractCodeBlocks(msg.Message.String, trim)
@@ -162,14 +169,14 @@ func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, inclu
 			// Write standard code blocks
 			for _, block := range result.Blocks {
 				if err := writer.WriteBlock(absMsgDir, block, trim); err != nil {
-					return err
+					return nil, err
 				}
 			}
 
 			// Process patches and generate "patched" files
 			for _, patch := range result.Patches {
 				if err := writer.WritePatch(absMsgDir, patch, trim); err != nil {
-					return err
+					return nil, err
 				}
 
 				if patch.SourceBlockUUID == "" {
@@ -209,7 +216,7 @@ func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, inclu
 
 				header := generateCodeHeaderFromPatch(patch)
 				if err := writer.WritePatchedFile(absMsgDir, patch, header, patchedCode); err != nil {
-					return err
+					return nil, err
 				}
 
 				if patch.TargetBlockUUID != "" {
@@ -221,7 +228,301 @@ func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, inclu
 		}
 	}
 
-	return nil
+	return nil, nil
+}
+
+// executeMappedDump implements the logic for the 'mapped' dump type.
+// It creates a shadow workspace where code blocks are mapped to their project paths.
+func executeMappedDump(chats []db.Chat, sqliteDB *sql.DB, writer DumpWriter, outputDir string, includeSystem bool, trim bool, debugPatch bool, messageID int64) (*MappedDumpResult, error) {
+	// 1. Fetch Messages
+	var messages []db.Message
+	var targetMessage *db.Message
+	var dumpHash string
+
+	if messageID > 0 {
+		// Single Message Mode
+		msg, err := db.GetMessage(sqliteDB, messageID)
+		if err != nil {
+			return nil, fmt.Errorf("message ID %d not found: %w", messageID, err)
+		}
+		messages = []db.Message{*msg}
+		targetMessage = msg
+		dumpHash = calculateMessageHash(*msg)
+	} else {
+		// Full Contract Mode (Fetch all messages from all chats)
+		for _, chat := range chats {
+			chatMsgs, err := db.GetMessagesRecursive(sqliteDB, chat.ID)
+			if err != nil {
+				return nil, fmt.Errorf("failed to fetch messages for chat %d: %w", chat.ID, err)
+			}
+			messages = append(messages, chatMsgs...)
+		}
+		// For full contract, use contract UUID as hash (simplified)
+		dumpHash = "full-contract"
+	}
+
+	// 2. Discovery Pass: Resolve Parent-UUIDs to Paths
+	// Collect all unique Parent-UUIDs from the messages
+	parentUUIDs := make(map[string]bool)
+	for _, msg := range messages {
+		if !msg.Message.Valid {
+			continue
+		}
+		result, err := markdown.ExtractCodeBlocks(msg.Message.String, trim)
+		if err != nil {
+			continue
+		}
+		for _, block := range result.Blocks {
+			if block.ParentUUID != "" && block.ParentUUID != "N/A" {
+				parentUUIDs[block.ParentUUID] = true
+			}
+		}
+	}
+
+	// Convert map to slice
+	var uuidList []string
+	for uuid := range parentUUIDs {
+		uuidList = append(uuidList, uuid)
+	}
+
+	// Resolve paths using ripgrep
+	// We need the workdir. We can get it from the first chat's context or assume CWD.
+	// For now, assume CWD is the workdir (standard for CLI usage).
+	workdir, err := os.Getwd()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get working directory: %w", err)
+	}
+
+	engine := &search.RipgrepEngine{}
+	pathMap, err := engine.ResolvePathsByUUIDs(context.Background(), workdir, uuidList)
+	if err != nil {
+		logger.Warning("Batch discovery failed", "error", err)
+		// Continue with empty map (everything will be unmapped)
+		pathMap = make(map[string]string)
+	}
+
+	// Inject PathMap into MappedWriter
+	if mw, ok := writer.(*MappedWriter); ok {
+		mw.SetPathMap(pathMap)
+	}
+
+	// 3. Generation Pass
+	result := &MappedDumpResult{
+		Success: true,
+		Hash:    dumpHash,
+		RootDir: outputDir,
+		Files:   []MappedFileEntry{},
+	}
+
+	// blockMap stores Block-UUID -> ExecutableCode content for patching
+	blockMap := make(map[string]string)
+
+	for _, msg := range messages {
+		if !msg.Message.Valid {
+			continue
+		}
+
+		if !includeSystem && msg.Role == "system" {
+			continue
+		}
+
+		// Parse message
+		parseResult, err := markdown.ExtractCodeBlocks(msg.Message.String, trim)
+		if err != nil {
+			logger.Warning("Failed to parse markdown", "msg_id", msg.ID, "error", err)
+			continue
+		}
+
+		// Process Code Blocks
+		for _, block := range parseResult.Blocks {
+			// Update blockMap for future patches
+			if block.BlockUUID != "" {
+				blockMap[block.BlockUUID] = block.ExecutableCode
+			}
+
+			// Determine status
+			relPath, isMapped := pathMap[block.ParentUUID]
+			status := MappedStatusUnmapped
+			reason := ""
+			if isMapped {
+				status = MappedStatusMapped
+			} else {
+				if block.ParentUUID == "" || block.ParentUUID == "N/A" {
+					reason = "no_parent_uuid"
+				} else {
+					reason = "parent_not_found"
+				}
+			}
+
+			// Add to result list
+			entry := MappedFileEntry{
+				Path:      relPath, // Will be component name if unmapped
+				Status:    status,
+				BlockUUID: block.BlockUUID,
+				Reason:    reason,
+			}
+			if !isMapped && block.Component != "" {
+				entry.Path = block.Component
+			}
+			result.Files = append(result.Files, entry)
+
+			// Write Source File if mapped
+			if isMapped {
+				// Read source from workdir
+				sourcePath := filepath.Join(workdir, relPath)
+				sourceContent, err := os.ReadFile(sourcePath)
+				if err != nil {
+					logger.Warning("Failed to read source file", "path", relPath, "error", err)
+					// Fallback: treat as unmapped
+					continue
+				}
+				if err := writer.WriteSourceFile(outputDir, relPath, string(sourceContent)); err != nil {
+					return nil, err
+				}
+			}
+
+			// Write Proposed File
+			if err := writer.WriteBlock(outputDir, block, trim); err != nil {
+				return nil, err
+			}
+
+			// Write Provenance
+			prov := Provenance{
+				FilePath:     relPath,
+				BlockUUID:    block.BlockUUID,
+				ParentUUID:   block.ParentUUID,
+				Version:      block.Version,
+				ChatID:       msg.ChatID,
+				MessageID:    msg.ID,
+				ContractUUID: "", // TODO: Pass contract UUID if available
+				Model:        msg.RealModel.String,
+				Timestamp:    msg.CreatedAt.Format(time.RFC3339),
+				Action:       "full_code",
+				Authors:      block.Authors,
+			}
+			if err := writer.WriteProvenanceJSON(outputDir, prov); err != nil {
+				logger.Warning("Failed to write provenance", "block_uuid", block.BlockUUID, "error", err)
+			}
+		}
+
+		// Process Patches
+		for _, patch := range parseResult.Patches {
+			// Update blockMap
+			if patch.TargetBlockUUID != "" {
+				// We need the patched code for the map, but we haven't applied it yet.
+				// This is tricky. For mapped dump, we rely on the 'proposed' file written by WritePatchedFile.
+				// We don't need to update blockMap for subsequent patches in the same message because
+				// patches usually apply to the *original* source, not the result of previous patches in the same message.
+				// However, if there are multiple patches to the same file in one message, we might need to chain them.
+				// For simplicity, we assume patches apply to the source file found via ParentUUID.
+			}
+
+			// Determine status
+			relPath, isMapped := pathMap[patch.SourceBlockUUID]
+			status := MappedStatusUnmapped
+			reason := ""
+			if isMapped {
+				status = MappedStatusMapped
+			} else {
+				reason = "parent_not_found"
+			}
+
+			// Add to result list
+			entry := MappedFileEntry{
+				Path:      relPath,
+				Status:    status,
+				BlockUUID: patch.TargetBlockUUID,
+				Reason:    reason,
+			}
+			if !isMapped && patch.Component != "" {
+				entry.Path = patch.Component
+			}
+			result.Files = append(result.Files, entry)
+
+			// Write Source File if mapped
+			var sourceCode string
+			if isMapped {
+				sourcePath := filepath.Join(workdir, relPath)
+				sourceBytes, err := os.ReadFile(sourcePath)
+				if err != nil {
+					logger.Warning("Failed to read source file for patch", "path", relPath, "error", err)
+					continue
+				}
+				sourceCode = string(sourceBytes)
+				if err := writer.WriteSourceFile(outputDir, relPath, sourceCode); err != nil {
+					return nil, err
+				}
+			} else {
+				// If unmapped, we can't patch it against a source file easily.
+				// We just store the patch in unmapped/patches.
+				if err := writer.WritePatch(outputDir, patch, trim); err != nil {
+					return nil, err
+				}
+				continue
+			}
+
+			// Apply Patch
+			patchedCode, err := ApplyPatch(sourceCode, patch.ExecutableCode)
+			if err != nil {
+				if debugPatch {
+					var pErr *PatchError
+					phase1Diff := patch.ExecutableCode
+					phase2Diff := ""
+					if errors.As(err, &pErr) {
+						phase1Diff = pErr.Phase1Diff
+						phase2Diff = pErr.Phase2Diff
+					}
+					debugPath, writeErr := WriteDebugArtifacts(sourceCode, phase1Diff, phase2Diff, patch.TargetBlockUUID, err)
+					if writeErr != nil {
+						logger.Error("Failed to write debug artifacts", "error", writeErr)
+					} else {
+						logger.Warning("Failed to apply patch", "target_uuid", patch.TargetBlockUUID, "error", err, "debug_dir", debugPath)
+					}
+				}
+				// If patch fails, we can't write the proposed file.
+				// We write the raw patch to unmapped/patches for manual review.
+				if err := writer.WritePatch(outputDir, patch, trim); err != nil {
+					return nil, err
+				}
+				continue
+			}
+
+			// Write Patched File (Proposed)
+			header := generateCodeHeaderFromPatch(patch)
+			if err := writer.WritePatchedFile(outputDir, patch, header, patchedCode); err != nil {
+				return nil, err
+			}
+
+			// Write Provenance
+			prov := Provenance{
+				FilePath:     relPath,
+				BlockUUID:    patch.TargetBlockUUID,
+				ParentUUID:   patch.SourceBlockUUID,
+				Version:      patch.TargetVersion,
+				ChatID:       msg.ChatID,
+				MessageID:    msg.ID,
+				ContractUUID: "",
+				Model:        msg.RealModel.String,
+				Timestamp:    msg.CreatedAt.Format(time.RFC3339),
+				Action:       "patch_applied",
+				Authors:      patch.Authors,
+			}
+			if err := writer.WriteProvenanceJSON(outputDir, prov); err != nil {
+				logger.Warning("Failed to write provenance", "block_uuid", patch.TargetBlockUUID, "error", err)
+			}
+		}
+	}
+
+	// Calculate Stats
+	for _, f := range result.Files {
+		if f.Status == MappedStatusMapped {
+			result.Stats.Mappable++
+		} else {
+			result.Stats.Unmappable++
+		}
+	}
+
+	return result, nil
 }
 
 // executeMergedDump implements the logic for the 'merged' dump type.

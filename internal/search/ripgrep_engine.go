@@ -1,12 +1,12 @@
 /**
  * Component: Ripgrep Search Engine
- * Block-UUID: df7edd10-46ac-4a38-81a6-c75f5cf6a8c0
- * Parent-UUID: f07fa5a4-de49-43df-8d17-0f7f515fb0b1
- * Version: 2.4.1
- * Description: Added FindBlockByUUID and EnsureUUIDUniqueness methods to support the Contract feature. Implemented formatBlockUUIDPattern helper to enforce strict header formatting (leading space, single trailing space).
+ * Block-UUID: d60e3a1b-3134-4c7c-9a86-be0d6e4face3
+ * Parent-UUID: 5b7424e0-942c-4836-a126-bb45a4d3b82b
+ * Version: 2.5.1
+ * Description: Ripgrep Search Engine
  * Language: Go
- * Created-at: 2026-02-26T05:22:23.250Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), Gemini 3 Flash (v2.3.0), Gemini 3 Flash (v2.3.1), GLM-4.7 (v2.4.0), Gemini 3 Flash (v2.4.1)
+ * Created-at: 2026-03-04T04:37:10.965Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), Gemini 3 Flash (v2.3.0), Gemini 3 Flash (v2.3.1), GLM-4.7 (v2.4.0), Gemini 3 Flash (v2.4.1), Gemini 3 Flash (v2.5.0), Gemini 3 Flash (v2.5.1)
  */
 
 
@@ -158,6 +158,85 @@ func (e *RipgrepEngine) FindBlockByUUID(ctx context.Context, workdir string, uui
 	}
 
 	return matches[0].Path, matches[0].Line, nil
+}
+
+// ResolvePathsByUUIDs searches the workdir for multiple Block-UUIDs in a single pass.
+// It returns a map of UUID -> RelativePath.
+func (e *RipgrepEngine) ResolvePathsByUUIDs(ctx context.Context, workdir string, uuids []string) (map[string]string, error) {
+	if len(uuids) == 0 {
+		return make(map[string]string), nil
+	}
+
+	// 1. Build args with multiple -e patterns
+	args := []string{"--json", "-i"}
+	for _, uuid := range uuids {
+		args = append(args, "-e", formatBlockUUIDPattern(uuid))
+	}
+
+	cmd := exec.CommandContext(ctx, "rg", args...)
+	cmd.Dir = workdir
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create stdout pipe: %w", err)
+	}
+
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("failed to start ripgrep: %w", err)
+	}
+
+	// 2. Parse output
+	result := make(map[string]string)
+	scanner := bufio.NewScanner(stdout)
+	
+	for scanner.Scan() {
+		var message map[string]interface{}
+		if err := json.Unmarshal(scanner.Bytes(), &message); err != nil {
+			continue
+		}
+
+		if msgType, ok := message["type"].(string); ok && msgType == "match" {
+			if data, ok := message["data"].(map[string]interface{}); ok {
+				if path, ok := data["path"].(map[string]interface{}); ok {
+					if text, ok := path["text"].(string); ok {
+						// Extract the UUID from the matched line to map it back
+						// The line contains the pattern " Block-UUID: <uuid>"
+						if lines, ok := data["lines"].(map[string]interface{}); ok {
+							if lineText, ok := lines["text"].(string); ok {
+								// Strict regex: requires leading space and trailing whitespace only
+								re := regexp.MustCompile(`\sBlock-UUID:\s+([a-fA-F0-9-]{36})\s*$`)
+								matches := re.FindStringSubmatch(lineText)
+								if len(matches) > 1 {
+									foundUUID := matches[1]
+									// Check if this UUID was requested
+									for _, reqUUID := range uuids {
+										if strings.EqualFold(foundUUID, reqUUID) {
+											// If already found, it's a duplicate (integrity violation)
+											if _, exists := result[reqUUID]; exists {
+												return nil, fmt.Errorf("data integrity violation: Block-UUID %s found in multiple locations", reqUUID)
+											}
+											result[reqUUID] = text
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if err := cmd.Wait(); err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
+			// Exit code 1 is fine, just means some UUIDs weren't found
+			// We return the partial map
+			return result, nil
+		}
+		return nil, fmt.Errorf("ripgrep execution failed: %w", err)
+	}
+
+	return result, nil
 }
 
 // EnsureUUIDUniqueness checks if a Block-UUID already exists in the workdir.

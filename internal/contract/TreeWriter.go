@@ -1,12 +1,12 @@
 /*
  * Component: Tree Dump Writer
- * Block-UUID: da8312de-3dd5-4543-94b5-bb99f1d7fe82
- * Parent-UUID: ee69a04d-81f9-4f2c-9179-7ea0a0e8cce8
- * Version: 1.8.0
- * Description: Implemented WriteProvenance as a no-op to maintain compliance with the updated DumpWriter interface. The 'tree' type does not utilize provenance files.
+ * Block-UUID: 22151be8-3a6f-4892-8d74-99623949ae81
+ * Parent-UUID: da8312de-3dd5-4543-94b5-bb99f1d7fe82
+ * Version: 1.9.0
+ * Description: Implemented WriteSourceFile and WriteProvenanceJSON as no-ops to maintain compliance with the updated DumpWriter interface. The 'tree' type does not utilize the mapped shadow workspace features.
  * Language: Go
  * Created-at: 2026-03-03T07:38:31.693Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), Gemini 3 Flash (v1.8.0)
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), Gemini 3 Flash (v1.8.0), Gemini 3 Flash (v1.9.0)
  */
 
 
@@ -111,6 +111,16 @@ func (w *TreeWriter) WritePatchedFile(msgDir string, patch markdown.PatchBlock, 
 	fullContent := header + "\n\n\n" + content
 	path := filepath.Join(msgDir, filename)
 	return os.WriteFile(path, []byte(fullContent), 0644)
+}
+
+// WriteSourceFile is a no-op for the TreeWriter as it does not support the mapped shadow workspace.
+func (w *TreeWriter) WriteSourceFile(msgDir string, relPath string, content string) error {
+	return nil
+}
+
+// WriteProvenanceJSON is a no-op for the TreeWriter as it does not support the mapped shadow workspace.
+func (w *TreeWriter) WriteProvenanceJSON(msgDir string, data Provenance) error {
+	return nil
 }
 
 // formatChatName sanitizes and truncates the chat name to a maximum length.

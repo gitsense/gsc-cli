@@ -1,12 +1,12 @@
 /**
  * Component: Contract Models
- * Block-UUID: 12241c3c-c019-48f0-9726-faf0722ef3aa
- * Parent-UUID: 02a82c7e-8dd4-439e-a7c8-f279aaa6b049
- * Version: 1.14.0
- * Description: Added Sort field to LaunchRequest to support sorting strategies for the 'merged' dump type.
+ * Block-UUID: ce6ee81c-cebd-4e72-a311-f4f6ec08b959
+ * Parent-UUID: 12241c3c-c019-48f0-9726-faf0722ef3aa
+ * Version: 1.15.0
+ * Description: Added MappedDumpResult, MappedFileEntry, and Provenance structs to support the 'mapped' dump type. These structures define the JSON response format for the CLI and the schema for the provenance.json sidecar files.
  * Language: Go
  * Created-at: 2026-03-03T18:35:47.821Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., Gemini 3 Flash (v1.13.0), Gemini 3 Flash (v1.14.0)
+ * Authors: Gemini 3 Flash (v1.0.0), ..., Gemini 3 Flash (v1.13.0), Gemini 3 Flash (v1.14.0), Gemini 3 Flash (v1.15.0)
  */
 
 
@@ -147,4 +147,61 @@ type ContractTestResult struct {
 	BlockUUID    string `json:"block_uuid"`    // The UUID from the source file
 	ParentUUID   string `json:"parent_uuid"`   // The parent UUID from the source file
 	IsUnique     bool   `json:"is_unique"`     // Whether the Block-UUID is unique
+}
+
+// ==========================================
+// Mapped Dump Types
+// ==========================================
+
+// MappedFileStatus defines the mapping status of a file in the dump.
+type MappedFileStatus string
+
+const (
+	MappedStatusMapped   MappedFileStatus = "mapped"
+	MappedStatusUnmapped MappedFileStatus = "unmapped"
+)
+
+// MappedFileEntry represents a single file in the mapped dump result.
+type MappedFileEntry struct {
+	Path      string           `json:"path"`       // Relative path in the project (or component name)
+	Status    MappedFileStatus `json:"status"`     // "mapped" or "unmapped"
+	BlockUUID string           `json:"block_uuid"` // The UUID of the code block
+	Reason    string           `json:"reason,omitempty"` // Why it was unmapped (e.g., "no_parent_uuid")
+}
+
+// MappedDumpStats provides summary statistics for the dump.
+type MappedDumpStats struct {
+	Mappable   int `json:"mappable"`   // Count of successfully mapped files
+	Unmappable int `json:"unmappable"` // Count of unmapped files
+}
+
+// MappedDumpResult is the JSON response structure for the 'mapped' dump command.
+type MappedDumpResult struct {
+	Success  bool             `json:"success"`
+	Hash     string           `json:"hash"`      // The message hash (directory name)
+	RootDir  string           `json:"root_dir"`  // Absolute path to the dump directory
+	Stats    MappedDumpStats  `json:"stats"`
+	Files    []MappedFileEntry `json:"files"`
+	Error    *DumpError       `json:"error,omitempty"` // Present if Success is false
+}
+
+// DumpError represents a structured error for the dump response.
+type DumpError struct {
+	Code    string `json:"code"`    // e.g., "INVALID_MESSAGE_ID"
+	Message string `json:"message"` // Human-readable description
+}
+
+// Provenance represents the content of the provenance.json sidecar file.
+type Provenance struct {
+	FilePath      string   `json:"file_path"`      // Relative path in the project
+	BlockUUID     string   `json:"block_uuid"`     // The UUID of the code block
+	ParentUUID    string   `json:"parent_uuid"`    // The UUID of the parent block
+	Version       string   `json:"version"`        // The version string
+	ChatID        int64    `json:"chat_id"`        // The ID of the chat
+	MessageID     int64    `json:"message_id"`     // The ID of the message
+	ContractUUID  string   `json:"contract_uuid"`  // The contract UUID
+	Model         string   `json:"model"`          // The AI model name
+	Timestamp     string   `json:"timestamp"`      // ISO 8601 timestamp
+	Action        string   `json:"action"`         // e.g., "patch_applied", "full_code"
+	Authors       []string `json:"authors"`        // List of authors
 }

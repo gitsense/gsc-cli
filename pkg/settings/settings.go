@@ -1,12 +1,12 @@
 /*
  * Component: Settings and Configuration Manager
- * Block-UUID: dc816fe6-6737-44e7-acab-d916ca78482d
- * Parent-UUID: d72cd4fa-0f8c-4c55-9326-69ab43b2164f
- * Version: 3.1.0
- * Description: Added SortRecency, SortPopularity, and SortChronological constants to support the new 'merged' dump type sorting strategies.
+ * Block-UUID: a9d97c2b-0ef7-412f-8527-316f079785da
+ * Parent-UUID: dc816fe6-6737-44e7-acab-d916ca78482d
+ * Version: 3.2.0
+ * Description: Added DumpsRelPath constant to centralize the storage location for conversational and mapped contract dumps.
  * Language: Go
  * Created-at: 2026-03-02T07:50:00.000Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0), Gemini 3 Flash (v1.4.0), Gemini 3 Flash (v1.5.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), Gemini 3 Flash (v1.10.0), GLM-4.7 (v2.0.0), GLM-4.7 (v3.0.0), Gemini 3 Flash (v3.1.0)
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0), Gemini 3 Flash (v1.4.0), Gemini 3 Flash (v1.5.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), Gemini 3 Flash (v1.10.0), GLM-4.7 (v2.0.0), GLM-4.7 (v3.0.0), Gemini 3 Flash (v3.1.0), Gemini 3 Flash (v3.2.0)
  */
 
 
@@ -46,6 +46,9 @@ const ManifestStorageDir = "data/storage/manifests"
 const ChatDatabaseRelPath = "data/chats.sqlite3"
 const ExecOutputsRelPath = "exec/outputs"
 const ContractsRelPath = "data/contracts"
+
+// DumpsRelPath is the relative path within GSC_HOME for contract dumps
+const DumpsRelPath = "data/dumps"
 
 // ReviewStagingRelPath is the relative path within GSC_HOME for temporary review files
 const ReviewStagingRelPath = "data/review"
