@@ -1,12 +1,12 @@
 /**
  * Component: Contract Intent Handler
  * Block-UUID: 8a9f3c2d-1e4b-4a5c-9d6e-0f1a2b3c4d5e
- * Parent-UUID: 5b2507ac-65d7-43a6-ad10-ba8471202f2c
- * Version: 1.14.0
+ * Parent-UUID: da4cff8a-200e-42ff-86bd-10d68ca42bfb
+ * Version: 1.14.2
  * Description: Removed duplicate struct definitions (LaunchRequest, LaunchResult, etc.) and updated all function signatures to use the canonical types defined in internal/contract/models.go.
  * Language: Go
- * Created-at: 2026-03-03T18:36:19.588Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0)
+ * Created-at: 2026-03-04T04:59:02.163Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.14.1), GLM-4.7 (v1.14.2)
  */
 
 
@@ -265,7 +265,8 @@ func handleDumpIntent(meta *ContractMetadata, req LaunchRequest) (LaunchResult, 
 	// 2. Execute Dump
 	outputDir := GetDefaultDumpDir(meta.UUID)
 	// Default to smart trim (true) for Web UI triggers
-	if err := ExecuteDump(meta.UUID, writer, outputDir, false, true, dumpType, sortMode, req.DebugPatch); err != nil {
+	_, err := ExecuteDump(meta.UUID, writer, outputDir, false, true, dumpType, sortMode, req.DebugPatch, 0)
+	if err != nil {
 		return LaunchResult{}, fmt.Errorf("dump failed: %w", err)
 	}
 

@@ -1,12 +1,12 @@
 /**
  * Component: Contract Dump Orchestrator
- * Block-UUID: c06e1aac-60e5-4b22-8ac9-fefe39cfa94b
- * Parent-UUID: c1e0421f-9b4b-4301-a22a-6b6f08660f92
- * Version: 2.5.0
+ * Block-UUID: cf535661-bd42-4679-8540-760588c199a1
+ * Parent-UUID: c06e1aac-60e5-4b22-8ac9-fefe39cfa94b
+ * Version: 2.5.1
  * Description: Added executeMappedDump to support the 'mapped' dump type. Updated ExecuteDump to accept an optional messageID for single-message filtering. Implemented the discovery pass using ripgrep to resolve Parent-UUIDs to project paths, enabling the 'Shadow Workspace' generation.
  * Language: Go
- * Created-at: 2026-03-04T01:34:28.487Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.4.1), Gemini 3 Flash (v2.4.2), Gemini 3 Flash (v2.5.0)
+ * Created-at: 2026-03-04T04:56:06.538Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.4.1), Gemini 3 Flash (v2.4.2), Gemini 3 Flash (v2.5.0), GLM-4.7 (v2.5.1)
  */
 
 
@@ -236,7 +236,6 @@ func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, inclu
 func executeMappedDump(chats []db.Chat, sqliteDB *sql.DB, writer DumpWriter, outputDir string, includeSystem bool, trim bool, debugPatch bool, messageID int64) (*MappedDumpResult, error) {
 	// 1. Fetch Messages
 	var messages []db.Message
-	var targetMessage *db.Message
 	var dumpHash string
 
 	if messageID > 0 {
@@ -246,7 +245,6 @@ func executeMappedDump(chats []db.Chat, sqliteDB *sql.DB, writer DumpWriter, out
 			return nil, fmt.Errorf("message ID %d not found: %w", messageID, err)
 		}
 		messages = []db.Message{*msg}
-		targetMessage = msg
 		dumpHash = calculateMessageHash(*msg)
 	} else {
 		// Full Contract Mode (Fetch all messages from all chats)
