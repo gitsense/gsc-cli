@@ -1,12 +1,12 @@
 /**
  * Component: Contract Dump Orchestrator
- * Block-UUID: 167b5af4-43f1-471f-b6c2-96c5456c8850
- * Parent-UUID: b1e34061-0b5e-46db-8b50-2ca4cf17fa08
- * Version: 2.11.0
- * Description: Updated ExecuteDump to pass dumpType to GetDefaultDumpDir. Modified executeMappedDump to calculate the message hash and construct a unique workspace subdirectory (e.g., mapped/<hash>) for both validation and generation phases, ensuring isolation between different message dumps.
+ * Block-UUID: 9576006d-59f7-48b0-82e1-f700cc4deaea
+ * Parent-UUID: 167b5af4-43f1-471f-b6c2-96c5456c8850
+ * Version: 2.12.0
+ * Description: Updated executeMappedDump to populate the Position field in MappedFileEntry using block.Index and patch.Index, ensuring unmapped files are sorted by their original message order.
  * Language: Go
  * Created-at: 2026-03-05T03:41:15.123Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.8.0), GLM-4.7 (v2.9.0), GLM-4.7 (v2.10.0), GLM-4.7 (v2.11.0)
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.8.0), GLM-4.7 (v2.9.0), GLM-4.7 (v2.10.0), GLM-4.7 (v2.11.0), GLM-4.7 (v2.12.0)
  */
 
 
@@ -488,6 +488,7 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 				Status:    status,
 				BlockUUID: block.BlockUUID,
 				Reason:    reason,
+				Position:  block.Index, // 0-indexed position in the message
 			}
 			if !isMapped && block.Component != "" {
 				entry.Path = block.Component
@@ -572,6 +573,7 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 				Status:    status,
 				BlockUUID: patch.TargetBlockUUID,
 				Reason:    reason,
+				Position:  patch.Index, // 0-indexed position in the message
 			}
 			if !isMapped && patch.Component != "" {
 				entry.Path = patch.Component

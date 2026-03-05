@@ -1,12 +1,12 @@
 /**
  * Component: Contract CLI Commands
- * Block-UUID: 8932f193-4b71-4581-9f6e-dc1d80572638
- * Parent-UUID: 87b265a7-02fc-48b9-9978-be85803f814b
- * Version: 1.28.0
+ * Block-UUID: d8d9b7fb-e48d-4446-8704-10223ef8fd5b
+ * Parent-UUID: 8932f193-4b71-4581-9f6e-dc1d80572638
+ * Version: 1.29.0
  * Description: Updated dump commands (tree, merged, mapped) to pass the dumpType to GetDefaultDumpDir, ensuring hierarchical directory separation. Updated dumpPruneCmd to correctly locate and delete expired workspaces within the new mapped/<hash> structure.
  * Language: Go
- * Created-at: 2026-03-05T03:43:30.456Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.23.2), Gemini 3 Flash (v1.24.0), Gemini 3 Flash (v1.25.0), GLM-4.7 (v1.26.0), GLM-4.7 (v1.27.0), GLM-4.7 (v1.28.0)
+ * Created-at: 2026-03-05T04:39:32.196Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.28.0), GLM-4.7 (v1.29.0)
  */
 
 
@@ -94,6 +94,8 @@ var (
 	contractDumpDebugPatch bool
 	contractDumpRaw    bool
 	contractDumpFormat    string
+
+	contractDumpAuthcode string
 
 	// Dump flags (Merged specific)
 	contractDumpSort   string
@@ -713,21 +715,26 @@ the raw message, code blocks, and patch results.`,
 			return err
 		}
 
-		// 2. Resolve Output Directory (Type-Aware)
+		// 2. Verify Authcode (if provided)
+		if err := verifyDumpAuthcode(uuid, contractDumpAuthcode); err != nil {
+			return err
+		}
+
+		// 3. Resolve Output Directory (Type-Aware)
 		outputDir := contractDumpOutput
 		if outputDir == "" {
 			outputDir = contract.GetDefaultDumpDir(uuid, "tree")
 		}
 
-		// 3. Select Strategy
+		// 4. Select Strategy
 		writer := &contract.TreeWriter{}
 
-		// 4. Execute
+		// 5. Execute
 		logger.Info("Generating conversational dump...", "type", "tree", "output", outputDir, "trim", !contractDumpRaw)
 		
 		_, err = contract.ExecuteDump(uuid, writer, outputDir, contractDumpIncludeSystem, !contractDumpRaw, "tree", "", contractDumpDebugPatch, 0, false)
 		
-		// 5. Handle Output Format
+		// 6. Handle Output Format
 		if contractDumpFormat == "json" {
 			if err != nil {
 				errorJSON := fmt.Sprintf(`{"success": false, "error": {"code": "EXECUTION_FAILED", "message": "%s"}}`, strings.ReplaceAll(err.Error(), `"`, `\"`))
@@ -763,21 +770,26 @@ by popularity or recency. It provides a condensed view of the conversation.`,
 			return err
 		}
 
-		// 2. Resolve Output Directory (Type-Aware)
+		// 2. Verify Authcode (if provided)
+		if err := verifyDumpAuthcode(uuid, contractDumpAuthcode); err != nil {
+			return err
+		}
+
+		// 3. Resolve Output Directory (Type-Aware)
 		outputDir := contractDumpOutput
 		if outputDir == "" {
 			outputDir = contract.GetDefaultDumpDir(uuid, "merged")
 		}
 
-		// 3. Select Strategy
+		// 4. Select Strategy
 		writer := &contract.MergedWriter{}
 
-		// 4. Execute
+		// 5. Execute
 		logger.Info("Generating merged dump...", "type", "merged", "sort", contractDumpSort, "output", outputDir, "trim", !contractDumpRaw)
 		
 		_, err = contract.ExecuteDump(uuid, writer, outputDir, contractDumpIncludeSystem, !contractDumpRaw, "merged", contractDumpSort, contractDumpDebugPatch, 0, false)
 		
-		// 5. Handle Output Format
+		// 6. Handle Output Format
 		if contractDumpFormat == "json" {
 			if err != nil {
 				errorJSON := fmt.Sprintf(`{"success": false, "error": {"code": "EXECUTION_FAILED", "message": "%s"}}`, strings.ReplaceAll(err.Error(), `"`, `\"`))
@@ -813,22 +825,27 @@ workspace that shows how files evolved across the conversation.`,
 			return err
 		}
 
-		// 2. Resolve Output Directory (Type-Aware)
+		// 2. Verify Authcode (if provided)
+		if err := verifyDumpAuthcode(uuid, contractDumpAuthcode); err != nil {
+			return err
+		}
+
+		// 3. Resolve Output Directory (Type-Aware)
 		// Note: The dumper will append the message hash to this path
 		outputDir := contractDumpOutput
 		if outputDir == "" {
 			outputDir = contract.GetDefaultDumpDir(uuid, "mapped")
 		}
 
-		// 3. Select Strategy
+		// 4. Select Strategy
 		writer := &contract.MappedWriter{}
 
-		// 4. Execute
+		// 5. Execute
 		logger.Info("Generating mapped dump...", "type", "mapped", "output", outputDir, "trim", !contractDumpRaw, "validate", contractDumpValidate)
 		
 		result, err := contract.ExecuteDump(uuid, writer, outputDir, contractDumpIncludeSystem, !contractDumpRaw, "mapped", "", contractDumpDebugPatch, contractDumpMessageID, contractDumpValidate)
 		
-		// 5. Handle Output Format
+		// 6. Handle Output Format
 		if contractDumpFormat == "json" {
 			if err != nil {
 				errorJSON := fmt.Sprintf(`{"success": false, "error": {"code": "EXECUTION_FAILED", "message": "%s"}}`, strings.ReplaceAll(err.Error(), `"`, `\"`))
@@ -1073,6 +1090,8 @@ func init() {
 	dumpContractCmd.PersistentFlags().BoolVar(&contractDumpRaw, "raw", false, "Disable smart trimming (preserve exact LLM output)")
 	dumpContractCmd.PersistentFlags().StringVarP(&contractDumpFormat, "format", "f", "human", "Output format: human or json (default: human)")
 
+	dumpContractCmd.PersistentFlags().StringVar(&contractDumpAuthcode, "authcode", "", "Authorization code (required for backend requests)")
+
 	// Merged Specific Flags
 	dumpMergedCmd.Flags().StringVar(&contractDumpSort, "sort", "recency", "Sort mode for merged type: recency, popularity, chronological")
 
@@ -1188,6 +1207,22 @@ func findContractUUIDByWorkdir() (string, error) {
 	}
 
 	return matches[0], nil
+}
+
+// verifyDumpAuthcode checks the authcode if provided.
+// If the authcode is empty, it bypasses the check (local user).
+func verifyDumpAuthcode(uuid string, authcode string) error {
+	if authcode == "" {
+		return nil
+	}
+	meta, err := contract.GetContract(uuid)
+	if err != nil {
+		return err
+	}
+	if meta.Authcode != authcode {
+		return &cliError{code: contract.ExitInvalidAuthcode, message: "Invalid authorization code"}
+	}
+	return nil
 }
 
 // cliError wraps an error with a specific exit code for Cobra

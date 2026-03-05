@@ -1,12 +1,12 @@
 /**
  * Component: Contract Models
- * Block-UUID: ee5ad23d-03b1-49b7-853e-abd67e634672
- * Parent-UUID: ce6ee81c-cebd-4e72-a311-f4f6ec08b959
- * Version: 1.16.0
- * Description: Added ShadowWorkspace struct to define the metadata schema for the shadow workspace manifest. Updated MappedDumpResult to include validation fields (Exists, Valid, ExpiresAt) to support the --validate flag and frontend status checks.
+ * Block-UUID: 1c516d48-5909-440e-ac85-d631332f2ced
+ * Parent-UUID: ee5ad23d-03b1-49b7-853e-abd67e634672
+ * Version: 1.17.0
+ * Description: Added Position field to MappedFileEntry to track the 0-indexed position of code blocks within the original message, enabling proper sorting of unmapped files.
  * Language: Go
  * Created-at: 2026-03-04T18:35:47.821Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., Gemini 3 Flash (v1.13.0), Gemini 3 Flash (v1.14.0), Gemini 3 Flash (v1.15.0), GLM-4.7 (v1.16.0)
+ * Authors: Gemini 3 Flash (v1.0.0), ..., Gemini 3 Flash (v1.13.0), Gemini 3 Flash (v1.14.0), Gemini 3 Flash (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.17.0)
  */
 
 
@@ -167,6 +167,7 @@ type MappedFileEntry struct {
 	Status    MappedFileStatus `json:"status"`     // "mapped" or "unmapped"
 	BlockUUID string           `json:"block_uuid"` // The UUID of the code block
 	Reason    string           `json:"reason,omitempty"` // Why it was unmapped (e.g., "no_parent_uuid")
+	Position  int              `json:"position"`   // 0-indexed position of the code block in the original message
 }
 
 // MappedDumpStats provides summary statistics for the dump.
