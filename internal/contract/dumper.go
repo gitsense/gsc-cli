@@ -1,12 +1,12 @@
 /**
  * Component: Contract Dump Orchestrator
- * Block-UUID: b1e34061-0b5e-46db-8b50-2ca4cf17fa08
- * Parent-UUID: 2170f79e-29ad-44fc-a1e1-a4ab027dd55c
- * Version: 2.10.0
- * Description: Added validation logic to executeMappedDump to support the --validate flag. Implemented auto-extension of expired shadow workspaces. Added logic to write workspace.json (ShadowWorkspace manifest) after a successful dump, including the file list for UI caching.
+ * Block-UUID: 167b5af4-43f1-471f-b6c2-96c5456c8850
+ * Parent-UUID: b1e34061-0b5e-46db-8b50-2ca4cf17fa08
+ * Version: 2.11.0
+ * Description: Updated ExecuteDump to pass dumpType to GetDefaultDumpDir. Modified executeMappedDump to calculate the message hash and construct a unique workspace subdirectory (e.g., mapped/<hash>) for both validation and generation phases, ensuring isolation between different message dumps.
  * Language: Go
- * Created-at: 2026-03-04T20:25:46.999Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.8.0), GLM-4.7 (v2.9.0), GLM-4.7 (v2.10.0)
+ * Created-at: 2026-03-05T03:41:15.123Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.8.0), GLM-4.7 (v2.9.0), GLM-4.7 (v2.10.0), GLM-4.7 (v2.11.0)
  */
 
 
@@ -238,10 +238,45 @@ func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, inclu
 // It creates a shadow workspace where code blocks are mapped to their project paths.
 func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, writer DumpWriter, outputDir string, includeSystem bool, trim bool, debugPatch bool, messageID int64, validate bool) (*MappedDumpResult, error) {
 	// ==========================================
+	// PHASE 0: Hash Calculation & Path Resolution
+	// ==========================================
+	// We need the hash to determine the specific workspace directory, 
+	// regardless of whether we are validating or generating.
+	var dumpHash string
+	var messages []db.Message
+
+	if messageID > 0 {
+		// Single Message Mode
+		msg, err := db.GetMessage(sqliteDB, messageID)
+		if err != nil {
+			return nil, fmt.Errorf("message ID %d not found: %w", messageID, err)
+		}
+		messages = []db.Message{*msg}
+		dumpHash = calculateMessageHash(*msg)
+		logger.Info("Single Message Mode", "message_id", messageID, "hash", dumpHash)
+	} else {
+		// Full Contract Mode
+		for _, chat := range chats {
+			chatMsgs, err := db.GetMessagesRecursive(sqliteDB, chat.ID)
+			if err != nil {
+				return nil, fmt.Errorf("failed to fetch messages for chat %d: %w", chat.ID, err)
+			}
+			messages = append(messages, chatMsgs...)
+		}
+		// For full contract, use a fixed hash or the contract UUID itself
+		dumpHash = "full-contract"
+		logger.Info("Full Contract Mode", "total_messages", len(messages))
+	}
+
+	// Construct the specific workspace directory: <outputDir>/<hash>
+	// outputDir is already .../dumps/<uuid>/mapped
+	workspaceDir := filepath.Join(outputDir, dumpHash)
+
+	// ==========================================
 	// VALIDATION PHASE (If --validate is set)
 	// ==========================================
 	if validate {
-		manifestPath := filepath.Join(outputDir, "workspace.json")
+		manifestPath := filepath.Join(workspaceDir, "workspace.json")
 		
 		// Check if manifest exists
 		if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
@@ -301,7 +336,7 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 			Exists:   true,
 			Valid:    true,
 			Hash:     ws.Hash,
-			RootDir:  outputDir,
+			RootDir:  workspaceDir, // Return the specific workspace dir
 			ExpiresAt: ws.ExpiresAt,
 			Files:    ws.Files,
 		}, nil
@@ -311,31 +346,9 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 	// GENERATION PHASE
 	// ==========================================
 	
-	// 1. Fetch Messages
-	var messages []db.Message
-	var dumpHash string
-
-	if messageID > 0 {
-		// Single Message Mode
-		msg, err := db.GetMessage(sqliteDB, messageID)
-		if err != nil {
-			return nil, fmt.Errorf("message ID %d not found: %w", messageID, err)
-		}
-		messages = []db.Message{*msg}
-		dumpHash = calculateMessageHash(*msg)
-		logger.Info("Single Message Mode", "message_id", messageID, "hash", dumpHash)
-	} else {
-		// Full Contract Mode (Fetch all messages from all chats)
-		for _, chat := range chats {
-			chatMsgs, err := db.GetMessagesRecursive(sqliteDB, chat.ID)
-			if err != nil {
-				return nil, fmt.Errorf("failed to fetch messages for chat %d: %w", chat.ID, err)
-			}
-			messages = append(messages, chatMsgs...)
-		}
-		// For full contract, use contract UUID as hash (simplified)
-		dumpHash = "full-contract"
-		logger.Info("Full Contract Mode", "total_messages", len(messages))
+	// 1. Prepare the specific workspace directory
+	if err := writer.Prepare(workspaceDir); err != nil {
+		return nil, fmt.Errorf("failed to prepare workspace directory: %w", err)
 	}
 
 	// PASS 0: Pre-scan for Total Artifact Count
@@ -416,7 +429,7 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 	result := &MappedDumpResult{
 		Success: true,
 		Hash:    dumpHash,
-		RootDir: outputDir,
+		RootDir: workspaceDir, // Use the specific workspace dir
 		Files:   []MappedFileEntry{},
 	}
 
@@ -491,13 +504,13 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 					// Fallback: treat as unmapped
 					continue
 				}
-				if err := writer.WriteSourceFile(outputDir, relPath, string(sourceContent)); err != nil {
+				if err := writer.WriteSourceFile(workspaceDir, relPath, string(sourceContent)); err != nil {
 					return nil, err
 				}
 			}
 
 			// Write Proposed File
-			if err := writer.WriteBlock(outputDir, block, trim); err != nil {
+			if err := writer.WriteBlock(workspaceDir, block, trim); err != nil {
 				return nil, err
 			}
 
@@ -519,7 +532,7 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 				Action:       "full_code",
 				Authors:      block.Authors,
 			}
-			if err := writer.WriteProvenanceJSON(outputDir, prov); err != nil {
+			if err := writer.WriteProvenanceJSON(workspaceDir, prov); err != nil {
 				logger.Warning("Failed to write provenance", "block_uuid", block.BlockUUID, "error", err)
 			}
 
@@ -575,13 +588,13 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 					continue
 				}
 				sourceCode = string(sourceBytes)
-				if err := writer.WriteSourceFile(outputDir, relPath, sourceCode); err != nil {
+				if err := writer.WriteSourceFile(workspaceDir, relPath, sourceCode); err != nil {
 					return nil, err
 				}
 			} else {
 				// If unmapped, we can't patch it against a source file easily.
 				// We just store the patch in unmapped/patches.
-				if err := writer.WritePatch(outputDir, patch, trim); err != nil {
+				if err := writer.WritePatch(workspaceDir, patch, trim); err != nil {
 					return nil, err
 				}
 				continue
@@ -620,7 +633,7 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 				}
 				// If patch fails, we can't write the proposed file.
 				// We write the raw patch to unmapped/patches for manual review.
-				if err := writer.WritePatch(outputDir, patch, trim); err != nil {
+				if err := writer.WritePatch(workspaceDir, patch, trim); err != nil {
 					return nil, err
 				}
 				continue
@@ -628,7 +641,7 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 
 			// Write Patched File (Proposed)
 			header := generateCodeHeaderFromPatch(patch)
-			if err := writer.WritePatchedFile(outputDir, patch, header, patchedCode); err != nil {
+			if err := writer.WritePatchedFile(workspaceDir, patch, header, patchedCode); err != nil {
 				return nil, err
 			}
 
@@ -650,7 +663,7 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 				Action:       "patch_applied",
 				Authors:      patch.Authors,
 			}
-			if err := writer.WriteProvenanceJSON(outputDir, prov); err != nil {
+			if err := writer.WriteProvenanceJSON(workspaceDir, prov); err != nil {
 				logger.Warning("Failed to write provenance", "block_uuid", patch.TargetBlockUUID, "error", err)
 			}
 
@@ -701,7 +714,7 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 		return nil, fmt.Errorf("failed to marshal workspace manifest: %w", err)
 	}
 
-	manifestPath := filepath.Join(outputDir, "workspace.json")
+	manifestPath := filepath.Join(workspaceDir, "workspace.json")
 	if err := os.WriteFile(manifestPath, manifestData, 0644); err != nil {
 		return nil, fmt.Errorf("failed to write workspace manifest: %w", err)
 	}

@@ -1,12 +1,12 @@
 /**
  * Component: Contract CLI Commands
- * Block-UUID: 87b265a7-02fc-48b9-9978-be85803f814b
- * Parent-UUID: 07aff45c-e140-408c-8516-fe823c4b1c2e
- * Version: 1.27.0
- * Description: Added --validate flag to dump mapped command to support shadow workspace validation. Implemented dump prune command to remove expired shadow workspaces. Updated ExecuteDump call signature to include validate parameter.
+ * Block-UUID: 8932f193-4b71-4581-9f6e-dc1d80572638
+ * Parent-UUID: 87b265a7-02fc-48b9-9978-be85803f814b
+ * Version: 1.28.0
+ * Description: Updated dump commands (tree, merged, mapped) to pass the dumpType to GetDefaultDumpDir, ensuring hierarchical directory separation. Updated dumpPruneCmd to correctly locate and delete expired workspaces within the new mapped/<hash> structure.
  * Language: Go
- * Created-at: 2026-03-04T04:40:27.188Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.23.2), Gemini 3 Flash (v1.24.0), Gemini 3 Flash (v1.25.0), GLM-4.7 (v1.26.0), GLM-4.7 (v1.27.0)
+ * Created-at: 2026-03-05T03:43:30.456Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.23.2), Gemini 3 Flash (v1.24.0), Gemini 3 Flash (v1.25.0), GLM-4.7 (v1.26.0), GLM-4.7 (v1.27.0), GLM-4.7 (v1.28.0)
  */
 
 
@@ -713,11 +713,10 @@ the raw message, code blocks, and patch results.`,
 			return err
 		}
 
-		// 2. Resolve Output Directory
+		// 2. Resolve Output Directory (Type-Aware)
 		outputDir := contractDumpOutput
 		if outputDir == "" {
-			gscHome, _ := settings.GetGSCHome(false)
-			outputDir = filepath.Join(gscHome, settings.DumpsRelPath, uuid)
+			outputDir = contract.GetDefaultDumpDir(uuid, "tree")
 		}
 
 		// 3. Select Strategy
@@ -764,11 +763,10 @@ by popularity or recency. It provides a condensed view of the conversation.`,
 			return err
 		}
 
-		// 2. Resolve Output Directory
+		// 2. Resolve Output Directory (Type-Aware)
 		outputDir := contractDumpOutput
 		if outputDir == "" {
-			gscHome, _ := settings.GetGSCHome(false)
-			outputDir = filepath.Join(gscHome, settings.DumpsRelPath, uuid)
+			outputDir = contract.GetDefaultDumpDir(uuid, "merged")
 		}
 
 		// 3. Select Strategy
@@ -815,11 +813,11 @@ workspace that shows how files evolved across the conversation.`,
 			return err
 		}
 
-		// 2. Resolve Output Directory
+		// 2. Resolve Output Directory (Type-Aware)
+		// Note: The dumper will append the message hash to this path
 		outputDir := contractDumpOutput
 		if outputDir == "" {
-			gscHome, _ := settings.GetGSCHome(false)
-			outputDir = filepath.Join(gscHome, settings.DumpsRelPath, uuid)
+			outputDir = contract.GetDefaultDumpDir(uuid, "mapped")
 		}
 
 		// 3. Select Strategy
@@ -844,11 +842,6 @@ workspace that shows how files evolved across the conversation.`,
 			}
 			output.FormatJSON(result)
 			return nil
-		}
-		
-		// Human Mode
-		if err != nil {
-			return err
 		}
 		
 		// ==========================================
@@ -940,6 +933,7 @@ and removes them to free up disk space.`,
 			}
 
 			// We are looking for workspace.json files
+			// These are now located at: dumpsRoot/<uuid>/mapped/<hash>/workspace.json
 			if info.Name() != "workspace.json" {
 				return nil
 			}
@@ -966,6 +960,8 @@ and removes them to free up disk space.`,
 
 			if now.After(expiresAt) {
 				// Delete the parent directory (the hash directory)
+				// path is .../mapped/<hash>/workspace.json
+				// parent is .../mapped/<hash>
 				workspaceDir := filepath.Dir(path)
 				if err := os.RemoveAll(workspaceDir); err != nil {
 					logger.Warning("Failed to delete expired workspace", "path", workspaceDir, "error", err)
@@ -1071,7 +1067,7 @@ func init() {
 	
 	// Parent Flags (Shared by all dump types)
 	dumpContractCmd.PersistentFlags().StringVar(&contractDumpUUID, "uuid", "", "Contract UUID (optional if in workdir)")
-	dumpContractCmd.PersistentFlags().StringVarP(&contractDumpOutput, "output", "o", "", "Output directory (default: ~/.gitsense/dumps/<uuid>)")
+	dumpContractCmd.PersistentFlags().StringVarP(&contractDumpOutput, "output", "o", "", "Output directory (default: ~/.gitsense/dumps/<uuid>/<type>)")
 	dumpContractCmd.PersistentFlags().BoolVar(&contractDumpIncludeSystem, "include-system", false, "Include the system message in the dump (default: false)")
 	dumpContractCmd.PersistentFlags().BoolVar(&contractDumpDebugPatch, "debug-patch", false, "Enable patch debugging (persists source and diff artifacts on failure)")
 	dumpContractCmd.PersistentFlags().BoolVar(&contractDumpRaw, "raw", false, "Disable smart trimming (preserve exact LLM output)")

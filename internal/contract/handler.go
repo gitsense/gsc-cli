@@ -1,12 +1,12 @@
 /**
  * Component: Contract Intent Handler
- * Block-UUID: bd76f48c-cdc7-49dd-8c4a-80ce20c1c068
- * Parent-UUID: 8a9f3c2d-1e4b-4a5c-9d6e-0f1a2b3c4d5e
- * Version: 1.14.3
- * Description: Removed duplicate struct definitions (LaunchRequest, LaunchResult, etc.) and updated all function signatures to use the canonical types defined in internal/contract/models.go.
+ * Block-UUID: 9de5d3d2-4c7b-4482-954c-57dfdf416340
+ * Parent-UUID: bd76f48c-cdc7-49dd-8c4a-80ce20c1c068
+ * Version: 1.15.0
+ * Description: Updated handleDumpIntent to map the 'Action' field from LaunchRequest to the internal dumpType string. It now passes this type to GetDefaultDumpDir and ExecuteDump, ensuring dumps are written to the correct hierarchical directories (e.g., mapped/<hash>).
  * Language: Go
- * Created-at: 2026-03-04T19:42:03.577Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.14.2), GLM-4.7 (v1.14.3)
+ * Created-at: 2026-03-05T03:45:30.789Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.14.2), GLM-4.7 (v1.14.3), GLM-4.7 (v1.15.0)
  */
 
 
@@ -247,6 +247,12 @@ func handleDumpIntent(meta *ContractMetadata, req LaunchRequest) (LaunchResult, 
 		dumpType = "tree"
 	}
 
+	// Map UI action to internal dump type
+	// "text" in UI usually means the merged/squashed view
+	if dumpType == "text" {
+		dumpType = "merged"
+	}
+
 	// Default sort mode to recency if not specified
 	sortMode := req.Sort
 	if sortMode == "" {
@@ -262,15 +268,18 @@ func handleDumpIntent(meta *ContractMetadata, req LaunchRequest) (LaunchResult, 
 		return LaunchResult{}, fmt.Errorf("unsupported dump type: %s", dumpType)
 	}
 
-	// 2. Execute Dump
-	outputDir := GetDefaultDumpDir(meta.UUID)
-	// Default to smart trim (true) for Web UI triggers
+	// 2. Resolve Output Directory (Type-Aware)
+	outputDir := GetDefaultDumpDir(meta.UUID, dumpType)
+	
+	// 3. Execute Dump
+	// Note: We don't have messageID or validate flags in LaunchRequest yet, 
+	// so we pass defaults (0, false).
 	_, err := ExecuteDump(meta.UUID, writer, outputDir, false, true, dumpType, sortMode, req.DebugPatch, 0, false)
 	if err != nil {
 		return LaunchResult{}, fmt.Errorf("dump failed: %w", err)
 	}
 
-	// 3. Launch Terminal in the Dump Directory
+	// 4. Launch Terminal in the Dump Directory
 	// We override the workdir for the terminal launch to the dump directory
 	cmdStr := fmt.Sprintf("cd %s && clear && tree -C .", outputDir)
 	

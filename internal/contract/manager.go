@@ -1,12 +1,12 @@
 /**
  * Component: Contract Manager
- * Block-UUID: edf4533e-a88a-47e1-85c9-04e17842f2c4
- * Parent-UUID: 1d9374e1-8e54-4db2-b758-51bc5382952e
- * Version: 1.12.0
- * Description: Updated CreateContract to accept and persist PreferredReview. Updated GetContractInfo and FormatContractInfo to display the new preference. Ensured PreferredReview is preserved in CancelContract, RenewContract, and DeleteContract.
+ * Block-UUID: 82503081-d635-48a9-a7a6-685f8dcf46f2
+ * Parent-UUID: edf4533e-a88a-47e1-85c9-04e17842f2c4
+ * Version: 1.13.0
+ * Description: Updated GetDefaultDumpDir to accept a dumpType parameter, enabling hierarchical directory structures (e.g., dumps/<uuid>/mapped) to prevent conflicts between different dump strategies and message-specific workspaces.
  * Language: Go
- * Created-at: 2026-03-03T17:30:44.053Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), Gemini 3 Flash (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0)
+ * Created-at: 2026-03-05T03:40:47.296Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), Gemini 3 Flash (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0)
  */
 
 
@@ -574,9 +574,16 @@ func FormatContractInfo(info *ContractInfoResult, format string) string {
 }
 
 // GetDefaultDumpDir returns the default output directory for a contract dump.
-func GetDefaultDumpDir(uuid string) string {
+// It now supports a dumpType parameter to create hierarchical structures (e.g., dumps/<uuid>/mapped).
+func GetDefaultDumpDir(uuid string, dumpType string) string {
 	gscHome, _ := settings.GetGSCHome(false)
-	return filepath.Join(gscHome, "data", "dumps", uuid)
+	baseDir := filepath.Join(gscHome, "data", "dumps", uuid)
+	
+	if dumpType != "" {
+		return filepath.Join(baseDir, dumpType)
+	}
+	
+	return baseDir
 }
 
 // FormatContractTest formats the output for the 'contract test' command.
