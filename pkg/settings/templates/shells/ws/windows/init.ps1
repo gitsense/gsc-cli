@@ -1,3 +1,15 @@
+<#
+Component: GitSense Workspace Shell Init
+Block-UUID: d2b179cc-120f-428d-921e-8b945893c427
+Parent-UUID: N/A
+Version: 1.1.0
+Description: PowerShell initialization script for shadow workspaces on Windows. Sets environment variables, functions, displays the welcome screen, and navigates to the target directory.
+Language: PowerShell
+Created-at: 2026-03-06T05:20:00.000Z
+Authors: GLM-4.7 (v1.0.0)
+#>
+
+
 # GitSense Workspace Shell Init
 # Generated for Workspace: {{GSC_WS_HASH}}
 
@@ -24,3 +36,6 @@ function prompt {
 # 4. Welcome Message
 Clear-Host
 Get-Content .gsc-welcome
+
+# 5. Navigate to Target Directory
+Set-Location "{{TARGET_DIR}}"

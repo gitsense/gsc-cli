@@ -1,12 +1,12 @@
-/**
+/*
  * Component: Contract Models
- * Block-UUID: 793cfeb1-5dc0-4bf3-a0de-c892927067b2
- * Parent-UUID: 37191fdd-8455-4adb-9f07-4f758e140a83
- * Version: 1.19.0
- * Description: Added ActiveChatID to LaunchRequest to support launching terminals in the context of specific chat forks. ChatName was intentionally omitted to avoid synchronization issues with mutable chat names.
+ * Block-UUID: 1110154e-e5d4-489f-a2ca-d3d1b7e4a84a
+ * Parent-UUID: 793cfeb1-5dc0-4bf3-a0de-c892927067b2
+ * Version: 1.20.0
+ * Description: Added Hash and Position to LaunchRequest to support deterministic directory resolution in shadow workspaces based on code block index.
  * Language: Go
- * Created-at: 2026-03-04T18:35:47.821Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.16.0), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.19.0)
+ * Created-at: 2026-03-06T04:20:00.822Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.19.0), Gemini 3 Flash (v1.20.0)
  */
 
 
@@ -61,6 +61,8 @@ type LaunchRequest struct {
 	Sort          string `json:"sort,omitempty"` // Sort mode for 'merged' dump type
 	DebugPatch    bool   `json:"debug_patch,omitempty"` // Enable patch debugging artifacts
 	ActiveChatID  int64  `json:"active_chat_id"` // The ID of the chat the user is currently viewing (for forks)
+	Hash          string `json:"hash,omitempty"` // The message hash for shadow workspace resolution
+	Position      int    `json:"position"`      // The 0-indexed position of the code block (-1 for root)
 }
 
 // LaunchResult represents the response from the CLI to the Web UI for the 'launch' command.

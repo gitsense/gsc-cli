@@ -1,12 +1,12 @@
-/**
+/*
  * Component: Contract CLI Commands
- * Block-UUID: a6aa30e3-20e8-4556-93d8-4d65c34ed949
- * Parent-UUID: d8d9b7fb-e48d-4446-8704-10223ef8fd5b
- * Version: 1.29.1
- * Description: Updated dump commands (tree, merged, mapped) to pass the dumpType to GetDefaultDumpDir, ensuring hierarchical directory separation. Updated dumpPruneCmd to correctly locate and delete expired workspaces within the new mapped/<hash> structure.
+ * Block-UUID: 3072390e-a69e-4729-b8ff-244e55af70c7
+ * Parent-UUID: a6aa30e3-20e8-4556-93d8-4d65c34ed949
+ * Version: 1.30.0
+ * Description: Added --format, --hash, --position, and --active-chat-id flags to the launch command to support JSON output and deterministic directory resolution in shadow workspaces.
  * Language: Go
- * Created-at: 2026-03-06T02:07:48.099Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.28.0), GLM-4.7 (v1.29.0), GLM-4.7 (v1.29.1)
+ * Created-at: 2026-03-06T04:20:00.822Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.29.1), Gemini 3 Flash (v1.30.0)
  */
 
 
@@ -86,6 +86,10 @@ var (
 	contractLaunchAppOverride      string
 	contractLaunchCmd              string
 	contractLaunchList             bool
+	contractLaunchFormat           string
+	contractLaunchHash             string
+	contractLaunchPosition         int
+	contractLaunchActiveChatID     int64
 
 	// Dump flags (Shared)
 	contractDumpUUID   string
@@ -662,6 +666,9 @@ in a proper editor.`,
 			Action:       contractLaunchAction,
 			AppOverride:  contractLaunchAppOverride,
 			Cmd:          contractLaunchCmd,
+			Hash:         contractLaunchHash,
+			Position:     contractLaunchPosition,
+			ActiveChatID: contractLaunchActiveChatID,
 		}
 
 		result, err := contract.HandleLaunch(req)
@@ -672,11 +679,15 @@ in a proper editor.`,
 				Message: err.Error(),
 				Alias:   req.Alias,
 			}
-			output.FormatJSON(errorResult)
+			if contractLaunchFormat == "json" {
+				output.FormatJSON(errorResult)
+			}
 			return err
 		}
 		
-		output.FormatJSON(result)
+		if contractLaunchFormat == "json" {
+			output.FormatJSON(result)
+		}
 		return nil
 	},
 }
@@ -1077,6 +1088,10 @@ func init() {
 	launchContractCmd.Flags().StringVar(&contractLaunchAppOverride, "app-override", "", "Override contract app (e.g., zed, iterm2)")
 	launchContractCmd.Flags().StringVar(&contractLaunchCmd, "cmd", "", "Raw command for exec alias")
 	launchContractCmd.Flags().BoolVar(&contractLaunchList, "list", false, "List available aliases, apps, and commands")
+	launchContractCmd.Flags().StringVarP(&contractLaunchFormat, "format", "f", "human", "Output format (human, json)")
+	launchContractCmd.Flags().StringVar(&contractLaunchHash, "hash", "", "Message hash for shadow workspace resolution")
+	launchContractCmd.Flags().IntVar(&contractLaunchPosition, "position", -1, "Code block position for directory resolution")
+	launchContractCmd.Flags().Int64Var(&contractLaunchActiveChatID, "active-chat-id", 0, "Active chat ID for environment context")
 
 	// ==========================================
 	// Dump Flags (Refactored)

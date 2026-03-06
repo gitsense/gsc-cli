@@ -1,18 +1,19 @@
 /**
  * Component: Contract Intent Handler
- * Block-UUID: dc26c0fc-122b-4987-8aef-342e739caf72
- * Parent-UUID: 92786655-c037-4b91-9917-c94ff3dc27db
- * Version: 1.16.1
- * Description: Updated HandleLaunch and handleDumpIntent to pass activeChatID. Updated handleTerminalIntent to detect '-ws' suffix, generate shell init scripts, and inject environment variables for shadow workspaces.
+ * Block-UUID: 9d7ae8eb-84ef-4052-9779-7dfc2391e881
+ * Parent-UUID: 8bfcd5c8-a75e-47a0-9c1d-2c6e1f9b851c
+ * Version: 1.18.0
+ * Description: Updated handleTerminalIntent to resolve the target directory based on the code block position using the workspace.json manifest. Replaced hardcoded "latest" hash with the hash provided in the LaunchRequest.
  * Language: Go
- * Created-at: 2026-03-06T02:01:40.269Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.14.2), GLM-4.7 (v1.14.3), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.16.1)
+ * Created-at: 2026-03-06T05:23:56.122Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.16.1), Gemini 3 Flash (v1.17.0), GLM-4.7 (v1.18.0)
  */
 
 
 package contract
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -42,7 +43,7 @@ func HandleLaunch(req LaunchRequest) (LaunchResult, error) {
 	// 2. Handle Alias
 	switch req.Alias {
 	case "terminal":
-		return handleTerminalIntent(meta, req.AppOverride, "", req.ActiveChatID)
+		return handleTerminalIntent(meta, req)
 	case "editor":
 		// If no BlockUUID, we are just opening the editor in the project root
 		if req.BlockUUID == "" {
@@ -94,11 +95,11 @@ func GetLaunchCapabilities() LaunchCapabilities {
 }
 
 // handleTerminalIntent launches the preferred terminal in the contract's workdir.
-// If cmdStr is provided, it overrides the default behavior (used by dump).
-func handleTerminalIntent(meta *ContractMetadata, override string, cmdStr string, activeChatID int64) (LaunchResult, error) {
+// It resolves the target directory based on the code block position if provided.
+func handleTerminalIntent(meta *ContractMetadata, req LaunchRequest) (LaunchResult, error) {
 	term := meta.PreferredTerminal
-	if override != "" {
-		term = override
+	if req.AppOverride != "" {
+		term = req.AppOverride
 	}
 
 	if term == "" {
@@ -113,43 +114,69 @@ func handleTerminalIntent(meta *ContractMetadata, override string, cmdStr string
 	// Check for Workspace Mode (-ws suffix)
 	isWorkspace := strings.HasSuffix(term, "-ws")
 	var envVars []string
+	
+	targetDir := meta.Workdir
+	hash := req.Hash
+	if hash == "" {
+		hash = "latest"
+	}
 
 	if isWorkspace {
-		// 1. Generate Shell Init Script
-		// We need the hash to name the script or just use a fixed name in the workdir
-		// Since we are launching into the workdir, we can use a fixed name like .gsc-init.sh
-		// However, we need the hash for the environment variables.
-		// We can infer the hash from the activeChatID if we assume single message mode, 
-		// but for safety, we'll just use a generic init script or look for the latest workspace.
-		// For this iteration, we will generate the script in the workdir.
+		// 1. Resolve Target Directory based on Position
+		gscHome, _ := settings.GetGSCHome(false)
+		dumpsRoot := filepath.Join(gscHome, settings.DumpsRelPath)
+		workspaceDir := filepath.Join(dumpsRoot, meta.UUID, "mapped", hash)
 		
-		// NOTE: The 'hash' is typically known during the dump phase. 
-		// If we are launching directly via 'terminal' alias without a dump, we might not have the hash.
-		// However, the 'dump' alias calls this function with a specific cmdStr.
-		// If we are here via 'terminal' alias with -ws, we assume the user wants a generic workspace shell.
-		// We will use a placeholder hash or fetch the latest one.
-		// For simplicity in this iteration, we will use "latest" if not provided.
-		hash := "latest" 
-		if err := generateShellInitScript(meta.Workdir, activeChatID, meta.UUID, meta.Workdir, hash); err != nil {
+		// Default to workspace root
+		targetDir = workspaceDir
+
+		if req.Position >= 0 {
+			manifestPath := filepath.Join(workspaceDir, "workspace.json")
+			data, err := os.ReadFile(manifestPath)
+			if err == nil {
+				var ws ShadowWorkspace
+				if err := json.Unmarshal(data, &ws); err == nil {
+					// Find the file entry matching the position
+					for _, f := range ws.Files {
+						if f.Position == req.Position {
+							if f.Status == MappedStatusMapped {
+								targetDir = filepath.Join(workspaceDir, "mapped", f.Path)
+							} else if f.Path != "" {
+								// Unmapped component
+								targetDir = filepath.Join(workspaceDir, "unmapped", "components", f.Path)
+							} else {
+								// Unmapped snippet
+								targetDir = filepath.Join(workspaceDir, "unmapped", "snippets")
+							}
+							break
+						}
+					}
+				}
+			}
+		}
+
+		// 2. Generate Shell Init Script
+		if err := generateShellInitScript(workspaceDir, req.ActiveChatID, meta.UUID, meta.Workdir, hash, targetDir); err != nil {
 			return LaunchResult{}, fmt.Errorf("failed to generate shell init script: %w", err)
 		}
 
-		// 2. Prepare Environment Variables
+		// 3. Prepare Environment Variables
 		envVars = []string{
-			fmt.Sprintf("GSC_CHAT_ID=%d", activeChatID),
+			fmt.Sprintf("GSC_CHAT_ID=%d", req.ActiveChatID),
 			fmt.Sprintf("GSC_WS_HASH=%s", hash),
 			fmt.Sprintf("GSC_PROJECT_ROOT=%s", meta.Workdir),
 			fmt.Sprintf("GSC_CONTRACT_UUID=%s", meta.UUID),
 		}
 	}
 
-	// If no custom command provided, use the default workdir launch
+	// Construct command string
+	cmdStr := req.Cmd
 	if cmdStr == "" {
-		cmdStr = fmt.Sprintf(template, meta.Workdir)
+		cmdStr = fmt.Sprintf(template, targetDir)
 	}
 
 	// Increased timeout to 15s to allow for slow AppleScript/App startup
-	executor := exec.NewExecutor(cmdStr, exec.ExecFlags{TimeoutSeconds: 15, Silent: true}, meta.Workdir, envVars)
+	executor := exec.NewExecutor(cmdStr, exec.ExecFlags{TimeoutSeconds: 15, Silent: true}, targetDir, envVars)
 	result, err := executor.Run()
 	if err != nil {
 		return LaunchResult{}, fmt.Errorf("failed to launch terminal: %w", err)
@@ -164,13 +191,13 @@ func handleTerminalIntent(meta *ContractMetadata, override string, cmdStr string
 		Success: result.ExitCode == 0,
 		Message: msg,
 		Alias:   "terminal",
-		Workdir: meta.Workdir,
+		Workdir: targetDir,
 		Command: cmdStr,
 	}, nil
 }
 
 // generateShellInitScript creates the .gsc-init.sh or .gsc-init.ps1 file in the workdir.
-func generateShellInitScript(workdir string, activeChatID int64, contractUUID string, projectRoot string, hash string) error {
+func generateShellInitScript(workdir string, activeChatID int64, contractUUID string, projectRoot string, hash string, targetDir string) error {
 	gscHome, _ := settings.GetGSCHome(false)
 	templateDir := filepath.Join(gscHome, "data", "templates", "shells", "ws")
 
@@ -197,6 +224,7 @@ func generateShellInitScript(workdir string, activeChatID int64, contractUUID st
 		"{{GSC_WS_HASH}}":      hash,
 		"{{GSC_PROJECT_ROOT}}": projectRoot,
 		"{{GSC_CONTRACT_UUID}}": contractUUID,
+		"{{TARGET_DIR}}":       targetDir,
 	}
 
 	processedContent := string(content)
@@ -361,9 +389,10 @@ func handleDumpIntent(meta *ContractMetadata, req LaunchRequest, activeChatID in
 	// 4. Launch Terminal in the Dump Directory
 	// We override the workdir for the terminal launch to the dump directory
 	cmdStr := fmt.Sprintf("cd %s && clear && tree -C .", outputDir)
+	req.Cmd = cmdStr
 	
 	// We use the terminal launcher but point it to the dump directory instead of the project workdir
-	return handleTerminalIntent(meta, req.AppOverride, cmdStr, activeChatID)
+	return handleTerminalIntent(meta, req)
 }
 
 // handleExecIntent runs a raw command in the contract context.
