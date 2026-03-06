@@ -1,12 +1,12 @@
 /**
  * Component: Exec Command Executor
- * Block-UUID: ce7afdb7-20b2-4c7e-b8d7-822806fee2db
- * Parent-UUID: b23caa91-d05b-4c37-a2c7-3296dc21aa1f
- * Version: 1.5.0
- * Description: Fixed the Stdin handling by using os.DevNull instead of nil to prevent shell execution failures. Added enhanced logging for command execution lifecycle to aid debugging. Improved signal handling to ensure proper process cleanup. Added Workdir support to allow execution in specific directories (e.g., contract workdir).
+ * Block-UUID: d87b45c2-4c23-4a3f-9232-d29bc65f7871
+ * Parent-UUID: ce7afdb7-20b2-4c7e-b8d7-822806fee2db
+ * Version: 1.6.0
+ * Description: Added Env field to Executor struct and updated Run() method to merge custom environment variables with the system environment, enabling shadow workspace context injection.
  * Language: Go
  * Created-at: 2026-03-02T17:04:29.076Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.5.0)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.5.0), GLM-4.7 (v1.6.0)
  */
 
 
@@ -37,6 +37,7 @@ type Executor struct {
 	Command string
 	Flags   ExecFlags
 	Workdir string // Workdir specifies the working directory for the command
+	Env     []string // Env specifies environment variables to set for the command
 }
 
 // Result contains the outcome of an execution.
@@ -50,11 +51,12 @@ type Result struct {
 }
 
 // NewExecutor creates a new Executor instance.
-func NewExecutor(command string, flags ExecFlags, workdir string) *Executor {
+func NewExecutor(command string, flags ExecFlags, workdir string, env []string) *Executor {
 	return &Executor{
 		Command: command,
 		Flags:   flags,
 		Workdir: workdir,
+		Env:     env,
 	}
 }
 
@@ -128,6 +130,12 @@ func (e *Executor) Run() (*Result, error) {
 	if e.Workdir != "" {
 		cmd.Dir = e.Workdir
 		logger.Debug("Setting working directory", "dir", e.Workdir)
+	}
+
+	// Set Environment Variables if provided
+	if len(e.Env) > 0 {
+		cmd.Env = append(os.Environ(), e.Env...)
+		logger.Debug("Injecting environment variables", "count", len(e.Env))
 	}
 	
 	// Unix-specific for process group management

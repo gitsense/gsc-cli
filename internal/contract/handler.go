@@ -1,12 +1,12 @@
 /**
  * Component: Contract Intent Handler
- * Block-UUID: 9de5d3d2-4c7b-4482-954c-57dfdf416340
- * Parent-UUID: bd76f48c-cdc7-49dd-8c4a-80ce20c1c068
- * Version: 1.15.0
- * Description: Updated handleDumpIntent to map the 'Action' field from LaunchRequest to the internal dumpType string. It now passes this type to GetDefaultDumpDir and ExecuteDump, ensuring dumps are written to the correct hierarchical directories (e.g., mapped/<hash>).
+ * Block-UUID: 92786655-c037-4b91-9917-c94ff3dc27db
+ * Parent-UUID: 9de5d3d2-4c7b-4482-954c-57dfdf416340
+ * Version: 1.16.0
+ * Description: Updated HandleLaunch and handleDumpIntent to pass activeChatID. Updated handleTerminalIntent to detect '-ws' suffix, generate shell init scripts, and inject environment variables for shadow workspaces.
  * Language: Go
  * Created-at: 2026-03-05T03:45:30.789Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.14.2), GLM-4.7 (v1.14.3), GLM-4.7 (v1.15.0)
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.14.2), GLM-4.7 (v1.14.3), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0)
  */
 
 
@@ -17,6 +17,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 
 	"github.com/gitsense/gsc-cli/internal/db"
@@ -41,7 +42,7 @@ func HandleLaunch(req LaunchRequest) (LaunchResult, error) {
 	// 2. Handle Alias
 	switch req.Alias {
 	case "terminal":
-		return handleTerminalIntent(meta, req.AppOverride, "")
+		return handleTerminalIntent(meta, req.AppOverride, "", req.ActiveChatID)
 	case "editor":
 		// If no BlockUUID, we are just opening the editor in the project root
 		if req.BlockUUID == "" {
@@ -52,7 +53,7 @@ func HandleLaunch(req LaunchRequest) (LaunchResult, error) {
 	case "review":
 		return handleReviewIntent(meta, req)
 	case "dump":
-		return handleDumpIntent(meta, req)
+		return handleDumpIntent(meta, req, req.ActiveChatID)
 	case "exec":
 		return handleExecIntent(meta, req.Cmd)
 	default:
@@ -94,7 +95,7 @@ func GetLaunchCapabilities() LaunchCapabilities {
 
 // handleTerminalIntent launches the preferred terminal in the contract's workdir.
 // If cmdStr is provided, it overrides the default behavior (used by dump).
-func handleTerminalIntent(meta *ContractMetadata, override string, cmdStr string) (LaunchResult, error) {
+func handleTerminalIntent(meta *ContractMetadata, override string, cmdStr string, activeChatID int64) (LaunchResult, error) {
 	term := meta.PreferredTerminal
 	if override != "" {
 		term = override
@@ -109,13 +110,46 @@ func handleTerminalIntent(meta *ContractMetadata, override string, cmdStr string
 		return LaunchResult{}, fmt.Errorf("unsupported terminal: %s", term)
 	}
 
+	// Check for Workspace Mode (-ws suffix)
+	isWorkspace := strings.HasSuffix(term, "-ws")
+	var envVars []string
+
+	if isWorkspace {
+		// 1. Generate Shell Init Script
+		// We need the hash to name the script or just use a fixed name in the workdir
+		// Since we are launching into the workdir, we can use a fixed name like .gsc-init.sh
+		// However, we need the hash for the environment variables.
+		// We can infer the hash from the activeChatID if we assume single message mode, 
+		// but for safety, we'll just use a generic init script or look for the latest workspace.
+		// For this iteration, we will generate the script in the workdir.
+		
+		// NOTE: The 'hash' is typically known during the dump phase. 
+		// If we are launching directly via 'terminal' alias without a dump, we might not have the hash.
+		// However, the 'dump' alias calls this function with a specific cmdStr.
+		// If we are here via 'terminal' alias with -ws, we assume the user wants a generic workspace shell.
+		// We will use a placeholder hash or fetch the latest one.
+		// For simplicity in this iteration, we will use "latest" if not provided.
+		hash := "latest" 
+		if err := generateShellInitScript(meta.Workdir, activeChatID, meta.UUID, meta.Workdir, hash); err != nil {
+			return LaunchResult{}, fmt.Errorf("failed to generate shell init script: %w", err)
+		}
+
+		// 2. Prepare Environment Variables
+		envVars = []string{
+			fmt.Sprintf("GSC_CHAT_ID=%d", activeChatID),
+			fmt.Sprintf("GSC_WS_HASH=%s", hash),
+			fmt.Sprintf("GSC_PROJECT_ROOT=%s", meta.Workdir),
+			fmt.Sprintf("GSC_CONTRACT_UUID=%s", meta.UUID),
+		}
+	}
+
 	// If no custom command provided, use the default workdir launch
 	if cmdStr == "" {
 		cmdStr = fmt.Sprintf(template, meta.Workdir)
 	}
 
 	// Increased timeout to 15s to allow for slow AppleScript/App startup
-	executor := exec.NewExecutor(cmdStr, exec.ExecFlags{TimeoutSeconds: 15, Silent: true}, meta.Workdir)
+	executor := exec.NewExecutor(cmdStr, exec.ExecFlags{TimeoutSeconds: 15, Silent: true}, meta.Workdir, envVars)
 	result, err := executor.Run()
 	if err != nil {
 		return LaunchResult{}, fmt.Errorf("failed to launch terminal: %w", err)
@@ -133,6 +167,53 @@ func handleTerminalIntent(meta *ContractMetadata, override string, cmdStr string
 		Workdir: meta.Workdir,
 		Command: cmdStr,
 	}, nil
+}
+
+// generateShellInitScript creates the .gsc-init.sh or .gsc-init.ps1 file in the workdir.
+func generateShellInitScript(workdir string, activeChatID int64, contractUUID string, projectRoot string, hash string) error {
+	gscHome, _ := settings.GetGSCHome(false)
+	templateDir := filepath.Join(gscHome, "data", "templates", "shells", "ws")
+
+	var templateFile, outputFile string
+	var isWindows bool
+
+	switch runtime.GOOS {
+	case "windows":
+		templateFile = filepath.Join(templateDir, "windows", "init.ps1")
+		outputFile = filepath.Join(workdir, ".gsc-init.ps1")
+		isWindows = true
+	default:
+		templateFile = filepath.Join(templateDir, runtime.GOOS, "init.sh")
+		outputFile = filepath.Join(workdir, ".gsc-init.sh")
+		isWindows = false
+	}
+
+	// Read template
+	content, err := os.ReadFile(templateFile)
+	if err != nil {
+		return fmt.Errorf("failed to read shell template: %w", err)
+	}
+
+	// Substitute Variables
+	replacements := map[string]string{
+		"{{GSC_CHAT_ID}}":      fmt.Sprintf("%d", activeChatID),
+		"{{GSC_WS_HASH}}":      hash,
+		"{{GSC_PROJECT_ROOT}}": projectRoot,
+		"{{GSC_CONTRACT_UUID}}": contractUUID,
+	}
+
+	processedContent := string(content)
+	for key, val := range replacements {
+		processedContent = strings.ReplaceAll(processedContent, key, val)
+	}
+
+	// Write File
+	if err := os.WriteFile(outputFile, []byte(processedContent), 0755); err != nil {
+		return fmt.Errorf("failed to write shell init script: %w", err)
+	}
+
+	logger.Info("Shell init script generated", "path", outputFile, "os", runtime.GOOS)
+	return nil
 }
 
 // handleEditorRootIntent launches the preferred editor in the contract's workdir.
@@ -155,7 +236,7 @@ func handleEditorRootIntent(meta *ContractMetadata, override string) (LaunchResu
 	cmdStr := fmt.Sprintf(template, meta.Workdir)
 	
 	// Increased timeout to 15s to allow for slow AppleScript/App startup
-	executor := exec.NewExecutor(cmdStr, exec.ExecFlags{TimeoutSeconds: 15, Silent: true}, meta.Workdir)
+	executor := exec.NewExecutor(cmdStr, exec.ExecFlags{TimeoutSeconds: 15, Silent: true}, meta.Workdir, nil)
 	result, err := executor.Run()
 	if err != nil {
 		return LaunchResult{}, fmt.Errorf("failed to launch editor: %w", err)
@@ -217,7 +298,7 @@ func handleReviewIntent(meta *ContractMetadata, req LaunchRequest) (LaunchResult
 	cmdStr := fmt.Sprintf(template, stagedPath)
 
 	// 4. Execute (with extended timeout for editors)
-	executor := exec.NewExecutor(cmdStr, exec.ExecFlags{TimeoutSeconds: 0}, meta.Workdir)
+	executor := exec.NewExecutor(cmdStr, exec.ExecFlags{TimeoutSeconds: 0}, meta.Workdir, nil)
 	result, err := executor.Run()
 	if err != nil {
 		return LaunchResult{}, fmt.Errorf("failed to launch editor: %w", err)
@@ -239,7 +320,7 @@ func handleReviewIntent(meta *ContractMetadata, req LaunchRequest) (LaunchResult
 }
 
 // handleDumpIntent coordinates the dump and launches a terminal in the dump directory.
-func handleDumpIntent(meta *ContractMetadata, req LaunchRequest) (LaunchResult, error) {
+func handleDumpIntent(meta *ContractMetadata, req LaunchRequest, activeChatID int64) (LaunchResult, error) {
 	// 1. Select Strategy (Default to Tree)
 	var writer DumpWriter
 	dumpType := req.Action
@@ -274,7 +355,8 @@ func handleDumpIntent(meta *ContractMetadata, req LaunchRequest) (LaunchResult, 
 	// 3. Execute Dump
 	// Note: We don't have messageID or validate flags in LaunchRequest yet, 
 	// so we pass defaults (0, false).
-	_, err := ExecuteDump(meta.UUID, writer, outputDir, false, true, dumpType, sortMode, req.DebugPatch, 0, false)
+	// We pass activeChatID here to support help file generation.
+	_, err := ExecuteDump(meta.UUID, writer, outputDir, false, true, dumpType, sortMode, req.DebugPatch, 0, false, activeChatID)
 	if err != nil {
 		return LaunchResult{}, fmt.Errorf("dump failed: %w", err)
 	}
@@ -284,7 +366,7 @@ func handleDumpIntent(meta *ContractMetadata, req LaunchRequest) (LaunchResult, 
 	cmdStr := fmt.Sprintf("cd %s && clear && tree -C .", outputDir)
 	
 	// We use the terminal launcher but point it to the dump directory instead of the project workdir
-	return handleTerminalIntent(meta, req.AppOverride, cmdStr)
+	return handleTerminalIntent(meta, req.AppOverride, cmdStr, activeChatID)
 }
 
 // handleExecIntent runs a raw command in the contract context.
@@ -293,7 +375,7 @@ func handleExecIntent(meta *ContractMetadata, cmdStr string) (LaunchResult, erro
 		return LaunchResult{}, fmt.Errorf("no command provided")
 	}
 
-	executor := exec.NewExecutor(cmdStr, exec.ExecFlags{TimeoutSeconds: meta.ExecTimeout}, meta.Workdir)
+	executor := exec.NewExecutor(cmdStr, exec.ExecFlags{TimeoutSeconds: meta.ExecTimeout}, meta.Workdir, nil)
 	result, err := executor.Run()
 	if err != nil {
 		return LaunchResult{}, err

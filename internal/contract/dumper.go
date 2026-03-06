@@ -1,12 +1,12 @@
 /**
  * Component: Contract Dump Orchestrator
- * Block-UUID: 9576006d-59f7-48b0-82e1-f700cc4deaea
- * Parent-UUID: 167b5af4-43f1-471f-b6c2-96c5456c8850
- * Version: 2.12.0
- * Description: Updated executeMappedDump to populate the Position field in MappedFileEntry using block.Index and patch.Index, ensuring unmapped files are sorted by their original message order.
+ * Block-UUID: aca5a0ab-c140-480d-8e70-44a7d5f77dd7
+ * Parent-UUID: 8a9f3b2c-1d4e-5f6a-9b8c-0d1e2f3a4b5c
+ * Version: 2.14.0
+ * Description: Updated executeMappedDump to generate .gsc-welcome and .gsc-help files. Added activeChatID parameter to fetch chat names for the welcome screen.
  * Language: Go
  * Created-at: 2026-03-05T03:41:15.123Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.8.0), GLM-4.7 (v2.9.0), GLM-4.7 (v2.10.0), GLM-4.7 (v2.11.0), GLM-4.7 (v2.12.0)
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.11.0), GLM-4.7 (v2.12.0), GLM-4.7 (v2.13.0), GLM-4.7 (v2.14.0)
  */
 
 
@@ -45,7 +45,7 @@ type MergedNode struct {
 
 // ExecuteDump coordinates the full dump process for a given contract.
 // It supports 'tree', 'merged', and 'mapped' strategies.
-func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, includeSystem bool, trim bool, dumpType string, sortMode string, debugPatch bool, messageID int64, validate bool) (*MappedDumpResult, error) {
+func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, includeSystem bool, trim bool, dumpType string, sortMode string, debugPatch bool, messageID int64, validate bool, activeChatID int64) (*MappedDumpResult, error) {
 	// 1. Initialize Output (Skip if validating to avoid deleting the workspace)
 	if !validate {
 		if err := writer.Prepare(outputDir); err != nil {
@@ -94,7 +94,7 @@ func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, inclu
 	// STRATEGY SELECTION
 	// ==========================================
 	if dumpType == "mapped" {
-		return executeMappedDump(contractUUID, chats, sqliteDB, writer, outputDir, includeSystem, trim, debugPatch, messageID, validate)
+		return executeMappedDump(contractUUID, chats, sqliteDB, writer, outputDir, includeSystem, trim, debugPatch, messageID, validate, activeChatID)
 	}
 
 	if dumpType == "merged" {
@@ -236,7 +236,7 @@ func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, inclu
 
 // executeMappedDump implements the logic for the 'mapped' dump type.
 // It creates a shadow workspace where code blocks are mapped to their project paths.
-func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, writer DumpWriter, outputDir string, includeSystem bool, trim bool, debugPatch bool, messageID int64, validate bool) (*MappedDumpResult, error) {
+func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, writer DumpWriter, outputDir string, includeSystem bool, trim bool, debugPatch bool, messageID int64, validate bool, activeChatID int64) (*MappedDumpResult, error) {
 	// ==========================================
 	// PHASE 0: Hash Calculation & Path Resolution
 	// ==========================================
@@ -338,6 +338,7 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 			Hash:     ws.Hash,
 			RootDir:  workspaceDir, // Return the specific workspace dir
 			ExpiresAt: ws.ExpiresAt,
+			Stats:    ws.Stats,    // Include stats from manifest
 			Files:    ws.Files,
 		}, nil
 	}
@@ -708,6 +709,7 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 		ContractUUID: contractUUID,
 		CreatedAt:    time.Now().Format(time.RFC3339),
 		ExpiresAt:    time.Now().Add(24 * time.Hour).Format(time.RFC3339),
+		Stats:        result.Stats, // Persist stats
 		Files:        result.Files,
 	}
 
@@ -723,7 +725,75 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 
 	logger.Info("Workspace manifest written", "path", manifestPath)
 
+	// ==========================================
+	// GENERATE HELP FILES
+	// ==========================================
+	if err := generateHelpFiles(workspaceDir, contractUUID, dumpHash, activeChatID, workdir, sqliteDB); err != nil {
+		logger.Warning("Failed to generate help files", "error", err)
+		// Non-fatal error, continue
+	}
+
 	return result, nil
+}
+
+// generateHelpFiles creates .gsc-welcome and .gsc-help in the workspace root.
+func generateHelpFiles(workspaceDir, contractUUID, dumpHash string, activeChatID int64, workdir string, db *sql.DB) error {
+	// 1. Fetch Chat Name
+	chatName := "Unknown Chat"
+	if activeChatID > 0 {
+		err := db.QueryRow("SELECT name FROM chats WHERE id = ?", activeChatID).Scan(&chatName)
+		if err != nil {
+			logger.Debug("Failed to fetch chat name for help files", "active_chat_id", activeChatID, "error", err)
+			chatName = "Unknown Chat"
+		}
+	}
+
+	// 2. Load Templates
+	gscHome, _ := settings.GetGSCHome(false)
+	templateDir := filepath.Join(gscHome, "data", "templates", "help")
+
+	welcomePath := filepath.Join(templateDir, "welcome.txt")
+	helpPath := filepath.Join(templateDir, "help.txt")
+
+	welcomeContent, err := os.ReadFile(welcomePath)
+	if err != nil {
+		return fmt.Errorf("failed to read welcome template: %w", err)
+	}
+
+	helpContent, err := os.ReadFile(helpPath)
+	if err != nil {
+		return fmt.Errorf("failed to read help template: %w", err)
+	}
+
+	// 3. Substitute Variables
+	replacements := map[string]string{
+		"{{MSG_HASH}}":        dumpHash,
+		"{{CHAT_NAME}}":       chatName,
+		"{{GSC_CHAT_ID}}":     fmt.Sprintf("%d", activeChatID),
+		"{{GSC_WS_HASH}}":     dumpHash,
+		"{{GSC_PROJECT_ROOT}}": workdir,
+		"{{GSC_CONTRACT_UUID}}": contractUUID,
+	}
+
+	processedWelcome := string(welcomeContent)
+	processedHelp := string(helpContent)
+
+	for key, val := range replacements {
+		processedWelcome = strings.ReplaceAll(processedWelcome, key, val)
+		processedHelp = strings.ReplaceAll(processedHelp, key, val)
+	}
+
+	// 4. Write Files
+	if err := os.WriteFile(filepath.Join(workspaceDir, ".gsc-welcome"), []byte(processedWelcome), 0644); err != nil {
+		return fmt.Errorf("failed to write .gsc-welcome: %w", err)
+	}
+
+	if err := os.WriteFile(filepath.Join(workspaceDir, ".gsc-help"), []byte(processedHelp), 0644); err != nil {
+		return fmt.Errorf("failed to write .gsc-help: %w", err)
+	}
+
+	logger.Info("Help files generated", "workspace", workspaceDir)
+	return nil
 }
 
 // executeMergedDump implements the logic for the 'merged' dump type.

@@ -1,12 +1,12 @@
 /**
  * Component: Contract Models
- * Block-UUID: 1c516d48-5909-440e-ac85-d631332f2ced
- * Parent-UUID: ee5ad23d-03b1-49b7-853e-abd67e634672
- * Version: 1.17.0
- * Description: Added Position field to MappedFileEntry to track the 0-indexed position of code blocks within the original message, enabling proper sorting of unmapped files.
+ * Block-UUID: 793cfeb1-5dc0-4bf3-a0de-c892927067b2
+ * Parent-UUID: 37191fdd-8455-4adb-9f07-4f758e140a83
+ * Version: 1.19.0
+ * Description: Added ActiveChatID to LaunchRequest to support launching terminals in the context of specific chat forks. ChatName was intentionally omitted to avoid synchronization issues with mutable chat names.
  * Language: Go
  * Created-at: 2026-03-04T18:35:47.821Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., Gemini 3 Flash (v1.13.0), Gemini 3 Flash (v1.14.0), Gemini 3 Flash (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.17.0)
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.16.0), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.19.0)
  */
 
 
@@ -50,16 +50,17 @@ type ContractMetadata struct {
 
 // LaunchRequest represents the data contract from the Web UI to the CLI for the 'launch' command.
 type LaunchRequest struct {
-	ContractUUID string `json:"contract_uuid"`
-	Authcode     string `json:"authcode"`
-	Alias        string `json:"alias"` // "review", "terminal", "editor", "exec", "dump"
-	BlockUUID    string `json:"block_uuid,omitempty"`
-	ParentUUID   string `json:"parent_uuid,omitempty"`
-	Action       string `json:"action,omitempty"` // "source", "patch" (review) or "tree", "text", "mapped" (dump)
-	AppOverride  string `json:"app_override,omitempty"` // Overrides preferred app (e.g., "zed", "iterm2")
-	Cmd          string `json:"cmd,omitempty"`
-	Sort         string `json:"sort,omitempty"` // Sort mode for 'merged' dump type
-	DebugPatch   bool   `json:"debug_patch,omitempty"` // Enable patch debugging artifacts
+	ContractUUID  string `json:"contract_uuid"`
+	Authcode      string `json:"authcode"`
+	Alias         string `json:"alias"` // "review", "terminal", "editor", "exec", "dump"
+	BlockUUID     string `json:"block_uuid,omitempty"`
+	ParentUUID    string `json:"parent_uuid,omitempty"`
+	Action        string `json:"action,omitempty"` // "source", "patch" (review) or "tree", "text", "mapped" (dump)
+	AppOverride   string `json:"app_override,omitempty"` // Overrides preferred app (e.g., "zed", "iterm2")
+	Cmd           string `json:"cmd,omitempty"`
+	Sort          string `json:"sort,omitempty"` // Sort mode for 'merged' dump type
+	DebugPatch    bool   `json:"debug_patch,omitempty"` // Enable patch debugging artifacts
+	ActiveChatID  int64  `json:"active_chat_id"` // The ID of the chat the user is currently viewing (for forks)
 }
 
 // LaunchResult represents the response from the CLI to the Web UI for the 'launch' command.
@@ -204,6 +205,7 @@ type ShadowWorkspace struct {
 	ContractUUID string            `json:"contract_uuid"` // The contract UUID
 	CreatedAt    string            `json:"created_at"`    // ISO 8601 timestamp
 	ExpiresAt    string            `json:"expires_at"`    // ISO 8601 timestamp
+	Stats        MappedDumpStats   `json:"stats"`         // Summary statistics for the dump
 	Files        []MappedFileEntry `json:"files"`         // Cached list of files for the UI
 }
 
