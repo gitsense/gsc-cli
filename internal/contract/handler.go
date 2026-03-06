@@ -1,12 +1,12 @@
 /**
  * Component: Contract Intent Handler
- * Block-UUID: 92786655-c037-4b91-9917-c94ff3dc27db
- * Parent-UUID: 9de5d3d2-4c7b-4482-954c-57dfdf416340
- * Version: 1.16.0
+ * Block-UUID: dc26c0fc-122b-4987-8aef-342e739caf72
+ * Parent-UUID: 92786655-c037-4b91-9917-c94ff3dc27db
+ * Version: 1.16.1
  * Description: Updated HandleLaunch and handleDumpIntent to pass activeChatID. Updated handleTerminalIntent to detect '-ws' suffix, generate shell init scripts, and inject environment variables for shadow workspaces.
  * Language: Go
- * Created-at: 2026-03-05T03:45:30.789Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.14.2), GLM-4.7 (v1.14.3), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0)
+ * Created-at: 2026-03-06T02:01:40.269Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.14.2), GLM-4.7 (v1.14.3), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.16.1)
  */
 
 
@@ -175,17 +175,14 @@ func generateShellInitScript(workdir string, activeChatID int64, contractUUID st
 	templateDir := filepath.Join(gscHome, "data", "templates", "shells", "ws")
 
 	var templateFile, outputFile string
-	var isWindows bool
 
 	switch runtime.GOOS {
 	case "windows":
 		templateFile = filepath.Join(templateDir, "windows", "init.ps1")
 		outputFile = filepath.Join(workdir, ".gsc-init.ps1")
-		isWindows = true
 	default:
 		templateFile = filepath.Join(templateDir, runtime.GOOS, "init.sh")
 		outputFile = filepath.Join(workdir, ".gsc-init.sh")
-		isWindows = false
 	}
 
 	// Read template

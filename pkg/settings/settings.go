@@ -1,12 +1,12 @@
 /*
  * Component: Settings and Configuration Manager
- * Block-UUID: a9d97c2b-0ef7-412f-8527-316f079785da
- * Parent-UUID: dc816fe6-6737-44e7-acab-d916ca78482d
- * Version: 3.2.0
- * Description: Added DumpsRelPath constant to centralize the storage location for conversational and mapped contract dumps.
+ * Block-UUID: 67e4640f-8a9e-400f-a443-894b5330c837
+ * Parent-UUID: a9d97c2b-0ef7-412f-8527-316f079785da
+ * Version: 3.3.0
+ * Description: Updated LoadTemplates to recursively bootstrap the entire templates directory (including help/ and shells/) from the embedded filesystem to the local .gitsense directory, ensuring all shadow workspace assets are available for customization.
  * Language: Go
- * Created-at: 2026-03-02T07:50:00.000Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0), Gemini 3 Flash (v1.4.0), Gemini 3 Flash (v1.5.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), Gemini 3 Flash (v1.10.0), GLM-4.7 (v2.0.0), GLM-4.7 (v3.0.0), Gemini 3 Flash (v3.1.0), Gemini 3 Flash (v3.2.0)
+ * Created-at: 2026-03-06T01:50:18.037Z
+ * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.2.0), Gemini 3 Flash (v3.3.0)
  */
 
 
@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 
@@ -107,75 +108,77 @@ func init() {
 }
 
 // LoadTemplates initializes the editor and terminal templates.
-// It attempts to read from the embedded filesystem first to bootstrap the user's local config.
+// It recursively bootstraps the templates directory from the embedded filesystem.
 func LoadTemplates() error {
 	gscHome, err := GetGSCHome(false)
 	if err != nil {
 		return fmt.Errorf("failed to resolve GSC_HOME: %w", err)
 	}
 
-	templatesDir := filepath.Join(gscHome, "data", "templates")
+	localTemplatesDir := filepath.Join(gscHome, "data", "templates")
 
-	// 1. Ensure templates directory exists
-	if err := os.MkdirAll(templatesDir, 0755); err != nil {
-		return fmt.Errorf("failed to create templates directory: %w", err)
+	// 1. Recursively bootstrap the entire templates directory
+	// This ensures help/ and shells/ subdirectories are created and populated.
+	if err := bootstrapTemplatesRecursive("templates", localTemplatesDir); err != nil {
+		return fmt.Errorf("failed to bootstrap templates: %w", err)
 	}
 
-	// 2. Bootstrap README.md if missing
-	readmePath := filepath.Join(templatesDir, "README.md")
-	if _, err := os.Stat(readmePath); os.IsNotExist(err) {
-		logger.Info("Bootstrapping README.md")
-		if err := copyEmbeddedFile("templates/README.md", readmePath); err != nil {
-			logger.Warning("Failed to write templates README.md", "error", err)
-		}
-	}
-
-	// 3. Handle OS-specific JSON file
+	// 2. Load the OS-specific JSON configuration
 	osName := runtime.GOOS
 	jsonFileName := fmt.Sprintf("templates.%s.json", osName)
-	embeddedJsonPath := fmt.Sprintf("templates/%s", jsonFileName)
-	localJsonPath := filepath.Join(templatesDir, jsonFileName)
+	localJsonPath := filepath.Join(localTemplatesDir, jsonFileName)
 
-	var config TemplateConfig
-
-	// Check if local file exists
-	if _, err := os.Stat(localJsonPath); os.IsNotExist(err) {
-		// File doesn't exist, bootstrap it from embedded filesystem
-		logger.Info("Bootstrapping template configuration", "file", jsonFileName)
-		
-		// Read from embedded FS
-		data, err := templateFS.ReadFile(embeddedJsonPath)
-		if err != nil {
-			return fmt.Errorf("failed to read embedded template file %s: %w", embeddedJsonPath, err)
-		}
-
-		// Write to local FS
-		if err := os.WriteFile(localJsonPath, data, 0644); err != nil {
-			return fmt.Errorf("failed to write template file: %w", err)
-		}
-
-		// Parse the data we just wrote
-		if err := json.Unmarshal(data, &config); err != nil {
-			return fmt.Errorf("failed to parse bootstrapped template file: %w", err)
-		}
-	} else {
-		// File exists, load it from local FS (user might have customized it)
-		data, err := os.ReadFile(localJsonPath)
-		if err != nil {
-			return fmt.Errorf("failed to read local template file: %w", err)
-		}
-
-		if err := json.Unmarshal(data, &config); err != nil {
-			return fmt.Errorf("failed to parse local template file: %w", err)
-		}
+	data, err := os.ReadFile(localJsonPath)
+	if err != nil {
+		return fmt.Errorf("failed to read local template file %s: %w", localJsonPath, err)
 	}
 
-	// 4. Populate global maps
+	var config TemplateConfig
+	if err := json.Unmarshal(data, &config); err != nil {
+		return fmt.Errorf("failed to parse local template file: %w", err)
+	}
+
+	// 3. Populate global maps
 	if config.Editors != nil {
 		DefaultEditorTemplates = config.Editors
 	}
 	if config.Terminals != nil {
 		DefaultTerminalTemplates = config.Terminals
+	}
+
+	return nil
+}
+
+// bootstrapTemplatesRecursive walks the embedded filesystem and copies missing files to the local path.
+func bootstrapTemplatesRecursive(srcDir, destDir string) error {
+	entries, err := templateFS.ReadDir(srcDir)
+	if err != nil {
+		return err
+	}
+
+	// Ensure local directory exists
+	if err := os.MkdirAll(destDir, 0755); err != nil {
+		return err
+	}
+
+	for _, entry := range entries {
+		srcPath := path.Join(srcDir, entry.Name())
+		destPath := filepath.Join(destDir, entry.Name())
+
+		if entry.IsDir() {
+			// Recurse into subdirectory
+			if err := bootstrapTemplatesRecursive(srcPath, destPath); err != nil {
+				return err
+			}
+		} else {
+			// Copy file if it doesn't exist locally
+			if _, err := os.Stat(destPath); os.IsNotExist(err) {
+				logger.Info("Bootstrapping template file", "file", entry.Name(), "path", destPath)
+				if err := copyEmbeddedFile(srcPath, destPath); err != nil {
+					logger.Warning("Failed to bootstrap template file", "file", entry.Name(), "error", err)
+				}
+			}
+		}
 	}
 
 	return nil

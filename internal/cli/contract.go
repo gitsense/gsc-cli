@@ -1,12 +1,12 @@
 /**
  * Component: Contract CLI Commands
- * Block-UUID: d8d9b7fb-e48d-4446-8704-10223ef8fd5b
- * Parent-UUID: 8932f193-4b71-4581-9f6e-dc1d80572638
- * Version: 1.29.0
+ * Block-UUID: a6aa30e3-20e8-4556-93d8-4d65c34ed949
+ * Parent-UUID: d8d9b7fb-e48d-4446-8704-10223ef8fd5b
+ * Version: 1.29.1
  * Description: Updated dump commands (tree, merged, mapped) to pass the dumpType to GetDefaultDumpDir, ensuring hierarchical directory separation. Updated dumpPruneCmd to correctly locate and delete expired workspaces within the new mapped/<hash> structure.
  * Language: Go
- * Created-at: 2026-03-05T04:39:32.196Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.28.0), GLM-4.7 (v1.29.0)
+ * Created-at: 2026-03-06T02:07:48.099Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.28.0), GLM-4.7 (v1.29.0), GLM-4.7 (v1.29.1)
  */
 
 
@@ -566,7 +566,7 @@ var execContractCmd = &cobra.Command{
 
 		executor := exec.NewExecutor(contractExecCmd, exec.ExecFlags{
 			TimeoutSeconds: meta.ExecTimeout,
-		}, meta.Workdir)
+		}, meta.Workdir, nil)
 
 		result, err := executor.Run()
 		if err != nil {
@@ -732,7 +732,7 @@ the raw message, code blocks, and patch results.`,
 		// 5. Execute
 		logger.Info("Generating conversational dump...", "type", "tree", "output", outputDir, "trim", !contractDumpRaw)
 		
-		_, err = contract.ExecuteDump(uuid, writer, outputDir, contractDumpIncludeSystem, !contractDumpRaw, "tree", "", contractDumpDebugPatch, 0, false)
+		_, err = contract.ExecuteDump(uuid, writer, outputDir, contractDumpIncludeSystem, !contractDumpRaw, "tree", "", contractDumpDebugPatch, 0, false, 0)
 		
 		// 6. Handle Output Format
 		if contractDumpFormat == "json" {
@@ -787,7 +787,7 @@ by popularity or recency. It provides a condensed view of the conversation.`,
 		// 5. Execute
 		logger.Info("Generating merged dump...", "type", "merged", "sort", contractDumpSort, "output", outputDir, "trim", !contractDumpRaw)
 		
-		_, err = contract.ExecuteDump(uuid, writer, outputDir, contractDumpIncludeSystem, !contractDumpRaw, "merged", contractDumpSort, contractDumpDebugPatch, 0, false)
+		_, err = contract.ExecuteDump(uuid, writer, outputDir, contractDumpIncludeSystem, !contractDumpRaw, "merged", contractDumpSort, contractDumpDebugPatch, 0, false, 0)
 		
 		// 6. Handle Output Format
 		if contractDumpFormat == "json" {
@@ -843,7 +843,7 @@ workspace that shows how files evolved across the conversation.`,
 		// 5. Execute
 		logger.Info("Generating mapped dump...", "type", "mapped", "output", outputDir, "trim", !contractDumpRaw, "validate", contractDumpValidate)
 		
-		result, err := contract.ExecuteDump(uuid, writer, outputDir, contractDumpIncludeSystem, !contractDumpRaw, "mapped", "", contractDumpDebugPatch, contractDumpMessageID, contractDumpValidate)
+		result, err := contract.ExecuteDump(uuid, writer, outputDir, contractDumpIncludeSystem, !contractDumpRaw, "mapped", "", contractDumpDebugPatch, contractDumpMessageID, contractDumpValidate, 0)
 		
 		// 6. Handle Output Format
 		if contractDumpFormat == "json" {

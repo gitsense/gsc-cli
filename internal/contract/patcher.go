@@ -1,12 +1,12 @@
 /**
  * Component: GitSense Patch Engine
- * Block-UUID: dc58143e-7ef5-4a2a-84dd-e3fb3641586f
- * Parent-UUID: 82d56715-1958-40be-8339-13ff83e21d78
- * Version: 1.15.0
+ * Block-UUID: e1c68ad4-4b69-440c-93fc-5d0f99d9a899
+ * Parent-UUID: dc58143e-7ef5-4a2a-84dd-e3fb3641586f
+ * Version: 1.15.1
  * Description: Updated WriteDebugArtifacts to accept db.Message and db.Chat objects to include conversational context (message_context.md and chat_context.json) in the debug directory, eliminating the need for database queries during artifact generation.
  * Language: Go
- * Created-at: 2026-03-03T20:14:24.170Z
- * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.13.1), GLM-4.7 (v1.14.0), GLM-4.7 (v1.14.1), GLM-4.7 (v1.15.0)
+ * Created-at: 2026-03-06T02:02:08.201Z
+ * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.13.1), GLM-4.7 (v1.14.0), GLM-4.7 (v1.14.1), GLM-4.7 (v1.15.0), GLM-4.7 (v1.15.1)
  */
 
 
@@ -152,7 +152,7 @@ func ApplyPatch(originalSource string, patchExecutableCode string) (string, erro
 
 		// Execute patch command
 		// Using -f to force apply and avoid interactive prompts
-		executor := execpkg.NewExecutor("patch -f source.txt < patch.diff", execpkg.ExecFlags{Silent: true}, tempDir)
+		executor := execpkg.NewExecutor("patch -f source.txt < patch.diff", execpkg.ExecFlags{Silent: true}, tempDir, nil)
 		result, err := executor.Run()
 		if err != nil {
 			logger.Debug("Phase 3 execution failed", "error", err)
