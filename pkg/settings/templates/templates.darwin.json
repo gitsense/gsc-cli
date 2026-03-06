@@ -11,7 +11,9 @@
   "terminals": {
     "iterm2": "osascript -e 'tell application \"iTerm\" to tell (create window with default profile) to tell current session to write text \"cd %s && clear\"'",
     "terminal.app": "open -a Terminal %s",
-    "warp": "open -a Warp %s",
-    "alacritty": "open -a Alacritty %s"
+    "alacritty": "open -a Alacritty %s",
+    "iterm2-ws": "osascript -e 'tell application \"iTerm\" to tell (create window with default profile) to tell current session to write text \"cd %s && bash --rcfile .gsc-init.sh\"'",
+    "terminal.app-ws": "osascript -e 'tell application \"Terminal\" to do script \"cd %s && bash --rcfile .gsc-init.sh\"'",
+    "alacritty-ws": "alacritty --working-directory %s -e bash --rcfile .gsc-init.sh"
   }
 }

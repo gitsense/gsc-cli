@@ -12,6 +12,9 @@
     "wt": "wt.exe -d %s",
     "cmd": "start cmd /K \"cd /d %s\"",
     "powershell": "start powershell -NoExit -Command \"Set-Location '%s'\"",
-    "git-bash": "start \"\" \"%PROGRAMFILES%\\Git\\bin\\bash.exe\" --cd=%s"
+    "git-bash": "start \"\" \"%PROGRAMFILES%\\Git\\bin\\bash.exe\" --cd=%s",
+    "wt-ws": "wt.exe -d %s powershell -NoExit -Command \". .gsc-init.ps1\"",
+    "powershell-ws": "start powershell -NoExit -Command \"Set-Location '%s'; . .gsc-init.ps1\"",
+    "git-bash-ws": "start \"\" \"%PROGRAMFILES%\\Git\\bin\\bash.exe\" --cd=%s --rcfile .gsc-init.sh"
   }
 }

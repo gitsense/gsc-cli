@@ -16,6 +16,12 @@
     "xfce4-terminal": "xfce4-terminal --working-directory=%s",
     "alacritty": "alacritty --working-directory %s",
     "kitty": "kitty --directory %s",
-    "xterm": "xterm -e 'cd %s && bash'"
+    "xterm": "xterm -e 'cd %s && bash'",
+    "gnome-terminal-ws": "gnome-terminal --working-directory=%s -- bash --rcfile .gsc-init.sh",
+    "konsole-ws": "konsole --workdir %s -e bash --rcfile .gsc-init.sh",
+    "xfce4-terminal-ws": "xfce4-terminal --working-directory=%s -e bash --rcfile .gsc-init.sh",
+    "alacritty-ws": "alacritty --working-directory %s -e bash --rcfile .gsc-init.sh",
+    "kitty-ws": "kitty --directory %s bash --rcfile .gsc-init.sh",
+    "xterm-ws": "xterm -e 'cd %s && bash --rcfile .gsc-init.sh'"
   }
 }
