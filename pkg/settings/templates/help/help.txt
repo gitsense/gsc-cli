@@ -45,10 +45,11 @@ COMMANDS
         Displays this detailed manual.
 
 ENVIRONMENT
-    GSC_CHAT_ID      The ID of the chat receiving 'send' output.
-    GSC_WS_HASH      The unique hash of this workspace version.
-    GSC_PROJECT_ROOT The absolute path to your actual project.
-    GSC_CONTRACT_UUID The UUID of the active contract.
+    GSC_CHAT_ID         The ID of the chat receiving 'send' output.
+    GSC_MAPPED_WS_HASH  The unique hash of this workspace version.
+    GSC_PROJECT_ROOT    The absolute path to your actual project.
+    GSC_CONTRACT_UUID   The UUID of the active contract.
+    GSC_MAPPED_WS_ROOT  The absolute path to the root of this shadow workspace.
 
 EXIT
     Type 'exit' to close this session and return to your project root.

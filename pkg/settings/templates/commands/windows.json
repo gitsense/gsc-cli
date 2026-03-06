@@ -1,0 +1,30 @@
+{
+  "_gsc_meta": {
+    "component": "Terminal and Editor Launch Templates",
+    "block_uuid": "e34f8c9a-1b2d-4e5f-6a7b-8c9d0e1f2a3b",
+    "parent_uuid": "N/A",
+    "version": "1.1.0",
+    "description": "Defines command-line invocation templates for editors and terminals on Windows.",
+    "language": "json",
+    "created_at": "2026-03-06T14:42:00.000Z",
+    "authors": "GLM-4.7 (v1.0.0)"
+  },
+  "editors": {
+    "zed": "zed %s",
+    "vscode": "code %s",
+    "cursor": "cursor %s",
+    "vim": "vim %s",
+    "nvim": "nvim %s",
+    "notepad": "notepad %s",
+    "notepad++": "notepad++ %s"
+  },
+  "terminals": {
+    "wt": "wt.exe -d \"%s\"",
+    "cmd": "start cmd /K cd /d \"%s\"",
+    "powershell": "start powershell -NoExit -Command \"Set-Location '%s'\"",
+    "git-bash": "start \"\" \"%PROGRAMFILES%\\Git\\bin\\bash.exe\" --cd=\"%s\"",
+    "wt-ws": "wt.exe -d \"%s\" powershell -NoExit -Command \". $env:GSC_MAPPED_WS_ROOT/.gsc-init.ps1\"",
+    "powershell-ws": "start powershell -NoExit -Command \"Set-Location '%s'; . $env:GSC_MAPPED_WS_ROOT/.gsc-init.ps1\"",
+    "git-bash-ws": "start \"\" \"%PROGRAMFILES%\\Git\\bin\\bash.exe\" --cd=\"%s\" --rcfile \"$GSC_MAPPED_WS_ROOT/.gsc-init.sh\""
+  }
+}

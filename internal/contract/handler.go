@@ -1,12 +1,12 @@
 /**
  * Component: Contract Intent Handler
- * Block-UUID: 9d7ae8eb-84ef-4052-9779-7dfc2391e881
- * Parent-UUID: 8bfcd5c8-a75e-47a0-9c1d-2c6e1f9b851c
- * Version: 1.18.0
- * Description: Updated handleTerminalIntent to resolve the target directory based on the code block position using the workspace.json manifest. Replaced hardcoded "latest" hash with the hash provided in the LaunchRequest.
+ * Block-UUID: fdb55de3-3f4c-4743-a2d5-71da148f3985
+ * Parent-UUID: 9d7ae8eb-84ef-4052-9779-7dfc2391e881
+ * Version: 1.19.0
+ * Description: Updated handleTerminalIntent and generateShellInitScript to inject GSC_MAPPED_WS_ROOT and rename GSC_WS_HASH to GSC_MAPPED_WS_HASH for consistent environment variable naming and reliable file access.
  * Language: Go
  * Created-at: 2026-03-06T05:23:56.122Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.16.1), Gemini 3 Flash (v1.17.0), GLM-4.7 (v1.18.0)
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.16.1), Gemini 3 Flash (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.19.0)
  */
 
 
@@ -163,9 +163,10 @@ func handleTerminalIntent(meta *ContractMetadata, req LaunchRequest) (LaunchResu
 		// 3. Prepare Environment Variables
 		envVars = []string{
 			fmt.Sprintf("GSC_CHAT_ID=%d", req.ActiveChatID),
-			fmt.Sprintf("GSC_WS_HASH=%s", hash),
+			fmt.Sprintf("GSC_MAPPED_WS_HASH=%s", hash),
 			fmt.Sprintf("GSC_PROJECT_ROOT=%s", meta.Workdir),
 			fmt.Sprintf("GSC_CONTRACT_UUID=%s", meta.UUID),
+			fmt.Sprintf("GSC_MAPPED_WS_ROOT=%s", workspaceDir),
 		}
 	}
 
@@ -220,11 +221,12 @@ func generateShellInitScript(workdir string, activeChatID int64, contractUUID st
 
 	// Substitute Variables
 	replacements := map[string]string{
-		"{{GSC_CHAT_ID}}":      fmt.Sprintf("%d", activeChatID),
-		"{{GSC_WS_HASH}}":      hash,
-		"{{GSC_PROJECT_ROOT}}": projectRoot,
-		"{{GSC_CONTRACT_UUID}}": contractUUID,
-		"{{TARGET_DIR}}":       targetDir,
+		"{{GSC_CHAT_ID}}":        fmt.Sprintf("%d", activeChatID),
+		"{{GSC_MAPPED_WS_HASH}}": hash,
+		"{{GSC_PROJECT_ROOT}}":   projectRoot,
+		"{{GSC_CONTRACT_UUID}}":  contractUUID,
+		"{{GSC_MAPPED_WS_ROOT}}": workdir,
+		"{{TARGET_DIR}}":         targetDir,
 	}
 
 	processedContent := string(content)

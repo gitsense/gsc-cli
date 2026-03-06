@@ -1,0 +1,37 @@
+{
+  "_gsc_meta": {
+    "component": "Terminal and Editor Launch Templates",
+    "block_uuid": "c2367dc2-9ad4-4b76-b323-98870e9ee918",
+    "parent_uuid": "N/A",
+    "version": "1.1.0",
+    "description": "Defines command-line invocation templates for editors and terminals on Linux.",
+    "language": "json",
+    "created_at": "2026-03-06T14:33:00.000Z",
+    "authors": "GLM-4.7 (v1.0.0)"
+  },
+  "editors": {
+    "zed": "zed %s",
+    "vscode": "code %s",
+    "cursor": "cursor %s",
+    "vim": "vim %s",
+    "nvim": "nvim %s",
+    "nano": "nano %s",
+    "subl": "subl %s",
+    "gedit": "gedit %s",
+    "kate": "kate %s"
+  },
+  "terminals": {
+    "gnome-terminal": "gnome-terminal --working-directory=\"%s\"",
+    "konsole": "konsole --workdir \"%s\"",
+    "xfce4-terminal": "xfce4-terminal --working-directory=\"%s\"",
+    "alacritty": "alacritty --working-directory \"%s\"",
+    "kitty": "kitty --directory \"%s\"",
+    "xterm": "xterm -e 'cd \"%s\" && bash'",
+    "gnome-terminal-ws": "gnome-terminal --working-directory=\"%s\" -- bash --rcfile \"${GSC_MAPPED_WS_ROOT}/.gsc-init.sh\"",
+    "konsole-ws": "konsole --workdir \"%s\" -e bash --rcfile \"${GSC_MAPPED_WS_ROOT}/.gsc-init.sh\"",
+    "xfce4-terminal-ws": "xfce4-terminal --working-directory=\"%s\" -e bash --rcfile \"${GSC_MAPPED_WS_ROOT}/.gsc-init.sh\"",
+    "alacritty-ws": "alacritty --working-directory \"%s\" -e bash --rcfile \"${GSC_MAPPED_WS_ROOT}/.gsc-init.sh\"",
+    "kitty-ws": "kitty --directory \"%s\" bash --rcfile \"${GSC_MAPPED_WS_ROOT}/.gsc-init.sh\"",
+    "xterm-ws": "xterm -e 'cd \"%s\" && bash --rcfile \"${GSC_MAPPED_WS_ROOT}/.gsc-init.sh\"'"
+  }
+}

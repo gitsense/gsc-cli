@@ -1,12 +1,12 @@
 /*
  * Component: Settings and Configuration Manager
- * Block-UUID: 67e4640f-8a9e-400f-a443-894b5330c837
- * Parent-UUID: a9d97c2b-0ef7-412f-8527-316f079785da
- * Version: 3.3.0
- * Description: Updated LoadTemplates to recursively bootstrap the entire templates directory (including help/ and shells/) from the embedded filesystem to the local .gitsense directory, ensuring all shadow workspace assets are available for customization.
+ * Block-UUID: 19000c50-ba9d-488f-9377-6bf34a43eff2
+ * Parent-UUID: 67e4640f-8a9e-400f-a443-894b5330c837
+ * Version: 3.4.0
+ * Description: Refactored LoadTemplates to load command templates from the 'templates/commands/' subdirectory with simplified OS-specific filenames (e.g., 'darwin.json').
  * Language: Go
  * Created-at: 2026-03-06T01:50:18.037Z
- * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.2.0), Gemini 3 Flash (v3.3.0)
+ * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.2.0), Gemini 3 Flash (v3.3.0), GLM-4.7 (v3.4.0)
  */
 
 
@@ -92,7 +92,7 @@ var DefaultEditorTemplates = make(map[string]string)
 // This is populated by LoadTemplates() at runtime.
 var DefaultTerminalTemplates = make(map[string]string)
 
-// TemplateConfig represents the structure of the templates.<os>.json file
+// TemplateConfig represents the structure of the commands.<os>.json file
 type TemplateConfig struct {
 	Editors   map[string]string `json:"editors"`
 	Terminals map[string]string `json:"terminals"`
@@ -118,24 +118,25 @@ func LoadTemplates() error {
 	localTemplatesDir := filepath.Join(gscHome, "data", "templates")
 
 	// 1. Recursively bootstrap the entire templates directory
-	// This ensures help/ and shells/ subdirectories are created and populated.
+	// This ensures help/, shells/, and commands/ subdirectories are created and populated.
 	if err := bootstrapTemplatesRecursive("templates", localTemplatesDir); err != nil {
 		return fmt.Errorf("failed to bootstrap templates: %w", err)
 	}
 
-	// 2. Load the OS-specific JSON configuration
+	// 2. Load the OS-specific JSON configuration from the 'commands' subdirectory
 	osName := runtime.GOOS
-	jsonFileName := fmt.Sprintf("templates.%s.json", osName)
-	localJsonPath := filepath.Join(localTemplatesDir, jsonFileName)
+	// New path: templates/commands/<os>.json
+	jsonFileName := fmt.Sprintf("%s.json", osName)
+	localJsonPath := filepath.Join(localTemplatesDir, "commands", jsonFileName)
 
 	data, err := os.ReadFile(localJsonPath)
 	if err != nil {
-		return fmt.Errorf("failed to read local template file %s: %w", localJsonPath, err)
+		return fmt.Errorf("failed to read local command template file %s: %w", localJsonPath, err)
 	}
 
 	var config TemplateConfig
 	if err := json.Unmarshal(data, &config); err != nil {
-		return fmt.Errorf("failed to parse local template file: %w", err)
+		return fmt.Errorf("failed to parse local command template file: %w", err)
 	}
 
 	// 3. Populate global maps
