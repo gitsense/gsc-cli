@@ -25,7 +25,7 @@ alias diff='gsc ws diff'
 alias help='cat ${GSC_MAPPED_WS_ROOT}/.gsc-welcome'
 
 # 3. Custom Prompt
-export PS1="(gsc-ws) \w $ "
+export PS1="(gsc-ws) \w\n$ "
 
 # 4. Welcome Message
 clear

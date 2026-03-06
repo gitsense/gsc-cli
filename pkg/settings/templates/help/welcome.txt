@@ -1,21 +1,8 @@
-🌉 GitSense Workspace: {{MSG_HASH}} ({{CHAT_NAME}})
+GitSense Workspace: {{MSG_HASH}}
 --------------------------------------------------
 send     Send output back to chat
 save     Copy AI generated code to your project
 undo     Revert the last save
 diff     Compare AI code with your project code
 help     Show detailed help (manpage)
-
-Type 'exit' to return to your project.
-
-Examples
---------
-# Send a quick message to the chat
-send '# Hello, World'
-
-# Execute generated code then pipe results to the chat
-bash source.sh | send
-
-# Send the contents in logs.txt and make the message invisible to the LLM
-cat logs.txt | send --visibility human-only
 --------------------------------------------------

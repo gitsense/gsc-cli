@@ -1,12 +1,12 @@
 /**
  * Component: Contract Intent Handler
- * Block-UUID: fdb55de3-3f4c-4743-a2d5-71da148f3985
- * Parent-UUID: 9d7ae8eb-84ef-4052-9779-7dfc2391e881
- * Version: 1.19.0
- * Description: Updated handleTerminalIntent and generateShellInitScript to inject GSC_MAPPED_WS_ROOT and rename GSC_WS_HASH to GSC_MAPPED_WS_HASH for consistent environment variable naming and reliable file access.
+ * Block-UUID: 96d97c10-7742-483d-ab07-8bfb3de745b5
+ * Parent-UUID: b468e253-a127-4859-9fce-114be5c8ae91
+ * Version: 1.21.0
+ * Description: Fixed variable scope issue by declaring workspaceDir in the outer scope of handleTerminalIntent to ensure it is accessible during command string construction.
  * Language: Go
  * Created-at: 2026-03-06T05:23:56.122Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.16.1), Gemini 3 Flash (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.19.0)
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.16.1), Gemini 3 Flash (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.19.0), GLM-4.7 (v1.20.0), GLM-4.7 (v1.21.0)
  */
 
 
@@ -121,11 +121,14 @@ func handleTerminalIntent(meta *ContractMetadata, req LaunchRequest) (LaunchResu
 		hash = "latest"
 	}
 
+	// FIX: Declare workspaceDir in outer scope so it's accessible later
+	var workspaceDir string
+
 	if isWorkspace {
 		// 1. Resolve Target Directory based on Position
 		gscHome, _ := settings.GetGSCHome(false)
 		dumpsRoot := filepath.Join(gscHome, settings.DumpsRelPath)
-		workspaceDir := filepath.Join(dumpsRoot, meta.UUID, "mapped", hash)
+		workspaceDir = filepath.Join(dumpsRoot, meta.UUID, "mapped", hash)
 		
 		// Default to workspace root
 		targetDir = workspaceDir
@@ -174,6 +177,8 @@ func handleTerminalIntent(meta *ContractMetadata, req LaunchRequest) (LaunchResu
 	cmdStr := req.Cmd
 	if cmdStr == "" {
 		cmdStr = fmt.Sprintf(template, targetDir)
+		// Inject the absolute path for the init script to avoid env var dependency at launch
+		cmdStr = strings.ReplaceAll(cmdStr, "{{GSC_MAPPED_WS_ROOT}}", workspaceDir)
 	}
 
 	// Increased timeout to 15s to allow for slow AppleScript/App startup

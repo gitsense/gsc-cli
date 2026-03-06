@@ -1,13 +1,13 @@
 {
   "_gsc_meta": {
     "component": "Terminal and Editor Launch Templates",
-    "block_uuid": "12bc9dbb-d0b9-478d-9a81-bd0bf6d677c5",
-    "parent_uuid": "N/A",
-    "version": "1.1.0",
-    "description": "Defines command-line invocation templates for editors and terminals on macOS.",
+    "block_uuid": "6e1318df-bf4d-4417-ac20-d9fc73522790",
+    "parent_uuid": "12bc9dbb-d0b9-478d-9a81-bd0bf6d677c5",
+    "version": "1.2.0",
+    "description": "Updated workspace terminal aliases to use {{GSC_MAPPED_WS_ROOT}} placeholder for absolute path injection by the handler.",
     "language": "json",
     "created_at": "2026-03-06T14:31:00.000Z",
-    "authors": "GLM-4.7 (v1.0.0)"
+    "authors": "GLM-4.7 (v1.0.0), GLM-4.7 (v1.2.0)"
   },
   "editors": {
     "zed": "zed %s",
@@ -22,8 +22,8 @@
     "iterm2": "osascript -e 'tell application \"iTerm\" to tell (create window with default profile) to tell current session to write text \"cd \\\"%s\\\" && clear\"'",
     "terminal.app": "open -a Terminal %s",
     "alacritty": "open -a Alacritty %s",
-    "iterm2-ws": "osascript -e 'tell application \"iTerm\" to tell (create window with default profile) to tell current session to write text \"cd \\\"%s\\\" && bash --rcfile \\\"${GSC_MAPPED_WS_ROOT}/.gsc-init.sh\\\"\"'",
-    "terminal.app-ws": "osascript -e 'tell application \"Terminal\" to do script \"cd \\\"%s\\\" && bash --rcfile \\\"${GSC_MAPPED_WS_ROOT}/.gsc-init.sh\\\"\"'",
-    "alacritty-ws": "alacritty --working-directory \"%s\" -e bash --rcfile \"${GSC_MAPPED_WS_ROOT}/.gsc-init.sh\""
+    "iterm2-ws": "osascript -e 'tell application \"iTerm\" to tell (create window with default profile) to tell current session to write text \"cd \\\"%s\\\" && bash --rcfile \\\"{{GSC_MAPPED_WS_ROOT}}/.gsc-init.sh\\\"\"'",
+    "terminal.app-ws": "osascript -e 'tell application \"Terminal\" to do script \"cd \\\"%s\\\" && bash --rcfile \\\"{{GSC_MAPPED_WS_ROOT}}/.gsc-init.sh\\\"\"'",
+    "alacritty-ws": "alacritty --working-directory \"%s\" -e bash --rcfile \"{{GSC_MAPPED_WS_ROOT}}/.gsc-init.sh\""
   }
 }
