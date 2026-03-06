@@ -1,20 +1,49 @@
+<!--
+Component: GitSense Templates Documentation
+Block-UUID: 6f97fb2f-c7e8-4d9f-aadf-07f785e3a6f9
+Parent-UUID: 9070
+Version: 1.1.0
+Description: Updated documentation to reflect the new 'commands/' subdirectory structure and simplified filenames (e.g., darwin.json).
+Language: Markdown
+Created-at: 2026-03-06T14:51:00.000Z
+Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0)
+-->
+
+
 # GitSense Chat CLI Templates Configuration
 
-This directory contains the launch templates for editors and terminals used by the `gsc contract launch` command.
+This directory contains the launch templates for editors and terminals used by the `gsc contract launch` command, as well as shell initialization scripts and help documentation.
 
 ## File Structure
 
-The templates are separated by operating system to ensure compatibility:
+The templates are organized by type and operating system to ensure compatibility and logical separation of concerns.
 
-- `templates.darwin.json`: Configuration for macOS.
-- `templates.linux.json`: Configuration for Linux distributions.
-- `templates.windows.json`: Configuration for Windows.
 
-The CLI automatically loads the file matching your current operating system.
+
+```
+templates/
+├── commands/       # Editor and terminal launch templates
+│   ├── darwin.json
+│   ├── linux.json
+│   └── windows.json
+├── help/           # Documentation text files
+│   ├── welcome.txt
+│   └── help.txt
+└── shells/         # Shell initialization scripts
+    └── ws/
+        ├── darwin/
+        │   └── init.sh
+        ├── linux/
+        │   └── init.sh
+        └── windows/
+            └── init.ps1
+```
+
+The CLI automatically loads the configuration file matching your current operating system from the `commands/` directory.
 
 ## How to Customize
 
-1. Open the JSON file corresponding to your OS.
+1. Open the JSON file corresponding to your OS in the `commands/` subdirectory.
 2. Edit the `editors` or `terminals` objects.
 3. Save the file.
 4. Restart your GitSense Chat session or CLI to apply changes.
@@ -27,7 +56,7 @@ The `%s` placeholder in the command string will be replaced with the target file
 
 ### Example: Adding a Custom Terminal
 
-If you want to launch iTerm2 with Vim automatically on macOS, you can add a custom entry to `templates.darwin.json`:
+If you want to launch iTerm2 with Vim automatically on macOS, you can add a custom entry to `commands/darwin.json`:
 
 ```json
 {
