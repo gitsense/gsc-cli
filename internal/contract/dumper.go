@@ -1,12 +1,12 @@
 /**
  * Component: Contract Dump Orchestrator
- * Block-UUID: aca5a0ab-c140-480d-8e70-44a7d5f77dd7
- * Parent-UUID: 8a9f3b2c-1d4e-5f6a-9b8c-0d1e2f3a4b5c
- * Version: 2.14.0
+ * Block-UUID: 64ca34db-399f-40b3-a81e-28f13456426c
+ * Parent-UUID: aca5a0ab-c140-480d-8e70-44a7d5f77dd7
+ * Version: 2.14.1
  * Description: Updated executeMappedDump to generate .gsc-welcome and .gsc-help files. Added activeChatID parameter to fetch chat names for the welcome screen.
  * Language: Go
- * Created-at: 2026-03-05T03:41:15.123Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.11.0), GLM-4.7 (v2.12.0), GLM-4.7 (v2.13.0), GLM-4.7 (v2.14.0)
+ * Created-at: 2026-03-06T15:05:03.986Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.11.0), GLM-4.7 (v2.12.0), GLM-4.7 (v2.13.0), GLM-4.7 (v2.14.0), GLM-4.7 (v2.14.1)
  */
 
 
@@ -770,7 +770,7 @@ func generateHelpFiles(workspaceDir, contractUUID, dumpHash string, activeChatID
 		"{{MSG_HASH}}":        dumpHash,
 		"{{CHAT_NAME}}":       chatName,
 		"{{GSC_CHAT_ID}}":     fmt.Sprintf("%d", activeChatID),
-		"{{GSC_WS_HASH}}":     dumpHash,
+		"{{GSC_MAPPED_WS_HASH}}": dumpHash,
 		"{{GSC_PROJECT_ROOT}}": workdir,
 		"{{GSC_CONTRACT_UUID}}": contractUUID,
 	}
