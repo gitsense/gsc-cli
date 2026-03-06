@@ -1,12 +1,12 @@
 /*
  * Component: Contract Models
- * Block-UUID: 1110154e-e5d4-489f-a2ca-d3d1b7e4a84a
- * Parent-UUID: 793cfeb1-5dc0-4bf3-a0de-c892927067b2
- * Version: 1.20.0
- * Description: Added Hash and Position to LaunchRequest to support deterministic directory resolution in shadow workspaces based on code block index.
+ * Block-UUID: 75346f1e-8307-4928-99c8-88886efc7ab2
+ * Parent-UUID: 1110154e-e5d4-489f-a2ca-d3d1b7e4a84a
+ * Version: 1.21.0
+ * Description: Added OriginalPath field to MappedFileEntry to preserve the original component name before sanitization for debugging and UI display.
  * Language: Go
  * Created-at: 2026-03-06T04:20:00.822Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.19.0), Gemini 3 Flash (v1.20.0)
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.19.0), Gemini 3 Flash (v1.20.0), GLM-4.7 (v1.21.0)
  */
 
 
@@ -166,11 +166,12 @@ const (
 
 // MappedFileEntry represents a single file in the mapped dump result.
 type MappedFileEntry struct {
-	Path      string           `json:"path"`       // Relative path in the project (or component name)
-	Status    MappedFileStatus `json:"status"`     // "mapped" or "unmapped"
-	BlockUUID string           `json:"block_uuid"` // The UUID of the code block
-	Reason    string           `json:"reason,omitempty"` // Why it was unmapped (e.g., "no_parent_uuid")
-	Position  int              `json:"position"`   // 0-indexed position of the code block in the original message
+	Path         string           `json:"path"`         // Relative path in the project (or component name)
+	OriginalPath string           `json:"original_path,omitempty"` // Original component name before sanitization
+	Status       MappedFileStatus `json:"status"`       // "mapped" or "unmapped"
+	BlockUUID    string           `json:"block_uuid"`   // The UUID of the code block
+	Reason       string           `json:"reason,omitempty"` // Why it was unmapped (e.g., "no_parent_uuid")
+	Position     int              `json:"position"`     // 0-indexed position of the code block in the original message
 }
 
 // MappedDumpStats provides summary statistics for the dump.

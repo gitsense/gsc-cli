@@ -8,6 +8,39 @@ DESCRIPTION
     the AI. You can run, modify, and test this code safely before
     applying it to your main project.
 
+DIRECTORY STRUCTURE
+    The workspace is organized into two main categories:
+
+    mapped/
+        Contains files that were successfully mapped to your project
+        structure. The directory hierarchy mirrors your project root.
+        Example: mapped/src/utils/helper.go
+
+    unmapped/
+        Contains files that could not be mapped to a specific project
+        location (e.g., new files or snippets). These are organized
+        using a position-based naming convention to ensure shell safety
+        and natural sorting.
+
+        components/
+            Organized by position and sanitized name.
+            Single Message Mode: 01_sanitized_name/
+            Full Contract Mode: 1_01_sanitized_name/ (msg_position_name)
+            Example: unmapped/components/01_hello_world/
+
+        snippets/
+            Small code blocks without a component name.
+            Example: unmapped/snippets/block_001.go
+
+        patches/
+            Raw patch files for reference.
+            Example: unmapped/components/01_hello_world_patch_a1b2c3d4.diff
+
+    Sanitization Rules:
+        - Spaces are replaced with underscores.
+        - Special characters are removed (keeps a-z, 0-9, -, _).
+        - Names are converted to lowercase.
+
 COMMANDS
     send [COMMENT]
         Reads from standard input and sends the content back to the
@@ -46,9 +79,9 @@ COMMANDS
 
 ENVIRONMENT
     GSC_CHAT_ID         The ID of the chat receiving 'send' output.
-    GSC_MAPPED_WS_HASH  The unique hash of this workspace version.
-    GSC_PROJECT_ROOT    The absolute path to your actual project.
     GSC_CONTRACT_UUID   The UUID of the active contract.
+    GSC_PROJECT_ROOT    The absolute path to the actual project tied to the contract.
+    GSC_MAPPED_WS_HASH  The unique hash of this workspace version.
     GSC_MAPPED_WS_ROOT  The absolute path to the root of this shadow workspace.
 
 EXIT

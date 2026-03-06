@@ -1,12 +1,12 @@
 /**
  * Component: Contract Dump Orchestrator
- * Block-UUID: 64ca34db-399f-40b3-a81e-28f13456426c
- * Parent-UUID: aca5a0ab-c140-480d-8e70-44a7d5f77dd7
- * Version: 2.14.1
- * Description: Updated executeMappedDump to generate .gsc-welcome and .gsc-help files. Added activeChatID parameter to fetch chat names for the welcome screen.
+ * Block-UUID: 57e5e7ac-a8ab-4c87-b7c0-93135fb95cb6
+ * Parent-UUID: ff3b0f29-15d5-45bc-94fd-4f1e0387a237
+ * Version: 2.16.0
+ * Description: Populate OriginalPath field in MappedFileEntry to preserve the raw component name or project path before sanitization.
  * Language: Go
  * Created-at: 2026-03-06T15:05:03.986Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.11.0), GLM-4.7 (v2.12.0), GLM-4.7 (v2.13.0), GLM-4.7 (v2.14.0), GLM-4.7 (v2.14.1)
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.11.0), GLM-4.7 (v2.12.0), GLM-4.7 (v2.13.0), GLM-4.7 (v2.14.0), GLM-4.7 (v2.14.1), GLM-4.7 (v2.15.0), GLM-4.7 (v2.16.0)
  */
 
 
@@ -22,6 +22,7 @@ import (
 	"database/sql"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -439,7 +440,10 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 	
 	processedArtifacts := 0
 
-	for _, msg := range messages {
+	// Determine if we are in single message mode for naming convention
+	isSingleMessage := (messageID > 0)
+
+	for msgIndex, msg := range messages {
 		if !msg.Message.Valid {
 			continue
 		}
@@ -483,16 +487,29 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 				logger.Debug("Block Unmapped", "uuid", block.BlockUUID, "reason", reason)
 			}
 
+			// Format the component name for unmapped files
+			var originalPath string
+			var formattedPath string
+
+			if isMapped {
+				formattedPath = relPath
+				originalPath = relPath // For mapped files, the project path is the original reference
+			} else {
+				originalPath = block.Component // Capture the AI-generated name
+				// Use the new naming convention
+				formattedPath = formatArtifactPath(isSingleMessage, msgIndex, block.Index, block.Component)
+				// Update the block's component field so the writer uses it
+				block.Component = formattedPath
+			}
+
 			// Add to result list
 			entry := MappedFileEntry{
-				Path:      relPath, // Will be component name if unmapped
-				Status:    status,
-				BlockUUID: block.BlockUUID,
-				Reason:    reason,
-				Position:  block.Index, // 0-indexed position in the message
-			}
-			if !isMapped && block.Component != "" {
-				entry.Path = block.Component
+				Path:         formattedPath,
+				OriginalPath: originalPath,
+				Status:       status,
+				BlockUUID:    block.BlockUUID,
+				Reason:       reason,
+				Position:     block.Index, // 0-indexed position in the message
 			}
 			result.Files = append(result.Files, entry)
 
@@ -568,16 +585,29 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 				logger.Debug("Patch Unmapped", "target_uuid", patch.TargetBlockUUID, "reason", reason)
 			}
 
+			// Format the component name for unmapped files
+			var originalPath string
+			var formattedPath string
+
+			if isMapped {
+				formattedPath = relPath
+				originalPath = relPath
+			} else {
+				originalPath = patch.Component
+				// Use the new naming convention
+				formattedPath = formatArtifactPath(isSingleMessage, msgIndex, patch.Index, patch.Component)
+				// Update the patch's component field so the writer uses it
+				patch.Component = formattedPath
+			}
+
 			// Add to result list
 			entry := MappedFileEntry{
-				Path:      relPath,
-				Status:    status,
-				BlockUUID: patch.TargetBlockUUID,
-				Reason:    reason,
-				Position:  patch.Index, // 0-indexed position in the message
-			}
-			if !isMapped && patch.Component != "" {
-				entry.Path = patch.Component
+				Path:         formattedPath,
+				OriginalPath: originalPath,
+				Status:       status,
+				BlockUUID:    patch.TargetBlockUUID,
+				Reason:       reason,
+				Position:     patch.Index, // 0-indexed position in the message
 			}
 			result.Files = append(result.Files, entry)
 
@@ -734,6 +764,40 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 	}
 
 	return result, nil
+}
+
+// sanitizeComponentName sanitizes a component name for use in file paths.
+// It replaces spaces with underscores, removes special characters, and lowercases the result.
+func sanitizeComponentName(name string) string {
+	// Replace spaces with underscores
+	sanitized := strings.ReplaceAll(name, " ", "_")
+	
+	// Remove special characters (keep only: a-z, A-Z, 0-9, -, _)
+	reg := regexp.MustCompile(`[^a-zA-Z0-9_-]`)
+	sanitized = reg.ReplaceAllString(sanitized, "")
+	
+	// Convert to lowercase
+	sanitized = strings.ToLower(sanitized)
+	
+	// Ensure non-empty result
+	if sanitized == "" {
+		sanitized = "component"
+	}
+	
+	return sanitized
+}
+
+// formatArtifactPath formats the path for an artifact based on the dump mode and position.
+// Single Message Mode: "01_sanitized_name"
+// Full Contract Mode: "1_01_sanitized_name" (msgIndex_position_name)
+func formatArtifactPath(isSingleMessage bool, msgIndex int, position int, name string) string {
+	sanitized := sanitizeComponentName(name)
+	
+	if isSingleMessage {
+		return fmt.Sprintf("%02d_%s", position+1, sanitized)
+	}
+	
+	return fmt.Sprintf("%d_%02d_%s", msgIndex, position+1, sanitized)
 }
 
 // generateHelpFiles creates .gsc-welcome and .gsc-help in the workspace root.

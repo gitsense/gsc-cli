@@ -1,12 +1,12 @@
 /**
  * Component: Mapped Dump Writer
- * Block-UUID: d554d373-1426-42e4-b22a-fac18ef0f73c
- * Parent-UUID: 5a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
- * Version: 1.4.0
- * Description: Fixed WriteProvenanceJSON to use ParentUUID for path resolution instead of BlockUUID, ensuring provenance files are written to the correct mapped directory.
+ * Block-UUID: 858258fc-05a9-4660-96e4-17d14f14931c
+ * Parent-UUID: d554d373-1426-42e4-b22a-fac18ef0f73c
+ * Version: 1.5.0
+ * Description: Updated WritePatch to use the formatted component name from the dumper for consistent file naming (e.g., 01_name_patch_uuid.diff).
  * Language: Go
  * Created-at: 2026-03-04T16:42:20.879Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
  */
 
 
@@ -97,6 +97,7 @@ func (w *MappedWriter) WriteBlock(msgDir string, block markdown.CodeBlock, trim 
 		filename = "proposed" + getExtension(block.Language)
 	} else {
 		if block.Component != "" {
+			// Use the formatted component name from the dumper
 			targetDir = filepath.Join(msgDir, "unmapped", "components", block.Component)
 			filename = "proposed" + getExtension(block.Language)
 		} else {
@@ -123,11 +124,15 @@ func (w *MappedWriter) WritePatch(msgDir string, patch markdown.PatchBlock, trim
 		return err
 	}
 
-	filename := fmt.Sprintf("patch_%03d", patch.Index+1)
-	if patch.TargetBlockUUID != "" {
-		filename += "_" + patch.TargetBlockUUID[:8]
+	// Use the formatted component name as the prefix for the patch file
+	// This ensures consistency with the directory naming convention (01_... or 1_01_...)
+	var filename string
+	if patch.Component != "" {
+		filename = fmt.Sprintf("%s_patch_%s.diff", patch.Component, patch.TargetBlockUUID[:8])
+	} else {
+		// Fallback for safety if Component is empty (e.g. for failed mapped patches)
+		filename = fmt.Sprintf("patch_%03d_%s.diff", patch.Index+1, patch.TargetBlockUUID[:8])
 	}
-	filename += ".diff"
 
 	content := patch.RawHeader + "\n\n\n" + patch.ExecutableCode
 	return os.WriteFile(filepath.Join(targetDir, filename), []byte(content), 0644)
@@ -139,10 +144,18 @@ func (w *MappedWriter) WritePatchedFile(msgDir string, patch markdown.PatchBlock
 	relPath, isMapped := w.PathMap[patch.SourceBlockUUID]
 	if !isMapped {
 		// If the target isn't mapped, we treat it as an unmapped component
-		targetDir := filepath.Join(msgDir, "unmapped", "components", patch.Component)
-		if patch.Component == "" {
-			targetDir = filepath.Join(msgDir, "unmapped", "orphans")
+		if patch.Component != "" {
+			// Use the formatted component name from the dumper
+			targetDir := filepath.Join(msgDir, "unmapped", "components", patch.Component)
+			os.MkdirAll(targetDir, 0755)
+			
+			filename := fmt.Sprintf("proposed_%03d%s", patch.Index+1, getExtension(patch.Language))
+			fullContent := header + "\n\n\n" + content
+			return os.WriteFile(filepath.Join(targetDir, filename), []byte(fullContent), 0644)
 		}
+		
+		// Fallback for orphans
+		targetDir := filepath.Join(msgDir, "unmapped", "orphans")
 		os.MkdirAll(targetDir, 0755)
 		
 		filename := fmt.Sprintf("proposed_%03d%s", patch.Index+1, getExtension(patch.Language))
