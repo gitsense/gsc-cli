@@ -1,12 +1,12 @@
 /*
  * Component: Workspace Root Command
- * Block-UUID: 43a4f423-c9ac-4a0b-a04f-5f2b63296ef2
- * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: Defines the parent 'ws' command and handles the 'Shortcut' entry mode (positional argument). It also defines persistent flags for subcommands.
+ * Block-UUID: 0f18e2bf-d323-4a03-a562-c421305e2258
+ * Parent-UUID: 43a4f423-c9ac-4a0b-a04f-5f2b63296ef2
+ * Version: 1.1.0
+ * Description: Registered the 'send' subcommand to enable messaging from the terminal to the web UI.
  * Language: Go
  * Created-at: 2026-03-07T02:50:00.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0)
  */
 
 
@@ -56,8 +56,8 @@ func RegisterCommand(root *cobra.Command) {
 	wsCmd.PersistentFlags().StringVar(&wsID, "id", "", "Workspace hash-position context")
 	wsCmd.PersistentFlags().BoolVar(&wsShell, "shell", false, "Keep shell open after action")
 
-	// Register subcommands here (e.g., sendCmd, watchCmd)
-	// wsCmd.AddCommand(sendCmd)
+	// Register subcommands
+	wsCmd.AddCommand(sendCmd)
 
 	root.AddCommand(wsCmd)
 }

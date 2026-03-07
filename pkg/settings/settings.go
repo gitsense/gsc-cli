@@ -1,12 +1,12 @@
 /*
  * Component: Settings and Configuration Manager
- * Block-UUID: 19000c50-ba9d-488f-9377-6bf34a43eff2
- * Parent-UUID: 67e4640f-8a9e-400f-a443-894b5330c837
- * Version: 3.4.0
- * Description: Refactored LoadTemplates to load command templates from the 'templates/commands/' subdirectory with simplified OS-specific filenames (e.g., 'darwin.json').
+ * Block-UUID: 619f5cc7-da17-4542-a130-68a5adf31f42
+ * Parent-UUID: 19000c50-ba9d-488f-9377-6bf34a43eff2
+ * Version: 3.5.0
+ * Description: Added DefaultMaxSendSize constant to define the size limit for the 'gsc ws send' command.
  * Language: Go
  * Created-at: 2026-03-06T01:50:18.037Z
- * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.2.0), Gemini 3 Flash (v3.3.0), GLM-4.7 (v3.4.0)
+ * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.2.0), Gemini 3 Flash (v3.3.0), GLM-4.7 (v3.4.0), GLM-4.7 (v3.5.0)
  */
 
 
@@ -63,6 +63,10 @@ const DefaultExecTimeout = 60
 const SortRecency = "recency"
 const SortPopularity = "popularity"
 const SortChronological = "chronological"
+
+// DefaultMaxSendSize is the default size limit (in bytes) for the 'gsc ws send' command
+// before a warning is triggered. Default is 500KB.
+const DefaultMaxSendSize = 500 * 1024
 
 // DefaultSafeSet is the list of commands allowed by default when no whitelist is specified.
 var DefaultSafeSet = []string{
