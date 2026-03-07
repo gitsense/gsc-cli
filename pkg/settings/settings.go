@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Settings and Configuration Manager
- * Block-UUID: 619f5cc7-da17-4542-a130-68a5adf31f42
- * Parent-UUID: 19000c50-ba9d-488f-9377-6bf34a43eff2
- * Version: 3.5.0
+ * Block-UUID: 49339d36-9c22-445f-a754-8432bfdab651
+ * Parent-UUID: 619f5cc7-da17-4542-a130-68a5adf31f42
+ * Version: 3.6.0
  * Description: Added DefaultMaxSendSize constant to define the size limit for the 'gsc ws send' command.
  * Language: Go
- * Created-at: 2026-03-06T01:50:18.037Z
- * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.2.0), Gemini 3 Flash (v3.3.0), GLM-4.7 (v3.4.0), GLM-4.7 (v3.5.0)
+ * Created-at: 2026-03-07T23:47:46.013Z
+ * Authors: GLM-4.7 (v3.5.0), GLM-4.7 (v3.6.0)
  */
 
 
@@ -217,12 +217,17 @@ func loadHardcodedDefaults() {
 // GetGSCHome resolves the GSC_HOME directory.
 // If create is true, the directory will be created if it doesn't exist.
 func GetGSCHome(required bool) (string, error) {
+	logger.Debug("GetGSCHome called", "required", required)
 	gscHome := os.Getenv("GSC_HOME")
+	logger.Debug("GSC_HOME env var check", "value", gscHome)
+
 	if gscHome != "" {
+		logger.Debug("Returning GSC_HOME from env", "path", gscHome)
 		return gscHome, nil
 	}
 
 	if required {
+		logger.Debug("GSC_HOME required but not set, returning error")
 		return "", fmt.Errorf("GSC_HOME environment variable is not set")
 	}
 
@@ -231,7 +236,9 @@ func GetGSCHome(required bool) (string, error) {
 		return "", fmt.Errorf("failed to resolve user home directory: %w", err)
 	}
 
-	return filepath.Join(homeDir, DefaultGitSenseDir), nil
+	fallbackPath := filepath.Join(homeDir, DefaultGitSenseDir)
+	logger.Debug("Returning fallback path", "path", fallbackPath)
+	return fallbackPath, nil
 }
 
 // GetChatDatabasePath returns the absolute path to the GitSense Chat database.

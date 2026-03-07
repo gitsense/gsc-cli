@@ -1,12 +1,12 @@
 /**
  * Component: Root CLI Command
- * Block-UUID: 29a95b6a-a1d1-4c18-a9a2-4263b8eda67a
- * Parent-UUID: 05e68f57-dedb-4766-8f62-d8f1e34c1fe1
- * Version: 1.31.0
+ * Block-UUID: 9623f116-320e-4613-bce7-4a03d71cd60b
+ * Parent-UUID: 9e61c0b7-26d5-4d7a-85a3-5fda37393d8c
+ * Version: 1.32.3
  * Description: Registered the new 'contract' command and whitelisted it to bypass the .gitsense directory check, allowing it to run in any directory.
  * Language: Go
- * Created-at: 2026-03-07T02:54:54.094Z
- * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v1.29.0), GLM-4.7 (v1.30.0), GLM-4.7 (v1.31.0)
+ * Created-at: 2026-03-07T23:48:19.630Z
+ * Authors: GLM-4.7 (v1.32.2), GLM-4.7 (v1.32.3)
  */
 
 
@@ -47,7 +47,10 @@ AI ASSISTANT DISCOVERY:
   gsc --examples --format json`,
 	CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
 	SilenceErrors: true,
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		// Debug: Log the command name and arguments
+		logger.Debug("PersistentPreRunE invoked", "cmd_name", cmd.Name(), "args", args)
+
 		// 1. Check for quiet flag first
 		quiet, _ := cmd.Flags().GetBool("quiet")
 		if quiet {
@@ -64,22 +67,41 @@ AI ASSISTANT DISCOVERY:
 			}
 		}
 
-		// 2. Pre-flight Check: Ensure .gitsense directory exists
+		// 2. Enforce GSC_HOME for ws and contract commands
+		// cmd.Name() returns the command owning the hook (rootCmd), so we check args[0]
+		targetCommand := ""
+		if len(args) > 0 {
+			targetCommand = args[0]
+		}
+
+		logger.Debug("Target command identified", "target", targetCommand)
+
+		if targetCommand == "ws" || targetCommand == "contract" {
+			logger.Debug("Enforcing GSC_HOME check", "command", targetCommand)
+			gscHome, err := settings.GetGSCHome(true)
+			logger.Debug("GetGSCHome check result", "path", gscHome, "error", err)
+			if err != nil {
+				cmd.SilenceUsage = true
+				return err
+			}
+		}
+
+		// 3. Pre-flight Check: Ensure .gitsense directory exists
 		// Skip for 'init', 'doctor', 'exec', 'contract', and global '--examples'
-		commandName := cmd.Name()
-		if commandName != "init" && commandName != "doctor" && commandName != "exec" && commandName != "contract" && commandName != "ws" && !showExamples {
+		if targetCommand != "init" && targetCommand != "doctor" && targetCommand != "exec" && targetCommand != "contract" && targetCommand != "ws" && !showExamples {
 			root, err := git.FindProjectRoot()
 			if err != nil {
 				cmd.SilenceUsage = true
-				return
+				return err
 			}
 
 			gitsenseDir := filepath.Join(root, settings.GitSenseDir)
 			if _, err := os.Stat(gitsenseDir); os.IsNotExist(err) {
 				cmd.SilenceUsage = true
-				return
+				return fmt.Errorf("GitSense workspace not found. Run 'gsc manifest init' to initialize")
 			}
 		}
+		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if showExamples {
