@@ -1,11 +1,11 @@
 # Component: GitSense Workspace Shell Init
-# Block-UUID: f9ce4bf7-0838-459d-a0d0-3653bdcf4ed7
-# Parent-UUID: 94f1633e-19f8-4b10-a525-2833c900292d
-# Version: 1.2.0
+# Block-UUID: 1263b9b7-86ca-4965-b9bf-c95b03ac3ed1
+# Parent-UUID: f9ce4bf7-0838-459d-a0d0-3653bdcf4ed7
+# Version: 1.3.0
 # Description: Updated to use GSC_MAPPED_WS_ROOT for absolute path resolution and renamed GSC_WS_HASH to GSC_MAPPED_WS_HASH.
 # Language: Bash
-# Created-at: 2026-03-06T05:20:00.000Z
-# Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.2.0)
+# Created-at: 2026-03-07T01:40:07.644Z
+# Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
 
 
 # GitSense Workspace Shell Init
@@ -25,7 +25,13 @@ alias diff='gsc ws diff'
 alias help='cat ${GSC_MAPPED_WS_ROOT}/.gsc-welcome'
 
 # 3. Custom Prompt
-export PS1="(gsc-ws) \w\n$ "
+if [ -n "$ZSH_VERSION" ]; then
+    # Zsh uses %~ for current directory
+    export PS1="(gsc-ws) %~"$'\n'"$ "
+else
+    # Bash uses \w for current directory
+    export PS1="(gsc-ws) \w\n$ "
+fi
 
 # 4. Welcome Message
 clear

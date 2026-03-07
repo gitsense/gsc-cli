@@ -1,12 +1,12 @@
 /**
  * Component: Contract Intent Handler
- * Block-UUID: 96d97c10-7742-483d-ab07-8bfb3de745b5
- * Parent-UUID: b468e253-a127-4859-9fce-114be5c8ae91
- * Version: 1.21.0
- * Description: Fixed variable scope issue by declaring workspaceDir in the outer scope of handleTerminalIntent to ensure it is accessible during command string construction.
+ * Block-UUID: 9c83fce9-a43f-4871-ad88-7b2cecd3cdf5
+ * Parent-UUID: 96d97c10-7742-483d-ab07-8bfb3de745b5
+ * Version: 1.22.0
+ * Description: Exported generateShellInitScript to GenerateShellInitScript for use by the ws command.
  * Language: Go
  * Created-at: 2026-03-06T05:23:56.122Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.16.1), Gemini 3 Flash (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.19.0), GLM-4.7 (v1.20.0), GLM-4.7 (v1.21.0)
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.21.0), GLM-4.7 (v1.22.0)
  */
 
 
@@ -159,7 +159,7 @@ func handleTerminalIntent(meta *ContractMetadata, req LaunchRequest) (LaunchResu
 		}
 
 		// 2. Generate Shell Init Script
-		if err := generateShellInitScript(workspaceDir, req.ActiveChatID, meta.UUID, meta.Workdir, hash, targetDir); err != nil {
+		if err := GenerateShellInitScript(workspaceDir, req.ActiveChatID, meta.UUID, meta.Workdir, hash, targetDir); err != nil {
 			return LaunchResult{}, fmt.Errorf("failed to generate shell init script: %w", err)
 		}
 
@@ -202,8 +202,9 @@ func handleTerminalIntent(meta *ContractMetadata, req LaunchRequest) (LaunchResu
 	}, nil
 }
 
-// generateShellInitScript creates the .gsc-init.sh or .gsc-init.ps1 file in the workdir.
-func generateShellInitScript(workdir string, activeChatID int64, contractUUID string, projectRoot string, hash string, targetDir string) error {
+// GenerateShellInitScript creates the .gsc-init.sh or .gsc-init.ps1 file in the workdir.
+// Exported for use by the 'ws' command.
+func GenerateShellInitScript(workdir string, activeChatID int64, contractUUID string, projectRoot string, hash string, targetDir string) error {
 	gscHome, _ := settings.GetGSCHome(false)
 	templateDir := filepath.Join(gscHome, "data", "templates", "shells", "ws")
 

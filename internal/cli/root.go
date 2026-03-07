@@ -1,12 +1,12 @@
 /**
  * Component: Root CLI Command
- * Block-UUID: 05e68f57-dedb-4766-8f62-d8f1e34c1fe1
- * Parent-UUID: 0cac71ef-ba0d-4989-ac16-c3642daf59b9
- * Version: 1.30.0
+ * Block-UUID: 29a95b6a-a1d1-4c18-a9a2-4263b8eda67a
+ * Parent-UUID: 05e68f57-dedb-4766-8f62-d8f1e34c1fe1
+ * Version: 1.31.0
  * Description: Registered the new 'contract' command and whitelisted it to bypass the .gitsense directory check, allowing it to run in any directory.
  * Language: Go
- * Created-at: 2026-03-06T18:16:02.854Z
- * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v1.29.0), GLM-4.7 (v1.30.0)
+ * Created-at: 2026-03-07T02:54:54.094Z
+ * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v1.29.0), GLM-4.7 (v1.30.0), GLM-4.7 (v1.31.0)
  */
 
 
@@ -22,6 +22,7 @@ import (
 	"github.com/gitsense/gsc-cli/internal/bridge"
 	"github.com/gitsense/gsc-cli/internal/cli/manifest"
 	"github.com/gitsense/gsc-cli/internal/git"
+	"github.com/gitsense/gsc-cli/internal/cli/ws"
 	"github.com/gitsense/gsc-cli/pkg/logger"
 	"github.com/gitsense/gsc-cli/pkg/settings"
 )
@@ -116,7 +117,7 @@ func init() {
 	RegisterInfoCommand(rootCmd)
 	RegisterExecCommand(rootCmd)
 	RegisterContractCommand(rootCmd)
-	rootCmd.AddCommand(wsCmd)
+	ws.RegisterCommand(rootCmd)
 
 	rootCmd.PersistentFlags().CountP("verbose", "c", "Increase verbosity (-c for info, -cc for debug)")
 	rootCmd.PersistentFlags().Bool("quiet", false, "Suppress all output except errors")

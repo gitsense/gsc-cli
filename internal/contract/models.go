@@ -1,12 +1,12 @@
 /*
  * Component: Contract Models
- * Block-UUID: 75346f1e-8307-4928-99c8-88886efc7ab2
- * Parent-UUID: 1110154e-e5d4-489f-a2ca-d3d1b7e4a84a
- * Version: 1.21.0
- * Description: Added OriginalPath field to MappedFileEntry to preserve the original component name before sanitization for debugging and UI display.
+ * Block-UUID: e93db979-2fda-4c6f-8f55-062f506c4c60
+ * Parent-UUID: 75346f1e-8307-4928-99c8-88886efc7ab2
+ * Version: 1.22.0
+ * Description: Added EventsDBSchema constant to define the SQL structure for the contract-level messaging database.
  * Language: Go
  * Created-at: 2026-03-06T04:20:00.822Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.19.0), Gemini 3 Flash (v1.20.0), GLM-4.7 (v1.21.0)
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.21.0), GLM-4.7 (v1.22.0)
  */
 
 
@@ -226,3 +226,18 @@ type Provenance struct {
 	Action        string   `json:"action"`         // e.g., "patch_applied", "full_code"
 	Authors       []string `json:"authors"`        // List of authors
 }
+
+// EventsDBSchema defines the SQL schema for the contract-level events database.
+// This database acts as a message queue between the terminal and the web UI.
+const EventsDBSchema = `
+CREATE TABLE IF NOT EXISTS contract_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_type TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    status TEXT DEFAULT 'pending',
+    error_message TEXT,
+    source TEXT DEFAULT 'unknown',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    processed_at DATETIME
+);
+`

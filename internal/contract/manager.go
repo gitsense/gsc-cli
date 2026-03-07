@@ -1,18 +1,19 @@
 /**
  * Component: Contract Manager
- * Block-UUID: 82503081-d635-48a9-a7a6-685f8dcf46f2
- * Parent-UUID: edf4533e-a88a-47e1-85c9-04e17842f2c4
- * Version: 1.13.0
- * Description: Updated GetDefaultDumpDir to accept a dumpType parameter, enabling hierarchical directory structures (e.g., dumps/<uuid>/mapped) to prevent conflicts between different dump strategies and message-specific workspaces.
+ * Block-UUID: b7fd22f4-114c-40e8-a3e9-412de6ba6eb6
+ * Parent-UUID: 1fb9baea-6ef6-427d-90bf-5a07d1a06a88
+ * Version: 1.15.0
+ * Description: Added initEventsDB to create the messaging database skeleton on contract creation and added confirmation prompt to DeleteContract.
  * Language: Go
- * Created-at: 2026-03-05T03:40:47.296Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), Gemini 3 Flash (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0)
+ * Created-at: 2026-03-07T02:26:57.766Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), Gemini 3 Flash (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0)
  */
 
 
 package contract
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -20,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/gitsense/gsc-cli/internal/git"
 	"github.com/gitsense/gsc-cli/internal/bridge"
 	"github.com/gitsense/gsc-cli/internal/db"
@@ -27,6 +29,7 @@ import (
 	"github.com/gitsense/gsc-cli/pkg/logger"
 	"github.com/gitsense/gsc-cli/pkg/settings"
 	"github.com/google/uuid"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 // CreateContract initializes a new traceability contract using a valid handshake code.
@@ -148,11 +151,46 @@ func CreateContract(code string, description string, authcode string, workdir st
 
 	logger.Info("Contract created successfully", "uuid", meta.UUID, "expires_at", meta.ExpiresAt)
 
+	// 6. Initialize Events Database (Skeleton)
+	if err := initEventsDB(meta.UUID); err != nil {
+		logger.Warning("Failed to initialize events database", "error", err)
+	}
+
 	// Mark handshake as successfully consumed
 	if err := h.UpdateStatus("success", nil); err != nil {
 		logger.Warning("Failed to mark handshake as consumed", "error", err)
 	}
 	return meta, nil
+}
+
+// initEventsDB creates the skeleton structure for the contract-level messaging database.
+func initEventsDB(uuid string) error {
+	gscHome, err := settings.GetGSCHome(false)
+	if err != nil {
+		return fmt.Errorf("failed to resolve GSC_HOME: %w", err)
+	}
+
+	dbPath := filepath.Join(gscHome, "data", "dumps", uuid, "events.sqlite3")
+	
+	// Ensure directory exists
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
+		return fmt.Errorf("failed to create events DB directory: %w", err)
+	}
+
+	// Open database
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		return fmt.Errorf("failed to open events DB: %w", err)
+	}
+	defer db.Close()
+
+	// Create schema
+	if _, err := db.Exec(EventsDBSchema); err != nil {
+		return fmt.Errorf("failed to create events table: %w", err)
+	}
+
+	logger.Info("Events database initialized", "uuid", uuid, "path", dbPath)
+	return nil
 }
 
 // ListContracts retrieves all contracts from the global storage.
@@ -435,6 +473,20 @@ func DeleteContract(uuid string) error {
 	meta, err := GetContract(uuid)
 	if err != nil {
 		return err
+	}
+
+	// Confirmation Prompt
+	confirm := false
+	prompt := &survey.Confirm{
+		Message: fmt.Sprintf("Are you sure you want to delete contract '%s' and all associated data (including shadow workspaces)?", meta.UUID),
+		Default: false,
+	}
+	if err := survey.AskOne(prompt, &confirm); err != nil {
+		return fmt.Errorf("prompt failed: %w", err)
+	}
+	if !confirm {
+		fmt.Println("Delete operation cancelled.")
+		return nil
 	}
 
 	path := getContractPath(uuid)

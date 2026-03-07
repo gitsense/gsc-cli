@@ -1,16 +1,16 @@
 /*
- * Component: Workspace Entry Command
- * Block-UUID: 3452c929-8e33-4c6e-91db-fc27e973895a
+ * Component: Workspace Root Command
+ * Block-UUID: 43a4f423-c9ac-4a0b-a04f-5f2b63296ef2
  * Parent-UUID: N/A
  * Version: 1.0.0
- * Description: Implements the 'gsc ws' command using hash-position syntax to enter shadow workspaces without a registry.
+ * Description: Defines the parent 'ws' command and handles the 'Shortcut' entry mode (positional argument). It also defines persistent flags for subcommands.
  * Language: Go
- * Created-at: 2026-03-06T18:15:00.000Z
+ * Created-at: 2026-03-07T02:50:00.000Z
  * Authors: GLM-4.7 (v1.0.0)
  */
 
 
-package cli
+package ws
 
 import (
 	"encoding/json"
@@ -28,19 +28,43 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	wsID    string
+	wsShell bool
+)
+
+// wsCmd represents the base command for workspace management
 var wsCmd = &cobra.Command{
 	Use:   "ws [hash-position]",
-	Short: "Enter a shadow workspace using its hash and position",
-	Args:  cobra.ExactArgs(1),
+	Short: "Workspace management and entry",
+	Long: `The 'ws' command provides tools for interacting with shadow workspaces.
+It supports a "Shortcut" mode for quick entry and subcommands for specific actions.`,
+	// If no subcommand is provided, run the 'enter' logic (Shortcut Mode)
 	RunE: func(cmd *cobra.Command, args []string) error {
-		input := args[0]
-		return handleWorkspaceEntry(input)
+		if len(args) > 0 {
+			// Shortcut Mode: gsc ws <hash-position>
+			// Implies --shell is true
+			return handleWorkspaceEntry(args[0], true, "")
+		}
+		return cmd.Help()
 	},
 }
 
-func handleWorkspaceEntry(input string) error {
+// RegisterCommand adds the ws command and its subcommands to the root command
+func RegisterCommand(root *cobra.Command) {
+	// Add persistent flags (available to all subcommands)
+	wsCmd.PersistentFlags().StringVar(&wsID, "id", "", "Workspace hash-position context")
+	wsCmd.PersistentFlags().BoolVar(&wsShell, "shell", false, "Keep shell open after action")
+
+	// Register subcommands here (e.g., sendCmd, watchCmd)
+	// wsCmd.AddCommand(sendCmd)
+
+	root.AddCommand(wsCmd)
+}
+
+// handleWorkspaceEntry resolves the workspace and spawns a shell
+func handleWorkspaceEntry(input string, keepShell bool, action string) error {
 	// 1. Parse Input
-	// Format: <hash> or <hash>-<position>
 	parts := strings.Split(input, "-")
 	hash := parts[0]
 	position := -1
@@ -56,7 +80,7 @@ func handleWorkspaceEntry(input string) error {
 	// 2. Locate Workspace Directory
 	gscHome, _ := settings.GetGSCHome(false)
 	dumpsRoot := filepath.Join(gscHome, settings.DumpsRelPath)
-	
+
 	workspaceRoot, err := findWorkspaceByHash(dumpsRoot, hash)
 	if err != nil {
 		return err
@@ -64,7 +88,7 @@ func handleWorkspaceEntry(input string) error {
 
 	// 3. Resolve Target Directory
 	targetDir := workspaceRoot // Default to root if no position
-	
+
 	if position >= 0 {
 		manifestPath := filepath.Join(workspaceRoot, "workspace.json")
 		data, err := os.ReadFile(manifestPath)
@@ -92,19 +116,45 @@ func handleWorkspaceEntry(input string) error {
 				break
 			}
 		}
-		
+
 		if targetDir == workspaceRoot {
 			return fmt.Errorf("position %d not found in workspace manifest", position)
 		}
 	}
 
-	// 4. Execute Shell
-	return executeShell(workspaceRoot, targetDir)
+	// 4. Handle Action (Stub)
+	if action != "" {
+		fmt.Printf("Executing action: %s\n", action)
+		// TODO: Implement action logic (save, undo, diff)
+	}
+
+	// 5. Generate Init Script
+	// We need the ContractUUID to get the ProjectRoot.
+	// We can get it from the workspace.json
+	var wsMeta contract.ShadowWorkspace
+	data, _ := os.ReadFile(filepath.Join(workspaceRoot, "workspace.json"))
+	json.Unmarshal(data, &wsMeta)
+
+	// Fetch contract metadata to get ProjectRoot
+	meta, err := contract.GetContract(wsMeta.ContractUUID)
+	if err != nil {
+		return fmt.Errorf("failed to load contract metadata: %w", err)
+	}
+
+	if err := contract.GenerateShellInitScript(workspaceRoot, meta.ChatID, meta.UUID, meta.Workdir, hash, targetDir); err != nil {
+		return fmt.Errorf("failed to generate shell init script: %w", err)
+	}
+
+	// 6. Execute Shell
+	if keepShell {
+		return executeShell(workspaceRoot, targetDir)
+	}
+
+	return nil
 }
 
 // findWorkspaceByHash scans the dumps directory for a folder matching the hash
 func findWorkspaceByHash(dumpsRoot, hash string) (string, error) {
-	// Iterate through contract UUIDs
 	entries, err := os.ReadDir(dumpsRoot)
 	if err != nil {
 		return "", fmt.Errorf("dumps directory not found: %w", err)
@@ -136,10 +186,6 @@ func executeShell(workspaceRoot, targetDir string) error {
 		}
 	}
 
-	// Prepare Environment
-	// We pass the target directory so the init script knows where to cd
-	env := append(os.Environ(), fmt.Sprintf("GSC_TARGET_DIR=%s", targetDir))
-
 	fmt.Printf("Entering workspace: %s\n", filepath.Base(workspaceRoot))
 	fmt.Printf("Location: %s\n", targetDir)
 	fmt.Println("Type 'exit' to return to your project.")
@@ -152,7 +198,6 @@ func executeShell(workspaceRoot, targetDir string) error {
 	if runtime.GOOS == "windows" {
 		// Windows: Spawn PowerShell
 		cmd := exec.Command(shell, "-NoExit", "-Command", fmt.Sprintf(". \"%s\"", initScript))
-		cmd.Env = env
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
@@ -160,12 +205,12 @@ func executeShell(workspaceRoot, targetDir string) error {
 	} else {
 		// Unix: Use syscall.Exec to replace the Go process
 		args := []string{shell, "--rcfile", initScript}
-		
+
 		binary, err := exec.LookPath(shell)
 		if err != nil {
 			return fmt.Errorf("shell not found: %w", err)
 		}
 
-		return syscall.Exec(binary, args, env)
+		return syscall.Exec(binary, args, os.Environ())
 	}
 }
