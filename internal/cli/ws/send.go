@@ -1,12 +1,12 @@
 /*
  * Component: Workspace Send Command
- * Block-UUID: ec9c7ec0-ff89-4935-813c-a4e04057a251
- * Parent-UUID: edadae4a-1aff-4395-aa91-a656cde83c70
- * Version: 1.0.1
- * Description: Fixed build error by replacing strings.Builder.ReadFrom with io.ReadAll for reading from stdin.
+ * Block-UUID: 2f9978b9-6ccc-43f5-b0f2-8356ec9d644e
+ * Parent-UUID: 79695097-4c2a-4e29-b0e9-4bc23b4f4d21
+ * Version: 1.2.0
+ * Description: Added --no-chat-confirmation flag to allow bypassing the UI confirmation modal for automated workflows.
  * Language: Go
- * Created-at: 2026-03-07T03:32:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1)
+ * Created-at: 2026-03-07T04:45:31.000Z
+ * Authors: Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.2.0)
  */
 
 
@@ -17,6 +17,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
+	"time"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/gitsense/gsc-cli/internal/contract"
@@ -25,12 +27,13 @@ import (
 )
 
 var (
-	sendFile      string
-	sendMdBefore  string
-	sendMdAfter   string
-	sendWrap      string
-	sendVisibility string
-	sendForce     bool
+	sendFile          string
+	sendMdBefore      string
+	sendMdAfter       string
+	sendWrap          string
+	sendVisibility    string
+	sendForce         bool
+	sendNoConfirmation bool
 )
 
 // sendCmd represents the 'gsc ws send' command
@@ -52,6 +55,7 @@ func init() {
 	sendCmd.Flags().StringVar(&sendWrap, "wrap", "", "Wrap output in a code block (e.g., 'bash', 'python')")
 	sendCmd.Flags().StringVar(&sendVisibility, "visibility", "human-public", "Message visibility: 'human-public' or 'human-only'")
 	sendCmd.Flags().BoolVar(&sendForce, "force", false, "Skip confirmation for large files")
+	sendCmd.Flags().BoolVar(&sendNoConfirmation, "no-chat-confirmation", false, "Bypass the UI confirmation modal")
 }
 
 func handleSend(args []string) error {
@@ -61,9 +65,18 @@ func handleSend(args []string) error {
 		return fmt.Errorf("not in a GitSense workspace. GSC_CONTRACT_UUID environment variable not set.")
 	}
 
+	chatIDStr := os.Getenv("GSC_CHAT_ID")
+	if chatIDStr == "" {
+		return fmt.Errorf("not in a GitSense workspace. GSC_CHAT_ID environment variable not set.")
+	}
+
+	chatID, err := strconv.ParseInt(chatIDStr, 10, 64)
+	if err != nil {
+		return fmt.Errorf("invalid GSC_CHAT_ID environment variable: %w", err)
+	}
+
 	// 2. Input Resolution
 	var content string
-	var err error
 
 	// Check for Pipe
 	stat, _ := os.Stdin.Stat()
@@ -109,18 +122,27 @@ func handleSend(args []string) error {
 
 	// 4. Payload Construction
 	payload := contract.ChatMessagePayload{
-		Text:       finalMessage,
-		Type:       "regular",
-		Visibility: sendVisibility,
+		Text:           finalMessage,
+		Type:           "regular",
+		Visibility:     sendVisibility,
+		NoConfirmation: sendNoConfirmation,
 	}
 
-	// 5. Database Insertion
-	if err := contract.InsertEvent(contractUUID, "chat_message", payload, "terminal"); err != nil {
+	// 5. Expiration Calculation (1 minute)
+	expiresAt := time.Now().Add(1 * time.Minute)
+
+	// 6. Database Insertion
+	if err := contract.InsertEvent(contractUUID, chatID, "chat_message", payload, "terminal", expiresAt); err != nil {
 		return fmt.Errorf("failed to send message: %w", err)
 	}
 
-	// 6. Feedback
-	fmt.Printf("✓ Message queued for chat (Type: %s)\n", payload.Type)
+	// 7. Feedback
+	fmt.Printf("✓ Message queued for chat %d\n", chatID)
+	if sendNoConfirmation {
+		fmt.Printf("! Message will be added to chat automatically.\n")
+	} else {
+		fmt.Printf("! You have 60 seconds to confirm this message in the Web UI before it expires.\n")
+	}
 	return nil
 }
 

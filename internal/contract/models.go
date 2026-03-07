@@ -1,12 +1,12 @@
 /*
  * Component: Contract Models
- * Block-UUID: e93db979-2fda-4c6f-8f55-062f506c4c60
- * Parent-UUID: 75346f1e-8307-4928-99c8-88886efc7ab2
- * Version: 1.22.0
- * Description: Added EventsDBSchema constant to define the SQL structure for the contract-level messaging database.
+ * Block-UUID: 414ab537-66f9-4f75-8c10-1806b367ca70
+ * Parent-UUID: e93db979-2fda-4c6f-8f55-062f506c4c60
+ * Version: 1.23.0
+ * Description: Updated EventsDBSchema to include chat_id and expires_at, and added EventStatus constants for the messaging queue.
  * Language: Go
- * Created-at: 2026-03-06T04:20:00.822Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.21.0), GLM-4.7 (v1.22.0)
+ * Created-at: 2026-03-07T04:11:57.272Z
+ * Authors: Gemini 3 Flash (v1.23.0)
  */
 
 
@@ -22,6 +22,17 @@ const (
 	ContractCancelled ContractStatus = "cancelled"
 	ContractExpired   ContractStatus = "expired"
 	ContractDone      ContractStatus = "done"
+)
+
+// EventStatus defines the state of an event in the messaging queue.
+type EventStatus string
+
+const (
+	EventPending   EventStatus = "pending"
+	EventProcessed EventStatus = "processed"
+	EventCancelled EventStatus = "cancelled"
+	EventExpired   EventStatus = "expired"
+	EventFailed    EventStatus = "failed"
 )
 
 // ContractMetadata represents a traceability contract stored in ~/.gitsense/contracts.
@@ -232,11 +243,13 @@ type Provenance struct {
 const EventsDBSchema = `
 CREATE TABLE IF NOT EXISTS contract_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chat_id INTEGER NOT NULL,
     event_type TEXT NOT NULL,
     payload TEXT NOT NULL,
     status TEXT DEFAULT 'pending',
     error_message TEXT,
     source TEXT DEFAULT 'unknown',
+    expires_at DATETIME NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     processed_at DATETIME
 );
