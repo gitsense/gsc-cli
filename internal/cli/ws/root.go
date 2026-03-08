@@ -1,12 +1,12 @@
 /*
  * Component: Workspace Root Command
- * Block-UUID: 804bcbbb-f283-447a-9005-30bb58215b63
- * Parent-UUID: bca0b115-d0d0-4ea4-a48f-09386e895bb6
- * Version: 1.5.0
- * Description: Implemented robust ZDOTDIR strategy for Zsh support. The executeShell function now detects Zsh, generates a dedicated .gsc-init.zsh file from templates, and creates a loader .zshrc to safely merge user configuration with workspace settings.
+ * Block-UUID: 1585903b-df1f-4278-86a8-485148ca099c
+ * Parent-UUID: 0da619d3-c526-44ba-8185-f39c3463a08e
+ * Version: 1.6.1
+ * Description: Removed unused 'hash' variable declaration in Zsh execution block to fix build error.
  * Language: Go
  * Created-at: 2026-03-07T20:09:32.589Z
- * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
+ * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.6.1)
  */
 
 
@@ -141,7 +141,10 @@ func handleWorkspaceEntry(input string, keepShell bool, action string) error {
 		return fmt.Errorf("failed to load contract metadata: %w", err)
 	}
 
-	if err := contract.GenerateShellInitScript(workspaceRoot, meta.ChatID, meta.UUID, meta.Workdir, hash, targetDir); err != nil {
+	// Calculate mappedDir (parent of workspaceRoot)
+	mappedDir := filepath.Dir(workspaceRoot)
+
+	if err := contract.GenerateShellInitScript(mappedDir, meta.ChatID, meta.UUID, meta.Workdir, hash, targetDir); err != nil {
 		return fmt.Errorf("failed to generate shell init script: %w", err)
 	}
 
@@ -190,9 +193,12 @@ func executeShell(workspaceRoot, targetDir string) error {
 	fmt.Printf("Location: %s\n", targetDir)
 	fmt.Println("Type 'exit' to return to your project.")
 
+	// Calculate mappedDir (parent of workspaceRoot)
+	mappedDir := filepath.Dir(workspaceRoot)
+
 	if runtime.GOOS == "windows" {
 		// Windows: Spawn PowerShell
-		initScript := filepath.Join(workspaceRoot, ".gsc-init.ps1")
+		initScript := filepath.Join(mappedDir, ".gsc-init.ps1")
 		cmd := exec.Command(shell, "-NoExit", "-Command", fmt.Sprintf(". \"%s\"", initScript))
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
@@ -227,8 +233,6 @@ func executeShell(workspaceRoot, targetDir string) error {
 				return fmt.Errorf("failed to load contract metadata: %w", err)
 			}
 
-			hash := filepath.Base(workspaceRoot)
-
 			// 2. Load the Zsh Template
 			gscHome, _ := settings.GetGSCHome(false)
 			templatePath := filepath.Join(gscHome, "data", "templates", "shells", "ws", runtime.GOOS, "init.zsh")
@@ -241,10 +245,9 @@ func executeShell(workspaceRoot, targetDir string) error {
 			// 3. Substitute Variables
 			replacements := map[string]string{
 				"{{GSC_CHAT_ID}}":        fmt.Sprintf("%d", meta.ChatID),
-				"{{GSC_MAPPED_WS_HASH}}": hash,
 				"{{GSC_PROJECT_ROOT}}":   meta.Workdir,
 				"{{GSC_CONTRACT_UUID}}":  meta.UUID,
-				"{{GSC_MAPPED_WS_ROOT}}": workspaceRoot,
+				"{{GSC_SCRIPTS_DIR}}":   mappedDir,
 				"{{TARGET_DIR}}":         targetDir,
 			}
 
@@ -254,14 +257,14 @@ func executeShell(workspaceRoot, targetDir string) error {
 			}
 
 			// 4. Write .gsc-init.zsh
-			zshInitPath := filepath.Join(workspaceRoot, ".gsc-init.zsh")
+			zshInitPath := filepath.Join(mappedDir, ".gsc-init.zsh")
 			if err := os.WriteFile(zshInitPath, []byte(processedContent), 0755); err != nil {
 				return fmt.Errorf("failed to write .gsc-init.zsh: %w", err)
 			}
 
 			// 5. Write .zshrc (The Loader)
 			// This file sources the user's real .zshrc first, then our init script.
-			zshrcPath := filepath.Join(workspaceRoot, ".zshrc")
+			zshrcPath := filepath.Join(mappedDir, ".zshrc")
 			zshrcContent := fmt.Sprintf(`# GitSense Workspace Loader
 # This file is loaded by Zsh because ZDOTDIR is set to this directory.
 
@@ -283,7 +286,7 @@ fi
 
 			// 6. Set Environment Variables
 			env = os.Environ()
-			env = append(env, fmt.Sprintf("ZDOTDIR=%s", workspaceRoot))
+			env = append(env, fmt.Sprintf("ZDOTDIR=%s", mappedDir))
 
 			// 7. Execute Zsh
 			args = []string{shell}
@@ -292,7 +295,7 @@ fi
 			// ==========================================
 			// BASH STRATEGY: --rcfile
 			// ==========================================
-			initScript := filepath.Join(workspaceRoot, ".gsc-init.sh")
+			initScript := filepath.Join(mappedDir, ".gsc-init.sh")
 			args = []string{shell, "--rcfile", initScript}
 			env = os.Environ()
 		}

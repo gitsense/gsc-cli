@@ -1,12 +1,12 @@
 /**
  * Component: Contract Intent Handler
- * Block-UUID: 9c83fce9-a43f-4871-ad88-7b2cecd3cdf5
- * Parent-UUID: 96d97c10-7742-483d-ab07-8bfb3de745b5
- * Version: 1.22.0
- * Description: Exported generateShellInitScript to GenerateShellInitScript for use by the ws command.
+ * Block-UUID: d8db6c4f-f718-4cf6-818b-1e56d45640a8
+ * Parent-UUID: 9c83fce9-a43f-4871-ad88-7b2cecd3cdf5
+ * Version: 1.23.0
+ * Description: Updated terminal intent handling to use the parent mapped directory for scripts and environment variables, removing hash-specific dependencies.
  * Language: Go
  * Created-at: 2026-03-06T05:23:56.122Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.21.0), GLM-4.7 (v1.22.0)
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.21.0), GLM-4.7 (v1.22.0), GLM-4.7 (v1.23.0)
  */
 
 
@@ -158,18 +158,20 @@ func handleTerminalIntent(meta *ContractMetadata, req LaunchRequest) (LaunchResu
 			}
 		}
 
-		// 2. Generate Shell Init Script
-		if err := GenerateShellInitScript(workspaceDir, req.ActiveChatID, meta.UUID, meta.Workdir, hash, targetDir); err != nil {
+		// 2. Calculate mappedDir (parent of workspaceRoot)
+		mappedDir := filepath.Dir(workspaceDir)
+
+		// 3. Generate Shell Init Script in mappedDir
+		if err := GenerateShellInitScript(mappedDir, req.ActiveChatID, meta.UUID, meta.Workdir, hash, targetDir); err != nil {
 			return LaunchResult{}, fmt.Errorf("failed to generate shell init script: %w", err)
 		}
 
-		// 3. Prepare Environment Variables
+		// 4. Prepare Environment Variables
 		envVars = []string{
 			fmt.Sprintf("GSC_CHAT_ID=%d", req.ActiveChatID),
-			fmt.Sprintf("GSC_MAPPED_WS_HASH=%s", hash),
 			fmt.Sprintf("GSC_PROJECT_ROOT=%s", meta.Workdir),
 			fmt.Sprintf("GSC_CONTRACT_UUID=%s", meta.UUID),
-			fmt.Sprintf("GSC_MAPPED_WS_ROOT=%s", workspaceDir),
+			fmt.Sprintf("GSC_SCRIPTS_DIR=%s", mappedDir),
 		}
 	}
 
@@ -178,7 +180,7 @@ func handleTerminalIntent(meta *ContractMetadata, req LaunchRequest) (LaunchResu
 	if cmdStr == "" {
 		cmdStr = fmt.Sprintf(template, targetDir)
 		// Inject the absolute path for the init script to avoid env var dependency at launch
-		cmdStr = strings.ReplaceAll(cmdStr, "{{GSC_MAPPED_WS_ROOT}}", workspaceDir)
+		cmdStr = strings.ReplaceAll(cmdStr, "{{GSC_SCRIPTS_DIR}}", filepath.Dir(workspaceDir))
 	}
 
 	// Increased timeout to 15s to allow for slow AppleScript/App startup
@@ -227,12 +229,11 @@ func GenerateShellInitScript(workdir string, activeChatID int64, contractUUID st
 
 	// Substitute Variables
 	replacements := map[string]string{
-		"{{GSC_CHAT_ID}}":        fmt.Sprintf("%d", activeChatID),
-		"{{GSC_MAPPED_WS_HASH}}": hash,
-		"{{GSC_PROJECT_ROOT}}":   projectRoot,
-		"{{GSC_CONTRACT_UUID}}":  contractUUID,
-		"{{GSC_MAPPED_WS_ROOT}}": workdir,
-		"{{TARGET_DIR}}":         targetDir,
+		"{{GSC_CHAT_ID}}":      fmt.Sprintf("%d", activeChatID),
+		"{{GSC_PROJECT_ROOT}}": projectRoot,
+		"{{GSC_CONTRACT_UUID}}": contractUUID,
+		"{{GSC_SCRIPTS_DIR}}":  workdir,
+		"{{TARGET_DIR}}":       targetDir,
 	}
 
 	processedContent := string(content)

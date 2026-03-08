@@ -1,12 +1,12 @@
 /**
  * Component: Contract Dump Orchestrator
- * Block-UUID: 57e5e7ac-a8ab-4c87-b7c0-93135fb95cb6
- * Parent-UUID: ff3b0f29-15d5-45bc-94fd-4f1e0387a237
- * Version: 2.16.0
- * Description: Populate OriginalPath field in MappedFileEntry to preserve the raw component name or project path before sanitization.
+ * Block-UUID: b4e4a55a-a653-45f0-8800-d856cee9537b
+ * Parent-UUID: 57e5e7ac-a8ab-4c87-b7c0-93135fb95cb6
+ * Version: 2.17.0
+ * Description: Updated generateHelpFiles to write help files to the parent mapped directory and removed GSC_MAPPED_WS_HASH from replacements.
  * Language: Go
  * Created-at: 2026-03-06T15:05:03.986Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.11.0), GLM-4.7 (v2.12.0), GLM-4.7 (v2.13.0), GLM-4.7 (v2.14.0), GLM-4.7 (v2.14.1), GLM-4.7 (v2.15.0), GLM-4.7 (v2.16.0)
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.11.0), GLM-4.7 (v2.12.0), GLM-4.7 (v2.13.0), GLM-4.7 (v2.14.0), GLM-4.7 (v2.14.1), GLM-4.7 (v2.15.0), GLM-4.7 (v2.16.0), GLM-4.7 (v2.17.0)
  */
 
 
@@ -834,7 +834,6 @@ func generateHelpFiles(workspaceDir, contractUUID, dumpHash string, activeChatID
 		"{{MSG_HASH}}":        dumpHash,
 		"{{CHAT_NAME}}":       chatName,
 		"{{GSC_CHAT_ID}}":     fmt.Sprintf("%d", activeChatID),
-		"{{GSC_MAPPED_WS_HASH}}": dumpHash,
 		"{{GSC_PROJECT_ROOT}}": workdir,
 		"{{GSC_CONTRACT_UUID}}": contractUUID,
 	}
@@ -847,16 +846,19 @@ func generateHelpFiles(workspaceDir, contractUUID, dumpHash string, activeChatID
 		processedHelp = strings.ReplaceAll(processedHelp, key, val)
 	}
 
-	// 4. Write Files
-	if err := os.WriteFile(filepath.Join(workspaceDir, ".gsc-welcome"), []byte(processedWelcome), 0644); err != nil {
+	// 4. Write Files to Parent Directory (mapped)
+	// workspaceDir is <uuid>/mapped/<hash>, so parent is <uuid>/mapped
+	mappedDir := filepath.Dir(workspaceDir)
+
+	if err := os.WriteFile(filepath.Join(mappedDir, ".gsc-welcome"), []byte(processedWelcome), 0644); err != nil {
 		return fmt.Errorf("failed to write .gsc-welcome: %w", err)
 	}
 
-	if err := os.WriteFile(filepath.Join(workspaceDir, ".gsc-help"), []byte(processedHelp), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(mappedDir, ".gsc-help"), []byte(processedHelp), 0644); err != nil {
 		return fmt.Errorf("failed to write .gsc-help: %w", err)
 	}
 
-	logger.Info("Help files generated", "workspace", workspaceDir)
+	logger.Info("Help files generated", "workspace", workspaceDir, "mapped_dir", mappedDir)
 	return nil
 }
 

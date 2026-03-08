@@ -42,7 +42,7 @@ DIRECTORY STRUCTURE
         - Names are converted to lowercase.
 
 COMMANDS
-    send [COMMENT]
+    .send [COMMENT]
         Reads from standard input and sends the content back to the
         active GitSense Chat session.
 
@@ -60,29 +60,27 @@ COMMANDS
         --md-after [TEXT]
             Appends the specified Markdown text after the output.
 
-    save
+    .save
         Copies the AI-generated files from this workspace into your
         actual project directory. Before overwriting, a backup of your
         original file is created in .gitsense/backups/.
 
-    undo
+    .undo
         Reverts the most recent 'save' command by restoring the
         original file from the backup directory.
 
-    diff [FILE]
+    .diff [FILE]
         Launches your preferred diff tool (e.g., vimdiff) to compare
         the AI-generated version in this workspace with the original
         version in your project.
 
-    help
+    .help
         Displays this detailed manual.
 
 ENVIRONMENT
     GSC_CHAT_ID         The ID of the chat receiving 'send' output.
     GSC_CONTRACT_UUID   The UUID of the active contract.
     GSC_PROJECT_ROOT    The absolute path to the actual project tied to the contract.
-    GSC_MAPPED_WS_HASH  The unique hash of this workspace version.
-    GSC_MAPPED_WS_ROOT  The absolute path to the root of this shadow workspace.
 
 EXIT
     Type 'exit' to close this session and return to your project root.

@@ -8,10 +8,10 @@ changes are isolated and will NOT affect your actual project until
 you explicitly run the 'save' command.
 
 Available Commands:
-  save     - Promote code to your project
-  undo     - Revert the last save
-  diff     - Compare with project files
-  send     - Send output to the chat
-  help     - Show detailed manual
+  .save    - Promote code to your project
+  .undo    - Revert the last save
+  .diff    - Compare with project files
+  .send    - Send output to the chat
+  .help    - Show detailed manual
 
 Type 'exit' to leave this workspace and return to your regular shell.
