@@ -36,7 +36,7 @@ var (
 // wsCmd represents the base command for workspace management
 var wsCmd = &cobra.Command{
 	Use:   "ws [hash-position]",
-	Short: "Workspace management and entry",
+	Short: "Shadow workspace management and entry",
 	Long: `The 'ws' command provides tools for interacting with shadow workspaces.
 It supports a "Shortcut" mode for quick entry and subcommands for specific actions.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {

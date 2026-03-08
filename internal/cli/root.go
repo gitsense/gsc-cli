@@ -1,12 +1,12 @@
 /**
  * Component: Root CLI Command
- * Block-UUID: 7e2d8f4f-ff1f-4bda-9a51-683d9369a38d
- * Parent-UUID: 16591d37-b933-4441-a700-96082e7d94fe
- * Version: 1.32.6
+ * Block-UUID: 00fa3c7e-452a-4142-95c5-80ebc6bdd028
+ * Parent-UUID: 7e2d8f4f-ff1f-4bda-9a51-683d9369a38d
+ * Version: 1.32.7
  * Description: Updated imports to reference the new contract subpackage (internal/cli/contract) following the refactoring of contract commands.
  * Language: Go
- * Created-at: 2026-03-08T00:33:22.018Z
- * Authors: GLM-4.7 (v1.32.2), GLM-4.7 (v1.32.3), GLM-4.7 (v1.32.4), GLM-4.7 (v1.32.5), GLM-4.7 (v1.32.6)
+ * Created-at: 2026-03-08T01:06:14.578Z
+ * Authors: GLM-4.7 (v1.32.2), GLM-4.7 (v1.32.3), GLM-4.7 (v1.32.4), GLM-4.7 (v1.32.5), GLM-4.7 (v1.32.6), GLM-4.7 (v1.32.7)
  */
 
 
@@ -39,9 +39,10 @@ var (
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "gsc",
-	Short: "GitSense Chat CLI - Manage metadata manifests and SQLite databases",
-	Long: `GitSense Chat CLI (gsc) is a command-line tool for managing codebase intelligence manifests.
-It enables AI agents and developers to interact with structured metadata extracted from code repositories.
+	Short: "GitSense Chat CLI - Chat bridge and intelligence manager for AI-driven development.",
+	Long: `GitSense Chat CLI (gsc) is a chat bridge and intelligence manager for AI-driven development. 
+It enables deterministic code discovery via structured metadata and establishes auditable 
+"Traceability Contracts" between your local repository and the GitSense Chat app. 
 
 AI ASSISTANT DISCOVERY:
   To discover structured capabilities and command patterns for this repository, run:
@@ -76,7 +77,7 @@ AI ASSISTANT DISCOVERY:
 			targetCommand = args[0]
 		}
 
-		if targetCommand != "init" && targetCommand != "doctor" && targetCommand != "exec" && targetCommand != "contract" && targetCommand != "ws" && !showExamples {
+		if len(args) > 0 && targetCommand != "init" && targetCommand != "doctor" && targetCommand != "exec" && targetCommand != "contract" && targetCommand != "ws" && !showExamples {
 			root, err := git.FindProjectRoot()
 			if err != nil {
 				cmd.SilenceUsage = true

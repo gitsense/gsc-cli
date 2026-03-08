@@ -27,7 +27,7 @@ import (
 func FormatContractMarkdown(data ContractMessageData) string {
 	var sb strings.Builder
 
-	sb.WriteString(fmt.Sprintf("### CLI Handshake (%s)\n\n", strings.Title(data.Status)))
+	sb.WriteString(fmt.Sprintf("### CLI Contract (%s)\n\n", strings.Title(data.Status)))
 
 	// Table Header
 	sb.WriteString("| Field | Value |\n")
