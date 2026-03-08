@@ -1,12 +1,12 @@
 /**
  * Component: Contract Dump Orchestrator
- * Block-UUID: b4e4a55a-a653-45f0-8800-d856cee9537b
- * Parent-UUID: 57e5e7ac-a8ab-4c87-b7c0-93135fb95cb6
- * Version: 2.17.0
+ * Block-UUID: 9bb7741e-7be2-4f31-8a9f-460b24430a8a
+ * Parent-UUID: b4e4a55a-a653-45f0-8800-d856cee9537b
+ * Version: 2.18.0
  * Description: Updated generateHelpFiles to write help files to the parent mapped directory and removed GSC_MAPPED_WS_HASH from replacements.
  * Language: Go
- * Created-at: 2026-03-06T15:05:03.986Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.11.0), GLM-4.7 (v2.12.0), GLM-4.7 (v2.13.0), GLM-4.7 (v2.14.0), GLM-4.7 (v2.14.1), GLM-4.7 (v2.15.0), GLM-4.7 (v2.16.0), GLM-4.7 (v2.17.0)
+ * Created-at: 2026-03-08T15:52:30.904Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.11.0), GLM-4.7 (v2.12.0), GLM-4.7 (v2.13.0), GLM-4.7 (v2.14.0), GLM-4.7 (v2.14.1), GLM-4.7 (v2.15.0), GLM-4.7 (v2.16.0), GLM-4.7 (v2.17.0), GLM-4.7 (v2.18.0)
  */
 
 
@@ -450,6 +450,14 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 
 		if !includeSystem && msg.Role == "system" {
 			continue
+		}
+
+		// Write message.md and message.json to the workspace root
+		// This is primarily useful for Single Message Mode (--message-id)
+		if messageID > 0 {
+			if err := writer.WriteMessage(workspaceDir, msg); err != nil {
+				return nil, err
+			}
 		}
 
 		// Parse message

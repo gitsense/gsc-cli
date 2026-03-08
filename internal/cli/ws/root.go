@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Workspace Root Command
- * Block-UUID: 1585903b-df1f-4278-86a8-485148ca099c
- * Parent-UUID: 0da619d3-c526-44ba-8185-f39c3463a08e
- * Version: 1.6.1
+ * Block-UUID: ed77d7e7-a67e-43ba-8f59-ecb95749b9d7
+ * Parent-UUID: 1585903b-df1f-4278-86a8-485148ca099c
+ * Version: 1.6.2
  * Description: Removed unused 'hash' variable declaration in Zsh execution block to fix build error.
  * Language: Go
- * Created-at: 2026-03-07T20:09:32.589Z
- * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.6.1)
+ * Created-at: 2026-03-08T15:35:09.651Z
+ * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.6.1), GLM-4.7 (v1.6.2)
  */
 
 
@@ -47,6 +47,15 @@ It supports a "Shortcut" mode for quick entry and subcommands for specific actio
 			return handleWorkspaceEntry(args[0], true, "")
 		}
 		return cmd.Help()
+	},
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		// Enforce GSC_HOME requirement
+		// This ensures that the web app's data directory is used for workspaces
+		if _, err := settings.GetGSCHome(true); err != nil {
+			cmd.SilenceUsage = true
+			return err
+		}
+		return nil
 	},
 }
 
