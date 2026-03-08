@@ -1,41 +1,54 @@
 <#
-Component: GitSense Workspace Shell Init
-Block-UUID: cea2a8f7-0f7a-442b-a7ff-6aa2698fc9e9
-Parent-UUID: ab9ad6b8-390c-4fa6-819b-cea2d12985f0
-Version: 1.3.0
-Description: Moved init scripts to parent mapped directory, updated aliases to use dot prefix (e.g., .save), and replaced GSC_MAPPED_WS_ROOT with GSC_SCRIPTS_DIR.
+Component: GitSense Workspace Shell Init (PowerShell)
+Block-UUID: 178f6827-81af-49df-bb38-165c0378f771
+Parent-UUID: cea2a8f7-0f7a-442b-a7ff-6aa2698fc9e9
+Version: 1.4.0
+Description: Implemented hierarchical sourcing (PROFILE -> gsc-ws.ps1 -> gsc-init) and added 'p' variable for project root access.
 Language: PowerShell
-Created-at: 2026-03-06T05:20:00.000Z
-Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
+Created-at: 2026-03-08T16:30:23.301Z
+Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v1.3.0), Gemini 3 Flash (v1.4.0)
 #>
 
 
-# GitSense Workspace Shell Init
+# 1. User Environment Loading
+if (Test-Path $PROFILE) {
+    . $PROFILE
+}
 
-# 1. Environment Variables
+if (Test-Path "$HOME/.gitsense/gsc-ws.ps1") {
+    . "$HOME/.gitsense/gsc-ws.ps1"
+}
+
+# 2. Environment Variables & Context
 $env:GSC_CHAT_ID = "{{GSC_CHAT_ID}}"
 $env:GSC_PROJECT_ROOT = "{{GSC_PROJECT_ROOT}}"
 $env:GSC_CONTRACT_UUID = "{{GSC_CONTRACT_UUID}}"
 $env:GSC_SCRIPTS_DIR = "{{GSC_SCRIPTS_DIR}}"
 
-# 2. Functions (PowerShell requires functions for commands with arguments)
+# The 'p' variable: Dead simple access to your project root.
+$p = "{{GSC_PROJECT_ROOT}}"
+
+# 3. Functions
 function .save { gsc ws save @args }
 function .undo { gsc ws undo @args }
 function .diff { gsc ws diff @args }
 function .send { gsc ws send @args }
 function .help { Get-Content "$env:GSC_SCRIPTS_DIR/.gsc-welcome" }
 
-# 3. Custom Prompt
+# 4. Custom Prompt
+# Wrap the existing prompt to prepend (gsc-ws)
+$oldPrompt = $function:prompt
 function prompt {
     Write-Host "(gsc-ws) " -NoNewline -ForegroundColor Cyan
-    Write-Host "$($PWD.Path)" -NoNewline
-    Write-Host ">"
-    return " "
+    if ($oldPrompt) {
+        & $oldPrompt
+    } else {
+        Write-Host "$($PWD.Path)>" -NoNewline
+        return " "
+    }
 }
 
-# 4. Welcome Message
+# 5. Initialization
 Clear-Host
 Get-Content "$env:GSC_SCRIPTS_DIR/.gsc-welcome"
-
-# 5. Navigate to Target Directory
 Set-Location "{{TARGET_DIR}}"
