@@ -1,12 +1,12 @@
 /**
  * Component: Root CLI Command
- * Block-UUID: 00fa3c7e-452a-4142-95c5-80ebc6bdd028
- * Parent-UUID: 7e2d8f4f-ff1f-4bda-9a51-683d9369a38d
- * Version: 1.32.7
+ * Block-UUID: afdf533d-9cb0-407e-9224-b87644db9dd7
+ * Parent-UUID: 00fa3c7e-452a-4142-95c5-80ebc6bdd028
+ * Version: 1.32.8
  * Description: Updated imports to reference the new contract subpackage (internal/cli/contract) following the refactoring of contract commands.
  * Language: Go
- * Created-at: 2026-03-08T01:06:14.578Z
- * Authors: GLM-4.7 (v1.32.2), GLM-4.7 (v1.32.3), GLM-4.7 (v1.32.4), GLM-4.7 (v1.32.5), GLM-4.7 (v1.32.6), GLM-4.7 (v1.32.7)
+ * Created-at: 2026-03-08T03:08:17.799Z
+ * Authors: GLM-4.7 (v1.32.2), GLM-4.7 (v1.32.3), GLM-4.7 (v1.32.4), GLM-4.7 (v1.32.5), GLM-4.7 (v1.32.6), GLM-4.7 (v1.32.7), Gemini 3 Flash (v1.32.8)
  */
 
 
@@ -72,12 +72,8 @@ AI ASSISTANT DISCOVERY:
 		// 2. Pre-flight Check: Ensure .gitsense directory exists
 		// Skip for 'init', 'doctor', 'exec', 'contract', 'ws', and global '--examples'
 		// Note: 'contract' and 'ws' handle their own GSC_HOME validation in their respective command groups.
-		targetCommand := ""
-		if len(args) > 0 {
-			targetCommand = args[0]
-		}
-
-		if len(args) > 0 && targetCommand != "init" && targetCommand != "doctor" && targetCommand != "exec" && targetCommand != "contract" && targetCommand != "ws" && !showExamples {
+		name := cmd.Name()
+		if name != "init" && name != "doctor" && name != "exec" && name != "contract" && name != "ws" && !showExamples {
 			root, err := git.FindProjectRoot()
 			if err != nil {
 				cmd.SilenceUsage = true

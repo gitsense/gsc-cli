@@ -1,12 +1,12 @@
 /*
  * Component: Workspace Root Command
- * Block-UUID: 1f3d22cb-8990-4d52-98b4-2ce05ccc22a2
- * Parent-UUID: 0f18e2bf-d323-4a03-a562-c421305e2258
- * Version: 1.2.0
- * Description: Added PersistentPreRunE to enforce GSC_HOME requirement for all ws subcommands, ensuring the workspace environment is correctly configured before execution.
+ * Block-UUID: 804bcbbb-f283-447a-9005-30bb58215b63
+ * Parent-UUID: bca0b115-d0d0-4ea4-a48f-09386e895bb6
+ * Version: 1.5.0
+ * Description: Implemented robust ZDOTDIR strategy for Zsh support. The executeShell function now detects Zsh, generates a dedicated .gsc-init.zsh file from templates, and creates a loader .zshrc to safely merge user configuration with workspace settings.
  * Language: Go
- * Created-at: 2026-03-07T02:50:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
+ * Created-at: 2026-03-07T20:09:32.589Z
+ * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
  */
 
 
@@ -36,18 +36,9 @@ var (
 // wsCmd represents the base command for workspace management
 var wsCmd = &cobra.Command{
 	Use:   "ws [hash-position]",
-	Short: "Shadow workspace management and entry",
+	Short: "Workspace management and entry",
 	Long: `The 'ws' command provides tools for interacting with shadow workspaces.
 It supports a "Shortcut" mode for quick entry and subcommands for specific actions.`,
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		// Enforce GSC_HOME requirement
-		// This ensures that the web app's data directory is used for dumps and events
-		if _, err := settings.GetGSCHome(true); err != nil {
-			cmd.SilenceUsage = true
-			return err
-		}
-		return nil
-	},
 	// If no subcommand is provided, run the 'enter' logic (Shortcut Mode)
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) > 0 {
@@ -199,13 +190,9 @@ func executeShell(workspaceRoot, targetDir string) error {
 	fmt.Printf("Location: %s\n", targetDir)
 	fmt.Println("Type 'exit' to return to your project.")
 
-	initScript := filepath.Join(workspaceRoot, ".gsc-init.sh")
-	if runtime.GOOS == "windows" {
-		initScript = filepath.Join(workspaceRoot, ".gsc-init.ps1")
-	}
-
 	if runtime.GOOS == "windows" {
 		// Windows: Spawn PowerShell
+		initScript := filepath.Join(workspaceRoot, ".gsc-init.ps1")
 		cmd := exec.Command(shell, "-NoExit", "-Command", fmt.Sprintf(". \"%s\"", initScript))
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
@@ -213,13 +200,108 @@ func executeShell(workspaceRoot, targetDir string) error {
 		return cmd.Run()
 	} else {
 		// Unix: Use syscall.Exec to replace the Go process
-		args := []string{shell, "--rcfile", initScript}
+		// Detect if the shell is Zsh
+		isZsh := strings.HasSuffix(filepath.Base(shell), "zsh")
+
+		var args []string
+		var env []string
+
+		if isZsh {
+			// ==========================================
+			// ZSH STRATEGY: ZDOTDIR + Loader Script
+			// ==========================================
+			
+			// 1. Load Metadata for Template Substitution
+			manifestPath := filepath.Join(workspaceRoot, "workspace.json")
+			manifestData, err := os.ReadFile(manifestPath)
+			if err != nil {
+				return fmt.Errorf("failed to read workspace manifest: %w", err)
+			}
+			var ws contract.ShadowWorkspace
+			if err := json.Unmarshal(manifestData, &ws); err != nil {
+				return fmt.Errorf("corrupted workspace manifest: %w", err)
+			}
+
+			meta, err := contract.GetContract(ws.ContractUUID)
+			if err != nil {
+				return fmt.Errorf("failed to load contract metadata: %w", err)
+			}
+
+			hash := filepath.Base(workspaceRoot)
+
+			// 2. Load the Zsh Template
+			gscHome, _ := settings.GetGSCHome(false)
+			templatePath := filepath.Join(gscHome, "data", "templates", "shells", "ws", runtime.GOOS, "init.zsh")
+			
+			templateContent, err := os.ReadFile(templatePath)
+			if err != nil {
+				return fmt.Errorf("failed to read zsh init template (ensure templates are bootstrapped): %w", err)
+			}
+
+			// 3. Substitute Variables
+			replacements := map[string]string{
+				"{{GSC_CHAT_ID}}":        fmt.Sprintf("%d", meta.ChatID),
+				"{{GSC_MAPPED_WS_HASH}}": hash,
+				"{{GSC_PROJECT_ROOT}}":   meta.Workdir,
+				"{{GSC_CONTRACT_UUID}}":  meta.UUID,
+				"{{GSC_MAPPED_WS_ROOT}}": workspaceRoot,
+				"{{TARGET_DIR}}":         targetDir,
+			}
+
+			processedContent := string(templateContent)
+			for key, val := range replacements {
+				processedContent = strings.ReplaceAll(processedContent, key, val)
+			}
+
+			// 4. Write .gsc-init.zsh
+			zshInitPath := filepath.Join(workspaceRoot, ".gsc-init.zsh")
+			if err := os.WriteFile(zshInitPath, []byte(processedContent), 0755); err != nil {
+				return fmt.Errorf("failed to write .gsc-init.zsh: %w", err)
+			}
+
+			// 5. Write .zshrc (The Loader)
+			// This file sources the user's real .zshrc first, then our init script.
+			zshrcPath := filepath.Join(workspaceRoot, ".zshrc")
+			zshrcContent := fmt.Sprintf(`# GitSense Workspace Loader
+# This file is loaded by Zsh because ZDOTDIR is set to this directory.
+
+# 1. Source the user's original .zshrc to preserve their theme and plugins
+if [[ -f "$HOME/.zshrc" ]]; then
+    source "$HOME/.zshrc"
+fi
+
+# 2. Source the GitSense workspace init script
+# This sets the prompt, aliases, and environment variables
+if [[ -f "%s" ]]; then
+    source "%s"
+fi
+`, zshInitPath, zshInitPath)
+
+			if err := os.WriteFile(zshrcPath, []byte(zshrcContent), 0644); err != nil {
+				return fmt.Errorf("failed to write workspace .zshrc: %w", err)
+			}
+
+			// 6. Set Environment Variables
+			env = os.Environ()
+			env = append(env, fmt.Sprintf("ZDOTDIR=%s", workspaceRoot))
+
+			// 7. Execute Zsh
+			args = []string{shell}
+
+		} else {
+			// ==========================================
+			// BASH STRATEGY: --rcfile
+			// ==========================================
+			initScript := filepath.Join(workspaceRoot, ".gsc-init.sh")
+			args = []string{shell, "--rcfile", initScript}
+			env = os.Environ()
+		}
 
 		binary, err := exec.LookPath(shell)
 		if err != nil {
 			return fmt.Errorf("shell not found: %w", err)
 		}
 
-		return syscall.Exec(binary, args, os.Environ())
+		return syscall.Exec(binary, args, env)
 	}
 }

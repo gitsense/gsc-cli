@@ -1,8 +1,17 @@
-GitSense Workspace: {{MSG_HASH}}
---------------------------------------------------
-send     Send output back to chat
-save     Copy AI generated code to your project
-undo     Revert the last save
-diff     Compare AI code with your project code
-help     Show detailed help (manpage)
---------------------------------------------------
+GitSense Shadow Workspace
+-------------------------
+This directory is a structured dump of the AI's response, converted into
+a project-like file tree to help you review and test the proposed code.
+
+You can freely modify, build, and test files in this directory. Your 
+changes are isolated and will NOT affect your actual project until
+you explicitly run the 'save' command.
+
+Available Commands:
+  save     - Promote code to your project
+  undo     - Revert the last save
+  diff     - Compare with project files
+  send     - Send output to the chat
+  help     - Show detailed manual
+
+Type 'exit' to leave this workspace and return to your regular shell.
