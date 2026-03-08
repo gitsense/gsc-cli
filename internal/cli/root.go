@@ -1,12 +1,12 @@
 /**
  * Component: Root CLI Command
- * Block-UUID: afdf533d-9cb0-407e-9224-b87644db9dd7
- * Parent-UUID: 00fa3c7e-452a-4142-95c5-80ebc6bdd028
- * Version: 1.32.8
- * Description: Updated imports to reference the new contract subpackage (internal/cli/contract) following the refactoring of contract commands.
+ * Block-UUID: b15dd7d1-bd74-4c5a-9974-ee5b1591e7e1
+ * Parent-UUID: 997f1582-4d63-40d9-9b03-98ab7575aa7e
+ * Version: 1.32.10
+ * Description: Consolidated command exclusion logic into isExcludedCommand helper to handle 'init', 'doctor', 'exec', 'ws', and 'contract' hierarchies uniformly.
  * Language: Go
- * Created-at: 2026-03-08T03:08:17.799Z
- * Authors: GLM-4.7 (v1.32.2), GLM-4.7 (v1.32.3), GLM-4.7 (v1.32.4), GLM-4.7 (v1.32.5), GLM-4.7 (v1.32.6), GLM-4.7 (v1.32.7), Gemini 3 Flash (v1.32.8)
+ * Created-at: 2026-02-02T05:30:03.000Z
+ * Authors: GLM-4.7 (v1.32.2), GLM-4.7 (v1.32.3), GLM-4.7 (v1.32.4), GLM-4.7 (v1.32.5), GLM-4.7 (v1.32.6), GLM-4.7 (v1.32.7), Gemini 3 Flash (v1.32.8), GLM-4.7 (v1.32.9), GLM-4.7 (v1.32.10)
  */
 
 
@@ -70,10 +70,8 @@ AI ASSISTANT DISCOVERY:
 		}
 
 		// 2. Pre-flight Check: Ensure .gitsense directory exists
-		// Skip for 'init', 'doctor', 'exec', 'contract', 'ws', and global '--examples'
-		// Note: 'contract' and 'ws' handle their own GSC_HOME validation in their respective command groups.
-		name := cmd.Name()
-		if name != "gsc" && name != "init" && name != "doctor" && name != "exec" && name != "contract" && name != "ws" && !showExamples {
+		// Skip for excluded commands (init, doctor, exec, ws, contract) and examples
+		if cmd.Name() != "gsc" && !isExcludedCommand(cmd) && !showExamples {
 			root, err := git.FindProjectRoot()
 			if err != nil {
 				cmd.SilenceUsage = true
@@ -136,6 +134,24 @@ func init() {
 	rootCmd.Flags().StringVarP(&rootFormat, "format", "f", "human", "Output format (human, json)")
 
 	logger.Debug("Root command initialized with examples support")
+}
+
+// isExcludedCommand checks if the command or any of its parents are in the exclusion list.
+// This allows us to skip the .gitsense check for entire command trees (e.g., 'ws' and 'contract')
+// as well as specific top-level commands (e.g., 'init', 'doctor', 'exec').
+func isExcludedCommand(cmd *cobra.Command) bool {
+	excludedRoots := []string{"init", "doctor", "exec", "ws", "contract"}
+	current := cmd
+
+	for current != nil {
+		for _, root := range excludedRoots {
+			if current.Name() == root {
+				return true
+			}
+		}
+		current = current.Parent()
+	}
+	return false
 }
 
 func Execute() error {
