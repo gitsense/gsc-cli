@@ -1,12 +1,12 @@
 /**
  * Component: Root CLI Command
- * Block-UUID: 9623f116-320e-4613-bce7-4a03d71cd60b
- * Parent-UUID: 9e61c0b7-26d5-4d7a-85a3-5fda37393d8c
- * Version: 1.32.3
- * Description: Registered the new 'contract' command and whitelisted it to bypass the .gitsense directory check, allowing it to run in any directory.
+ * Block-UUID: d1832636-20e2-495b-beb4-18cbf000ce65
+ * Parent-UUID: 9623f116-320e-4613-bce7-4a03d71cd60b
+ * Version: 1.32.4
+ * Description: Removed the broken GSC_HOME enforcement logic from the root PersistentPreRunE. This logic is now handled by the specific command groups (ws and contract) to ensure reliable execution.
  * Language: Go
  * Created-at: 2026-03-07T23:48:19.630Z
- * Authors: GLM-4.7 (v1.32.2), GLM-4.7 (v1.32.3)
+ * Authors: GLM-4.7 (v1.32.2), GLM-4.7 (v1.32.3), GLM-4.7 (v1.32.4)
  */
 
 
@@ -67,27 +67,14 @@ AI ASSISTANT DISCOVERY:
 			}
 		}
 
-		// 2. Enforce GSC_HOME for ws and contract commands
-		// cmd.Name() returns the command owning the hook (rootCmd), so we check args[0]
+		// 2. Pre-flight Check: Ensure .gitsense directory exists
+		// Skip for 'init', 'doctor', 'exec', 'contract', 'ws', and global '--examples'
+		// Note: 'contract' and 'ws' handle their own GSC_HOME validation in their respective command groups.
 		targetCommand := ""
 		if len(args) > 0 {
 			targetCommand = args[0]
 		}
 
-		logger.Debug("Target command identified", "target", targetCommand)
-
-		if targetCommand == "ws" || targetCommand == "contract" {
-			logger.Debug("Enforcing GSC_HOME check", "command", targetCommand)
-			gscHome, err := settings.GetGSCHome(true)
-			logger.Debug("GetGSCHome check result", "path", gscHome, "error", err)
-			if err != nil {
-				cmd.SilenceUsage = true
-				return err
-			}
-		}
-
-		// 3. Pre-flight Check: Ensure .gitsense directory exists
-		// Skip for 'init', 'doctor', 'exec', 'contract', and global '--examples'
 		if targetCommand != "init" && targetCommand != "doctor" && targetCommand != "exec" && targetCommand != "contract" && targetCommand != "ws" && !showExamples {
 			root, err := git.FindProjectRoot()
 			if err != nil {

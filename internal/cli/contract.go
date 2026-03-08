@@ -1,12 +1,12 @@
 /*
  * Component: Contract CLI Commands
- * Block-UUID: 3072390e-a69e-4729-b8ff-244e55af70c7
- * Parent-UUID: a6aa30e3-20e8-4556-93d8-4d65c34ed949
- * Version: 1.30.0
- * Description: Added --format, --hash, --position, and --active-chat-id flags to the launch command to support JSON output and deterministic directory resolution in shadow workspaces.
+ * Block-UUID: 7d519c84-9107-4909-8e1f-46ddd83f59f0
+ * Parent-UUID: 3072390e-a69e-4729-b8ff-244e55af70c7
+ * Version: 1.31.0
+ * Description: Added PersistentPreRunE to enforce GSC_HOME requirement for all contract subcommands, ensuring the web app's data directory is used for contract storage and dumps.
  * Language: Go
  * Created-at: 2026-03-06T04:20:00.822Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.29.1), Gemini 3 Flash (v1.30.0)
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.29.1), Gemini 3 Flash (v1.30.0), GLM-4.7 (v1.31.0)
  */
 
 
@@ -115,6 +115,15 @@ var contractCmd = &cobra.Command{
 	Short: "Manage traceability contracts between CLI and Chat",
 	Long: `Contracts establish a formal link between a local working directory and a 
 GitSense Chat session, enabling secure and traceable code updates.`,
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		// Enforce GSC_HOME requirement
+		// This ensures that the web app's data directory is used for contracts and dumps
+		if _, err := settings.GetGSCHome(true); err != nil {
+			cmd.SilenceUsage = true
+			return err
+		}
+		return nil
+	},
 }
 
 // createContractCmd handles 'gsc contract create'

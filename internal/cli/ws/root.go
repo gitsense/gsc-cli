@@ -1,12 +1,12 @@
 /*
  * Component: Workspace Root Command
- * Block-UUID: 0f18e2bf-d323-4a03-a562-c421305e2258
- * Parent-UUID: 43a4f423-c9ac-4a0b-a04f-5f2b63296ef2
- * Version: 1.1.0
- * Description: Registered the 'send' subcommand to enable messaging from the terminal to the web UI.
+ * Block-UUID: 1f3d22cb-8990-4d52-98b4-2ce05ccc22a2
+ * Parent-UUID: 0f18e2bf-d323-4a03-a562-c421305e2258
+ * Version: 1.2.0
+ * Description: Added PersistentPreRunE to enforce GSC_HOME requirement for all ws subcommands, ensuring the workspace environment is correctly configured before execution.
  * Language: Go
  * Created-at: 2026-03-07T02:50:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -39,6 +39,15 @@ var wsCmd = &cobra.Command{
 	Short: "Workspace management and entry",
 	Long: `The 'ws' command provides tools for interacting with shadow workspaces.
 It supports a "Shortcut" mode for quick entry and subcommands for specific actions.`,
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		// Enforce GSC_HOME requirement
+		// This ensures that the web app's data directory is used for dumps and events
+		if _, err := settings.GetGSCHome(true); err != nil {
+			cmd.SilenceUsage = true
+			return err
+		}
+		return nil
+	},
 	// If no subcommand is provided, run the 'enter' logic (Shortcut Mode)
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) > 0 {
