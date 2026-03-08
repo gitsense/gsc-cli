@@ -1,12 +1,12 @@
 /**
  * Component: Root CLI Command
- * Block-UUID: d1832636-20e2-495b-beb4-18cbf000ce65
- * Parent-UUID: 9623f116-320e-4613-bce7-4a03d71cd60b
- * Version: 1.32.4
- * Description: Removed the broken GSC_HOME enforcement logic from the root PersistentPreRunE. This logic is now handled by the specific command groups (ws and contract) to ensure reliable execution.
+ * Block-UUID: 7e2d8f4f-ff1f-4bda-9a51-683d9369a38d
+ * Parent-UUID: 16591d37-b933-4441-a700-96082e7d94fe
+ * Version: 1.32.6
+ * Description: Updated imports to reference the new contract subpackage (internal/cli/contract) following the refactoring of contract commands.
  * Language: Go
- * Created-at: 2026-03-07T23:48:19.630Z
- * Authors: GLM-4.7 (v1.32.2), GLM-4.7 (v1.32.3), GLM-4.7 (v1.32.4)
+ * Created-at: 2026-03-08T00:33:22.018Z
+ * Authors: GLM-4.7 (v1.32.2), GLM-4.7 (v1.32.3), GLM-4.7 (v1.32.4), GLM-4.7 (v1.32.5), GLM-4.7 (v1.32.6)
  */
 
 
@@ -20,6 +20,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/gitsense/gsc-cli/internal/bridge"
+	"github.com/gitsense/gsc-cli/internal/cli/contract"
 	"github.com/gitsense/gsc-cli/internal/cli/manifest"
 	"github.com/gitsense/gsc-cli/internal/git"
 	"github.com/gitsense/gsc-cli/internal/cli/ws"
@@ -125,7 +126,7 @@ func init() {
 	RegisterTreeCommand(rootCmd)
 	RegisterInfoCommand(rootCmd)
 	RegisterExecCommand(rootCmd)
-	RegisterContractCommand(rootCmd)
+	contract.RegisterContractCommand(rootCmd)
 	ws.RegisterCommand(rootCmd)
 
 	rootCmd.PersistentFlags().CountP("verbose", "c", "Increase verbosity (-c for info, -cc for debug)")
@@ -142,6 +143,16 @@ func init() {
 
 func Execute() error {
 	return rootCmd.Execute()
+}
+
+// cliError wraps an error with a specific exit code for Cobra
+type cliError struct {
+	code    int
+	message string
+}
+
+func (e *cliError) Error() string {
+	return e.message
 }
 
 func HandleExit(err error) {
