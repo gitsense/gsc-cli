@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Contract CLI Operations
- * Block-UUID: 5be3be98-8716-4873-91d7-bf77f2b9ec68
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: a6010350-1044-457a-a1ad-a433dd0ac3e6
+ * Parent-UUID: 5be3be98-8716-4873-91d7-bf77f2b9ec68
+ * Version: 1.0.1
  * Description: CLI commands for file operations: update-file, new-file, and test.
  * Language: Go
- * Created-at: 2026-03-08T00:22:45.678Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.29.1), Gemini 3 Flash (v1.30.0), GLM-4.7 (v1.31.0)
+ * Created-at: 2026-03-08T04:06:49.821Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.29.1), Gemini 3 Flash (v1.30.0), GLM-4.7 (v1.31.0), GLM-4.7 (v1.0.1)
  */
 
 
@@ -23,6 +23,7 @@ import (
 var updateFileCmd = &cobra.Command{
 	Use:   "update-file",
 	Short: "Update an existing traceable file using a contract",
+	Hidden: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
 		err := contract.UpdateFile(contractUUID, contractAuthcodeExec, contractFile)
@@ -41,6 +42,7 @@ var updateFileCmd = &cobra.Command{
 var newFileCmd = &cobra.Command{
 	Use:   "new-file [target-relative-path]",
 	Short: "Create a new traceable file using a contract",
+	Hidden: true,
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
@@ -61,6 +63,7 @@ var newFileCmd = &cobra.Command{
 var testContractCmd = &cobra.Command{
 	Use:   "test [uuid]",
 	Short: "Test a file change against a contract without writing it",
+	Hidden: true,
 	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true

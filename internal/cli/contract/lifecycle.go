@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Contract CLI Lifecycle
- * Block-UUID: e6dc3169-9647-4398-80a8-774a2d1fb5f1
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: a077df73-fcc6-485e-9d61-63403d8b61b0
+ * Parent-UUID: e6dc3169-9647-4398-80a8-774a2d1fb5f1
+ * Version: 1.0.1
  * Description: CLI commands for managing contract lifecycle: status, list, cancel, renew, complete, delete, and info.
  * Language: Go
- * Created-at: 2026-03-08T00:22:00.123Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.29.1), Gemini 3 Flash (v1.30.0), GLM-4.7 (v1.31.0)
+ * Created-at: 2026-03-08T04:01:25.026Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.29.1), Gemini 3 Flash (v1.30.0), GLM-4.7 (v1.31.0), GLM-4.7 (v1.0.1)
  */
 
 
@@ -27,7 +27,7 @@ var statusContractCmd = &cobra.Command{
 	Short: "Show the status of the contract for the current repository",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
-		workdir, err := findContractUUIDByWorkdir()
+		uuid, err := findContractUUIDByWorkdir()
 		if err != nil {
 			// findContractUUIDByWorkdir returns an error if no contract is found
 			// We want to handle this gracefully for the status command
@@ -41,7 +41,7 @@ var statusContractCmd = &cobra.Command{
 			return err
 		}
 
-		meta, err := contract.GetContractByWorkdir(workdir)
+		meta, err := contract.GetContract(uuid)
 		if err != nil {
 			return err
 		}
