@@ -73,7 +73,7 @@ AI ASSISTANT DISCOVERY:
 		// Skip for 'init', 'doctor', 'exec', 'contract', 'ws', and global '--examples'
 		// Note: 'contract' and 'ws' handle their own GSC_HOME validation in their respective command groups.
 		name := cmd.Name()
-		if name != "init" && name != "doctor" && name != "exec" && name != "contract" && name != "ws" && !showExamples {
+		if name != "gsc" && name != "init" && name != "doctor" && name != "exec" && name != "contract" && name != "ws" && !showExamples {
 			root, err := git.FindProjectRoot()
 			if err != nil {
 				cmd.SilenceUsage = true
