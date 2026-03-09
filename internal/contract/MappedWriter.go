@@ -1,12 +1,12 @@
 /**
  * Component: Mapped Dump Writer
- * Block-UUID: 1fcaeb69-2660-4554-b048-21b12807a0b0
- * Parent-UUID: 858258fc-05a9-4660-96e4-17d14f14931c
- * Version: 1.5.1
+ * Block-UUID: 3a5faccf-13b7-4325-bc16-85478a957f31
+ * Parent-UUID: 1fcaeb69-2660-4554-b048-21b12807a0b0
+ * Version: 1.6.0
  * Description: Updated WritePatch to use the formatted component name from the dumper for consistent file naming (e.g., 01_name_patch_uuid.diff).
  * Language: Go
- * Created-at: 2026-03-08T17:41:32.045Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1)
+ * Created-at: 2026-03-09T15:52:06.435Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0)
  */
 
 
@@ -110,12 +110,12 @@ func (w *MappedWriter) WriteBlock(msgDir string, block markdown.CodeBlock, trim 
 
 	if isMapped {
 		targetDir = filepath.Join(msgDir, "mapped", relPath)
-		filename = "proposed" + getExtension(block.Language)
+		filename = "generated" + getExtension(block.Language)
 	} else {
 		if block.Component != "" {
 			// Use the formatted component name from the dumper
 			targetDir = filepath.Join(msgDir, "unmapped", "components", block.Component)
-			filename = "proposed" + getExtension(block.Language)
+			filename = "generated" + getExtension(block.Language)
 		} else {
 			targetDir = filepath.Join(msgDir, "unmapped", "snippets")
 			filename = fmt.Sprintf("block_%03d%s", block.Index+1, getExtension(block.Language))
@@ -184,7 +184,7 @@ func (w *MappedWriter) WritePatchedFile(msgDir string, patch markdown.PatchBlock
 		return err
 	}
 
-	filename := "proposed" + getExtension(patch.Language)
+	filename := "generated" + getExtension(patch.Language)
 
 	// Strip the existing header from the patched content to prevent duplication.
 	// The 'content' variable contains the full patched file (old header + code).

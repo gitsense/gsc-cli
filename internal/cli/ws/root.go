@@ -1,12 +1,12 @@
 /**
  * Component: Workspace Root Command
- * Block-UUID: 0dd61126-bd98-41a6-b7fb-db43b862f34e
- * Parent-UUID: dfc4e92a-17f4-4fb5-95ba-92c372124de7
- * Version: 1.8.1
+ * Block-UUID: d896e65b-aaff-4e9c-9e96-a00daa37ac0a
+ * Parent-UUID: 0dd61126-bd98-41a6-b7fb-db43b862f34e
+ * Version: 1.9.0
  * Description: Fixed compiler error by removing unused 'entry' variable in handleWorkspaceEntry.
  * Language: Go
- * Created-at: 2026-03-08T16:26:42.555Z
- * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v1.6.2), Gemini 3 Flash (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.8.1)
+ * Created-at: 2026-03-09T15:59:35.864Z
+ * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v1.6.2), Gemini 3 Flash (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.8.1), GLM-4.7 (v1.9.0)
  */
 
 
@@ -65,6 +65,7 @@ func RegisterCommand(root *cobra.Command) {
 	wsCmd.PersistentFlags().BoolVar(&wsShell, "shell", false, "Keep shell open after action")
 
 	wsCmd.AddCommand(sendCmd)
+	wsCmd.AddCommand(ffpCmd)
 	root.AddCommand(wsCmd)
 }
 
