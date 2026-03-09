@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Workspace Block Navigation Command
- * Block-UUID: f719ead5-7449-4a57-90bd-2f0c2945898e
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 76d36b67-39c0-4c55-b40d-a8d6d3e4f48d
+ * Parent-UUID: f719ead5-7449-4a57-90bd-2f0c2945898e
+ * Version: 1.2.0
  * Description: Implements the 'gsc ws block' command for navigating between code blocks in a shadow workspace.
  * Language: Go
- * Created-at: 2026-03-09T17:29:51.605Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Created-at: 2026-03-09T23:31:05.468Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -163,7 +163,8 @@ func runBlockPicker(wsRoot string, manifest *contract.ShadowWorkspace) error {
 			label = "Snippet"
 		}
 
-		line := fmt.Sprintf("%s[%d] %-8s %s\n", prefix, i+1, f.Status, label)
+		lang := f.Language
+		line := fmt.Sprintf("%s[%d] %-8s %-20s (%s)\n", prefix, i+1, f.Status, label, lang)
 		input.WriteString(line)
 	}
 

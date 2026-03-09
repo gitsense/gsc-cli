@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Contract Models
- * Block-UUID: c16cd618-d390-4721-9c3d-00027a4dece8
- * Parent-UUID: 414ab537-66f9-4f75-8c10-1806b367ca70
- * Version: 1.24.0
+ * Block-UUID: 30dd2b6e-7899-4ea7-8a30-a5f07fc1a293
+ * Parent-UUID: c16cd618-d390-4721-9c3d-00027a4dece8
+ * Version: 1.25.0
  * Description: Added WorkspaceEntry struct and Workspaces map to ContractMetadata to support the Registry-First workspace lookup strategy.
  * Language: Go
- * Created-at: 2026-03-07T04:11:57.272Z
- * Authors: Gemini 3 Flash (v1.23.0), GLM-4.7 (v1.24.0)
+ * Created-at: 2026-03-09T23:30:13.990Z
+ * Authors: Gemini 3 Flash (v1.23.0), GLM-4.7 (v1.24.0), GLM-4.7 (v1.25.0)
  */
 
 
@@ -195,6 +195,7 @@ type MappedFileEntry struct {
 	BlockUUID    string           `json:"block_uuid"`   // The UUID of the code block
 	Reason       string           `json:"reason,omitempty"` // Why it was unmapped (e.g., "no_parent_uuid")
 	Position     int              `json:"position"`     // 0-indexed position of the code block in the original message
+	Language     string           `json:"language"`     // The programming language (e.g., "go", "javascript")
 }
 
 // MappedDumpStats provides summary statistics for the dump.

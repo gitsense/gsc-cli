@@ -1,12 +1,12 @@
 /**
  * Component: Contract Dump Orchestrator
- * Block-UUID: cf563396-ee42-4b20-8c92-853215f5ce9e
- * Parent-UUID: cf6cb25c-c42e-4ffe-8af5-041a1a339d85
- * Version: 2.21.0
+ * Block-UUID: 2319b109-3cf0-4b8f-9b76-ea5de97c29ae
+ * Parent-UUID: cf563396-ee42-4b20-8c92-853215f5ce9e
+ * Version: 2.22.0
  * Description: Implemented Registry-First workspace strategy. Calculates composite hash (ContractUUID + MessageHash) for unique workspace IDs and updates the ContractMetadata JSON registry.
  * Language: Go
- * Created-at: 2026-03-09T06:17:20.808Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.19.0), GLM-4.7 (v2.20.0), GLM-4.7 (v2.21.0)
+ * Created-at: 2026-03-09T23:30:39.092Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.21.0), GLM-4.7 (v2.22.0)
  */
 
 
@@ -536,6 +536,7 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 				BlockUUID:    block.BlockUUID,
 				Reason:       reason,
 				Position:     block.Index, // 0-indexed position in the message
+				Language:     block.Language,
 			}
 			result.Files = append(result.Files, entry)
 
@@ -634,6 +635,7 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 				BlockUUID:    patch.TargetBlockUUID,
 				Reason:       reason,
 				Position:     patch.Index, // 0-indexed position in the message
+				Language:     patch.Language,
 			}
 			result.Files = append(result.Files, entry)
 
