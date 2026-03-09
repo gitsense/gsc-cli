@@ -1,12 +1,12 @@
 /**
  * Component: Contract Dump Orchestrator
- * Block-UUID: 3d7e7437-2b4d-4d97-8129-80ada7d61b27
- * Parent-UUID: 9bb7741e-7be2-4f31-8a9f-460b24430a8a
- * Version: 2.19.0
- * Description: Updated generateHelpFiles to write help files to the parent mapped directory and removed GSC_MAPPED_WS_HASH from replacements.
+ * Block-UUID: cf563396-ee42-4b20-8c92-853215f5ce9e
+ * Parent-UUID: cf6cb25c-c42e-4ffe-8af5-041a1a339d85
+ * Version: 2.21.0
+ * Description: Implemented Registry-First workspace strategy. Calculates composite hash (ContractUUID + MessageHash) for unique workspace IDs and updates the ContractMetadata JSON registry.
  * Language: Go
- * Created-at: 2026-03-09T03:24:52.037Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.18.0), GLM-4.7 (v2.19.0)
+ * Created-at: 2026-03-09T06:17:20.808Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.19.0), GLM-4.7 (v2.20.0), GLM-4.7 (v2.21.0)
  */
 
 
@@ -31,6 +31,7 @@ import (
 	"github.com/gitsense/gsc-cli/internal/markdown"
 	"github.com/gitsense/gsc-cli/internal/search"
 	"github.com/gitsense/gsc-cli/pkg/logger"
+	"github.com/gitsense/gsc-cli/internal/manifest"
 	"github.com/gitsense/gsc-cli/pkg/settings"
 )
 
@@ -244,6 +245,7 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 	// We need the hash to determine the specific workspace directory, 
 	// regardless of whether we are validating or generating.
 	var dumpHash string
+	var workspaceID string // The new Composite Hash
 	var messages []db.Message
 
 	if messageID > 0 {
@@ -254,7 +256,11 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 		}
 		messages = []db.Message{*msg}
 		dumpHash = calculateMessageHash(*msg)
-		logger.Info("Single Message Mode", "message_id", messageID, "hash", dumpHash)
+		
+		// Calculate Composite Hash (Workspace ID) using MessageID for uniqueness
+		workspaceID = calculateWorkspaceID(contractUUID, messageID)
+		
+		logger.Info("Single Message Mode", "message_id", messageID, "message_hash", dumpHash, "workspace_id", workspaceID)
 	} else {
 		// Full Contract Mode
 		for _, chat := range chats {
@@ -266,12 +272,16 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 		}
 		// For full contract, use a fixed hash or the contract UUID itself
 		dumpHash = "full-contract"
-		logger.Info("Full Contract Mode", "total_messages", len(messages))
+		
+		// Calculate Composite Hash (Workspace ID) using MessageID (0 for full contract)
+		workspaceID = calculateWorkspaceID(contractUUID, messageID)
+		
+		logger.Info("Full Contract Mode", "total_messages", len(messages), "workspace_id", workspaceID)
 	}
 
-	// Construct the specific workspace directory: <outputDir>/<hash>
+	// Construct the specific workspace directory: <outputDir>/<workspaceID>
 	// outputDir is already .../dumps/<uuid>/mapped
-	workspaceDir := filepath.Join(outputDir, dumpHash)
+	workspaceDir := filepath.Join(outputDir, workspaceID)
 
 	// ==========================================
 	// VALIDATION PHASE (If --validate is set)
@@ -336,7 +346,7 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 			Success:  true,
 			Exists:   true,
 			Valid:    true,
-			Hash:     ws.Hash,
+			Hash:     ws.Hash, // This is now the Workspace ID
 			RootDir:  workspaceDir, // Return the specific workspace dir
 			ExpiresAt: ws.ExpiresAt,
 			Stats:    ws.Stats,    // Include stats from manifest
@@ -351,6 +361,14 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 	// 1. Prepare the specific workspace directory
 	if err := writer.Prepare(workspaceDir); err != nil {
 		return nil, fmt.Errorf("failed to prepare workspace directory: %w", err)
+	}
+
+	// 2. Update Contract Registry
+	// We must register this new workspace ID in the contract metadata
+	if err := updateContractRegistry(contractUUID, workspaceID, messageID, dumpHash); err != nil {
+		// If we can't update the registry, the workspace is orphaned.
+		// We should fail the dump to prevent creating unreachable workspaces.
+		return nil, fmt.Errorf("failed to update contract registry: %w", err)
 	}
 
 	// PASS 0: Pre-scan for Total Artifact Count
@@ -430,7 +448,7 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 	// 3. Generation Pass
 	result := &MappedDumpResult{
 		Success: true,
-		Hash:    dumpHash,
+		Hash:    workspaceID, // Use the Workspace ID
 		RootDir: workspaceDir, // Use the specific workspace dir
 		Files:   []MappedFileEntry{},
 	}
@@ -736,13 +754,13 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 		}
 	}
 
-	logger.Info("Mapped Dump Complete", "hash", dumpHash, "mappable", result.Stats.Mappable, "unmappable", result.Stats.Unmappable)
+	logger.Info("Mapped Dump Complete", "workspace_id", workspaceID, "mappable", result.Stats.Mappable, "unmappable", result.Stats.Unmappable)
 
 	// ==========================================
 	// WRITE WORKSPACE MANIFEST
 	// ==========================================
 	manifest := ShadowWorkspace{
-		Hash:         dumpHash,
+		Hash:         workspaceID, // Use the Workspace ID
 		MessageID:    messageID, // 0 if full contract
 		ContractUUID: contractUUID,
 		CreatedAt:    time.Now().Format(time.RFC3339),
@@ -766,12 +784,69 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 	// ==========================================
 	// GENERATE HELP FILES
 	// ==========================================
-	if err := generateHelpFiles(workspaceDir, contractUUID, dumpHash, activeChatID, workdir, sqliteDB); err != nil {
+	if err := generateHelpFiles(workspaceDir, contractUUID, workspaceID, activeChatID, workdir, sqliteDB); err != nil {
 		logger.Warning("Failed to generate help files", "error", err)
 		// Non-fatal error, continue
 	}
 
 	return result, nil
+}
+
+// calculateWorkspaceID generates a composite hash (ContractUUID + MessageID).
+// This ensures the Workspace ID is globally unique across all contracts.
+func calculateWorkspaceID(contractUUID string, messageID int64) string {
+	h := sha256.New()
+	h.Write([]byte(contractUUID))
+	h.Write([]byte(fmt.Sprintf("%d", messageID)))
+	return hex.EncodeToString(h.Sum(nil))[:8]
+}
+
+// updateContractRegistry updates the ContractMetadata JSON file to include the new workspace.
+// This implements the "Registry-First" strategy.
+func updateContractRegistry(contractUUID string, workspaceID string, messageID int64, messageHash string) error {
+	// 1. Load existing contract metadata
+	meta, err := GetContract(contractUUID)
+	if err != nil {
+		return fmt.Errorf("failed to load contract for registry update: %w", err)
+	}
+
+	// 2. Initialize map if nil
+	if meta.Workspaces == nil {
+		meta.Workspaces = make(map[string]WorkspaceEntry)
+	}
+
+	// 3. Add or Update the workspace entry
+	meta.Workspaces[workspaceID] = WorkspaceEntry{
+		MessageID:   messageID,   // Unique Identifier
+		MessageHash: messageHash, // Content Fingerprint
+		CreatedAt:   time.Now().Format(time.RFC3339),
+	}
+
+	// 4. Save the updated metadata
+	// We duplicate the save logic here because saveContractMetadata in manager.go is not exported.
+	contractDir, err := manifest.ResolveGlobalContractDir()
+	if err != nil {
+		return fmt.Errorf("failed to resolve contract directory: %w", err)
+	}
+
+	path := filepath.Join(contractDir, meta.UUID+".json")
+	tmpPath := path + ".tmp"
+
+	data, err := json.MarshalIndent(meta, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal contract metadata: %w", err)
+	}
+
+	if err := os.WriteFile(tmpPath, data, 0600); err != nil {
+		return fmt.Errorf("failed to write temp contract file: %w", err)
+	}
+
+	if err := os.Rename(tmpPath, path); err != nil {
+		return fmt.Errorf("failed to rename contract file: %w", err)
+	}
+
+	logger.Info("Contract registry updated", "uuid", contractUUID, "workspace_id", workspaceID)
+	return nil
 }
 
 // sanitizeComponentName sanitizes a component name for use in file paths.

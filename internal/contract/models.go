@@ -1,12 +1,12 @@
 /*
  * Component: Contract Models
- * Block-UUID: 414ab537-66f9-4f75-8c10-1806b367ca70
- * Parent-UUID: e93db979-2fda-4c6f-8f55-062f506c4c60
- * Version: 1.23.0
- * Description: Updated EventsDBSchema to include chat_id and expires_at, and added EventStatus constants for the messaging queue.
+ * Block-UUID: c16cd618-d390-4721-9c3d-00027a4dece8
+ * Parent-UUID: 414ab537-66f9-4f75-8c10-1806b367ca70
+ * Version: 1.24.0
+ * Description: Added WorkspaceEntry struct and Workspaces map to ContractMetadata to support the Registry-First workspace lookup strategy.
  * Language: Go
  * Created-at: 2026-03-07T04:11:57.272Z
- * Authors: Gemini 3 Flash (v1.23.0)
+ * Authors: Gemini 3 Flash (v1.23.0), GLM-4.7 (v1.24.0)
  */
 
 
@@ -35,6 +35,14 @@ const (
 	EventFailed    EventStatus = "failed"
 )
 
+// WorkspaceEntry represents a single shadow workspace associated with a contract.
+// It maps the Workspace ID (Composite Hash) to its underlying message details.
+type WorkspaceEntry struct {
+	MessageHash string `json:"message_hash"` // The original 8-char message hash
+	MessageID   int64  `json:"message_id"`   // The DB message ID
+	CreatedAt   string `json:"created_at"`   // ISO 8601 timestamp of dump creation
+}
+
 // ContractMetadata represents a traceability contract stored in ~/.gitsense/contracts.
 type ContractMetadata struct {
 	UUID             string         `json:"uuid"`
@@ -56,7 +64,11 @@ type ContractMetadata struct {
 	// Workspace Preferences
 	PreferredEditor   string `json:"preferred_editor"`   // e.g., "zed", "vscode", "vim-iterm2"
 	PreferredTerminal string `json:"preferred_terminal"` // e.g., "iterm2", "terminal.app"
-	PreferredReview   string `json:"preferred_review"`   // e.g., "vimdiff", "zed --diff"
+	PreferredReview   string `json:"preferred_review"`   // e.g., "vimdiff", "zed --diff"`
+
+	// Workspace Registry
+	// Maps Workspace ID (Composite Hash) -> Workspace Entry
+	Workspaces map[string]WorkspaceEntry `json:"workspaces"`
 }
 
 // LaunchRequest represents the data contract from the Web UI to the CLI for the 'launch' command.
@@ -214,7 +226,7 @@ type DumpError struct {
 // ShadowWorkspace represents the metadata stored at the root of a mapped dump.
 // It acts as the "Source of Truth" for the shadow workspace's validity and contents.
 type ShadowWorkspace struct {
-	Hash         string            `json:"hash"`          // The message hash (directory name)
+	Hash         string            `json:"hash"`          // The Workspace ID (Composite Hash)
 	MessageID    int64             `json:"message_id"`    // The ID of the message
 	ContractUUID string            `json:"contract_uuid"` // The contract UUID
 	CreatedAt    string            `json:"created_at"`    // ISO 8601 timestamp

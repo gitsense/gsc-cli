@@ -1,12 +1,12 @@
 /**
  * Component: Workspace Root Command
- * Block-UUID: 66b4f3cf-2205-42f0-ade0-1116da9a98b8
- * Parent-UUID: ed77d7e7-a67e-43ba-8f59-ecb95749b9d7
- * Version: 1.7.0
- * Description: Simplified shell execution logic by moving sourcing responsibility to templates and unifying template processing across shells.
+ * Block-UUID: 0dd61126-bd98-41a6-b7fb-db43b862f34e
+ * Parent-UUID: dfc4e92a-17f4-4fb5-95ba-92c372124de7
+ * Version: 1.8.1
+ * Description: Fixed compiler error by removing unused 'entry' variable in handleWorkspaceEntry.
  * Language: Go
  * Created-at: 2026-03-08T16:26:42.555Z
- * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v1.6.2), Gemini 3 Flash (v1.7.0)
+ * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v1.6.2), Gemini 3 Flash (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.8.1)
  */
 
 
@@ -24,6 +24,7 @@ import (
 	"syscall"
 
 	"github.com/gitsense/gsc-cli/internal/contract"
+	"github.com/gitsense/gsc-cli/internal/manifest"
 	"github.com/gitsense/gsc-cli/pkg/settings"
 	"github.com/spf13/cobra"
 )
@@ -35,14 +36,14 @@ var (
 
 // wsCmd represents the base command for workspace management
 var wsCmd = &cobra.Command{
-	Use:   "ws [hash-position]",
+	Use:   "ws [workspace-id]",
 	Short: "Workspace management and entry",
 	Long: `The 'ws' command provides tools for interacting with shadow workspaces.
 It supports a "Shortcut" mode for quick entry and subcommands for specific actions.`,
 	// If no subcommand is provided, run the 'enter' logic (Shortcut Mode)
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) > 0 {
-			// Shortcut Mode: gsc ws <hash-position>
+			// Shortcut Mode: gsc ws <workspace-id>
 			// Implies --shell is true
 			return handleWorkspaceEntry(args[0], true, "")
 		}
@@ -71,7 +72,7 @@ func RegisterCommand(root *cobra.Command) {
 func handleWorkspaceEntry(input string, keepShell bool, action string) error {
 	// 1. Parse Input
 	parts := strings.Split(input, "-")
-	hash := parts[0]
+	workspaceID := parts[0] // This is the Composite Hash (Workspace ID)
 	position := -1
 
 	if len(parts) > 1 {
@@ -82,16 +83,20 @@ func handleWorkspaceEntry(input string, keepShell bool, action string) error {
 		position = pos
 	}
 
-	// 2. Locate Workspace Directory
-	gscHome, _ := settings.GetGSCHome(false)
-	dumpsRoot := filepath.Join(gscHome, settings.DumpsRelPath)
-
-	workspaceRoot, err := findWorkspaceByHash(dumpsRoot, hash)
+	// 2. Locate Workspace via Registry
+	// We scan contract JSON files to find which contract owns this workspace ID
+	meta, _, err := findWorkspaceByID(workspaceID)
 	if err != nil {
 		return err
 	}
 
 	// 3. Resolve Target Directory
+	gscHome, _ := settings.GetGSCHome(false)
+	dumpsRoot := filepath.Join(gscHome, settings.DumpsRelPath)
+	
+	// Construct path directly: dumps/<contract-uuid>/mapped/<workspace-id>
+	workspaceRoot := filepath.Join(dumpsRoot, meta.UUID, "mapped", workspaceID)
+	
 	targetDir := workspaceRoot
 	if position >= 0 {
 		manifestPath := filepath.Join(workspaceRoot, "workspace.json")
@@ -121,35 +126,54 @@ func handleWorkspaceEntry(input string, keepShell bool, action string) error {
 
 	// 4. Execute Shell
 	if keepShell {
-		return executeShell(workspaceRoot, targetDir)
+		return executeShell(workspaceRoot, targetDir, meta)
 	}
 
 	return nil
 }
 
-// findWorkspaceByHash scans the dumps directory for a folder matching the hash
-func findWorkspaceByHash(dumpsRoot, hash string) (string, error) {
-	entries, err := os.ReadDir(dumpsRoot)
+// findWorkspaceByID scans the contract registry (JSON files) to find the workspace.
+// This implements the "Registry-First" strategy.
+func findWorkspaceByID(workspaceID string) (*contract.ContractMetadata, contract.WorkspaceEntry, error) {
+	contractDir, err := manifest.ResolveGlobalContractDir()
 	if err != nil {
-		return "", fmt.Errorf("dumps directory not found: %w", err)
+		return nil, contract.WorkspaceEntry{}, fmt.Errorf("failed to resolve contract directory: %w", err)
 	}
 
-	for _, entry := range entries {
-		if !entry.IsDir() {
+	files, err := filepath.Glob(filepath.Join(contractDir, "*.json"))
+	if err != nil {
+		return nil, contract.WorkspaceEntry{}, fmt.Errorf("failed to scan contracts directory: %w", err)
+	}
+
+	for _, file := range files {
+		// Load contract metadata
+		// We use the internal loadContractMetadata from the contract package
+		// Since it's not exported, we have to duplicate the logic or rely on GetContract
+		// GetContract is safer and handles path resolution.
+		
+		// Extract UUID from filename
+		uuid := filepath.Base(file)
+		uuid = strings.TrimSuffix(uuid, ".json")
+		
+		meta, err := contract.GetContract(uuid)
+		if err != nil {
+			// Skip corrupt/unreadable contracts
 			continue
 		}
 
-		mappedPath := filepath.Join(dumpsRoot, entry.Name(), "mapped", hash)
-		if info, err := os.Stat(mappedPath); err == nil && info.IsDir() {
-			return mappedPath, nil
+		// Check Workspaces map
+		if meta.Workspaces != nil {
+			if entry, exists := meta.Workspaces[workspaceID]; exists {
+				return meta, entry, nil
+			}
 		}
 	}
 
-	return "", fmt.Errorf("workspace with hash '%s' not found", hash)
+	return nil, contract.WorkspaceEntry{}, fmt.Errorf("workspace '%s' not found in any active contract", workspaceID)
 }
 
 // executeShell spawns a sub-shell in the target directory
-func executeShell(workspaceRoot, targetDir string) error {
+func executeShell(workspaceRoot, targetDir string, meta *contract.ContractMetadata) error {
 	shell := os.Getenv("SHELL")
 	if shell == "" {
 		if runtime.GOOS == "windows" {
@@ -170,13 +194,7 @@ func executeShell(workspaceRoot, targetDir string) error {
 		return fmt.Errorf("corrupted workspace manifest: %w", err)
 	}
 
-	// 2. Load Contract Metadata
-	meta, err := contract.GetContract(ws.ContractUUID)
-	if err != nil {
-		return fmt.Errorf("failed to load contract metadata: %w", err)
-	}
-
-	// 3. Prepare Template Replacements
+	// 2. Prepare Template Replacements
 	mappedDir := filepath.Dir(workspaceRoot)
 	replacements := map[string]string{
 		"{{GSC_CHAT_ID}}":       fmt.Sprintf("%d", meta.ChatID),
@@ -186,7 +204,7 @@ func executeShell(workspaceRoot, targetDir string) error {
 		"{{TARGET_DIR}}":        targetDir,
 	}
 
-	// 4. Process Shell Template
+	// 3. Process Shell Template
 	shellName := filepath.Base(shell)
 	ext := "sh"
 	if strings.HasSuffix(shellName, "zsh") {
