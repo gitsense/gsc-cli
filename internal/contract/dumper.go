@@ -1,12 +1,12 @@
 /**
  * Component: Contract Dump Orchestrator
- * Block-UUID: 9bb7741e-7be2-4f31-8a9f-460b24430a8a
- * Parent-UUID: b4e4a55a-a653-45f0-8800-d856cee9537b
- * Version: 2.18.0
+ * Block-UUID: 3d7e7437-2b4d-4d97-8129-80ada7d61b27
+ * Parent-UUID: 9bb7741e-7be2-4f31-8a9f-460b24430a8a
+ * Version: 2.19.0
  * Description: Updated generateHelpFiles to write help files to the parent mapped directory and removed GSC_MAPPED_WS_HASH from replacements.
  * Language: Go
- * Created-at: 2026-03-08T15:52:30.904Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.11.0), GLM-4.7 (v2.12.0), GLM-4.7 (v2.13.0), GLM-4.7 (v2.14.0), GLM-4.7 (v2.14.1), GLM-4.7 (v2.15.0), GLM-4.7 (v2.16.0), GLM-4.7 (v2.17.0), GLM-4.7 (v2.18.0)
+ * Created-at: 2026-03-09T03:24:52.037Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v2.18.0), GLM-4.7 (v2.19.0)
  */
 
 
@@ -318,7 +318,7 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 		if isExpired {
 			logger.Info("Shadow workspace expired, auto-extending", "hash", ws.Hash)
 			// Auto-extend by 24 hours
-			newExpiry := time.Now().Add(24 * time.Hour)
+			newExpiry := time.Now().Add(168 * time.Hour)
 			ws.ExpiresAt = newExpiry.Format(time.RFC3339)
 			
 			// Write updated manifest back
@@ -746,7 +746,7 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 		MessageID:    messageID, // 0 if full contract
 		ContractUUID: contractUUID,
 		CreatedAt:    time.Now().Format(time.RFC3339),
-		ExpiresAt:    time.Now().Add(24 * time.Hour).Format(time.RFC3339),
+		ExpiresAt:    time.Now().Add(168 * time.Hour).Format(time.RFC3339),
 		Stats:        result.Stats, // Persist stats
 		Files:        result.Files,
 	}
