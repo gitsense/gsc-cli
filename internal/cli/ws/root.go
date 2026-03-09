@@ -1,12 +1,12 @@
 /**
  * Component: Workspace Root Command
- * Block-UUID: d896e65b-aaff-4e9c-9e96-a00daa37ac0a
- * Parent-UUID: 0dd61126-bd98-41a6-b7fb-db43b862f34e
- * Version: 1.9.0
+ * Block-UUID: f20eb974-bb3a-411e-a707-c214ce5d6fd4
+ * Parent-UUID: d896e65b-aaff-4e9c-9e96-a00daa37ac0a
+ * Version: 1.10.0
  * Description: Fixed compiler error by removing unused 'entry' variable in handleWorkspaceEntry.
  * Language: Go
- * Created-at: 2026-03-09T15:59:35.864Z
- * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v1.6.2), Gemini 3 Flash (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.8.1), GLM-4.7 (v1.9.0)
+ * Created-at: 2026-03-09T17:34:32.692Z
+ * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v1.6.2), Gemini 3 Flash (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.8.1), GLM-4.7 (v1.9.0), Gemini 3 Flash (v1.10.0)
  */
 
 
@@ -66,6 +66,7 @@ func RegisterCommand(root *cobra.Command) {
 
 	wsCmd.AddCommand(sendCmd)
 	wsCmd.AddCommand(ffpCmd)
+	wsCmd.AddCommand(blockCmd)
 	root.AddCommand(wsCmd)
 }
 

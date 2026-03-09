@@ -1,24 +1,22 @@
 /**
  * Component: Contract Intent Handler
- * Block-UUID: d8db6c4f-f718-4cf6-818b-1e56d45640a8
- * Parent-UUID: 9c83fce9-a43f-4871-ad88-7b2cecd3cdf5
- * Version: 1.23.0
- * Description: Updated terminal intent handling to use the parent mapped directory for scripts and environment variables, removing hash-specific dependencies.
+ * Block-UUID: 61517e95-bc9c-4938-8fc0-ebf20e758f0b
+ * Parent-UUID: d8db6c4f-f718-4cf6-818b-1e56d45640a8
+ * Version: 1.24.0
+ * Description: Simplified terminal intent handling to delegate shell spawning to 'gsc ws'. Removed script generation and environment variable injection logic.
  * Language: Go
  * Created-at: 2026-03-06T05:23:56.122Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.21.0), GLM-4.7 (v1.22.0), GLM-4.7 (v1.23.0)
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.21.0), GLM-4.7 (v1.22.0), GLM-4.7 (v1.23.0), GLM-4.7 (v1.24.0)
  */
 
 
 package contract
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 
 	"github.com/gitsense/gsc-cli/internal/db"
@@ -95,7 +93,7 @@ func GetLaunchCapabilities() LaunchCapabilities {
 }
 
 // handleTerminalIntent launches the preferred terminal in the contract's workdir.
-// It resolves the target directory based on the code block position if provided.
+// If the terminal alias has a '-ws' suffix, it invokes 'gsc ws <hash>' instead of a shell.
 func handleTerminalIntent(meta *ContractMetadata, req LaunchRequest) (LaunchResult, error) {
 	term := meta.PreferredTerminal
 	if req.AppOverride != "" {
@@ -113,78 +111,39 @@ func handleTerminalIntent(meta *ContractMetadata, req LaunchRequest) (LaunchResu
 
 	// Check for Workspace Mode (-ws suffix)
 	isWorkspace := strings.HasSuffix(term, "-ws")
-	var envVars []string
 	
-	targetDir := meta.Workdir
-	hash := req.Hash
-	if hash == "" {
-		hash = "latest"
-	}
-
-	// FIX: Declare workspaceDir in outer scope so it's accessible later
-	var workspaceDir string
+	var cmdStr string
+	var workdir string
 
 	if isWorkspace {
-		// 1. Resolve Target Directory based on Position
-		gscHome, _ := settings.GetGSCHome(false)
-		dumpsRoot := filepath.Join(gscHome, settings.DumpsRelPath)
-		workspaceDir = filepath.Join(dumpsRoot, meta.UUID, "mapped", hash)
+		// Workspace Mode: Invoke 'gsc ws <hash>'
+		// The template is expected to be "gsc ws %s" or similar.
+		// We construct the argument string based on hash and position.
 		
-		// Default to workspace root
-		targetDir = workspaceDir
+		hash := req.Hash
+		if hash == "" {
+			// Fallback to "latest" if hash is not provided, though UI should provide it.
+			// Note: 'gsc ws' does not currently support "latest" alias, 
+			// so this might fail unless the UI sends the specific hash.
+			hash = "latest"
+		}
 
+		wsArg := hash
 		if req.Position >= 0 {
-			manifestPath := filepath.Join(workspaceDir, "workspace.json")
-			data, err := os.ReadFile(manifestPath)
-			if err == nil {
-				var ws ShadowWorkspace
-				if err := json.Unmarshal(data, &ws); err == nil {
-					// Find the file entry matching the position
-					for _, f := range ws.Files {
-						if f.Position == req.Position {
-							if f.Status == MappedStatusMapped {
-								targetDir = filepath.Join(workspaceDir, "mapped", f.Path)
-							} else if f.Path != "" {
-								// Unmapped component
-								targetDir = filepath.Join(workspaceDir, "unmapped", "components", f.Path)
-							} else {
-								// Unmapped snippet
-								targetDir = filepath.Join(workspaceDir, "unmapped", "snippets")
-							}
-							break
-						}
-					}
-				}
-			}
+			wsArg = fmt.Sprintf("%s-%d", hash, req.Position)
 		}
 
-		// 2. Calculate mappedDir (parent of workspaceRoot)
-		mappedDir := filepath.Dir(workspaceDir)
-
-		// 3. Generate Shell Init Script in mappedDir
-		if err := GenerateShellInitScript(mappedDir, req.ActiveChatID, meta.UUID, meta.Workdir, hash, targetDir); err != nil {
-			return LaunchResult{}, fmt.Errorf("failed to generate shell init script: %w", err)
-		}
-
-		// 4. Prepare Environment Variables
-		envVars = []string{
-			fmt.Sprintf("GSC_CHAT_ID=%d", req.ActiveChatID),
-			fmt.Sprintf("GSC_PROJECT_ROOT=%s", meta.Workdir),
-			fmt.Sprintf("GSC_CONTRACT_UUID=%s", meta.UUID),
-			fmt.Sprintf("GSC_SCRIPTS_DIR=%s", mappedDir),
-		}
-	}
-
-	// Construct command string
-	cmdStr := req.Cmd
-	if cmdStr == "" {
+		cmdStr = fmt.Sprintf(template, wsArg)
+		workdir = meta.Workdir // Run from project root
+	} else {
+		// Standard Terminal Mode
+		targetDir := meta.Workdir
 		cmdStr = fmt.Sprintf(template, targetDir)
-		// Inject the absolute path for the init script to avoid env var dependency at launch
-		cmdStr = strings.ReplaceAll(cmdStr, "{{GSC_SCRIPTS_DIR}}", filepath.Dir(workspaceDir))
+		workdir = targetDir
 	}
 
 	// Increased timeout to 15s to allow for slow AppleScript/App startup
-	executor := exec.NewExecutor(cmdStr, exec.ExecFlags{TimeoutSeconds: 15, Silent: true}, targetDir, envVars)
+	executor := exec.NewExecutor(cmdStr, exec.ExecFlags{TimeoutSeconds: 15, Silent: true}, workdir, nil)
 	result, err := executor.Run()
 	if err != nil {
 		return LaunchResult{}, fmt.Errorf("failed to launch terminal: %w", err)
@@ -199,55 +158,9 @@ func handleTerminalIntent(meta *ContractMetadata, req LaunchRequest) (LaunchResu
 		Success: result.ExitCode == 0,
 		Message: msg,
 		Alias:   "terminal",
-		Workdir: targetDir,
+		Workdir: workdir,
 		Command: cmdStr,
 	}, nil
-}
-
-// GenerateShellInitScript creates the .gsc-init.sh or .gsc-init.ps1 file in the workdir.
-// Exported for use by the 'ws' command.
-func GenerateShellInitScript(workdir string, activeChatID int64, contractUUID string, projectRoot string, hash string, targetDir string) error {
-	gscHome, _ := settings.GetGSCHome(false)
-	templateDir := filepath.Join(gscHome, "data", "templates", "shells", "ws")
-
-	var templateFile, outputFile string
-
-	switch runtime.GOOS {
-	case "windows":
-		templateFile = filepath.Join(templateDir, "windows", "init.ps1")
-		outputFile = filepath.Join(workdir, ".gsc-init.ps1")
-	default:
-		templateFile = filepath.Join(templateDir, runtime.GOOS, "init.sh")
-		outputFile = filepath.Join(workdir, ".gsc-init.sh")
-	}
-
-	// Read template
-	content, err := os.ReadFile(templateFile)
-	if err != nil {
-		return fmt.Errorf("failed to read shell template: %w", err)
-	}
-
-	// Substitute Variables
-	replacements := map[string]string{
-		"{{GSC_CHAT_ID}}":      fmt.Sprintf("%d", activeChatID),
-		"{{GSC_PROJECT_ROOT}}": projectRoot,
-		"{{GSC_CONTRACT_UUID}}": contractUUID,
-		"{{GSC_SCRIPTS_DIR}}":  workdir,
-		"{{TARGET_DIR}}":       targetDir,
-	}
-
-	processedContent := string(content)
-	for key, val := range replacements {
-		processedContent = strings.ReplaceAll(processedContent, key, val)
-	}
-
-	// Write File
-	if err := os.WriteFile(outputFile, []byte(processedContent), 0755); err != nil {
-		return fmt.Errorf("failed to write shell init script: %w", err)
-	}
-
-	logger.Info("Shell init script generated", "path", outputFile, "os", runtime.GOOS)
-	return nil
 }
 
 // handleEditorRootIntent launches the preferred editor in the contract's workdir.

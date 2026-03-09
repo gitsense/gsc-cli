@@ -1,11 +1,11 @@
 # Component: GitSense Workspace Shell Init (Bash)
-# Block-UUID: b9cba99f-0007-470b-8ed9-6db7fa4da053
-# Parent-UUID: 9e68c4c0-bf5a-4226-91a9-656aa63f41b4
-# Version: 1.4.0
-# Description: Implemented hierarchical sourcing (bashrc -> gsc-ws.sh -> gsc-init) and added 'p' variable for project root access.
+# Block-UUID: 57eddc81-eaa5-4488-afc5-75d2736008cb
+# Parent-UUID: 86e01934-d7a3-42b7-9025-d0d0c9af994d
+# Version: 1.6.0
+# Description: Added .block shell function to enable workspace navigation.
 # Language: Bash
 # Created-at: 2026-03-08T16:30:23.301Z
-# Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v1.3.0), Gemini 3 Flash (v1.4.0)
+# Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v1.3.0), Gemini 3 Flash (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0)
 
 
 # 1. User Environment Loading
@@ -25,16 +25,24 @@ export GSC_SCRIPTS_DIR="{{GSC_SCRIPTS_DIR}}"
 p="{{GSC_PROJECT_ROOT}}"
 
 # 3. Aliases
-alias .save='gsc ws save'
-alias .undo='gsc ws undo'
-alias .diff='gsc ws diff'
+alias .ffp='gsc ws ffp'
 alias .send='gsc ws send'
 alias .help='cat ${GSC_SCRIPTS_DIR}/.gsc-welcome'
 
-# 4. Custom Prompt
+# 4. Block Navigation Function
+.block() {
+    local target=$(gsc ws block "$@")
+    if [ -d "$target" ]; then
+        cd "$target"
+    elif [ -n "$target" ]; then
+        echo "$target"
+    fi
+}
+
+# 5. Custom Prompt
 export PS1="(gsc-ws) $PS1"
 
-# 5. Initialization
+# 6. Initialization
 clear
 cat "${GSC_SCRIPTS_DIR}/.gsc-welcome"
 cd "{{TARGET_DIR}}"

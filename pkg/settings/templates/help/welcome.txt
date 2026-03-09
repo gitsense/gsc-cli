@@ -4,13 +4,10 @@ This directory is a structured dump of the AI's response, converted into
 a project-like file tree to help you review and test the proposed code.
 
 You can freely modify, build, and test files in this directory. Your 
-changes are isolated and will NOT affect your actual project until
-you explicitly run the 'save' command.
+changes are isolated and will NOT affect your actual project.
 
 Available Commands:
-  .save    - Promote code to your project
-  .undo    - Revert the last save
-  .diff    - Compare with project files
+  .ffp     - Fuzzy find files in the project root
   .send    - Send output to the chat
   .help    - Show detailed manual
 

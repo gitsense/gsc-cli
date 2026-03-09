@@ -1,12 +1,12 @@
 /**
  * Component: Mapped Dump Writer
- * Block-UUID: 3a5faccf-13b7-4325-bc16-85478a957f31
- * Parent-UUID: 1fcaeb69-2660-4554-b048-21b12807a0b0
- * Version: 1.6.0
+ * Block-UUID: cc9b4825-3987-4380-b1d6-640994f4837e
+ * Parent-UUID: 3a5faccf-13b7-4325-bc16-85478a957f31
+ * Version: 1.7.0
  * Description: Updated WritePatch to use the formatted component name from the dumper for consistent file naming (e.g., 01_name_patch_uuid.diff).
  * Language: Go
- * Created-at: 2026-03-09T15:52:06.435Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0)
+ * Created-at: 2026-03-09T17:36:23.290Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0)
  */
 
 
@@ -118,7 +118,7 @@ func (w *MappedWriter) WriteBlock(msgDir string, block markdown.CodeBlock, trim 
 			filename = "generated" + getExtension(block.Language)
 		} else {
 			targetDir = filepath.Join(msgDir, "unmapped", "snippets")
-			filename = fmt.Sprintf("block_%03d%s", block.Index+1, getExtension(block.Language))
+			filename = fmt.Sprintf("generated_%03d%s", block.Index+1, getExtension(block.Language))
 		}
 	}
 
@@ -165,7 +165,7 @@ func (w *MappedWriter) WritePatchedFile(msgDir string, patch markdown.PatchBlock
 			targetDir := filepath.Join(msgDir, "unmapped", "components", patch.Component)
 			os.MkdirAll(targetDir, 0755)
 			
-			filename := fmt.Sprintf("proposed_%03d%s", patch.Index+1, getExtension(patch.Language))
+			filename := "generated" + getExtension(patch.Language)
 			fullContent := header + "\n\n\n" + content
 			return os.WriteFile(filepath.Join(targetDir, filename), []byte(fullContent), 0644)
 		}
@@ -174,7 +174,7 @@ func (w *MappedWriter) WritePatchedFile(msgDir string, patch markdown.PatchBlock
 		targetDir := filepath.Join(msgDir, "unmapped", "orphans")
 		os.MkdirAll(targetDir, 0755)
 		
-		filename := fmt.Sprintf("proposed_%03d%s", patch.Index+1, getExtension(patch.Language))
+		filename := fmt.Sprintf("generated_%03d%s", patch.Index+1, getExtension(patch.Language))
 		fullContent := header + "\n\n\n" + content
 		return os.WriteFile(filepath.Join(targetDir, filename), []byte(fullContent), 0644)
 	}

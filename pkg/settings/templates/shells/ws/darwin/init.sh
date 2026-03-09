@@ -1,11 +1,11 @@
 # Component: GitSense Workspace Shell Init (Bash)
-# Block-UUID: 12b4fc74-6e5b-4513-ba59-70895e1086a6
-# Parent-UUID: 6cf07edc-2b2b-4309-bb01-8429f6353871
-# Version: 1.6.0
-# Description: Implemented hierarchical sourcing (bashrc -> gsc-ws.sh -> gsc-init) and added 'p' variable for project root access.
+# Block-UUID: f2b3fb09-b4ea-412d-b9d9-f9681d171f8e
+# Parent-UUID: 859c159e-ca9d-4368-a910-65c010e75840
+# Version: 1.8.0
+# Description: Removed deprecated aliases (.save, .undo, .diff) and added .ffp alias for 'gsc ws ffp'.
 # Language: Bash
-# Created-at: 2026-03-08T16:30:23.301Z
-# Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0)
+# Created-at: 2026-03-09T17:43:11.362Z
+# Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0)
 
 
 # 1. User Environment Loading
@@ -25,16 +25,24 @@ export GSC_SCRIPTS_DIR="{{GSC_SCRIPTS_DIR}}"
 p="{{GSC_PROJECT_ROOT}}"
 
 # 3. Aliases
-alias .save='gsc ws save'
-alias .undo='gsc ws undo'
-alias .diff='gsc ws diff'
+alias .ffp='gsc ws ffp'
 alias .send='gsc ws send'
 alias .help='cat ${GSC_SCRIPTS_DIR}/.gsc-welcome'
 
-# 4. Custom Prompt
+# 4. Block Navigation Function
+.block() {
+    local target=$(gsc ws block "$@")
+    if [ -d "$target" ]; then
+        cd "$target"
+    elif [ -n "$target" ]; then
+        echo "$target"
+    fi
+}
+
+# 5. Custom Prompt
 export PS1="(gsc-ws) $PS1"
 
-# 5. Initialization
+# 6. Initialization
 clear
 cat "${GSC_SCRIPTS_DIR}/.gsc-welcome"
 cd "{{TARGET_DIR}}"
