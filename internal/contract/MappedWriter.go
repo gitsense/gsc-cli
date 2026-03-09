@@ -1,12 +1,12 @@
 /**
  * Component: Mapped Dump Writer
- * Block-UUID: 858258fc-05a9-4660-96e4-17d14f14931c
- * Parent-UUID: d554d373-1426-42e4-b22a-fac18ef0f73c
- * Version: 1.5.0
+ * Block-UUID: 1fcaeb69-2660-4554-b048-21b12807a0b0
+ * Parent-UUID: 858258fc-05a9-4660-96e4-17d14f14931c
+ * Version: 1.5.1
  * Description: Updated WritePatch to use the formatted component name from the dumper for consistent file naming (e.g., 01_name_patch_uuid.diff).
  * Language: Go
- * Created-at: 2026-03-04T16:42:20.879Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
+ * Created-at: 2026-03-08T17:41:32.045Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1)
  */
 
 
@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/gitsense/gsc-cli/internal/db"
+	"github.com/gitsense/gsc-cli/pkg/logger"
 	"github.com/gitsense/gsc-cli/internal/markdown"
 )
 
@@ -59,6 +60,19 @@ func (w *MappedWriter) WriteMessage(msgDir string, msg db.Message) error {
 		return err
 	}
 
+	// Handle meta (sql.NullString) safely for JSON output
+	// Since meta is stored as a JSON string in the DB, we unmarshal it
+	// to ensure it appears as a nested object in the output JSON.
+	var metaValue interface{}
+	if msg.Meta.Valid {
+		if err := json.Unmarshal([]byte(msg.Meta.String), &metaValue); err != nil {
+			logger.Warning("Failed to unmarshal message meta, using raw string", "error", err)
+			metaValue = msg.Meta.String
+		}
+	} else {
+		metaValue = nil
+	}
+
 	// 2. Write message.json
 	metadata := map[string]interface{}{
 		"id":         msg.ID,
@@ -66,7 +80,9 @@ func (w *MappedWriter) WriteMessage(msgDir string, msg db.Message) error {
 		"type":       msg.Type,
 		"role":       msg.Role,
 		"parent_id":  msg.ParentID,
+		"visibility": msg.Visibility,
 		"created_at": msg.CreatedAt,
+		"meta":       metaValue,
 	}
 
 	jsonData, err := json.MarshalIndent(metadata, "", "  ")

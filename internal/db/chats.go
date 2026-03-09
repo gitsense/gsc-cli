@@ -1,12 +1,12 @@
 /**
  * Component: Chat Database Operations
- * Block-UUID: 1a8466e6-9994-4a4e-beca-72965c6b0b97
- * Parent-UUID: 332a8849-d768-424b-8229-9729527df76b
- * Version: 1.20.0
+ * Block-UUID: 829d31b2-75b9-43c7-a337-18c1bcf356ba
+ * Parent-UUID: 1a8466e6-9994-4a4e-beca-72965c6b0b97
+ * Version: 1.20.1
  * Description: Added GetMessagesRecursive to retrieve the full conversation thread in the correct hierarchical order using a recursive CTE. This is essential for generating accurate conversational filesystem trees.
  * Language: Go
- * Created-at: 2026-03-04T17:00:28.279Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), Gemini 3 Flash (v1.16.0), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.19.0), GLM-4.7 (v1.20.0)
+ * Created-at: 2026-03-08T17:02:51.922Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), Gemini 3 Flash (v1.16.0), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.19.0), GLM-4.7 (v1.20.0), GLM-4.7 (v1.20.1)
  */
 
 
@@ -242,10 +242,14 @@ func UpdateContractMessagesByUUID(db *sql.DB, contractUUID string, data Contract
 
 // GetMessage retrieves a message by its ID.
 func GetMessage(db *sql.DB, id int64) (*Message, error) {
-	query := `SELECT id, chat_id, level, message, meta FROM messages WHERE id = ? AND deleted = 0`
+	query := `SELECT id, type, deleted, visibility, chat_id, parent_id, level, role, message, meta, created_at, updated_at FROM messages WHERE id = ? AND deleted = 0`
 	
 	var msg Message
-	err := db.QueryRow(query, id).Scan(&msg.ID, &msg.ChatID, &msg.Level, &msg.Message, &msg.Meta)
+	err := db.QueryRow(query, id).Scan(
+		&msg.ID, &msg.Type, &msg.Deleted, &msg.Visibility,
+		&msg.ChatID, &msg.ParentID, &msg.Level, &msg.Role,
+		&msg.Message, &msg.Meta, &msg.CreatedAt, &msg.UpdatedAt,
+	)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("message with ID %d not found", id)

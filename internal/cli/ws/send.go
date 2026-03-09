@@ -1,12 +1,12 @@
 /*
  * Component: Workspace Send Command
- * Block-UUID: 2f9978b9-6ccc-43f5-b0f2-8356ec9d644e
- * Parent-UUID: 79695097-4c2a-4e29-b0e9-4bc23b4f4d21
- * Version: 1.2.0
- * Description: Added --no-chat-confirmation flag to allow bypassing the UI confirmation modal for automated workflows.
+ * Block-UUID: f4ff7005-b6dd-4609-81f4-d022d19cd041
+ * Parent-UUID: 2f9978b9-6ccc-43f5-b0f2-8356ec9d644e
+ * Version: 1.3.0
+ * Description: Added support for message manipulation operations (replace, insert before, insert after) using workspace context and updated payload structure.
  * Language: Go
  * Created-at: 2026-03-07T04:45:31.000Z
- * Authors: Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.2.0)
+ * Authors: Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
  */
 
 
@@ -14,6 +14,7 @@ package ws
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -34,6 +35,11 @@ var (
 	sendVisibility    string
 	sendForce         bool
 	sendNoConfirmation bool
+	
+	// New flags for message manipulation
+	sendReplace      bool
+	sendInsertBefore bool
+	sendInsertAfter  bool
 )
 
 // sendCmd represents the 'gsc ws send' command
@@ -41,7 +47,7 @@ var sendCmd = &cobra.Command{
 	Use:   "send [text]",
 	Short: "Send a message from the terminal to the chat",
 	Long: `Sends a message to the active chat session via the contract events database.
-Supports piping, file input, and markdown formatting.`,
+Supports piping, file input, markdown formatting, and message manipulation operations.`,
 	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return handleSend(args)
@@ -56,6 +62,11 @@ func init() {
 	sendCmd.Flags().StringVar(&sendVisibility, "visibility", "human-public", "Message visibility: 'human-public' or 'human-only'")
 	sendCmd.Flags().BoolVar(&sendForce, "force", false, "Skip confirmation for large files")
 	sendCmd.Flags().BoolVar(&sendNoConfirmation, "no-chat-confirmation", false, "Bypass the UI confirmation modal")
+
+	// Register new manipulation flags
+	sendCmd.Flags().BoolVar(&sendReplace, "replace-message", false, "Replace the current workspace message")
+	sendCmd.Flags().BoolVar(&sendInsertBefore, "insert-before-message", false, "Insert before the current workspace message")
+	sendCmd.Flags().BoolVar(&sendInsertAfter, "insert-after-message", false, "Insert after the current workspace message")
 }
 
 func handleSend(args []string) error {
@@ -75,7 +86,41 @@ func handleSend(args []string) error {
 		return fmt.Errorf("invalid GSC_CHAT_ID environment variable: %w", err)
 	}
 
-	// 2. Input Resolution
+	// 2. Flag Validation (Mutual Exclusion)
+	operationFlags := []bool{sendReplace, sendInsertBefore, sendInsertAfter}
+	activeFlags := 0
+	for _, flag := range operationFlags {
+		if flag {
+			activeFlags++
+		}
+	}
+	if activeFlags > 1 {
+		return fmt.Errorf("only one message manipulation flag can be used at a time")
+	}
+
+	// 3. Context Resolution (Reference Message ID)
+	var referenceMessageID int64
+	if activeFlags > 0 {
+		// We need to read workspace.json to find the reference message ID
+		workspacePath := "workspace.json"
+		if _, err := os.Stat(workspacePath); os.IsNotExist(err) {
+			return fmt.Errorf("workspace.json not found. Cannot determine reference message ID for operation.")
+		}
+
+		data, err := os.ReadFile(workspacePath)
+		if err != nil {
+			return fmt.Errorf("failed to read workspace.json: %w", err)
+		}
+
+		var ws contract.ShadowWorkspace
+		if err := json.Unmarshal(data, &ws); err != nil {
+			return fmt.Errorf("failed to parse workspace.json: %w", err)
+		}
+
+		referenceMessageID = ws.MessageID
+	}
+
+	// 4. Input Resolution
 	var content string
 
 	// Check for Pipe
@@ -105,7 +150,7 @@ func handleSend(args []string) error {
 		return fmt.Errorf("cannot use both pipe and --file")
 	}
 
-	// 3. Formatting
+	// 5. Formatting
 	// Wrap content first
 	if sendWrap != "" {
 		content = fmt.Sprintf("```%s\n%s\n```", sendWrap, content)
@@ -120,23 +165,27 @@ func handleSend(args []string) error {
 		finalMessage = finalMessage + "\n\n" + sendMdAfter
 	}
 
-	// 4. Payload Construction
+	// 6. Payload Construction
 	payload := contract.ChatMessagePayload{
-		Text:           finalMessage,
-		Type:           "regular",
-		Visibility:     sendVisibility,
-		NoConfirmation: sendNoConfirmation,
+		Text:               finalMessage,
+		Type:               "regular",
+		Visibility:         sendVisibility,
+		NoConfirmation:     sendNoConfirmation,
+		ReferenceMessageID: referenceMessageID,
+		Replace:            sendReplace,
+		InsertBefore:       sendInsertBefore,
+		InsertAfter:        sendInsertAfter,
 	}
 
-	// 5. Expiration Calculation (1 minute)
+	// 7. Expiration Calculation (1 minute)
 	expiresAt := time.Now().Add(1 * time.Minute)
 
-	// 6. Database Insertion
+	// 8. Database Insertion
 	if err := contract.InsertEvent(contractUUID, chatID, "chat_message", payload, "terminal", expiresAt); err != nil {
 		return fmt.Errorf("failed to send message: %w", err)
 	}
 
-	// 7. Feedback
+	// 9. Feedback
 	fmt.Printf("✓ Message queued for chat %d\n", chatID)
 	if sendNoConfirmation {
 		fmt.Printf("! Message will be added to chat automatically.\n")

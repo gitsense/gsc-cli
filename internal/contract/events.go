@@ -1,12 +1,12 @@
 /*
  * Component: Contract Events Database Helper
- * Block-UUID: 82fa74af-9792-4a82-b956-9b5f84bd00a5
- * Parent-UUID: 84289347-34b3-4e2f-a2c8-c4c2c64ce983
- * Version: 1.2.0
- * Description: Updated ChatMessagePayload struct to include NoConfirmation field to support bypassing the UI confirmation modal.
+ * Block-UUID: 44c7ed6b-27af-4941-81cb-bc6c5f44d5a0
+ * Parent-UUID: 82fa74af-9792-4a82-b956-9b5f84bd00a5
+ * Version: 1.3.0
+ * Description: Updated ChatMessagePayload to support message manipulation operations (replace, insert before, insert after) by adding ReferenceMessageID and boolean flags.
  * Language: Go
  * Created-at: 2026-03-07T04:11:57.272Z
- * Authors: Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0)
+ * Authors: Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
  */
 
 
@@ -26,11 +26,17 @@ import (
 )
 
 // ChatMessagePayload represents the data structure for a chat message event.
+// It supports appending new messages as well as manipulating existing messages
+// relative to a reference message ID (e.g., replace, insert before, insert after).
 type ChatMessagePayload struct {
-	Text           string `json:"text"`
-	Type           string `json:"type"`           // e.g., "regular"
-	Visibility     string `json:"visibility"`     // e.g., "human-public", "human-only"
-	NoConfirmation bool   `json:"no_confirmation"` // If true, bypass the UI confirmation modal
+	Text               string `json:"text"`
+	Type               string `json:"type"`               // e.g., "regular"
+	Visibility         string `json:"visibility"`         // e.g., "human-public", "human-only"
+	NoConfirmation     bool   `json:"no_confirmation"`     // If true, bypass the UI confirmation modal
+	ReferenceMessageID int64  `json:"reference_message_id,omitempty"` // The ID of the message to target for operations
+	Replace            bool   `json:"replace,omitempty"`    // If true, replace the reference message
+	InsertBefore       bool   `json:"insert_before,omitempty"` // If true, insert before the reference message
+	InsertAfter        bool   `json:"insert_after,omitempty"`  // If true, insert after the reference message
 }
 
 // GetEventsDBPath resolves the absolute path to the events database for a given contract UUID.
