@@ -31,11 +31,16 @@ DIRECTORY STRUCTURE
 
         snippets/
             Small code blocks without a component name.
-            Example: unmapped/snippets/block_001.go
+            Example: unmapped/snippets/generated_001.go
 
         patches/
             Raw patch files for reference.
             Example: unmapped/components/01_hello_world_patch_a1b2c3d4.diff
+
+    File Naming Convention:
+        - mapped/ and components/ directories contain 'generated.<ext>' files.
+        - snippets/ directories contain 'generated_<index>.<ext>' files.
+        - 'source.<ext>' files represent the original project code (for mapped files).
 
     Sanitization Rules:
         - Spaces are replaced with underscores.
@@ -43,6 +48,28 @@ DIRECTORY STRUCTURE
         - Names are converted to lowercase.
 
 COMMANDS
+    .block [INDEX|list|next|prev|root]
+        Navigate between code blocks in the workspace. This is the primary
+        tool for reviewing AI-generated code.
+
+        Behavior (Smart Default):
+        - If the workspace contains only one block, '.block' jumps directly to it.
+        - If the workspace contains multiple blocks, '.block' launches an
+          interactive picker (fzf) to select a block.
+
+        Arguments:
+        INDEX       Jump directly to the block at the specified 1-based index.
+        list        Force the interactive picker (fzf).
+        next        Jump to the next block relative to the current directory.
+        prev        Jump to the previous block relative to the current directory.
+        root        Return to the workspace root directory.
+
+        Examples:
+        .block              # Smart jump or picker
+        .block 2            # Jump to the second block
+        .block next         # Move to the next block
+        .block root         # Return to workspace root
+
     .ffp [OPTIONS]
         Fuzzy find files in the real project root ($GSC_PROJECT_ROOT).
         This is the primary tool for locating source files to compare

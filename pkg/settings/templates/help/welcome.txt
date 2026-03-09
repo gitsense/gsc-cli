@@ -7,6 +7,7 @@ You can freely modify, build, and test files in this directory. Your
 changes are isolated and will NOT affect your actual project.
 
 Available Commands:
+  .block   - Navigate between code blocks (Smart Jump/Picker)
   .ffp     - Fuzzy find files in the project root
   .send    - Send output to the chat
   .help    - Show detailed manual
