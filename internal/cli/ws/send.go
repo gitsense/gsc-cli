@@ -1,29 +1,25 @@
-/*
+/**
  * Component: Workspace Send Command
- * Block-UUID: f4ff7005-b6dd-4609-81f4-d022d19cd041
- * Parent-UUID: 2f9978b9-6ccc-43f5-b0f2-8356ec9d644e
- * Version: 1.3.0
+ * Block-UUID: 5aef8d06-32c3-48ec-a9ab-09f0a208c5bb
+ * Parent-UUID: f4ff7005-b6dd-4609-81f4-d022d19cd041
+ * Version: 1.4.0
  * Description: Added support for message manipulation operations (replace, insert before, insert after) using workspace context and updated payload structure.
  * Language: Go
- * Created-at: 2026-03-07T04:45:31.000Z
- * Authors: Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
+ * Created-at: 2026-03-10T22:02:47.218Z
+ * Authors: Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), Gemini 3 Flash (v1.4.0)
  */
 
 
 package ws
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"strconv"
-	"time"
 
-	"github.com/AlecAivazis/survey/v2"
+	"github.com/gitsense/gsc-cli/internal/cli/send"
 	"github.com/gitsense/gsc-cli/internal/contract"
-	"github.com/gitsense/gsc-cli/pkg/settings"
 	"github.com/spf13/cobra"
 )
 
@@ -73,17 +69,17 @@ func handleSend(args []string) error {
 	// 1. Context Validation
 	contractUUID := os.Getenv("GSC_CONTRACT_UUID")
 	if contractUUID == "" {
-		return fmt.Errorf("not in a GitSense workspace. GSC_CONTRACT_UUID environment variable not set.")
+		return fmt.Errorf("not in a GitSense workspace. GSC_CONTRACT_UUID not set.")
 	}
 
 	chatIDStr := os.Getenv("GSC_CHAT_ID")
 	if chatIDStr == "" {
-		return fmt.Errorf("not in a GitSense workspace. GSC_CHAT_ID environment variable not set.")
+		return fmt.Errorf("not in a GitSense workspace. GSC_CHAT_ID not set.")
 	}
 
 	chatID, err := strconv.ParseInt(chatIDStr, 10, 64)
 	if err != nil {
-		return fmt.Errorf("invalid GSC_CHAT_ID environment variable: %w", err)
+		return fmt.Errorf("invalid GSC_CHAT_ID: %w", err)
 	}
 
 	// 2. Flag Validation (Mutual Exclusion)
@@ -120,56 +116,22 @@ func handleSend(args []string) error {
 		referenceMessageID = ws.MessageID
 	}
 
-	// 4. Input Resolution
-	var content string
-
-	// Check for Pipe
-	stat, _ := os.Stdin.Stat()
-	if (stat.Mode() & os.ModeCharDevice) == 0 {
-		// Data is being piped in
-		data, err := io.ReadAll(os.Stdin)
-		if err != nil {
-			return fmt.Errorf("failed to read from stdin: %w", err)
-		}
-		content = string(data)
-	} else if sendFile != "" {
-		// Read from File
-		content, err = readFileContent(sendFile)
-		if err != nil {
-			return err
-		}
-	} else if len(args) > 0 {
-		// Read from Argument
-		content = args[0]
-	} else {
-		return fmt.Errorf("no input provided. Use pipe, --file, or provide text argument.")
+	// 4. Map to Shared Options
+	text := ""
+	if len(args) > 0 {
+		text = args[0]
 	}
 
-	// Conflict Check: Pipe and File
-	if (stat.Mode() & os.ModeCharDevice) == 0 && sendFile != "" {
-		return fmt.Errorf("cannot use both pipe and --file")
-	}
-
-	// 5. Formatting
-	// Wrap content first
-	if sendWrap != "" {
-		content = fmt.Sprintf("```%s\n%s\n```", sendWrap, content)
-	}
-
-	// Add before/after
-	finalMessage := content
-	if sendMdBefore != "" {
-		finalMessage = sendMdBefore + "\n\n" + finalMessage
-	}
-	if sendMdAfter != "" {
-		finalMessage = finalMessage + "\n\n" + sendMdAfter
-	}
-
-	// 6. Payload Construction
-	payload := contract.ChatMessagePayload{
-		Text:               finalMessage,
-		Type:               "regular",
+	opts := send.Options{
+		ContractUUID:       contractUUID,
+		ChatID:             chatID,
+		Text:               text,
+		File:               sendFile,
+		MdBefore:           sendMdBefore,
+		MdAfter:            sendMdAfter,
+		Wrap:               sendWrap,
 		Visibility:         sendVisibility,
+		Force:              sendForce,
 		NoConfirmation:     sendNoConfirmation,
 		ReferenceMessageID: referenceMessageID,
 		Replace:            sendReplace,
@@ -177,72 +139,5 @@ func handleSend(args []string) error {
 		InsertAfter:        sendInsertAfter,
 	}
 
-	// 7. Expiration Calculation (1 minute)
-	expiresAt := time.Now().Add(1 * time.Minute)
-
-	// 8. Database Insertion
-	if err := contract.InsertEvent(contractUUID, chatID, "chat_message", payload, "terminal", expiresAt); err != nil {
-		return fmt.Errorf("failed to send message: %w", err)
-	}
-
-	// 9. Feedback
-	fmt.Printf("✓ Message queued for chat %d\n", chatID)
-	if sendNoConfirmation {
-		fmt.Printf("! Message will be added to chat automatically.\n")
-	} else {
-		fmt.Printf("! You have 60 seconds to confirm this message in the Web UI before it expires.\n")
-	}
-	return nil
-}
-
-// readFileContent reads a file and performs validation checks
-func readFileContent(path string) (string, error) {
-	// Check existence
-	info, err := os.Stat(path)
-	if err != nil {
-		return "", fmt.Errorf("file not found: %w", err)
-	}
-
-	// Size Check
-	if info.Size() > settings.DefaultMaxSendSize {
-		sizeMB := float64(info.Size()) / 1024 / 1024
-		fmt.Printf("Warning: File is %.2f MB. Large messages may be truncated by the AI.\n", sizeMB)
-
-		if !sendForce {
-			confirm := false
-			prompt := &survey.Confirm{
-				Message: "Do you want to continue?",
-				Default: false,
-			}
-			if err := survey.AskOne(prompt, &confirm); err != nil || !confirm {
-				fmt.Println("Send cancelled.")
-				return "", fmt.Errorf("send cancelled by user")
-			}
-		}
-	}
-
-	// Binary Check
-	file, err := os.Open(path)
-	if err != nil {
-		return "", fmt.Errorf("failed to open file: %w", err)
-	}
-	defer file.Close()
-
-	buf := make([]byte, 512)
-	n, err := file.Read(buf)
-	if err != nil {
-		return "", fmt.Errorf("failed to read file header: %w", err)
-	}
-
-	if n > 0 && bytes.Contains(buf[:n], []byte{0}) {
-		return "", fmt.Errorf("binary files are not supported")
-	}
-
-	// Read full content
-	content, err := os.ReadFile(path)
-	if err != nil {
-		return "", fmt.Errorf("failed to read file content: %w", err)
-	}
-
-	return string(content), nil
+	return send.Perform(opts)
 }
