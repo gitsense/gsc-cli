@@ -1,12 +1,12 @@
 /**
  * Component: Contract Dump Orchestrator
- * Block-UUID: 82706c4d-b99f-4b64-9c0c-33fb5931dba6
- * Parent-UUID: a581ceef-fb80-49fc-a379-47f2e74cc356
- * Version: 2.25.0
- * Description: Implemented Registry-First workspace strategy. Calculates composite hash (ContractUUID + MessageHash) for unique workspace IDs and updates the ContractMetadata JSON registry.
+ * Block-UUID: a15113ba-3619-4361-a212-4a89dcd283ec
+ * Parent-UUID: 82706c4d-b99f-4b64-9c0c-33fb5931dba6
+ * Version: 2.26.0
+ * Description: Refactored chat discovery logic to use the new db.GetChatsByContractUUID helper function, removing embedded SQL queries.
  * Language: Go
- * Created-at: 2026-03-10T01:13:58.023Z
- * Authors: GLM-4.7 (v2.23.0), GLM-4.7 (v2.24.0), GLM-4.7 (v2.25.0)
+ * Created-at: 2026-03-10T14:31:51.529Z
+ * Authors: GLM-4.7 (v2.23.0), GLM-4.7 (v2.24.0), GLM-4.7 (v2.25.0), GLM-4.7 (v2.26.0)
  */
 
 
@@ -31,28 +31,10 @@ func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, inclu
 	defer sqliteDB.Close()
 
 	// 3. Find all chats associated with this contract
-	query := `
-		SELECT 
-			id, uuid, name, type 
-		FROM 
-			chats 
-		WHERE id IN (
-			SELECT chat_id FROM messages WHERE type = 'gsc-cli-contract' AND json_extract(meta, '$.contract_uuid') = ? AND deleted = 0
-		)`
-		
-	rows, err := sqliteDB.Query(query, contractUUID)
+	// REFACTORED: Use the new helper function from db package
+	chats, err := db.GetChatsByContractUUID(sqliteDB, contractUUID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query chats for contract: %w", err)
-	}
-	defer rows.Close()
-
-	var chats []db.Chat
-	for rows.Next() {
-		var c db.Chat
-		if err := rows.Scan(&c.ID, &c.UUID, &c.Name, &c.Type); err != nil {
-			return nil, err
-		}
-		chats = append(chats, c)
 	}
 
 	if len(chats) == 0 {

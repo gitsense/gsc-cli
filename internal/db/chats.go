@@ -1,12 +1,12 @@
 /**
  * Component: Chat Database Operations
- * Block-UUID: 829d31b2-75b9-43c7-a337-18c1bcf356ba
- * Parent-UUID: 1a8466e6-9994-4a4e-beca-72965c6b0b97
- * Version: 1.20.1
- * Description: Added GetMessagesRecursive to retrieve the full conversation thread in the correct hierarchical order using a recursive CTE. This is essential for generating accurate conversational filesystem trees.
+ * Block-UUID: 84a4cef4-41fc-463d-a09a-ec3934ab3b4b
+ * Parent-UUID: 829d31b2-75b9-43c7-a337-18c1bcf356ba
+ * Version: 1.21.0
+ * Description: Added GetChatsByContractUUID to retrieve all chats associated with a specific contract UUID, enabling the new 'gsc chats' command.
  * Language: Go
- * Created-at: 2026-03-08T17:02:51.922Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), Gemini 3 Flash (v1.16.0), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.19.0), GLM-4.7 (v1.20.0), GLM-4.7 (v1.20.1)
+ * Created-at: 2026-03-10T14:31:51.529Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), Gemini 3 Flash (v1.16.0), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.19.0), GLM-4.7 (v1.20.0), GLM-4.7 (v1.20.1), GLM-4.7 (v1.21.0)
  */
 
 
@@ -50,8 +50,8 @@ func FormatContractMarkdown(data ContractMessageData) string {
 	// Timeout Display
 	sb.WriteString(fmt.Sprintf("| **Timeout** | %ds |\n", data.ExecTimeout))
 	
-	sb.WriteString(fmt.Sprintf("| **Expires At** | %s |\n", data.ExpiresAt.Format(time.RFC3339)))
-	sb.WriteString(fmt.Sprintf("| **Status** | %s |\n", data.Status))
+	sb.WriteString(fmt.Sprintf("| **Expires At** | %s\n", data.ExpiresAt.Format(time.RFC3339)))
+	sb.WriteString(fmt.Sprintf("| **Status** | %s\n", data.Status))
 
 	// Informational Blurb
 	sb.WriteString(fmt.Sprintf("\n> **Note 1:** To retrieve your authorization code, run `gsc contract info %s`\n", data.UUID))
@@ -756,7 +756,7 @@ func GetMessagesRecursive(dbConn *sql.DB, chatID int64) ([]Message, error) {
 		INNER JOIN conversation_tree ct ON m.parent_id = ct.id
 		WHERE
 			m.chat_id = ? AND
-			m.deleted = 0
+			ct.deleted = 0
 	)
 	SELECT * FROM conversation_tree ORDER BY position ASC, created_at ASC`
 
@@ -786,4 +786,34 @@ func GetMessagesRecursive(dbConn *sql.DB, chatID int64) ([]Message, error) {
 	}
 
 	return messages, nil
+}
+
+// GetChatsByContractUUID retrieves all chats associated with a specific contract UUID.
+// It searches for chats that contain a 'gsc-cli-contract' message with the matching contract_uuid in its metadata.
+func GetChatsByContractUUID(db *sql.DB, contractUUID string) ([]Chat, error) {
+	query := `
+		SELECT 
+			id, uuid, name, type 
+		FROM 
+			chats 
+		WHERE id IN (
+			SELECT chat_id FROM messages WHERE type = 'gsc-cli-contract' AND json_extract(meta, '$.contract_uuid') = ? AND deleted = 0
+		)`
+		
+	rows, err := db.Query(query, contractUUID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query chats for contract: %w", err)
+	}
+	defer rows.Close()
+
+	var chats []Chat
+	for rows.Next() {
+		var c Chat
+		if err := rows.Scan(&c.ID, &c.UUID, &c.Name, &c.Type); err != nil {
+			return nil, err
+		}
+		chats = append(chats, c)
+	}
+
+	return chats, nil
 }
