@@ -1,3 +1,15 @@
+<!--
+Component: GitSense Workspace Welcome Message
+Block-UUID: 27b38ae9-cee1-4456-b961-233c42914e46
+Parent-UUID: N/A
+Version: 1.0.0
+Description: The welcome message displayed upon entering a shadow workspace.
+Language: Plain Text
+Created-at: 2026-03-10T03:14:13.779Z
+Authors: GLM-4.7 (v1.0.0)
+-->
+
+
 GitSense Shadow Workspace
 -------------------------
 This directory is a structured dump of the AI's response, converted into
@@ -7,7 +19,9 @@ You can freely modify, build, and test files in this directory. Your
 changes are isolated and will NOT affect your actual project.
 
 Available Commands:
-  .block   - Navigate between code blocks (Smart Jump/Picker)
+  .block   - Navigate between code blocks in the current message
+  .map     - Visualize the workspace hierarchy
+  .goto    - Jump to any block across all messages
   .ffp     - Fuzzy find files in the project root
   .send    - Send output to the chat
   .help    - Show detailed manual

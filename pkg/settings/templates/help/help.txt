@@ -1,3 +1,15 @@
+<!--
+Component: GitSense Workspace Manual
+Block-UUID: 794a7ed8-3173-4df1-bff0-bc87b7db5d4c
+Parent-UUID: N/A
+Version: 1.0.0
+Description: Comprehensive manual for the GitSense shadow workspace environment.
+Language: Plain Text
+Created-at: 2026-03-10T03:17:29.403Z
+Authors: GLM-4.7 (v1.0.0)
+-->
+
+
 GSC-WORKSPACE(1)             GitSense Manual            GSC-WORKSPACE(1)
 
 NAME
@@ -49,8 +61,8 @@ DIRECTORY STRUCTURE
 
 COMMANDS
     .block [INDEX|list|next|prev|root]
-        Navigate between code blocks in the workspace. This is the primary
-        tool for reviewing AI-generated code.
+        Navigate between code blocks in the current message. This is the primary
+        tool for reviewing AI-generated code within the active workspace.
 
         Behavior (Smart Default):
         - If the workspace contains only one block, '.block' jumps directly to it.
@@ -69,6 +81,25 @@ COMMANDS
         .block 2            # Jump to the second block
         .block next         # Move to the next block
         .block root         # Return to workspace root
+
+    .map [--all]
+        Visualizes the workspace hierarchy. By default, it provides a focused
+        view of the current workspace, collapsing others into summaries.
+
+        Options:
+        --all       Expand all workspaces in the contract to show the full tree.
+
+        Examples:
+        .map                # Show focused view of current workspace
+        .map --all          # Show full tree of all workspaces
+
+    .goto
+        Opens an interactive picker (fzf) to jump to any block across all
+        messages in the contract. This allows for rapid navigation between
+        different workspaces.
+
+        Examples:
+        .goto              # Open picker to jump to any block
 
     .ffp [OPTIONS]
         Fuzzy find files in the real project root ($GSC_PROJECT_ROOT).
@@ -105,9 +136,10 @@ COMMANDS
         Displays this detailed manual.
 
 ENVIRONMENT
-    GSC_CHAT_ID         The ID of the chat receiving 'send' output.
-    GSC_CONTRACT_UUID   The UUID of the active contract.
-    GSC_PROJECT_ROOT    The absolute path to the actual project tied to the contract.
+    GSC_CHAT_ID              The ID of the chat receiving 'send' output.
+    GSC_CONTRACT_UUID        The UUID of the active contract.
+    GSC_CONTRACT_MAPPED_ROOT The root directory containing all shadow workspaces for the contract.
+    GSC_PROJECT_ROOT         The absolute path to the actual project tied to the contract.
 
 EXIT
     Type 'exit' to close this session and return to your project root.

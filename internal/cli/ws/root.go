@@ -1,12 +1,12 @@
 /**
  * Component: Workspace Root Command
- * Block-UUID: f20eb974-bb3a-411e-a707-c214ce5d6fd4
- * Parent-UUID: d896e65b-aaff-4e9c-9e96-a00daa37ac0a
- * Version: 1.10.0
- * Description: Fixed compiler error by removing unused 'entry' variable in handleWorkspaceEntry.
+ * Block-UUID: c7deab69-5d14-4a4e-a2ad-af8181a52a8c
+ * Parent-UUID: f20eb974-bb3a-411e-a707-c214ce5d6fd4
+ * Version: 1.11.0
+ * Description: Added GSC_CONTRACT_MAPPED_ROOT environment variable to shell initialization to support cross-workspace mapping and navigation.
  * Language: Go
- * Created-at: 2026-03-09T17:34:32.692Z
- * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v1.6.2), Gemini 3 Flash (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.8.1), GLM-4.7 (v1.9.0), Gemini 3 Flash (v1.10.0)
+ * Created-at: 2026-03-10T01:49:02.703Z
+ * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v1.10.0), Gemini 3 Flash (v1.11.0)
  */
 
 
@@ -67,6 +67,7 @@ func RegisterCommand(root *cobra.Command) {
 	wsCmd.AddCommand(sendCmd)
 	wsCmd.AddCommand(ffpCmd)
 	wsCmd.AddCommand(blockCmd)
+	wsCmd.AddCommand(mapCmd)
 	root.AddCommand(wsCmd)
 }
 
@@ -148,11 +149,6 @@ func findWorkspaceByID(workspaceID string) (*contract.ContractMetadata, contract
 	}
 
 	for _, file := range files {
-		// Load contract metadata
-		// We use the internal loadContractMetadata from the contract package
-		// Since it's not exported, we have to duplicate the logic or rely on GetContract
-		// GetContract is safer and handles path resolution.
-		
 		// Extract UUID from filename
 		uuid := filepath.Base(file)
 		uuid = strings.TrimSuffix(uuid, ".json")
@@ -199,11 +195,12 @@ func executeShell(workspaceRoot, targetDir string, meta *contract.ContractMetada
 	// 2. Prepare Template Replacements
 	mappedDir := filepath.Dir(workspaceRoot)
 	replacements := map[string]string{
-		"{{GSC_CHAT_ID}}":       fmt.Sprintf("%d", meta.ChatID),
-		"{{GSC_PROJECT_ROOT}}":  meta.Workdir,
-		"{{GSC_CONTRACT_UUID}}": meta.UUID,
-		"{{GSC_SCRIPTS_DIR}}":   mappedDir,
-		"{{TARGET_DIR}}":        targetDir,
+		"{{GSC_CHAT_ID}}":             fmt.Sprintf("%d", meta.ChatID),
+		"{{GSC_PROJECT_ROOT}}":        meta.Workdir,
+		"{{GSC_CONTRACT_UUID}}":       meta.UUID,
+		"{{GSC_CONTRACT_MAPPED_ROOT}}": mappedDir,
+		"{{GSC_SCRIPTS_DIR}}":         mappedDir,
+		"{{TARGET_DIR}}":              targetDir,
 	}
 
 	// 3. Process Shell Template
