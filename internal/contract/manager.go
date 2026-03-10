@@ -1,12 +1,12 @@
 /**
  * Component: Contract Manager
- * Block-UUID: b7fd22f4-114c-40e8-a3e9-412de6ba6eb6
- * Parent-UUID: 1fb9baea-6ef6-427d-90bf-5a07d1a06a88
- * Version: 1.15.0
+ * Block-UUID: 8ac71a41-2a12-42d6-8056-ff2e3aa90626
+ * Parent-UUID: b7fd22f4-114c-40e8-a3e9-412de6ba6eb6
+ * Version: 1.16.0
  * Description: Added initEventsDB to create the messaging database skeleton on contract creation and added confirmation prompt to DeleteContract.
  * Language: Go
- * Created-at: 2026-03-07T02:26:57.766Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), Gemini 3 Flash (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0)
+ * Created-at: 2026-03-10T14:31:51.529Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), Gemini 3 Flash (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0)
  */
 
 
@@ -170,7 +170,7 @@ func initEventsDB(uuid string) error {
 		return fmt.Errorf("failed to resolve GSC_HOME: %w", err)
 	}
 
-	dbPath := filepath.Join(gscHome, "data", "dumps", uuid, "events.sqlite3")
+	dbPath := filepath.Join(gscHome, settings.HomesRelPath, uuid, "events.sqlite3")
 	
 	// Ensure directory exists
 	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
@@ -591,6 +591,11 @@ func FormatContractInfo(info *ContractInfoResult, format string) string {
 	sb.WriteString(fmt.Sprintf("  Description:  %s\n", info.Description))
 	sb.WriteString(fmt.Sprintf("  Authcode:     %s\n", info.Authcode))
 	sb.WriteString(fmt.Sprintf("  Workdir:      %s\n", info.Workdir))
+	
+	// Calculate and display Homedir
+	homedir := GetDefaultHomeDir(info.UUID, "")
+	sb.WriteString(fmt.Sprintf("  Homedir:      %s\n", homedir))
+	
 	sb.WriteString(fmt.Sprintf("  Created At:   %s\n", info.CreatedAt.Format(time.RFC3339)))
 	sb.WriteString(fmt.Sprintf("  Expires At:   %s\n", info.ExpiresAt.Format(time.RFC3339)))
 	sb.WriteString(fmt.Sprintf("  Exec Timeout: %ds\n", info.ExecTimeout))
@@ -625,18 +630,9 @@ func FormatContractInfo(info *ContractInfoResult, format string) string {
 	return sb.String()
 }
 
-// GetDefaultDumpDir returns the default output directory for a contract dump.
-// It now supports a dumpType parameter to create hierarchical structures (e.g., dumps/<uuid>/mapped).
-func GetDefaultDumpDir(uuid string, dumpType string) string {
-	gscHome, _ := settings.GetGSCHome(false)
-	baseDir := filepath.Join(gscHome, "data", "dumps", uuid)
-	
-	if dumpType != "" {
-		return filepath.Join(baseDir, dumpType)
-	}
-	
-	return baseDir
-}
+// Note: FormatContractInfo has been updated to calculate and display the Homedir
+// dynamically to avoid modifying the ContractInfoResult struct in models.go.
+// The logic is embedded in the function body below.
 
 // FormatContractTest formats the output for the 'contract test' command.
 func FormatContractTest(result *ContractTestResult, format string) string {
@@ -692,4 +688,59 @@ func FormatContractTest(result *ContractTestResult, format string) string {
 	}
 
 	return sb.String()
+}
+
+// GetDefaultHomeDir returns the default home directory for a contract.
+// It now supports a dumpType parameter to create hierarchical structures (e.g., dumps/<uuid>/mapped).
+func GetDefaultHomeDir(uuid string, dumpType string) string {
+	gscHome, _ := settings.GetGSCHome(false)
+	baseDir := filepath.Join(gscHome, settings.HomesRelPath, uuid)
+	
+	if dumpType != "" {
+		return filepath.Join(baseDir, dumpType)
+	}
+	
+	return baseDir
+}
+
+// writeContractMarker creates the .gsc-contract.json file in the home directory.
+func writeContractMarker(homedir, uuid, workdir string) error {
+	marker := map[string]string{
+		"contract_uuid": uuid,
+		"workdir":       workdir,
+		"homedir":       homedir,
+	}
+	data, err := json.MarshalIndent(marker, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal contract marker: %w", err)
+	}
+	markerPath := filepath.Join(homedir, ".gsc-contract.json")
+	if err := os.WriteFile(markerPath, data, 0644); err != nil {
+		return fmt.Errorf("failed to write contract marker: %w", err)
+	}
+	logger.Info("Contract marker written", "path", markerPath)
+	return nil
+}
+
+// DiscoverContractHome walks up the directory tree to find the contract home.
+func DiscoverContractHome() (string, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("failed to get current directory: %w", err)
+	}
+
+	for {
+		markerPath := filepath.Join(cwd, ".gsc-contract.json")
+		if _, err := os.Stat(markerPath); err == nil {
+			return cwd, nil
+		}
+
+		parent := filepath.Dir(cwd)
+		if parent == cwd {
+			break // Reached root
+		}
+		cwd = parent
+	}
+
+	return "", fmt.Errorf("contract home not found")
 }

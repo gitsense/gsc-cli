@@ -1,12 +1,12 @@
 /**
  * Component: Contract Intent Handler
- * Block-UUID: 61517e95-bc9c-4938-8fc0-ebf20e758f0b
- * Parent-UUID: d8db6c4f-f718-4cf6-818b-1e56d45640a8
- * Version: 1.24.0
+ * Block-UUID: 2dbfe88f-6218-4ab1-a26a-cf7af81180a0
+ * Parent-UUID: 61517e95-bc9c-4938-8fc0-ebf20e758f0b
+ * Version: 1.25.0
  * Description: Simplified terminal intent handling to delegate shell spawning to 'gsc ws'. Removed script generation and environment variable injection logic.
  * Language: Go
- * Created-at: 2026-03-06T05:23:56.122Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.21.0), GLM-4.7 (v1.22.0), GLM-4.7 (v1.23.0), GLM-4.7 (v1.24.0)
+ * Created-at: 2026-03-10T14:36:39.746Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.21.0), GLM-4.7 (v1.22.0), GLM-4.7 (v1.23.0), GLM-4.7 (v1.24.0), GLM-4.7 (v1.25.0)
  */
 
 
@@ -297,7 +297,7 @@ func handleDumpIntent(meta *ContractMetadata, req LaunchRequest, activeChatID in
 	}
 
 	// 2. Resolve Output Directory (Type-Aware)
-	outputDir := GetDefaultDumpDir(meta.UUID, dumpType)
+	outputDir := GetDefaultHomeDir(meta.UUID, dumpType)
 	
 	// 3. Execute Dump
 	// Note: We don't have messageID or validate flags in LaunchRequest yet, 
@@ -309,7 +309,7 @@ func handleDumpIntent(meta *ContractMetadata, req LaunchRequest, activeChatID in
 	}
 
 	// 4. Launch Terminal in the Dump Directory
-	// We override the workdir for the terminal launch to the dump directory
+	// We override the workdir for the terminal launch to the home directory
 	cmdStr := fmt.Sprintf("cd %s && clear && tree -C .", outputDir)
 	req.Cmd = cmdStr
 	

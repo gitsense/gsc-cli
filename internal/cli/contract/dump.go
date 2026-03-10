@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Contract CLI Dump
- * Block-UUID: ddd4996c-6d75-4a9e-b6a8-8cd6a80df714
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: d4d094e8-3d83-400e-8eb4-b8fdf645ce40
+ * Parent-UUID: ddd4996c-6d75-4a9e-b6a8-8cd6a80df714
+ * Version: 1.1.0
  * Description: CLI commands for dumping chat history into filesystem structures (tree, merged, mapped) and managing shadow workspaces.
  * Language: Go
- * Created-at: 2026-03-08T00:23:15.567Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.29.1), Gemini 3 Flash (v1.30.0), GLM-4.7 (v1.31.0)
+ * Created-at: 2026-03-10T14:33:21.390Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.29.1), Gemini 3 Flash (v1.30.0), GLM-4.7 (v1.31.0), GLM-4.7 (v1.1.0)
  */
 
 
@@ -69,7 +69,7 @@ the raw message, code blocks, and patch results.`,
 		// 3. Resolve Output Directory (Type-Aware)
 		outputDir := contractDumpOutput
 		if outputDir == "" {
-			outputDir = contract.GetDefaultDumpDir(uuid, "tree")
+			outputDir = contract.GetDefaultHomeDir(uuid, "tree")
 		}
 
 		// 4. Select Strategy
@@ -124,7 +124,7 @@ by popularity or recency. It provides a condensed view of the conversation.`,
 		// 3. Resolve Output Directory (Type-Aware)
 		outputDir := contractDumpOutput
 		if outputDir == "" {
-			outputDir = contract.GetDefaultDumpDir(uuid, "merged")
+			outputDir = contract.GetDefaultHomeDir(uuid, "merged")
 		}
 
 		// 4. Select Strategy
@@ -180,7 +180,7 @@ workspace that shows how files evolved across the conversation.`,
 		// Note: The dumper will append the message hash to this path
 		outputDir := contractDumpOutput
 		if outputDir == "" {
-			outputDir = contract.GetDefaultDumpDir(uuid, "mapped")
+			outputDir = contract.GetDefaultHomeDir(uuid, "mapped")
 		}
 
 		// 4. Select Strategy
@@ -278,25 +278,25 @@ and removes them to free up disk space.`,
 		cmd.SilenceUsage = true
 
 		gscHome, _ := settings.GetGSCHome(false)
-		dumpsRoot := filepath.Join(gscHome, settings.DumpsRelPath)
+		homesRoot := filepath.Join(gscHome, settings.HomesRelPath)
 
-		// Check if dumps directory exists
-		if _, err := os.Stat(dumpsRoot); os.IsNotExist(err) {
-			fmt.Println("No dumps directory found.")
+		// Check if homes directory exists
+		if _, err := os.Stat(homesRoot); os.IsNotExist(err) {
+			fmt.Println("No homes directory found.")
 			return nil
 		}
 
 		deletedCount := 0
 		now := time.Now()
 
-		// Walk the dumps directory
-		err := filepath.Walk(dumpsRoot, func(path string, info os.FileInfo, err error) error {
+		// Walk the homes directory
+		err := filepath.Walk(homesRoot, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
 			}
 
 			// We are looking for workspace.json files
-			// These are now located at: dumpsRoot/<uuid>/mapped/<hash>/workspace.json
+			// These are now located at: homesRoot/<uuid>/mapped/<hash>/workspace.json
 			if info.Name() != "workspace.json" {
 				return nil
 			}
@@ -338,7 +338,7 @@ and removes them to free up disk space.`,
 		})
 
 		if err != nil {
-			return fmt.Errorf("failed to walk dumps directory: %w", err)
+			return fmt.Errorf("failed to walk homes directory: %w", err)
 		}
 
 		fmt.Printf("\nPrune complete. Removed %d expired workspace(s).\n", deletedCount)
@@ -361,7 +361,7 @@ func init() {
 	
 	// Parent Flags (Shared by all dump types)
 	dumpContractCmd.PersistentFlags().StringVar(&contractDumpUUID, "uuid", "", "Contract UUID (optional if in workdir)")
-	dumpContractCmd.PersistentFlags().StringVarP(&contractDumpOutput, "output", "o", "", "Output directory (default: ~/.gitsense/dumps/<uuid>/<type>)")
+	dumpContractCmd.PersistentFlags().StringVarP(&contractDumpOutput, "output", "o", "", "Output directory (default: ~/.gitsense/homes/<uuid>/<type>)")
 	dumpContractCmd.PersistentFlags().BoolVar(&contractDumpIncludeSystem, "include-system", false, "Include the system message in the dump (default: false)")
 	dumpContractCmd.PersistentFlags().BoolVar(&contractDumpDebugPatch, "debug-patch", false, "Enable patch debugging (persists source and diff artifacts on failure)")
 	dumpContractCmd.PersistentFlags().BoolVar(&contractDumpRaw, "raw", false, "Disable smart trimming (preserve exact LLM output)")

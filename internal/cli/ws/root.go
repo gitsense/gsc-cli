@@ -1,12 +1,12 @@
 /**
  * Component: Workspace Root Command
- * Block-UUID: c7deab69-5d14-4a4e-a2ad-af8181a52a8c
- * Parent-UUID: f20eb974-bb3a-411e-a707-c214ce5d6fd4
- * Version: 1.11.0
+ * Block-UUID: 822e15f9-9213-47fc-b030-a46f523aaef2
+ * Parent-UUID: c7deab69-5d14-4a4e-a2ad-af8181a52a8c
+ * Version: 1.12.0
  * Description: Added GSC_CONTRACT_MAPPED_ROOT environment variable to shell initialization to support cross-workspace mapping and navigation.
  * Language: Go
- * Created-at: 2026-03-10T01:49:02.703Z
- * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v1.10.0), Gemini 3 Flash (v1.11.0)
+ * Created-at: 2026-03-10T14:34:27.773Z
+ * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0)
  */
 
 
@@ -94,10 +94,10 @@ func handleWorkspaceEntry(input string, keepShell bool, action string) error {
 
 	// 3. Resolve Target Directory
 	gscHome, _ := settings.GetGSCHome(false)
-	dumpsRoot := filepath.Join(gscHome, settings.DumpsRelPath)
+	homesRoot := filepath.Join(gscHome, settings.HomesRelPath)
 	
-	// Construct path directly: dumps/<contract-uuid>/mapped/<workspace-id>
-	workspaceRoot := filepath.Join(dumpsRoot, meta.UUID, "mapped", workspaceID)
+	// Construct path directly: homes/<contract-uuid>/mapped/<workspace-id>
+	workspaceRoot := filepath.Join(homesRoot, meta.UUID, "mapped", workspaceID)
 	
 	targetDir := workspaceRoot
 	if position >= 0 {

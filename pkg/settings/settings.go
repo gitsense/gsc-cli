@@ -1,12 +1,12 @@
 /**
  * Component: Settings and Configuration Manager
- * Block-UUID: 49339d36-9c22-445f-a754-8432bfdab651
- * Parent-UUID: 619f5cc7-da17-4542-a130-68a5adf31f42
- * Version: 3.6.0
- * Description: Added DefaultMaxSendSize constant to define the size limit for the 'gsc ws send' command.
+ * Block-UUID: 322c9710-e789-4219-b391-16707534dbb2
+ * Parent-UUID: 49339d36-9c22-445f-a754-8432bfdab651
+ * Version: 3.7.0
+ * Description: Renamed DumpsRelPath to HomesRelPath to reflect the dynamic nature of contract workspaces.
  * Language: Go
  * Created-at: 2026-03-07T23:47:46.013Z
- * Authors: GLM-4.7 (v3.5.0), GLM-4.7 (v3.6.0)
+ * Authors: GLM-4.7 (v3.5.0), GLM-4.7 (v3.6.0), GLM-4.7 (v3.7.0)
  */
 
 
@@ -48,8 +48,8 @@ const ChatDatabaseRelPath = "data/chats.sqlite3"
 const ExecOutputsRelPath = "exec/outputs"
 const ContractsRelPath = "data/contracts"
 
-// DumpsRelPath is the relative path within GSC_HOME for contract dumps
-const DumpsRelPath = "data/dumps"
+// HomesRelPath is the relative path within GSC_HOME for contract homes
+const HomesRelPath = "data/homes"
 
 // ReviewStagingRelPath is the relative path within GSC_HOME for temporary review files
 const ReviewStagingRelPath = "data/review"
