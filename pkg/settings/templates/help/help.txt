@@ -78,8 +78,7 @@ COMMANDS
         Options:
         --diff              Diff the selected file against 'generated.*' in CWD.
         --from <file>       Specify the source file for the diff.
-        --edit              Open the selected file in your preferred editor.
-        --view              View the selected file in the terminal (using bat or cat).
+        --open              Open the selected file in your preferred editor.
         --copy              Copy the content of the selected file to the clipboard.
         --relative          Copy the relative path (from project root) to the clipboard.
         --path              Copy the absolute path to the clipboard (default).

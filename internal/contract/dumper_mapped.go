@@ -1,0 +1,724 @@
+/**
+ * Component: Mapped Dump Strategy
+ * Block-UUID: eb6c68b4-6a85-46e6-a777-bf9b66a84122
+ * Parent-UUID: N/A
+ * Version: 1.0.0
+ * Description: Implements the 'mapped' dump strategy, creating a shadow workspace with files organized by project path.
+ * Language: Go
+ * Created-at: 2026-03-10T00:20:00.000Z
+ * Authors: GLM-4.7 (v1.0.0)
+ */
+
+
+package contract
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"database/sql"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/gitsense/gsc-cli/internal/db"
+	"github.com/gitsense/gsc-cli/internal/markdown"
+	"github.com/gitsense/gsc-cli/internal/search"
+	"github.com/gitsense/gsc-cli/pkg/logger"
+	"github.com/gitsense/gsc-cli/internal/manifest"
+	"github.com/gitsense/gsc-cli/pkg/settings"
+)
+
+// executeMappedDump implements the logic for the 'mapped' dump type.
+// It creates a shadow workspace where code blocks are mapped to their project paths.
+func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, writer DumpWriter, outputDir string, includeSystem bool, trim bool, debugPatch bool, messageID int64, validate bool, activeChatID int64) (*MappedDumpResult, error) {
+	// ==========================================
+	// PHASE 0: Hash Calculation & Path Resolution
+	// ==========================================
+	// We need the hash to determine the specific workspace directory, 
+	// regardless of whether we are validating or generating.
+	var dumpHash string
+	var workspaceID string // The new Composite Hash
+	var messages []db.Message
+
+	if messageID > 0 {
+		// Single Message Mode
+		msg, err := db.GetMessage(sqliteDB, messageID)
+		if err != nil {
+			return nil, fmt.Errorf("message ID %d not found: %w", messageID, err)
+		}
+		messages = []db.Message{*msg}
+		dumpHash = calculateMessageHash(*msg)
+		
+		// Calculate Composite Hash (Workspace ID) using MessageID for uniqueness
+		workspaceID = calculateWorkspaceID(contractUUID, messageID)
+		
+		logger.Info("Single Message Mode", "message_id", messageID, "message_hash", dumpHash, "workspace_id", workspaceID)
+	} else {
+		// Full Contract Mode
+		for _, chat := range chats {
+			chatMsgs, err := db.GetMessagesRecursive(sqliteDB, chat.ID)
+			if err != nil {
+				return nil, fmt.Errorf("failed to fetch messages for chat %d: %w", chat.ID, err)
+			}
+			messages = append(messages, chatMsgs...)
+		}
+		// For full contract, use a fixed hash or the contract UUID itself
+		dumpHash = "full-contract"
+		
+		// Calculate Composite Hash (Workspace ID) using MessageID (0 for full contract)
+		workspaceID = calculateWorkspaceID(contractUUID, messageID)
+		
+		logger.Info("Full Contract Mode", "total_messages", len(messages), "workspace_id", workspaceID)
+	}
+
+	// Construct the specific workspace directory: <outputDir>/<workspaceID>
+	// outputDir is already .../dumps/<uuid>/mapped
+	workspaceDir := filepath.Join(outputDir, workspaceID)
+
+	// ==========================================
+	// VALIDATION PHASE (If --validate is set)
+	// ==========================================
+	if validate {
+		manifestPath := filepath.Join(workspaceDir, "workspace.json")
+		
+		// Check if manifest exists
+		if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
+			// Workspace does not exist
+			return &MappedDumpResult{
+				Success: false,
+				Exists:  false,
+				Valid:   false,
+				Error:   &DumpError{Code: "NOT_FOUND", Message: "Shadow workspace not found"},
+			}, nil
+		}
+
+		// Read manifest
+		data, err := os.ReadFile(manifestPath)
+		if err != nil {
+			return &MappedDumpResult{
+				Success: false,
+				Exists:  false,
+				Valid:   false,
+				Error:   &DumpError{Code: "READ_ERROR", Message: "Failed to read workspace manifest"},
+			}, nil
+		}
+
+		var ws ShadowWorkspace
+		if err := json.Unmarshal(data, &ws); err != nil {
+			return &MappedDumpResult{
+				Success: false,
+				Exists:  false,
+				Valid:   false,
+				Error:   &DumpError{Code: "CORRUPT_MANIFEST", Message: "Failed to parse workspace manifest"},
+			}, nil
+		}
+
+		// Check Expiration
+		expiresAt, _ := time.Parse(time.RFC3339, ws.ExpiresAt)
+		isExpired := time.Now().After(expiresAt)
+
+		if isExpired {
+			logger.Info("Shadow workspace expired, auto-extending", "hash", ws.Hash)
+			// Auto-extend by 24 hours
+			newExpiry := time.Now().Add(168 * time.Hour)
+			ws.ExpiresAt = newExpiry.Format(time.RFC3339)
+			
+			// Write updated manifest back
+			newData, err := json.MarshalIndent(ws, "", "  ")
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal updated manifest: %w", err)
+			}
+			if err := os.WriteFile(manifestPath, newData, 0644); err != nil {
+				return nil, fmt.Errorf("failed to write updated manifest: %w", err)
+			}
+		}
+
+		// Return cached data
+		return &MappedDumpResult{
+			Success:  true,
+			Exists:   true,
+			Valid:    true,
+			Hash:     ws.Hash, // This is now the Workspace ID
+			RootDir:  workspaceDir, // Return the specific workspace dir
+			ExpiresAt: ws.ExpiresAt,
+			Stats:    ws.Stats,    // Include stats from manifest
+			Files:    ws.Files,
+		}, nil
+	}
+
+	// ==========================================
+	// GENERATION PHASE
+	// ==========================================
+	
+	// 1. Prepare the specific workspace directory
+	if err := writer.Prepare(workspaceDir); err != nil {
+		return nil, fmt.Errorf("failed to prepare workspace directory: %w", err)
+	}
+
+	// 2. Update Contract Registry
+	// We must register this new workspace ID in the contract metadata
+	if err := updateContractRegistry(contractUUID, workspaceID, messageID, dumpHash); err != nil {
+		// If we can't update the registry, the workspace is orphaned.
+		// We should fail the dump to prevent creating unreachable workspaces.
+		return nil, fmt.Errorf("failed to update contract registry: %w", err)
+	}
+
+	// PASS 0: Pre-scan for Total Artifact Count
+	totalArtifacts := 0
+	for _, msg := range messages {
+		if !msg.Message.Valid {
+			continue
+		}
+		if !includeSystem && msg.Role == "system" {
+			continue
+		}
+		result, err := markdown.ExtractCodeBlocks(msg.Message.String, trim)
+		if err != nil {
+			continue
+		}
+		totalArtifacts += len(result.Blocks) + len(result.Patches)
+	}
+	logger.Info("Pre-scan Complete", "total_artifacts_to_process", totalArtifacts)
+
+	// 2. Discovery Pass: Resolve Parent-UUIDs to Paths
+	// Collect all unique Parent-UUIDs from the messages
+	parentUUIDs := make(map[string]bool)
+	for _, msg := range messages {
+		if !msg.Message.Valid {
+			continue
+		}
+		result, err := markdown.ExtractCodeBlocks(msg.Message.String, trim)
+		if err != nil {
+			continue
+		}
+		for _, block := range result.Blocks {
+			if block.ParentUUID != "" && block.ParentUUID != "N/A" {
+				parentUUIDs[block.ParentUUID] = true
+			}
+		}
+		// Also check patches for SourceBlockUUIDs
+		for _, patch := range result.Patches {
+			if patch.SourceBlockUUID != "" && patch.SourceBlockUUID != "N/A" {
+				parentUUIDs[patch.SourceBlockUUID] = true
+			}
+		}
+	}
+
+	// Convert map to slice
+	var uuidList []string
+	for uuid := range parentUUIDs {
+		uuidList = append(uuidList, uuid)
+	}
+
+	logger.Info("Discovery Phase: Starting", "unique_parent_uuids", len(uuidList))
+
+	// Resolve paths using ripgrep
+	// We need the workdir from the contract metadata to support execution from any directory.
+	meta, err := GetContract(contractUUID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load contract metadata: %w", err)
+	}
+	workdir := meta.Workdir
+
+	logger.Debug("Using contract workdir for discovery", "uuid", contractUUID, "workdir", workdir)
+
+	engine := &search.RipgrepEngine{}
+	pathMap, err := engine.ResolvePathsByUUIDs(context.Background(), workdir, uuidList)
+	if err != nil {
+		logger.Warning("Batch discovery failed", "error", err)
+		// Continue with empty map (everything will be unmapped)
+		pathMap = make(map[string]string)
+	}
+
+	logger.Info("Discovery Phase: Complete", "resolved_count", len(pathMap), "unresolved_count", len(uuidList)-len(pathMap))
+
+	// Inject PathMap into MappedWriter
+	if mw, ok := writer.(*MappedWriter); ok {
+		mw.SetPathMap(pathMap)
+	}
+
+	// 3. Generation Pass
+	result := &MappedDumpResult{
+		Success: true,
+		Hash:    workspaceID, // Use the Workspace ID
+		RootDir: workspaceDir, // Use the specific workspace dir
+		Files:   []MappedFileEntry{},
+	}
+
+	// blockMap stores Block-UUID -> ExecutableCode content for patching
+	blockMap := make(map[string]string)
+	
+	processedArtifacts := 0
+
+	// Determine if we are in single message mode for naming convention
+	isSingleMessage := (messageID > 0)
+
+	for msgIndex, msg := range messages {
+		if !msg.Message.Valid {
+			continue
+		}
+
+		if !includeSystem && msg.Role == "system" {
+			continue
+		}
+
+		// Write message.md and message.json to the workspace root
+		// This is primarily useful for Single Message Mode (--message-id)
+		if messageID > 0 {
+			if err := writer.WriteMessage(workspaceDir, msg); err != nil {
+				return nil, err
+			}
+		}
+
+		// Parse message
+		parseResult, err := markdown.ExtractCodeBlocks(msg.Message.String, trim)
+		if err != nil {
+			logger.Warning("Failed to parse markdown", "msg_id", msg.ID, "error", err)
+			continue
+		}
+
+		logger.Info("Processing Message", "msg_id", msg.ID, "blocks_found", len(parseResult.Blocks), "patches_found", len(parseResult.Patches))
+
+		// Track files processed in this message for the checklist
+		var msgChecklist []string
+
+		// Process Code Blocks
+		for _, block := range parseResult.Blocks {
+			// Update blockMap for future patches
+			if block.BlockUUID != "" {
+				blockMap[block.BlockUUID] = block.ExecutableCode
+			}
+
+			// Determine status
+			relPath, isMapped := pathMap[block.ParentUUID]
+			status := MappedStatusUnmapped
+			reason := ""
+			if isMapped {
+				status = MappedStatusMapped
+				logger.Debug("Block Mapped", "uuid", block.BlockUUID, "path", relPath)
+			} else {
+				if block.ParentUUID == "" || block.ParentUUID == "N/A" {
+					reason = "no_parent_uuid"
+				} else {
+					reason = "parent_not_found"
+				}
+				logger.Debug("Block Unmapped", "uuid", block.BlockUUID, "reason", reason)
+			}
+
+			// Format the component name for unmapped files
+			var originalPath string
+			var formattedPath string
+
+			if isMapped {
+				formattedPath = relPath
+				originalPath = relPath // For mapped files, the project path is the original reference
+			} else {
+				originalPath = block.Component // Capture the AI-generated name
+				// Use the new naming convention
+				formattedPath = formatArtifactPath(isSingleMessage, msgIndex, block.Index, block.Component)
+				// Update the block's component field so the writer uses it
+				block.Component = formattedPath
+			}
+
+			// Add to result list
+			entry := MappedFileEntry{
+				Path:         formattedPath,
+				OriginalPath: originalPath,
+				Status:       status,
+				BlockUUID:    block.BlockUUID,
+				Reason:       reason,
+				Position:     block.Index, // 0-indexed position in the message
+				Language:     block.Language,
+			}
+			result.Files = append(result.Files, entry)
+
+			// Write Source File if mapped
+			if isMapped {
+				// Read source from workdir
+				sourcePath := filepath.Join(workdir, relPath)
+				sourceContent, err := os.ReadFile(sourcePath)
+				if err != nil {
+					logger.Warning("Failed to read source file", "path", relPath, "error", err)
+					// Fallback: treat as unmapped
+					continue
+				}
+				if err := writer.WriteSourceFile(workspaceDir, relPath, string(sourceContent)); err != nil {
+					return nil, err
+				}
+			}
+
+			// Write Proposed File
+			if err := writer.WriteBlock(workspaceDir, block, trim); err != nil {
+				return nil, err
+			}
+
+			// Log Full Code
+			logger.Debug("Writing Full Code", "uuid", block.BlockUUID, "language", block.Language, "code_length", len(block.ExecutableCode))
+			logger.Debug("Code Content", "uuid", block.BlockUUID, "content", block.ExecutableCode)
+
+			// Write Provenance
+			prov := Provenance{
+				FilePath:     relPath,
+				BlockUUID:    block.BlockUUID,
+				ParentUUID:   block.ParentUUID,
+				Version:      block.Version,
+				ChatID:       msg.ChatID,
+				MessageID:    msg.ID,
+				ContractUUID: contractUUID,
+				Model:        msg.RealModel.String,
+				Timestamp:    msg.CreatedAt.Format(time.RFC3339),
+				Action:       "full_code",
+				Authors:      block.Authors,
+			}
+			if err := writer.WriteProvenanceJSON(workspaceDir, prov); err != nil {
+				logger.Warning("Failed to write provenance", "block_uuid", block.BlockUUID, "error", err)
+			}
+
+			// Add to checklist
+			checkItem := fmt.Sprintf("[x] %s (%s)", entry.Path, status)
+			msgChecklist = append(msgChecklist, checkItem)
+			processedArtifacts++
+		}
+
+		// Process Patches
+		for _, patch := range parseResult.Patches {
+			// Update blockMap
+			if patch.TargetBlockUUID != "" {
+				// We need the patched code for the map, but we haven't applied it yet.
+				// This is tricky. For mapped dump, we rely on the 'proposed' file written by WritePatchedFile.
+				// We don't need to update blockMap for subsequent patches in the same message because
+				// patches usually apply to the *original* source, not the result of previous patches in the same message.
+				// However, if there are multiple patches to the same file in one message, we might need to chain them.
+				// For simplicity, we assume patches apply to the source file found via ParentUUID.
+			}
+
+			// Determine status
+			relPath, isMapped := pathMap[patch.SourceBlockUUID]
+			status := MappedStatusUnmapped
+			reason := ""
+			if isMapped {
+				status = MappedStatusMapped
+				logger.Debug("Patch Mapped", "target_uuid", patch.TargetBlockUUID, "path", relPath)
+			} else {
+				reason = "parent_not_found"
+				logger.Debug("Patch Unmapped", "target_uuid", patch.TargetBlockUUID, "reason", reason)
+			}
+
+			// Format the component name for unmapped files
+			var originalPath string
+			var formattedPath string
+
+			if isMapped {
+				formattedPath = relPath
+				originalPath = relPath
+			} else {
+				originalPath = patch.Component
+				// Use the new naming convention
+				formattedPath = formatArtifactPath(isSingleMessage, msgIndex, patch.Index, patch.Component)
+				// Update the patch's component field so the writer uses it
+				patch.Component = formattedPath
+			}
+
+			// Add to result list
+			entry := MappedFileEntry{
+				Path:         formattedPath,
+				OriginalPath: originalPath,
+				Status:       status,
+				BlockUUID:    patch.TargetBlockUUID,
+				Reason:       reason,
+				Position:     patch.Index, // 0-indexed position in the message
+				Language:     patch.Language,
+			}
+			result.Files = append(result.Files, entry)
+
+			// Write Source File if mapped
+			var sourceCode string
+			if isMapped {
+				sourcePath := filepath.Join(workdir, relPath)
+				sourceBytes, err := os.ReadFile(sourcePath)
+				if err != nil {
+					logger.Warning("Failed to read source file for patch", "path", relPath, "error", err)
+					continue
+				}
+				sourceCode = string(sourceBytes)
+				if err := writer.WriteSourceFile(workspaceDir, relPath, sourceCode); err != nil {
+					return nil, err
+				}
+			} else {
+				// If unmapped, we can't patch it against a source file easily.
+				// We just store the patch in unmapped/patches.
+				if err := writer.WritePatch(workspaceDir, patch, trim); err != nil {
+					return nil, err
+				}
+				continue
+			}
+
+			// Apply Patch
+			patchedCode, err := ApplyPatch(sourceCode, patch.ExecutableCode)
+			if err != nil {
+				if debugPatch {
+					var pErr *PatchError
+					phase1Diff := patch.ExecutableCode
+					phase2Diff := ""
+					if errors.As(err, &pErr) {
+						phase1Diff = pErr.Phase1Diff
+						phase2Diff = pErr.Phase2Diff
+					}
+					
+					// We need the chat for this message. 
+					// In mapped dump, we iterate over messages, but we don't have the chat object directly in the loop scope easily.
+					// We can look it up or pass it down. 
+					// Since we have the list of chats, we can find it.
+					var associatedChat db.Chat
+					for _, c := range chats {
+						if c.ID == msg.ChatID {
+							associatedChat = c
+							break
+						}
+					}
+
+					debugPath, writeErr := WriteDebugArtifacts(msg, associatedChat, sourceCode, phase1Diff, phase2Diff, patch.TargetBlockUUID, err)
+					if writeErr != nil {
+						logger.Error("Failed to write debug artifacts", "error", writeErr)
+					} else {
+						logger.Warning("Failed to apply patch", "target_uuid", patch.TargetBlockUUID, "error", err, "debug_dir", debugPath)
+					}
+				}
+				// If patch fails, we can't write the proposed file.
+				// We write the raw patch to unmapped/patches for manual review.
+				if err := writer.WritePatch(workspaceDir, patch, trim); err != nil {
+					return nil, err
+				}
+				continue
+			}
+
+			// Write Patched File (Proposed)
+			header := generateCodeHeaderFromPatch(patch)
+			if err := writer.WritePatchedFile(workspaceDir, patch, header, patchedCode); err != nil {
+				return nil, err
+			}
+
+			// Log Full Code (Patched)
+			logger.Debug("Writing Patched Code", "uuid", patch.TargetBlockUUID, "language", patch.Language, "code_length", len(patchedCode))
+			logger.Debug("Code Content", "uuid", patch.TargetBlockUUID, "content", patchedCode)
+
+			// Write Provenance
+			prov := Provenance{
+				FilePath:     relPath,
+				BlockUUID:    patch.TargetBlockUUID,
+				ParentUUID:   patch.SourceBlockUUID,
+				Version:      patch.TargetVersion,
+				ChatID:       msg.ChatID,
+				MessageID:    msg.ID,
+				ContractUUID: contractUUID,
+				Model:        msg.RealModel.String,
+				Timestamp:    msg.CreatedAt.Format(time.RFC3339),
+				Action:       "patch_applied",
+				Authors:      patch.Authors,
+			}
+			if err := writer.WriteProvenanceJSON(workspaceDir, prov); err != nil {
+				logger.Warning("Failed to write provenance", "block_uuid", patch.TargetBlockUUID, "error", err)
+			}
+
+			// Add to checklist
+			checkItem := fmt.Sprintf("[x] %s (%s)", entry.Path, status)
+			msgChecklist = append(msgChecklist, checkItem)
+			processedArtifacts++
+		}
+
+		// ==========================================
+		// MESSAGE CHECKLIST
+		// ==========================================
+		fmt.Println("\n--------------------------------------------------")
+		fmt.Printf("Message ID: %d Checklist\n", msg.ID)
+		fmt.Println("--------------------------------------------------")
+		for _, item := range msgChecklist {
+			fmt.Println(item)
+		}
+		fmt.Printf("Files Processed: %d | Files Remaining: %d\n", processedArtifacts, totalArtifacts-processedArtifacts)
+		fmt.Println("--------------------------------------------------\n")
+	}
+
+	// Calculate Stats
+	for _, f := range result.Files {
+		if f.Status == MappedStatusMapped {
+			result.Stats.Mappable++
+		} else {
+			result.Stats.Unmappable++
+		}
+	}
+
+	logger.Info("Mapped Dump Complete", "workspace_id", workspaceID, "mappable", result.Stats.Mappable, "unmappable", result.Stats.Unmappable)
+
+	// ==========================================
+	// WRITE WORKSPACE MANIFEST
+	// ==========================================
+	manifest := ShadowWorkspace{
+		Hash:         workspaceID, // Use the Workspace ID
+		MessageID:    messageID, // 0 if full contract
+		ContractUUID: contractUUID,
+		CreatedAt:    time.Now().Format(time.RFC3339),
+		ExpiresAt:    time.Now().Add(168 * time.Hour).Format(time.RFC3339),
+		Stats:        result.Stats, // Persist stats
+		Files:        result.Files,
+	}
+
+	manifestData, err := json.MarshalIndent(manifest, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal workspace manifest: %w", err)
+	}
+
+	manifestPath := filepath.Join(workspaceDir, "workspace.json")
+	if err := os.WriteFile(manifestPath, manifestData, 0644); err != nil {
+		return nil, fmt.Errorf("failed to write workspace manifest: %w", err)
+	}
+
+	logger.Info("Workspace manifest written", "path", manifestPath)
+
+	// ==========================================
+	// GENERATE HELP FILES
+	// ==========================================
+	if err := generateHelpFiles(workspaceDir, contractUUID, workspaceID, activeChatID, workdir, sqliteDB); err != nil {
+		logger.Warning("Failed to generate help files", "error", err)
+		// Non-fatal error, continue
+	}
+
+	return result, nil
+}
+
+// calculateWorkspaceID generates a composite hash (ContractUUID + MessageID).
+// This ensures the Workspace ID is globally unique across all contracts.
+func calculateWorkspaceID(contractUUID string, messageID int64) string {
+	h := sha256.New()
+	h.Write([]byte(contractUUID))
+	h.Write([]byte(fmt.Sprintf("%d", messageID)))
+	return hex.EncodeToString(h.Sum(nil))[:8]
+}
+
+// formatArtifactPath formats the path for an artifact based on the dump mode and position.
+// Single Message Mode: "01_sanitized_name"
+// Full Contract Mode: "1_01_sanitized_name" (msgIndex_position_name)
+func formatArtifactPath(isSingleMessage bool, msgIndex int, position int, name string) string {
+	sanitized := sanitizeComponentName(name)
+	
+	if isSingleMessage {
+		return fmt.Sprintf("%02d_%s", position+1, sanitized)
+	}
+	
+	return fmt.Sprintf("%d_%02d_%s", msgIndex, position+1, sanitized)
+}
+
+// updateContractRegistry updates the ContractMetadata JSON file to include the new workspace.
+// This implements the "Registry-First" strategy.
+func updateContractRegistry(contractUUID string, workspaceID string, messageID int64, messageHash string) error {
+	// 1. Load existing contract metadata
+	meta, err := GetContract(contractUUID)
+	if err != nil {
+		return fmt.Errorf("failed to load contract for registry update: %w", err)
+	}
+
+	// 2. Initialize map if nil
+	if meta.Workspaces == nil {
+		meta.Workspaces = make(map[string]WorkspaceEntry)
+	}
+
+	// 3. Add or Update the workspace entry
+	meta.Workspaces[workspaceID] = WorkspaceEntry{
+		MessageID:   messageID,   // Unique Identifier
+		MessageHash: messageHash, // Content Fingerprint
+		CreatedAt:   time.Now().Format(time.RFC3339),
+	}
+
+	// 4. Save the updated metadata
+	// We duplicate the save logic here because saveContractMetadata in manager.go is not exported.
+	contractDir, err := manifest.ResolveGlobalContractDir()
+	if err != nil {
+		return fmt.Errorf("failed to resolve contract directory: %w", err)
+	}
+
+	path := filepath.Join(contractDir, meta.UUID+".json")
+	tmpPath := path + ".tmp"
+
+	data, err := json.MarshalIndent(meta, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal contract metadata: %w", err)
+	}
+
+	if err := os.WriteFile(tmpPath, data, 0600); err != nil {
+		return fmt.Errorf("failed to write temp contract file: %w", err)
+	}
+
+	if err := os.Rename(tmpPath, path); err != nil {
+		return fmt.Errorf("failed to rename contract file: %w", err)
+	}
+
+	logger.Info("Contract registry updated", "uuid", contractUUID, "workspace_id", workspaceID)
+	return nil
+}
+
+// generateHelpFiles creates .gsc-welcome and .gsc-help in the workspace root.
+func generateHelpFiles(workspaceDir, contractUUID, dumpHash string, activeChatID int64, workdir string, db *sql.DB) error {
+	// 1. Fetch Chat Name
+	chatName := "Unknown Chat"
+	if activeChatID > 0 {
+		err := db.QueryRow("SELECT name FROM chats WHERE id = ?", activeChatID).Scan(&chatName)
+		if err != nil {
+			logger.Debug("Failed to fetch chat name for help files", "active_chat_id", activeChatID, "error", err)
+			chatName = "Unknown Chat"
+		}
+	}
+
+	// 2. Load Templates
+	gscHome, _ := settings.GetGSCHome(false)
+	templateDir := filepath.Join(gscHome, "data", "templates", "help")
+
+	welcomePath := filepath.Join(templateDir, "welcome.txt")
+	helpPath := filepath.Join(templateDir, "help.txt")
+
+	welcomeContent, err := os.ReadFile(welcomePath)
+	if err != nil {
+		return fmt.Errorf("failed to read welcome template: %w", err)
+	}
+
+	helpContent, err := os.ReadFile(helpPath)
+	if err != nil {
+		return fmt.Errorf("failed to read help template: %w", err)
+	}
+
+	// 3. Substitute Variables
+	replacements := map[string]string{
+		"{{MSG_HASH}}":        dumpHash,
+		"{{CHAT_NAME}}":       chatName,
+		"{{GSC_CHAT_ID}}":     fmt.Sprintf("%d", activeChatID),
+		"{{GSC_PROJECT_ROOT}}": workdir,
+		"{{GSC_CONTRACT_UUID}}": contractUUID,
+	}
+
+	processedWelcome := string(welcomeContent)
+	processedHelp := string(helpContent)
+
+	for key, val := range replacements {
+		processedWelcome = strings.ReplaceAll(processedWelcome, key, val)
+		processedHelp = strings.ReplaceAll(processedHelp, key, val)
+	}
+
+	// 4. Write Files to Parent Directory (mapped)
+	// workspaceDir is <uuid>/mapped/<hash>, so parent is <uuid>/mapped
+	mappedDir := filepath.Dir(workspaceDir)
+
+	if err := os.WriteFile(filepath.Join(mappedDir, ".gsc-welcome"), []byte(processedWelcome), 0644); err != nil {
+		return fmt.Errorf("failed to write .gsc-welcome: %w", err)
+	}
+
+	if err := os.WriteFile(filepath.Join(mappedDir, ".gsc-help"), []byte(processedHelp), 0644); err != nil {
+		return fmt.Errorf("failed to write .gsc-help: %w", err)
+	}
+
+	logger.Info("Help files generated", "workspace", workspaceDir, "mapped_dir", mappedDir)
+	return nil
+}

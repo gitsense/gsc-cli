@@ -1,12 +1,12 @@
 /**
  * Component: Workspace Fuzzy Find Command
- * Block-UUID: 5bd73cb6-d71c-46de-90b7-6dbff40a3f76
- * Parent-UUID: 9b93fb1a-f23d-430f-baa7-f3865e7466a1
- * Version: 1.2.0
+ * Block-UUID: 7e6eb55b-e9d0-4078-8c8e-f88b74a14311
+ * Parent-UUID: 062cb964-d634-4ea3-94f1-389f1a325ec3
+ * Version: 1.3.0
  * Description: Implements the 'gsc ws ffp' command to fuzzy find files in the project root and perform actions like diff, edit, or copy.
  * Language: Go
- * Created-at: 2026-03-09T16:10:12.309Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
+ * Created-at: 2026-03-09T23:51:58.549Z
+ * Authors: GLM-4.4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.2.1), GLM-4.7 (v1.2.2), GLM-4.7 (v1.3.0)
  */
 
 
@@ -20,15 +20,15 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
 
 var (
 	ffpDiff     bool
+	ffpOpen     bool
 	ffpFrom     string
-	ffpEdit     bool
-	ffpView     bool
 	ffpCopy     bool
 	ffpRelative bool
 	ffpPath     bool
@@ -36,7 +36,7 @@ var (
 
 // ffpCmd represents the 'gsc ws ffp' command
 var ffpCmd = &cobra.Command{
-	Use:   "ffp",
+	Use:   "ffp [flags]",
 	Short: "Fuzzy find files in the project root",
 	Long: `Fuzzy find files in the real project root while inside a shadow workspace.
 Supports actions like diffing against the generated code, editing, or copying paths.`,
@@ -48,8 +48,7 @@ Supports actions like diffing against the generated code, editing, or copying pa
 func init() {
 	ffpCmd.Flags().BoolVar(&ffpDiff, "diff", false, "Diff the selected file against the generated code in the workspace")
 	ffpCmd.Flags().StringVar(&ffpFrom, "from", "", "The source file for diff (defaults to 'generated.*' in CWD)")
-	ffpCmd.Flags().BoolVar(&ffpEdit, "edit", false, "Open the selected file in the preferred editor")
-	ffpCmd.Flags().BoolVar(&ffpView, "view", false, "View the selected file in the terminal")
+	ffpCmd.Flags().BoolVar(&ffpOpen, "open", false, "Open the selected file in the preferred editor")
 	ffpCmd.Flags().BoolVar(&ffpCopy, "copy", false, "Copy the content of the selected file to the clipboard")
 	ffpCmd.Flags().BoolVar(&ffpRelative, "relative", false, "Copy the relative path to the clipboard")
 	ffpCmd.Flags().BoolVar(&ffpPath, "path", false, "Copy the absolute path to the clipboard (default)")
@@ -124,12 +123,8 @@ func handleFFP() error {
 	}
 
 	selectedFileRelStr := string(selectedFileRel)
-	if selectedFileRelStr == "" {
-		fmt.Println("No file selected.")
-		return nil
-	}
-
-	// Trim whitespace/newlines
+	// Trim whitespace/newlines (fzf adds a trailing newline)
+	selectedFileRelStr = strings.TrimSpace(selectedFileRelStr)
 	selectedFileRelStr = filepath.Clean(selectedFileRelStr)
 
 	// 6. Construct Absolute Path
@@ -140,12 +135,8 @@ func handleFFP() error {
 		return handleDiffAction(absPath, selectedFileRelStr)
 	}
 
-	if ffpEdit {
-		return handleEditAction(absPath)
-	}
-
-	if ffpView {
-		return handleViewAction(absPath)
+	if ffpOpen {
+		return handleOpenAction(absPath)
 	}
 
 	if ffpCopy {
@@ -212,11 +203,23 @@ func handleDiffAction(projectFileAbs, projectFileRel string) error {
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	
+	err := cmd.Run()
+	if err != nil {
+		// diff returns 1 if files differ, 2 if there's an error.
+		// We only want to fail on 2.
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			if exitErr.ExitCode() == 1 {
+				return nil // Differences found, but command succeeded
+			}
+		}
+		return err // Propagate real errors (exit code 2 or other)
+	}
+	return nil
 }
 
-// handleEditAction opens the file in the editor
-func handleEditAction(absPath string) error {
+// handleOpenAction opens the file in the preferred editor
+func handleOpenAction(absPath string) error {
 	editor := os.Getenv("EDITOR")
 	if editor == "" {
 		editor = "vim" // Default
@@ -226,18 +229,6 @@ func handleEditAction(absPath string) error {
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	return cmd.Run()
-}
-
-// handleViewAction displays the file content
-func handleViewAction(absPath string) error {
-	viewer := "cat"
-	if _, err := exec.LookPath("bat"); err == nil {
-		viewer = "bat"
-	}
-
-	cmd := exec.Command(viewer, absPath)
-	cmd.Stdout = os.Stdout
 	return cmd.Run()
 }
 
