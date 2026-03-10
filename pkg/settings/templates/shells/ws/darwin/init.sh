@@ -1,11 +1,11 @@
 # Component: GitSense Workspace Shell Init (Bash)
-# Block-UUID: 3db41aa4-91d1-48b5-9bbd-583286da6403
-# Parent-UUID: f2b3fb09-b4ea-412d-b9d9-f9681d171f8e
-# Version: 1.9.0
+# Block-UUID: add1d415-8115-476e-81c5-8c76a3048123
+# Parent-UUID: 3db41aa4-91d1-48b5-9bbd-583286da6403
+# Version: 1.10.0
 # Description: Added .map and .goto aliases to support cross-workspace visualization and navigation.
 # Language: Bash
-# Created-at: 2026-03-10T01:49:02.703Z
-# Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0)
+# Created-at: 2026-03-10T04:02:26.376Z
+# Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.10.0)
 
 
 # 1. User Environment Loading
@@ -44,8 +44,10 @@ alias .map='gsc ws map'
 .goto() {
     local selection=$(gsc ws map --list | fzf --header "Jump to Workspace Block:" --reverse --height 40%)
     if [ -n "$selection" ]; then
-        # Extract the path (everything after the last ' | ')
-        local target=$(echo "$selection" | awk -F ' \| ' '{print $NF}')
+        # Extract the relative path (everything after the last ' | ')
+        local rel_path=$(echo "$selection" | awk -F ' \| ' '{print $NF}')
+        # Prepend the mapped root to get the absolute path
+        local target="$GSC_CONTRACT_MAPPED_ROOT/$rel_path"
         if [ -d "$target" ]; then
             cd "$target"
         else

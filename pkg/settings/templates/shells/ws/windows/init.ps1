@@ -1,12 +1,12 @@
 <#
 Component: GitSense Workspace Shell Init (PowerShell)
-Block-UUID: 82ac45f9-8d9b-4d8c-95ea-29e1323f37e1
-Parent-UUID: 0ea827ce-f74f-4419-8c7c-5ebec683f128
-Version: 1.7.0
-Description: Added .map and .goto aliases to support cross-workspace visualization and navigation.
+Block-UUID: 07a7409e-9f64-41c3-ac2f-98352ce9daf0
+Parent-UUID: 82ac45f9-8d9b-4d8c-95ea-29e1323f37e1
+Version: 1.8.0
+Description: Updated .goto to prepend GSC_CONTRACT_MAPPED_ROOT to the relative path returned by 'gsc ws map --list'.
 Language: PowerShell
 Created-at: 2026-03-08T16:30:23.301Z
-Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v1.6.0), Gemini 3 Flash (v1.7.0)
+Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v1.6.0), Gemini 3 Flash (v1.7.0), GLM-4.7 (v1.8.0)
 #>
 
 
@@ -47,9 +47,12 @@ function .block {
 function .goto {
     $selection = gsc ws map --list | fzf --header "Jump to Workspace Block:" --reverse --height 40%
     if ($selection) {
-        # Extract the path (everything after the last ' | ')
-        $parts = $selection -split ' \| '
-        $target = $parts[-1]
+        # Extract the relative path (everything after the last ' | ')
+        # Using -split with a regex that matches the literal delimiter
+        $parts = $selection -split '\s\|\s'
+        $rel_path = $parts[-1]
+        # Prepend the mapped root to get the absolute path
+        $target = Join-Path $env:GSC_CONTRACT_MAPPED_ROOT $rel_path
         if (Test-Path $target -PathType Container) {
             Set-Location $target
         } else {

@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Contract CLI Create
- * Block-UUID: ea53c1b5-0db6-4644-a4b3-3c529bf8bda0
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 94ce3270-81a9-4963-82cf-1f49c1999c2f
+ * Parent-UUID: ea53c1b5-0db6-4644-a4b3-3c529bf8bda0
+ * Version: 1.1.0
  * Description: CLI command for creating new traceability contracts with interactive workspace configuration.
  * Language: Go
- * Created-at: 2026-03-08T00:21:39.790Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.29.1), Gemini 3 Flash (v1.30.0), GLM-4.7 (v1.31.0)
+ * Created-at: 2026-03-10T04:35:57.944Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.29.1), Gemini 3 Flash (v1.30.0), GLM-4.7 (v1.31.0), GLM-4.7 (v1.1.0)
  */
 
 
@@ -49,28 +49,16 @@ var createContractCmd = &cobra.Command{
 		// ==========================================
 		// Interactive Setup Wizard
 		// ==========================================
-		// If any of the workspace preferences are missing, prompt the user.
+		// If the terminal preference is missing, prompt the user.
 		// This ensures the "Review & Save" feature is configured.
-		if contractPreferredEditor == "" || contractPreferredTerminal == "" || contractPreferredReview == "" {
+		if contractPreferredTerminal == "" {
 			fmt.Println("\n--- Workspace Configuration ---")
-			fmt.Println("Let's configure your preferred tools for the AI review workflow.")
+			fmt.Println("Let's configure your preferred terminal for the AI review workflow.")
 			
 			// 1. Prepare Options (Dynamic based on OS)
-			editorOptions := getSortedKeys(settings.DefaultEditorTemplates)
 			terminalOptions := getSortedKeys(settings.DefaultTerminalTemplates)
 
-			// 2. Prompt for Editor
-			if contractPreferredEditor == "" {
-				prompt := &survey.Select{
-					Message: "Choose your preferred code editor:",
-					Options: editorOptions,
-				}
-				if err := survey.AskOne(prompt, &contractPreferredEditor); err != nil {
-					return fmt.Errorf("prompt failed: %w", err)
-				}
-			}
-
-			// 3. Prompt for Terminal
+			// 2. Prompt for Terminal
 			if contractPreferredTerminal == "" {
 				prompt := &survey.Select{
 					Message: "Choose your preferred terminal:",
@@ -80,36 +68,8 @@ var createContractCmd = &cobra.Command{
 					return fmt.Errorf("prompt failed: %w", err)
 				}
 			}
-
-			// 4. Prompt for Review Tool
-			// Smart Default: Use the selected Editor if it's a valid review tool
-			if contractPreferredReview == "" {
-				defaultReview := contractPreferredEditor
-				// Ensure the default is actually in the list of valid editors
-				if _, exists := settings.DefaultEditorTemplates[defaultReview]; !exists {
-					defaultReview = "" // Fallback to no default if invalid
-				}
-
-				prompt := &survey.Select{
-					Message: "Choose your preferred tool for reviewing AI code:",
-					Options: editorOptions, // Review tools are usually editors
-					Default: defaultReview,
-				}
-				if err := survey.AskOne(prompt, &contractPreferredReview); err != nil {
-					return fmt.Errorf("prompt failed: %w", err)
-				}
-			}
 			
 			fmt.Println("-----------------------------\n")
-		}
-
-		// Validate Preferred Editor
-		if contractPreferredEditor != "" {
-			if _, exists := settings.DefaultEditorTemplates[contractPreferredEditor]; !exists {
-				return fmt.Errorf("unsupported editor '%s'. Available editors: %s", 
-					contractPreferredEditor, 
-					strings.Join(getMapKeys(settings.DefaultEditorTemplates), ", "))
-			}
 		}
 
 		// Validate Preferred Terminal
@@ -118,15 +78,6 @@ var createContractCmd = &cobra.Command{
 				return fmt.Errorf("unsupported terminal '%s'. Available terminals: %s", 
 					contractPreferredTerminal, 
 					strings.Join(getMapKeys(settings.DefaultTerminalTemplates), ", "))
-			}
-		}
-
-		// Validate Preferred Review
-		if contractPreferredReview != "" {
-			if _, exists := settings.DefaultEditorTemplates[contractPreferredReview]; !exists {
-				return fmt.Errorf("unsupported review tool '%s'. Available tools: %s", 
-					contractPreferredReview, 
-					strings.Join(getMapKeys(settings.DefaultEditorTemplates), ", "))
 			}
 		}
 
@@ -159,9 +110,9 @@ var createContractCmd = &cobra.Command{
 			whitelist,
 			contractNoWhitelist,
 			contractExecTimeout,
-			contractPreferredEditor,
 			contractPreferredTerminal,
-			contractPreferredReview,
+			"", // PreferredEditor (removed)
+			"", // PreferredReview (removed)
 		)
 		if err != nil {
 			return err
@@ -183,9 +134,7 @@ func init() {
 	createContractCmd.Flags().StringVar(&contractWhitelistFile, "whitelist", "", "Path to a file containing a list of allowed commands (optional)")
 	createContractCmd.Flags().BoolVar(&contractNoWhitelist, "no-whitelist", false, "Disable whitelist checks (unrestricted mode)")
 	createContractCmd.Flags().IntVar(&contractExecTimeout, "exec-timeout", 60, "Execution timeout in seconds (default 60)")
-	createContractCmd.Flags().StringVar(&contractPreferredEditor, "editor", "", fmt.Sprintf("Preferred editor for code review (Available: %s)", strings.Join(getMapKeys(settings.DefaultEditorTemplates), ", ")))
 	createContractCmd.Flags().StringVar(&contractPreferredTerminal, "terminal", "", fmt.Sprintf("Preferred terminal for project access (Available: %s)", strings.Join(getMapKeys(settings.DefaultTerminalTemplates), ", ")))
-	createContractCmd.Flags().StringVar(&contractPreferredReview, "review", "", fmt.Sprintf("Preferred tool for code review (Available: %s)", strings.Join(getMapKeys(settings.DefaultEditorTemplates), ", ")))
 	createContractCmd.MarkFlagRequired("code")
 	createContractCmd.MarkFlagRequired("description")
 

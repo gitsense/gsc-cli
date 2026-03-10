@@ -66,7 +66,6 @@ func RegisterCommand(root *cobra.Command) {
 
 	wsCmd.AddCommand(sendCmd)
 	wsCmd.AddCommand(ffpCmd)
-	wsCmd.AddCommand(blockCmd)
 	wsCmd.AddCommand(mapCmd)
 	root.AddCommand(wsCmd)
 }

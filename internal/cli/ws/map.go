@@ -1,12 +1,12 @@
 /**
  * Component: Workspace Map Command
- * Block-UUID: 158c6e5c-5daf-4ef0-9ef7-b2f0348f3492
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 5fd67aa2-8d78-4e97-a0ea-46dacef09f1a
+ * Parent-UUID: cc7b8cfe-4e41-4383-abbe-0c724dd41d07
+ * Version: 1.2.0
  * Description: Implements the 'gsc ws map' command for visualizing and listing workspace blocks across a contract.
  * Language: Go
- * Created-at: 2026-03-10T01:49:02.703Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Created-at: 2026-03-10T03:40:02.439Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.2.0)
  */
 
 
@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/gitsense/gsc-cli/internal/contract"
 	"github.com/spf13/cobra"
@@ -63,6 +64,22 @@ func handleMap() error {
 		return fmt.Errorf("failed to read mapped root: %w", err)
 	}
 
+	// 2.5. Resolve Contract Metadata
+	// mappedRoot is typically .../dumps/<uuid>/mapped
+	// We need the parent directory to get the UUID
+	dumpsRoot := filepath.Dir(mappedRoot)
+	contractUUID := filepath.Base(dumpsRoot)
+
+	var meta *contract.ContractMetadata
+	contractMeta, err := contract.GetContract(contractUUID)
+	if err != nil {
+		// If we can't load metadata, we'll proceed without the overview section
+		// but log a warning for debugging
+		fmt.Fprintf(os.Stderr, "Warning: Failed to load contract metadata: %v\n", err)
+	} else {
+		meta = contractMeta
+	}
+
 	var workspaces []contract.ShadowWorkspace
 	for _, entry := range entries {
 		if !entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
@@ -89,14 +106,19 @@ func handleMap() error {
 
 	// 3. Handle Output Modes
 	if mapList {
-		return renderList(workspaces, mappedRoot, pwd)
+		return renderList(workspaces, mappedRoot, pwd, meta)
 	}
 
-	return renderTree(workspaces, mappedRoot, pwd, mapAll)
+	return renderTree(workspaces, mappedRoot, pwd, mapAll, meta)
 }
 
-func renderTree(workspaces []contract.ShadowWorkspace, root, pwd string, expandAll bool) error {
-	fmt.Println(". (Contract Mapped Root)")
+func renderTree(workspaces []contract.ShadowWorkspace, root, pwd string, expandAll bool, meta *contract.ContractMetadata) error {
+	// Render Overview Section
+	if meta != nil {
+		renderOverview(meta, root)
+	}
+
+	fmt.Println("Mapped")
 
 	for i, ws := range workspaces {
 		isLastWS := i == len(workspaces)-1
@@ -190,7 +212,31 @@ func renderWorkspaceSubtree(ws contract.ShadowWorkspace, wsPath, pwd, prefix str
 	}
 }
 
-func renderList(workspaces []contract.ShadowWorkspace, root, pwd string) error {
+func renderOverview(meta *contract.ContractMetadata, mappedRoot string) {
+	fmt.Println("Contract ")
+	fmt.Printf("  UUID:   %s\n", meta.UUID)
+	if meta.Description != "" {
+		fmt.Printf("  Desc:   %s\n", meta.Description)
+	}
+	fmt.Printf("  Proj:   %s\n", meta.Workdir)
+	fmt.Printf("  Dumps:  %s\n", filepath.Dir(mappedRoot))
+	fmt.Printf("  Status: %s\n", meta.Status)
+	
+	// Calculate remaining time for expiration
+	remaining := time.Until(meta.ExpiresAt)
+	if remaining > 0 {
+		fmt.Printf("  Expires in: %s\n", remaining.Round(time.Minute))
+	} else {
+		fmt.Printf("  Expired: %s\n", meta.ExpiresAt.Format(time.RFC3339))
+	}
+	fmt.Println()
+}
+
+func renderList(workspaces []contract.ShadowWorkspace, root, pwd string, meta *contract.ContractMetadata) error {
+	// Note: We accept meta here for consistency, but we don't print it
+	// because renderList is typically piped to fzf for navigation,
+	// and headers would interfere with the picker.
+
 	for _, ws := range workspaces {
 		wsPath := filepath.Join(root, ws.Hash)
 		
@@ -214,7 +260,12 @@ func renderList(workspaces []contract.ShadowWorkspace, root, pwd string) error {
 				prefix = "* "
 			}
 
-			fmt.Printf("%s%s | %s\n", prefix, label, targetDir)
+			// Calculate relative path to shorten output
+			relPath, err := filepath.Rel(root, targetDir)
+			if err != nil {
+				relPath = targetDir // Fallback to absolute if rel fails
+			}
+			fmt.Printf("%s%s | %s\n", prefix, label, relPath)
 		}
 	}
 	return nil

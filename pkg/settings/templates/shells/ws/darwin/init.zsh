@@ -1,20 +1,18 @@
 # Component: GitSense Workspace Shell Init (Zsh)
- # Block-UUID: 4ff4c21f-2709-4bbd-a91f-10097e605c37
- # Parent-UUID: 5c11d683-a30e-46d6-8cbb-4e6f7efc9349
-# Version: 1.5.0
-# Description: Added .map and .goto aliases to support cross-workspace visualization and navigation.
+# Block-UUID: 8aea5b45-5719-431b-b260-5396aa38c393
+# Parent-UUID: 4ff4c21f-2709-4bbd-a91f-10097e605c37
+# Version: 1.6.0
+# Description: Updated .goto to prepend GSC_CONTRACT_MAPPED_ROOT to the relative path returned by 'gsc ws map --list'.
 # Language: Zsh
 # Created-at: 2026-03-08T16:30:23.301Z
-# Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.5.0)
+# Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.5.0), GLM-4.7 (v1.6.0)
 
 
 # 1. User Environment Loading
-# Source the user's main zshrc to preserve tools, themes, and plugins.
 if [[ -f "$HOME/.zshrc" ]]; then
     source "$HOME/.zshrc"
 fi
 
-# Source the optional GitSense User Workspace Profile for custom aliases.
 if [[ -f "$HOME/.gitsense/gsc-ws.zsh" ]]; then
     source "$HOME/.gitsense/gsc-ws.zsh"
 fi
@@ -25,8 +23,6 @@ export GSC_PROJECT_ROOT="{{GSC_PROJECT_ROOT}}"
 export GSC_CONTRACT_UUID="{{GSC_CONTRACT_UUID}}"
 export GSC_CONTRACT_MAPPED_ROOT="{{GSC_CONTRACT_MAPPED_ROOT}}"
 export GSC_SCRIPTS_DIR="{{GSC_SCRIPTS_DIR}}"
-
-# The 'p' variable: Dead simple access to your project root.
 p="{{GSC_PROJECT_ROOT}}"
 
 # 3. Aliases
@@ -48,8 +44,10 @@ alias .map='gsc ws map'
 .goto() {
     local selection=$(gsc ws map --list | fzf --header "Jump to Workspace Block:" --reverse --height 40%)
     if [[ -n "$selection" ]]; then
-        # Extract the path (everything after the last ' | ')
-        local target=$(echo "$selection" | awk -F ' \| ' '{print $NF}')
+        # Extract the relative path (everything after the last ' | ')
+        local rel_path=$(echo "$selection" | awk -F ' \| ' '{print $NF}')
+        # Prepend the mapped root to get the absolute path
+        local target="$GSC_CONTRACT_MAPPED_ROOT/$rel_path"
         if [[ -d "$target" ]]; then
             cd "$target"
         else
@@ -59,7 +57,6 @@ alias .map='gsc ws map'
 }
 
 # 5. Prompt Protection
-# Use a precmd hook to ensure (gsc-ws) is prepended to the prompt, surviving themes.
 _gsc_prompt_hook() {
     if [[ "$PROMPT" != *"(gsc-ws)"* ]]; then
         export PROMPT="%F{cyan}(gsc-ws)%f $PROMPT"

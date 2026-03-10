@@ -1,12 +1,12 @@
 /**
  * Component: Workspace Fuzzy Find Command
- * Block-UUID: 7e6eb55b-e9d0-4078-8c8e-f88b74a14311
- * Parent-UUID: 062cb964-d634-4ea3-94f1-389f1a325ec3
- * Version: 1.3.0
+ * Block-UUID: a4078877-8cc0-42c6-8335-d87ec4477929
+ * Parent-UUID: 2795ad6f-6b69-40dc-b974-2217f53bba6c
+ * Version: 1.4.1
  * Description: Implements the 'gsc ws ffp' command to fuzzy find files in the project root and perform actions like diff, edit, or copy.
  * Language: Go
  * Created-at: 2026-03-09T23:51:58.549Z
- * Authors: GLM-4.4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.2.1), GLM-4.7 (v1.2.2), GLM-4.7 (v1.3.0)
+ * Authors: GLM-4.4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.2.1), GLM-4.7 (v1.2.2), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.4.1)
  */
 
 
@@ -14,7 +14,6 @@ package ws
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -48,7 +47,7 @@ Supports actions like diffing against the generated code, editing, or copying pa
 func init() {
 	ffpCmd.Flags().BoolVar(&ffpDiff, "diff", false, "Diff the selected file against the generated code in the workspace")
 	ffpCmd.Flags().StringVar(&ffpFrom, "from", "", "The source file for diff (defaults to 'generated.*' in CWD)")
-	ffpCmd.Flags().BoolVar(&ffpOpen, "open", false, "Open the selected file in the preferred editor")
+	ffpCmd.Flags().BoolVar(&ffpOpen, "open", false, "Open the selected file in the default editor")
 	ffpCmd.Flags().BoolVar(&ffpCopy, "copy", false, "Copy the content of the selected file to the clipboard")
 	ffpCmd.Flags().BoolVar(&ffpRelative, "relative", false, "Copy the relative path to the clipboard")
 	ffpCmd.Flags().BoolVar(&ffpPath, "path", false, "Copy the absolute path to the clipboard (default)")
@@ -176,27 +175,7 @@ func handleDiffAction(projectFileAbs, projectFileRel string) error {
 	}
 
 	// Resolve Diff Tool
-	diffTool := "diff" // Default
-	// Try to load contract to get PreferredReview
-	contractUUID := os.Getenv("GSC_CONTRACT_UUID")
-	if contractUUID != "" {
-		// We need to load the contract. 
-		// To avoid circular dependency or complex imports, we can read the JSON directly
-		// or rely on the contract package if available. 
-		// For simplicity in this file, we'll try to read the contract JSON.
-		contractDir, _ := filepath.Abs(filepath.Join(os.Getenv("HOME"), ".gitsense", "contracts"))
-		contractPath := filepath.Join(contractDir, contractUUID+".json")
-		
-		data, err := os.ReadFile(contractPath)
-		if err == nil {
-			var meta struct {
-				PreferredReview string `json:"preferred_review"`
-			}
-			if json.Unmarshal(data, &meta) == nil && meta.PreferredReview != "" {
-				diffTool = meta.PreferredReview
-			}
-		}
-	}
+	diffTool := "diff"
 
 	// Execute Diff
 	cmd := exec.Command(diffTool, fromFile, projectFileAbs)
