@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Contract CLI Root
- * Block-UUID: 6d6a4ff5-e27e-42ca-adc9-5988bb4d08f4
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 536083b9-7bbb-4d68-a3e3-946ceb80e90d
+ * Parent-UUID: 6d6a4ff5-e27e-42ca-adc9-5988bb4d08f4
+ * Version: 1.1.0
  * Description: Root command definition and flag initialization for the contract CLI package.
  * Language: Go
- * Created-at: 2026-03-08T00:21:11.145Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.29.1), Gemini 3 Flash (v1.30.0), GLM-4.7 (v1.31.0)
+ * Created-at: 2026-03-10T16:06:12.776Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.29.1), Gemini 3 Flash (v1.30.0), GLM-4.7 (v1.31.0), GLM-4.7 (v1.1.0)
  */
 
 
@@ -22,6 +22,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/gitsense/gsc-cli/internal/contract"
 	"github.com/gitsense/gsc-cli/pkg/settings"
+	"encoding/json"
 )
 
 // ==========================================
@@ -210,20 +211,20 @@ func init() {
 	// Register Subcommands
 	// ==========================================
 	// The following calls will be added as we create the respective files:
-	// contractCmd.AddCommand(createContractCmd)
-	// contractCmd.AddCommand(statusContractCmd)
-	// contractCmd.AddCommand(listContractCmd)
-	// contractCmd.AddCommand(cancelContractCmd)
-	// contractCmd.AddCommand(deleteContractCmd)
-	// contractCmd.AddCommand(renewContractCmd)
-	// contractCmd.AddCommand(completeContractCmd)
-	// contractCmd.AddCommand(updateFileCmd)
-	// contractCmd.AddCommand(newFileCmd)
-	// contractCmd.AddCommand(infoContractCmd)
-	// contractCmd.AddCommand(testContractCmd)
-	// contractCmd.AddCommand(execContractCmd)
-	// contractCmd.AddCommand(launchContractCmd)
-	// contractCmd.AddCommand(dumpContractCmd)
+	contractCmd.AddCommand(createContractCmd)
+	contractCmd.AddCommand(statusContractCmd)
+	contractCmd.AddCommand(ChatsCmd)
+	contractCmd.AddCommand(MessagesCmd)
+	contractCmd.AddCommand(listContractCmd)
+	contractCmd.AddCommand(cancelContractCmd)
+	contractCmd.AddCommand(deleteContractCmd)
+	contractCmd.AddCommand(renewContractCmd)
+	contractCmd.AddCommand(completeContractCmd)
+	contractCmd.AddCommand(infoContractCmd)
+	contractCmd.AddCommand(testContractCmd)
+	contractCmd.AddCommand(execContractCmd)
+	contractCmd.AddCommand(launchContractCmd)
+	contractCmd.AddCommand(dumpContractCmd)
 }
 
 // ==========================================
@@ -351,4 +352,43 @@ func getMapKeys(m map[string]string) []string {
 // getSortedKeys returns a sorted slice of keys from a map (alias for getMapKeys for clarity in wizard)
 func getSortedKeys(m map[string]string) []string {
 	return getMapKeys(m)
+}
+
+// ==========================================
+// Helper: Contract UUID Resolution
+// ==========================================
+// This helper is shared by chats and messages commands.
+
+// resolveContractUUID determines the contract UUID based on priority:
+// 1. Explicit --uuid flag
+// 2. GSC_CONTRACT_UUID environment variable
+// 3. Discovery via .gsc-contract.json
+// 4. Workdir lookup (legacy)
+func resolveContractUUID(explicitUUID string) (string, error) {
+	if explicitUUID != "" {
+		return explicitUUID, nil
+	}
+
+	// Check Environment Variable
+	if envUUID := os.Getenv("GSC_CONTRACT_UUID"); envUUID != "" {
+		return envUUID, nil
+	}
+
+	// Check Discovery (Marker File)
+	if homeDir, err := contract.DiscoverContractHome(); err == nil {
+		// Read the marker file to get the UUID
+		markerPath := filepath.Join(homeDir, ".gsc-contract.json")
+		data, err := os.ReadFile(markerPath)
+		if err == nil {
+			var marker map[string]string
+			if err := json.Unmarshal(data, &marker); err == nil {
+				if uuid, ok := marker["contract_uuid"]; ok {
+					return uuid, nil
+				}
+			}
+		}
+	}
+
+	// Fallback to Workdir Lookup
+	return findContractUUIDByWorkdir()
 }

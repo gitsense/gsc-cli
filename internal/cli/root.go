@@ -1,12 +1,12 @@
 /**
  * Component: Root CLI Command
- * Block-UUID: b15dd7d1-bd74-4c5a-9974-ee5b1591e7e1
- * Parent-UUID: 997f1582-4d63-40d9-9b03-98ab7575aa7e
- * Version: 1.32.10
+ * Block-UUID: 77cc4ba0-06ce-495f-aa0d-e02dafe0630a
+ * Parent-UUID: b15dd7d1-bd74-4c5a-9974-ee5b1591e7e1
+ * Version: 1.33.0
  * Description: Consolidated command exclusion logic into isExcludedCommand helper to handle 'init', 'doctor', 'exec', 'ws', and 'contract' hierarchies uniformly.
  * Language: Go
- * Created-at: 2026-02-02T05:30:03.000Z
- * Authors: GLM-4.7 (v1.32.2), GLM-4.7 (v1.32.3), GLM-4.7 (v1.32.4), GLM-4.7 (v1.32.5), GLM-4.7 (v1.32.6), GLM-4.7 (v1.32.7), Gemini 3 Flash (v1.32.8), GLM-4.7 (v1.32.9), GLM-4.7 (v1.32.10)
+ * Created-at: 2026-03-10T16:15:31.493Z
+ * Authors: GLM-4.7 (v1.32.2), GLM-4.7 (v1.32.3), GLM-4.7 (v1.32.4), GLM-4.7 (v1.32.5), GLM-4.7 (v1.32.6), GLM-4.7 (v1.32.7), Gemini 3 Flash (v1.32.8), GLM-4.7 (v1.32.9), GLM-4.7 (v1.32.10), GLM-4.7 (v1.33.0)
  */
 
 
@@ -123,6 +123,8 @@ func init() {
 	RegisterExecCommand(rootCmd)
 	contract.RegisterContractCommand(rootCmd)
 	ws.RegisterCommand(rootCmd)
+	rootCmd.AddCommand(contract.ChatsCmd)
+	rootCmd.AddCommand(contract.MessagesCmd)
 
 	rootCmd.PersistentFlags().CountP("verbose", "c", "Increase verbosity (-c for info, -cc for debug)")
 	rootCmd.PersistentFlags().Bool("quiet", false, "Suppress all output except errors")
