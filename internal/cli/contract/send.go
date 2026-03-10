@@ -1,12 +1,12 @@
 /**
  * Component: Contract Send Command
- * Block-UUID: 00af2db7-08a3-4609-a8e7-97e80ea21b8a
- * Parent-UUID: a8744461-de2b-47d9-b18f-6fb2211b0e97
- * Version: 1.1.0
+ * Block-UUID: 1080fe53-8e6b-4c41-8174-25cd9de12cff
+ * Parent-UUID: 00af2db7-08a3-4609-a8e7-97e80ea21b8a
+ * Version: 1.1.1
  * Description: Exported SendCmd to allow registration as a top-level alias in the root CLI.
  * Language: Go
- * Created-at: 2026-03-10T22:36:27.771Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.1.0)
+ * Created-at: 2026-03-10T22:44:11.039Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.1.0), GLM-4.7 (v1.1.1)
  */
 
 
@@ -15,7 +15,6 @@ package contract
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/gitsense/gsc-cli/internal/cli/send"
 	"github.com/gitsense/gsc-cli/internal/db"
@@ -90,8 +89,7 @@ func handleContractSend(args []string) error {
 			return fmt.Errorf("failed to get GSC home: %w", err)
 		}
 
-		dbPath := filepath.Join(gscHome, "chats.sqlite3")
-		sqliteDB, err := db.OpenDB(dbPath)
+		sqliteDB, err := db.OpenDB(settings.GetChatDatabasePath(gscHome))
 		if err != nil {
 			return fmt.Errorf("failed to open chats database: %w", err)
 		}
