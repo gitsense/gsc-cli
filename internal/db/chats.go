@@ -756,7 +756,8 @@ func GetMessagesRecursive(dbConn *sql.DB, chatID int64) ([]Message, error) {
 		INNER JOIN conversation_tree ct ON m.parent_id = ct.id
 		WHERE
 			m.chat_id = ? AND
-			ct.deleted = 0
+			ct.deleted = 0 AND
+			m.deleted = 0
 	)
 	SELECT * FROM conversation_tree ORDER BY position ASC, created_at ASC`
 

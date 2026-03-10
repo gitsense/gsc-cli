@@ -233,10 +233,13 @@ func printVisualBlocks(messages []db.Message, fullContent bool) {
 			continue
 		}
 
-		fmt.Println("--------------------------------------------------")
-		fmt.Printf("Message ID: %d | Role: %s | Type: %s\n", msg.ID, msg.Role, msg.Type)
+		fmt.Println("==========================================")
+		fmt.Printf("ID:      %d\n", msg.ID)
+		fmt.Printf("Role:    %s\n", msg.Role)
+		fmt.Printf("Type:    %s\n", msg.Type)
+		fmt.Printf("View:    %s\n", msg.Visibility)
 		fmt.Printf("Created: %s\n", msg.CreatedAt.Format("2006-01-02 15:04:05"))
-		fmt.Println("--------------------------------------------------")
+		fmt.Println("-----------------------------------------")
 		
 		content := msg.Message.String
 		if !fullContent {
@@ -244,7 +247,6 @@ func printVisualBlocks(messages []db.Message, fullContent bool) {
 		}
 		
 		fmt.Println(content)
-		fmt.Println("--------------------------------------------------")
 		fmt.Println() // Extra newline for separation
 	}
 }
@@ -256,8 +258,8 @@ func truncateContent(content string) string {
 	}
 	
 	lines := strings.Split(content, "\n")
-	if len(lines) > 5 {
-		return strings.Join(lines[:5], "\n") + "\n... (truncated)"
+	if len(lines) > 10 {
+		return strings.Join(lines[:10], "\n") + "\n\n... (truncated)"
 	}
 	return content
 }

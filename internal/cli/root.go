@@ -142,7 +142,7 @@ func init() {
 // This allows us to skip the .gitsense check for entire command trees (e.g., 'ws' and 'contract')
 // as well as specific top-level commands (e.g., 'init', 'doctor', 'exec').
 func isExcludedCommand(cmd *cobra.Command) bool {
-	excludedRoots := []string{"init", "doctor", "exec", "ws", "contract"}
+	excludedRoots := []string{"init", "doctor", "exec", "ws", "contract", "chats", "messages"}
 	current := cmd
 
 	for current != nil {
