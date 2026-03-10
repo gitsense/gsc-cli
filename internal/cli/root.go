@@ -2,11 +2,11 @@
  * Component: Root CLI Command
  * Block-UUID: 77cc4ba0-06ce-495f-aa0d-e02dafe0630a
  * Parent-UUID: b15dd7d1-bd74-4c5a-9974-ee5b1591e7e1
- * Version: 1.33.0
- * Description: Consolidated command exclusion logic into isExcludedCommand helper to handle 'init', 'doctor', 'exec', 'ws', and 'contract' hierarchies uniformly.
+ * Version: 1.34.0
+ * Description: Registered contract.SendCmd as a top-level alias 'gsc send'.
  * Language: Go
  * Created-at: 2026-03-10T16:15:31.493Z
- * Authors: GLM-4.7 (v1.32.2), GLM-4.7 (v1.32.3), GLM-4.7 (v1.32.4), GLM-4.7 (v1.32.5), GLM-4.7 (v1.32.6), GLM-4.7 (v1.32.7), Gemini 3 Flash (v1.32.8), GLM-4.7 (v1.32.9), GLM-4.7 (v1.32.10), GLM-4.7 (v1.33.0)
+ * Authors: GLM-4.7 (v1.32.2), GLM-4.7 (v1.32.3), GLM-4.7 (v1.32.4), GLM-4.7 (v1.32.5), GLM-4.7 (v1.32.6), GLM-4.7 (v1.32.7), Gemini 3 Flash (v1.32.8), GLM-4.7 (v1.32.9), GLM-4.7 (v1.32.10), GLM-4.7 (v1.33.0), GLM-4.7 (v1.34.0)
  */
 
 
@@ -125,6 +125,9 @@ func init() {
 	ws.RegisterCommand(rootCmd)
 	rootCmd.AddCommand(contract.ChatsCmd)
 	rootCmd.AddCommand(contract.MessagesCmd)
+	
+	// Register the alias for 'gsc contract send'
+	rootCmd.AddCommand(contract.SendCmd)
 
 	rootCmd.PersistentFlags().CountP("verbose", "c", "Increase verbosity (-c for info, -cc for debug)")
 	rootCmd.PersistentFlags().Bool("quiet", false, "Suppress all output except errors")
@@ -142,7 +145,7 @@ func init() {
 // This allows us to skip the .gitsense check for entire command trees (e.g., 'ws' and 'contract')
 // as well as specific top-level commands (e.g., 'init', 'doctor', 'exec').
 func isExcludedCommand(cmd *cobra.Command) bool {
-	excludedRoots := []string{"init", "doctor", "exec", "ws", "contract", "chats", "messages"}
+	excludedRoots := []string{"init", "doctor", "exec", "ws", "contract", "chats", "messages", "send"}
 	current := cmd
 
 	for current != nil {

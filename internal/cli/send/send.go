@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Shared Send Logic
- * Block-UUID: 7b5bb7ce-58bf-4437-85ce-8978102e84d3
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 4816865e-1c8d-47ce-b972-10e9906052a5
+ * Parent-UUID: 7b5bb7ce-58bf-4437-85ce-8978102e84d3
+ * Version: 1.1.0
  * Description: Core logic for processing and sending chat messages from the CLI, shared between 'ws send' and 'contract send'.
  * Language: Go
- * Created-at: 2026-03-10T21:57:42.855Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Created-at: 2026-03-10T22:33:03.945Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0)
  */
 
 
@@ -34,7 +34,7 @@ type Options struct {
 	MdAfter        string // Markdown to append
 	Wrap           string // Language for code block wrapping
 	Visibility     string // "human-public" or "human-only"
-	Force          bool   // Skip confirmation for large files
+	NoSizeLimit    bool   // Skip confirmation for large files
 	NoConfirmation bool   // Bypass the UI confirmation modal
 
 	// Manipulation (Workspace specific)
@@ -62,7 +62,7 @@ func Perform(opts Options) error {
 		content = string(data)
 	} else if opts.File != "" {
 		var err error
-		content, err = readFileContent(opts.File, opts.Force)
+		content, err = readFileContent(opts.File, opts.NoSizeLimit)
 		if err != nil {
 			return err
 		}
@@ -115,7 +115,7 @@ func Perform(opts Options) error {
 }
 
 // readFileContent reads a file and performs validation checks (size and binary check).
-func readFileContent(path string, force bool) (string, error) {
+func readFileContent(path string, noSizeLimit bool) (string, error) {
 	info, err := os.Stat(path)
 	if err != nil {
 		return "", fmt.Errorf("file not found: %w", err)
@@ -126,7 +126,7 @@ func readFileContent(path string, force bool) (string, error) {
 		sizeMB := float64(info.Size()) / 1024 / 1024
 		fmt.Printf("Warning: File is %.2f MB. Large messages may be truncated by the AI.\n", sizeMB)
 
-		if !force {
+		if !noSizeLimit {
 			confirm := false
 			prompt := &survey.Confirm{
 				Message: "Do you want to continue?",

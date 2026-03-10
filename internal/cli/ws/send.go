@@ -1,12 +1,12 @@
 /**
  * Component: Workspace Send Command
- * Block-UUID: 5aef8d06-32c3-48ec-a9ab-09f0a208c5bb
- * Parent-UUID: f4ff7005-b6dd-4609-81f4-d022d19cd041
- * Version: 1.4.0
+ * Block-UUID: d5588b35-2841-40da-94a4-ce828c28eeea
+ * Parent-UUID: 5aef8d06-32c3-48ec-a9ab-09f0a208c5bb
+ * Version: 1.5.0
  * Description: Added support for message manipulation operations (replace, insert before, insert after) using workspace context and updated payload structure.
  * Language: Go
- * Created-at: 2026-03-10T22:02:47.218Z
- * Authors: Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), Gemini 3 Flash (v1.4.0)
+ * Created-at: 2026-03-10T22:35:55.838Z
+ * Authors: Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), Gemini 3 Flash (v1.4.0), GLM-4.7 (v1.5.0)
  */
 
 
@@ -29,7 +29,7 @@ var (
 	sendMdAfter       string
 	sendWrap          string
 	sendVisibility    string
-	sendForce         bool
+	sendNoSizeLimit   bool
 	sendNoConfirmation bool
 	
 	// New flags for message manipulation
@@ -56,7 +56,7 @@ func init() {
 	sendCmd.Flags().StringVar(&sendMdAfter, "md-after", "", "Append Markdown text")
 	sendCmd.Flags().StringVar(&sendWrap, "wrap", "", "Wrap output in a code block (e.g., 'bash', 'python')")
 	sendCmd.Flags().StringVar(&sendVisibility, "visibility", "human-public", "Message visibility: 'human-public' or 'human-only'")
-	sendCmd.Flags().BoolVar(&sendForce, "force", false, "Skip confirmation for large files")
+	sendCmd.Flags().BoolVar(&sendNoSizeLimit, "no-size-limit", false, "Skip confirmation for large files")
 	sendCmd.Flags().BoolVar(&sendNoConfirmation, "no-chat-confirmation", false, "Bypass the UI confirmation modal")
 
 	// Register new manipulation flags
@@ -131,7 +131,7 @@ func handleSend(args []string) error {
 		MdAfter:            sendMdAfter,
 		Wrap:               sendWrap,
 		Visibility:         sendVisibility,
-		Force:              sendForce,
+		NoSizeLimit:        sendNoSizeLimit,
 		NoConfirmation:     sendNoConfirmation,
 		ReferenceMessageID: referenceMessageID,
 		Replace:            sendReplace,

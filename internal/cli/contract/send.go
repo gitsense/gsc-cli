@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Contract Send Command
- * Block-UUID: a8744461-de2b-47d9-b18f-6fb2211b0e97
- * Parent-UUID: N/A
- * Version: 1.0.1
- * Description: Implements the 'gsc contract send' command, allowing users to send messages to any chat associated with a contract.
+ * Block-UUID: 00af2db7-08a3-4609-a8e7-97e80ea21b8a
+ * Parent-UUID: a8744461-de2b-47d9-b18f-6fb2211b0e97
+ * Version: 1.1.0
+ * Description: Exported SendCmd to allow registration as a top-level alias in the root CLI.
  * Language: Go
- * Created-at: 2026-03-10T22:03:22.864Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1)
+ * Created-at: 2026-03-10T22:36:27.771Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.1.0)
  */
 
 
@@ -15,9 +15,13 @@ package contract
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/gitsense/gsc-cli/internal/cli/send"
+	"github.com/gitsense/gsc-cli/internal/db"
+	"github.com/gitsense/gsc-cli/pkg/settings"
 	"github.com/spf13/cobra"
+	"github.com/AlecAivazis/survey/v2"
 )
 
 var (
@@ -27,11 +31,14 @@ var (
 	sendMdAfter        string
 	sendWrap           string
 	sendVisibility     string
-	sendForce          bool
+	sendNoSizeLimit    bool
+	sendAutoSelect     bool
 	sendNoConfirmation bool
 )
 
-var sendContractCmd = &cobra.Command{
+// SendCmd represents the 'gsc contract send' command.
+// It is exported to allow registration as a top-level alias ('gsc send').
+var SendCmd = &cobra.Command{
 	Use:   "send [text]",
 	Short: "Send a message to a contract chat",
 	Long: `Sends a message to a specific chat associated with a contract.
@@ -44,17 +51,18 @@ If multiple chats exist, the --chat-id flag is required.`,
 
 func init() {
 	// Define flags locally to ensure self-containment
-	sendContractCmd.Flags().Int64Var(&sendChatID, "chat-id", 0, "The ID of the chat to send to")
-	sendContractCmd.Flags().StringVar(&contractUUID, "uuid", "", "Contract UUID (optional if in workspace)")
-	sendContractCmd.Flags().StringVar(&sendFile, "file", "", "Read content from a file")
-	sendContractCmd.Flags().StringVar(&sendMdBefore, "md-before", "", "Prepend Markdown text")
-	sendContractCmd.Flags().StringVar(&sendMdAfter, "md-after", "", "Append Markdown text")
-	sendContractCmd.Flags().StringVar(&sendWrap, "wrap", "", "Wrap output in a code block")
-	sendContractCmd.Flags().StringVar(&sendVisibility, "visibility", "human-public", "Message visibility")
-	sendContractCmd.Flags().BoolVar(&sendForce, "force", false, "Skip confirmation for large files")
-	sendContractCmd.Flags().BoolVar(&sendNoConfirmation, "no-chat-confirmation", false, "Bypass UI confirmation")
+	SendCmd.Flags().Int64Var(&sendChatID, "chat-id", 0, "The ID of the chat to send to")
+	SendCmd.Flags().StringVar(&contractUUID, "uuid", "", "Contract UUID (optional if in workspace)")
+	SendCmd.Flags().StringVar(&sendFile, "file", "", "Read content from a file")
+	SendCmd.Flags().StringVar(&sendMdBefore, "md-before", "", "Prepend Markdown text")
+	SendCmd.Flags().StringVar(&sendMdAfter, "md-after", "", "Append Markdown text")
+	SendCmd.Flags().StringVar(&sendWrap, "wrap", "", "Wrap output in a code block")
+	SendCmd.Flags().StringVar(&sendVisibility, "visibility", "human-public", "Message visibility")
+	SendCmd.Flags().BoolVar(&sendNoSizeLimit, "no-size-limit", false, "Skip confirmation for large files")
+	SendCmd.Flags().BoolVar(&sendNoConfirmation, "no-chat-confirmation", false, "Bypass UI confirmation")
+	SendCmd.Flags().BoolVar(&sendAutoSelect, "auto-select", false, "Automatically select the chat if only one exists")
 
-	contractCmd.AddCommand(sendContractCmd)
+	contractCmd.AddCommand(SendCmd)
 }
 
 func handleContractSend(args []string) error {
@@ -76,6 +84,46 @@ func handleContractSend(args []string) error {
 	// 2. Chat ID Validation
 	chatID := sendChatID
 	if chatID == 0 {
+		// Smart Chat Selection
+		gscHome, err := settings.GetGSCHome(true)
+		if err != nil {
+			return fmt.Errorf("failed to get GSC home: %w", err)
+		}
+
+		dbPath := filepath.Join(gscHome, "chats.sqlite3")
+		sqliteDB, err := db.OpenDB(dbPath)
+		if err != nil {
+			return fmt.Errorf("failed to open chats database: %w", err)
+		}
+		defer db.CloseDB(sqliteDB)
+
+		chats, err := db.GetChatsByContractUUID(sqliteDB, uuid)
+		if err != nil {
+			return fmt.Errorf("failed to query chats: %w", err)
+		}
+
+		if len(chats) == 0 {
+			return fmt.Errorf("no chats found for contract %s", uuid)
+		} else if len(chats) == 1 {
+			targetChat := chats[0]
+			if sendAutoSelect {
+				chatID = targetChat.ID
+			} else {
+				prompt := &survey.Confirm{
+					Message: fmt.Sprintf("Send to '%s' (ID: %d)?", targetChat.Name, targetChat.ID),
+				}
+				var confirm bool
+				if err := survey.AskOne(prompt, &confirm); err != nil || !confirm {
+					return fmt.Errorf("send cancelled")
+				}
+				chatID = targetChat.ID
+			}
+		} else {
+			return fmt.Errorf("multiple chats found for contract %s. Please specify --chat-id.", uuid)
+		}
+	}
+
+	if chatID == 0 {
 		// Try environment (if in a workspace)
 		if envChatID := os.Getenv("GSC_CHAT_ID"); envChatID != "" {
 			fmt.Sscanf(envChatID, "%d", &chatID)
@@ -83,7 +131,7 @@ func handleContractSend(args []string) error {
 	}
 
 	if chatID == 0 {
-		return fmt.Errorf("--chat-id is required when sending from outside a specific workspace home")
+		return fmt.Errorf("could not determine chat ID")
 	}
 
 	// 3. Map to Shared Options
@@ -101,7 +149,7 @@ func handleContractSend(args []string) error {
 		MdAfter:        sendMdAfter,
 		Wrap:           sendWrap,
 		Visibility:     sendVisibility,
-		Force:          sendForce,
+		NoSizeLimit:    sendNoSizeLimit,
 		NoConfirmation: sendNoConfirmation,
 	}
 
