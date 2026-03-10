@@ -1,12 +1,12 @@
 /**
  * Component: Merged Dump Strategy
- * Block-UUID: 8faebde3-9ed6-4136-9513-c2d331ef1f05
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 661d541d-4ba1-4dfa-86c4-835d890bc94f
+ * Parent-UUID: 8faebde3-9ed6-4136-9513-c2d331ef1f05
+ * Version: 1.0.1
  * Description: Implements the 'merged' dump strategy, creating a squashed filesystem tree where duplicate messages are unified by hash.
  * Language: Go
- * Created-at: 2026-03-10T00:20:00.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Created-at: 2026-03-10T01:14:51.978Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1)
  */
 
 
@@ -39,6 +39,10 @@ type MergedNode struct {
 
 // executeMergedDump implements the logic for the 'merged' dump type.
 func executeMergedDump(chats []db.Chat, sqliteDB *sql.DB, writer DumpWriter, outputDir string, includeSystem bool, trim bool, sortMode string, blockMap map[string]string, debugPatch bool) error {
+	// Prepare the output directory to ensure a clean state
+	if err := writer.Prepare(outputDir); err != nil {
+		return fmt.Errorf("failed to prepare output directory: %w", err)
+	}
 
 	// ==========================================
 	// PASS 0: Build Merged Tree & Calculate Metrics

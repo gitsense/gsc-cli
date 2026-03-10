@@ -1,12 +1,12 @@
 /**
  * Component: Contract Dump Orchestrator
- * Block-UUID: a581ceef-fb80-49fc-a379-47f2e74cc356
- * Parent-UUID: 184e6b17-4620-4e07-9c6a-a9dcd749dda4
- * Version: 2.24.0
+ * Block-UUID: 82706c4d-b99f-4b64-9c0c-33fb5931dba6
+ * Parent-UUID: a581ceef-fb80-49fc-a379-47f2e74cc356
+ * Version: 2.25.0
  * Description: Implemented Registry-First workspace strategy. Calculates composite hash (ContractUUID + MessageHash) for unique workspace IDs and updates the ContractMetadata JSON registry.
  * Language: Go
- * Created-at: 2026-03-10T00:43:35.105Z
- * Authors: GLM-4.7 (v2.23.0), GLM-4.7 (v2.24.0)
+ * Created-at: 2026-03-10T01:13:58.023Z
+ * Authors: GLM-4.7 (v2.23.0), GLM-4.7 (v2.24.0), GLM-4.7 (v2.25.0)
  */
 
 
@@ -22,13 +22,6 @@ import (
 // ExecuteDump coordinates the full dump process for a given contract.
 // It supports 'tree', 'merged', and 'mapped' strategies.
 func ExecuteDump(contractUUID string, writer DumpWriter, outputDir string, includeSystem bool, trim bool, dumpType string, sortMode string, debugPatch bool, messageID int64, validate bool, activeChatID int64) (*MappedDumpResult, error) {
-	// 1. Initialize Output (Skip if validating to avoid deleting the workspace)
-	if !validate {
-		if err := writer.Prepare(outputDir); err != nil {
-			return nil, fmt.Errorf("failed to prepare output directory: %w", err)
-		}
-	}
-
 	// 2. Open Database
 	gscHome, _ := settings.GetGSCHome(false)
 	sqliteDB, err := db.OpenDB(settings.GetChatDatabasePath(gscHome))

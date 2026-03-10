@@ -1,12 +1,12 @@
 /**
  * Component: Tree Dump Strategy
- * Block-UUID: 83116fba-cc68-4527-a081-447e984ddd12
- * Parent-UUID: 5f4c3768-e16e-4c73-aa1b-8238b067ec13
- * Version: 1.0.1
+ * Block-UUID: fb69ffe3-70dd-4b68-9257-3fbde496c79e
+ * Parent-UUID: 83116fba-cc68-4527-a081-447e984ddd12
+ * Version: 1.0.2
  * Description: Implements the legacy 'tree' dump strategy, creating a hierarchical filesystem tree mirroring chat structure.
  * Language: Go
- * Created-at: 2026-03-10T00:51:22.508Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1)
+ * Created-at: 2026-03-10T01:14:29.620Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2)
  */
 
 
@@ -26,6 +26,11 @@ import (
 
 // executeTreeDump implements the logic for the legacy 'tree' dump type.
 func executeTreeDump(chats []db.Chat, sqliteDB *sql.DB, writer DumpWriter, outputDir string, includeSystem bool, trim bool, debugPatch bool) error {
+	// Prepare the output directory to ensure a clean state
+	if err := writer.Prepare(outputDir); err != nil {
+		return fmt.Errorf("failed to prepare output directory: %w", err)
+	}
+
 	// PASS 1: Indexing
 	blockMap := make(map[string]string)
 
