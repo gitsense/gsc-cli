@@ -1,12 +1,12 @@
 /**
  * Component: Tree Command
- * Block-UUID: 674c1f17-f7e9-42b6-8bbf-f66cae798561
- * Parent-UUID: fcb68692-b004-4cfc-8ce1-43827a12809c
- * Version: 1.6.0
+ * Block-UUID: 33a47bc0-d526-4b95-99dd-5c63eb53e43c
+ * Parent-UUID: 674c1f17-f7e9-42b6-8bbf-f66cae798561
+ * Version: 1.7.0
  * Description: Implemented 'prune by default when filtering' behavior. Added --no-prune flag to allow users to see the full heat map. Updated EnrichTree call to pass requested fields for metadata projection. Updated help text for --prune to reflect new defaults.
  * Language: Go
- * Created-at: 2026-02-13T01:24:44.962Z
- * Authors: Gemini并发 Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), Gemini 3 Flash (v1.3.0), Gemini 3 Flash (v1.3.1), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0)
+ * Created-at: 2026-03-11T15:06:04.562Z
+ * Authors: Gemini并发 Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), Gemini 3 Flash (v1.3.0), Gemini 3 Flash (v1.3.1), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0)
  */
 
 
@@ -21,6 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/gitsense/gsc-cli/internal/bridge"
+	"github.com/gitsense/gsc-cli/internal/contract"
 	"github.com/gitsense/gsc-cli/internal/git"
 	"github.com/gitsense/gsc-cli/internal/manifest"
 	"github.com/gitsense/gsc-cli/internal/registry"
@@ -41,6 +42,8 @@ var (
 	treeNoCompact bool
 	treeFieldSingular []string
 	treeNoPrune   bool
+	treeUUID      string
+	treeAuthCode  string
 )
 
 // treeCmd represents the tree command
@@ -62,6 +65,31 @@ Filtering & Pruning:
   --no-compact              Show filenames for non-matching files in the heat map`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		startTime := time.Now()
+
+		// Handle UUID-based execution
+		if treeUUID != "" {
+			if treeAuthCode == "" {
+				return fmt.Errorf("--authcode is required when using --uuid")
+			}
+
+			// Load contract using existing function
+			meta, err := contract.GetContract(treeUUID)
+			if err != nil {
+				return fmt.Errorf("failed to load contract: %w", err)
+			}
+
+			// Validate authcode
+			if meta.Authcode != treeAuthCode {
+				return fmt.Errorf("invalid authorization code for contract %s", treeUUID)
+			}
+
+			// Change to workdir
+			if err := os.Chdir(meta.Workdir); err != nil {
+				return fmt.Errorf("failed to change to workdir %s: %w", meta.Workdir, err)
+			}
+
+			logger.Debug("Changed to workdir for contract", "uuid", treeUUID, "workdir", meta.Workdir)
+		}
 
 		// 0. Early Validation for Bridge
 		if bridgeCode != "" {
@@ -230,6 +258,8 @@ func init() {
 	treeCmd.Flags().StringArrayVarP(&treeFocus, "focus", "f", []string{}, "Restrict tree to specific paths or globs")
 	treeCmd.Flags().BoolVar(&treeNoCompact, "no-compact", false, "Show filenames for non-matching files in the heat map")
 	treeCmd.Flags().BoolVar(&treeNoPrune, "no-prune", false, "Show all files in the tree, marking matches (Heat Map mode)")
+	treeCmd.Flags().StringVar(&treeUUID, "uuid", "", "Contract UUID for remote execution")
+	treeCmd.Flags().StringVar(&treeAuthCode, "authcode", "", "Contract authorization code")
 }
 
 // RegisterTreeCommand registers the tree command with the root command.
