@@ -1,12 +1,12 @@
 /**
  * Component: Contract Send Command
- * Block-UUID: 1080fe53-8e6b-4c41-8174-25cd9de12cff
- * Parent-UUID: 00af2db7-08a3-4609-a8e7-97e80ea21b8a
- * Version: 1.1.1
+ * Block-UUID: 820a49e9-2a26-4fe4-a052-14e627870e5e
+ * Parent-UUID: 1080fe53-8e6b-4c41-8174-25cd9de12cff
+ * Version: 1.1.2
  * Description: Exported SendCmd to allow registration as a top-level alias in the root CLI.
  * Language: Go
- * Created-at: 2026-03-10T22:44:11.039Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.1.0), GLM-4.7 (v1.1.1)
+ * Created-at: 2026-03-10T22:48:08.357Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.1.2)
  */
 
 
@@ -44,6 +44,7 @@ var SendCmd = &cobra.Command{
 If multiple chats exist, the --chat-id flag is required.`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true
 		return handleContractSend(args)
 	},
 }
@@ -108,7 +109,7 @@ func handleContractSend(args []string) error {
 				chatID = targetChat.ID
 			} else {
 				prompt := &survey.Confirm{
-					Message: fmt.Sprintf("Send to '%s' (ID: %d)?", targetChat.Name, targetChat.ID),
+					Message: fmt.Sprintf("Send to '%s' (Chat ID: %d)?", targetChat.Name, targetChat.ID),
 				}
 				var confirm bool
 				if err := survey.AskOne(prompt, &confirm); err != nil || !confirm {
