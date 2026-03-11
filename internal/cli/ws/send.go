@@ -1,12 +1,12 @@
 /**
  * Component: Workspace Send Command
- * Block-UUID: d5588b35-2841-40da-94a4-ce828c28eeea
- * Parent-UUID: 5aef8d06-32c3-48ec-a9ab-09f0a208c5bb
- * Version: 1.5.0
- * Description: Added support for message manipulation operations (replace, insert before, insert after) using workspace context and updated payload structure.
+ * Block-UUID: da31b862-e35a-4b24-bcc8-53e8bb0723a5
+ * Parent-UUID: d5588b35-2841-40da-94a4-ce828c28eeea
+ * Version: 1.6.0
+ * Description: Added --post flag to support direct message insertion into the chat database via the 'chat_message_posted' event.
  * Language: Go
  * Created-at: 2026-03-10T22:35:55.838Z
- * Authors: Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), Gemini 3 Flash (v1.4.0), GLM-4.7 (v1.5.0)
+ * Authors: Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), Gemini 3 Flash (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0)
  */
 
 
@@ -24,13 +24,14 @@ import (
 )
 
 var (
-	sendFile          string
-	sendMdBefore      string
-	sendMdAfter       string
-	sendWrap          string
-	sendVisibility    string
-	sendNoSizeLimit   bool
+	sendFile           string
+	sendMdBefore       string
+	sendMdAfter        string
+	sendWrap           string
+	sendVisibility     string
+	sendNoSizeLimit    bool
 	sendNoConfirmation bool
+	sendPost           bool
 	
 	// New flags for message manipulation
 	sendReplace      bool
@@ -57,7 +58,8 @@ func init() {
 	sendCmd.Flags().StringVar(&sendWrap, "wrap", "", "Wrap output in a code block (e.g., 'bash', 'python')")
 	sendCmd.Flags().StringVar(&sendVisibility, "visibility", "human-public", "Message visibility: 'human-public' or 'human-only'")
 	sendCmd.Flags().BoolVar(&sendNoSizeLimit, "no-size-limit", false, "Skip confirmation for large files")
-	sendCmd.Flags().BoolVar(&sendNoConfirmation, "no-chat-confirmation", false, "Bypass the UI confirmation modal")
+	sendCmd.Flags().BoolVar(&sendNoConfirmation, "no-chat-confirmation", false, "Skip UI confirmation (auto-inserted by frontend)")
+	sendCmd.Flags().BoolVar(&sendPost, "post", false, "Insert message directly to chat (bypasses UI confirmation)")
 
 	// Register new manipulation flags
 	sendCmd.Flags().BoolVar(&sendReplace, "replace-message", false, "Replace the current workspace message")
@@ -133,6 +135,7 @@ func handleSend(args []string) error {
 		Visibility:         sendVisibility,
 		NoSizeLimit:        sendNoSizeLimit,
 		NoConfirmation:     sendNoConfirmation,
+		Post:               sendPost,
 		ReferenceMessageID: referenceMessageID,
 		Replace:            sendReplace,
 		InsertBefore:       sendInsertBefore,

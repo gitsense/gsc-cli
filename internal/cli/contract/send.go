@@ -1,12 +1,12 @@
 /**
  * Component: Contract Send Command
- * Block-UUID: 820a49e9-2a26-4fe4-a052-14e627870e5e
- * Parent-UUID: 1080fe53-8e6b-4c41-8174-25cd9de12cff
- * Version: 1.1.2
- * Description: Exported SendCmd to allow registration as a top-level alias in the root CLI.
+ * Block-UUID: c93fa9a7-34ab-4d70-b31b-fbe5e7b0156e
+ * Parent-UUID: 820a49e9-2a26-4fe4-a052-14e627870e5e
+ * Version: 1.1.3
+ * Description: Added --post flag to support direct message insertion into the chat database via the 'chat_message_posted' event.
  * Language: Go
  * Created-at: 2026-03-10T22:48:08.357Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.1.2)
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.1.2), GLM-4.7 (v1.1.3)
  */
 
 
@@ -33,6 +33,7 @@ var (
 	sendNoSizeLimit    bool
 	sendAutoSelect     bool
 	sendNoConfirmation bool
+	sendPost           bool // New flag for direct insertion
 )
 
 // SendCmd represents the 'gsc contract send' command.
@@ -59,8 +60,9 @@ func init() {
 	SendCmd.Flags().StringVar(&sendWrap, "wrap", "", "Wrap output in a code block")
 	SendCmd.Flags().StringVar(&sendVisibility, "visibility", "human-public", "Message visibility")
 	SendCmd.Flags().BoolVar(&sendNoSizeLimit, "no-size-limit", false, "Skip confirmation for large files")
-	SendCmd.Flags().BoolVar(&sendNoConfirmation, "no-chat-confirmation", false, "Bypass UI confirmation")
+	SendCmd.Flags().BoolVar(&sendNoConfirmation, "no-chat-confirmation", false, "Skip UI confirmation (auto-inserted by frontend)")
 	SendCmd.Flags().BoolVar(&sendAutoSelect, "auto-select", false, "Automatically select the chat if only one exists")
+	SendCmd.Flags().BoolVar(&sendPost, "post", false, "Insert message directly to chat (bypasses UI confirmation)")
 
 	contractCmd.AddCommand(SendCmd)
 }
@@ -150,6 +152,7 @@ func handleContractSend(args []string) error {
 		Visibility:     sendVisibility,
 		NoSizeLimit:    sendNoSizeLimit,
 		NoConfirmation: sendNoConfirmation,
+		Post:           sendPost, // Pass the new flag
 	}
 
 	return send.Perform(opts)

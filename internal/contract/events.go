@@ -1,12 +1,12 @@
 /*
  * Component: Contract Events Database Helper
- * Block-UUID: 44c7ed6b-27af-4941-81cb-bc6c5f44d5a0
- * Parent-UUID: 82fa74af-9792-4a82-b956-9b5f84bd00a5
- * Version: 1.3.0
- * Description: Updated ChatMessagePayload to support message manipulation operations (replace, insert before, insert after) by adding ReferenceMessageID and boolean flags.
+ * Block-UUID: 1c947add-f763-413e-9bdd-f8abb52cf2bd
+ * Parent-UUID: 44c7ed6b-27af-4941-81cb-bc6c5f44d5a0
+ * Version: 1.4.0
+ * Description: Added MessageID field to ChatMessagePayload to support the 'chat_message_posted' event type, which carries the ID of the message inserted by the backend.
  * Language: Go
  * Created-at: 2026-03-07T04:11:57.272Z
- * Authors: Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
+ * Authors: Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
  */
 
 
@@ -28,15 +28,18 @@ import (
 // ChatMessagePayload represents the data structure for a chat message event.
 // It supports appending new messages as well as manipulating existing messages
 // relative to a reference message ID (e.g., replace, insert before, insert after).
+// It also supports the 'chat_message_posted' event type, which includes the ID
+// of the message that was successfully inserted into the database.
 type ChatMessagePayload struct {
 	Text               string `json:"text"`
-	Type               string `json:"type"`               // e.g., "regular"
-	Visibility         string `json:"visibility"`         // e.g., "human-public", "human-only"
-	NoConfirmation     bool   `json:"no_confirmation"`     // If true, bypass the UI confirmation modal
+	Type               string `json:"type"`             // e.g., "regular"
+	Visibility         string `json:"visibility"`       // e.g., "human-public", "human-only"
+	NoConfirmation     bool   `json:"no_confirmation"`  // If true, bypass the UI confirmation modal
 	ReferenceMessageID int64  `json:"reference_message_id,omitempty"` // The ID of the message to target for operations
-	Replace            bool   `json:"replace,omitempty"`    // If true, replace the reference message
+	Replace            bool   `json:"replace,omitempty"`       // If true, replace the reference message
 	InsertBefore       bool   `json:"insert_before,omitempty"` // If true, insert before the reference message
 	InsertAfter        bool   `json:"insert_after,omitempty"`  // If true, insert after the reference message
+	MessageID          int64  `json:"message_id,omitempty"`    // The ID of the message inserted by the backend (for 'chat_message_posted')
 }
 
 // GetEventsDBPath resolves the absolute path to the events database for a given contract UUID.

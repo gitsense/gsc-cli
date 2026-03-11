@@ -1,12 +1,12 @@
 /**
  * Component: Contract CLI Create
- * Block-UUID: 94ce3270-81a9-4963-82cf-1f49c1999c2f
- * Parent-UUID: ea53c1b5-0db6-4644-a4b3-3c529bf8bda0
- * Version: 1.1.0
- * Description: CLI command for creating new traceability contracts with interactive workspace configuration.
+ * Block-UUID: 8c781331-aa47-4f7b-aa16-8cfb366f8762
+ * Parent-UUID: 7a17adad-0ad7-495b-b113-2d4127d821e8
+ * Version: 1.1.2
+ * Description: Filtered terminal options to exclude workspace-specific (-ws) variants from the user selection prompt.
  * Language: Go
  * Created-at: 2026-03-10T04:35:57.944Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.29.1), Gemini 3 Flash (v1.30.0), GLM-4.7 (v1.31.0), GLM-4.7 (v1.1.0)
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.29.1), Gemini 3 Flash (v1.30.0), GLM-4.7 (v1.31.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.1.2)
  */
 
 
@@ -56,7 +56,14 @@ var createContractCmd = &cobra.Command{
 			fmt.Println("Let's configure your preferred terminal for the AI review workflow.")
 			
 			// 1. Prepare Options (Dynamic based on OS)
-			terminalOptions := getSortedKeys(settings.DefaultTerminalTemplates)
+			// Filter out workspace-specific (-ws) variants from the user selection
+			allOptions := getSortedKeys(settings.DefaultTerminalTemplates)
+			var terminalOptions []string
+			for _, opt := range allOptions {
+				if !strings.HasSuffix(opt, "-ws") {
+					terminalOptions = append(terminalOptions, opt)
+				}
+			}
 
 			// 2. Prompt for Terminal
 			if contractPreferredTerminal == "" {
@@ -110,9 +117,9 @@ var createContractCmd = &cobra.Command{
 			whitelist,
 			contractNoWhitelist,
 			contractExecTimeout,
-			contractPreferredTerminal,
-			"", // PreferredEditor (removed)
-			"", // PreferredReview (removed)
+			"",                        // PreferredEditor (empty)
+			contractPreferredTerminal, // PreferredTerminal (correct position)
+			"",                        // PreferredReview (empty)
 		)
 		if err != nil {
 			return err
