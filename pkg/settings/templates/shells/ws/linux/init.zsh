@@ -1,11 +1,11 @@
 # Component: GitSense Workspace Shell Init (Zsh)
-# Block-UUID: 9b2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e
-# Parent-UUID: 8aea5b45-5719-431b-b260-5396aa38c393
-# Version: 1.6.0
-# Description: Updated .goto to prepend GSC_CONTRACT_MAPPED_ROOT to the relative path returned by 'g Ministers ws map --list'.
+ # Block-UUID: ac4bc99c-5044-4d4b-91a7-428664b00dbd
+# Parent-UUID: 9b2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e
+# Version: 1.7.0
+# Description: Added .switch alias to support switching between message workspaces using fzf.
 # Language: Zsh
 # Created-at: 2026-03-08T16:30:23.301Z
-# Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.5.0), GLM-4.7 (v1.6.0)
+# Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0)
 
 
 # 1. User Environment Loading
@@ -53,6 +53,13 @@ alias .map='gsc ws map'
         else
             echo "Error: Target directory does not exist: $target"
         fi
+    fi
+}
+
+.switch() {
+    local selection=$(ls -1 "$GSC_CONTRACT_MAPPED_ROOT" | fzf --header "Switch Workspace:" --reverse --height 40%)
+    if [[ -n "$selection" ]]; then
+        gsc ws "$selection"
     fi
 }
 

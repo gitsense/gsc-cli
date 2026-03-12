@@ -1,12 +1,12 @@
 <#
 Component: GitSense Workspace Shell Init (PowerShell)
-Block-UUID: 07a7409e-9f64-41c3-ac2f-98352ce9daf0
-Parent-UUID: 82ac45f9-8d9b-4d8c-95ea-29e1323f37e1
-Version: 1.8.0
-Description: Updated .goto to prepend GSC_CONTRACT_MAPPED_ROOT to the relative path returned by 'gsc ws map --list'.
+Block-UUID: a60220f9-0902-4afe-b6db-e99d99ba0639
+Parent-UUID: 07a7409e-9f64-41c3-ac2f-98352ce9daf0
+Version: 1.9.0
+Description: Added .switch alias to support switching between message workspaces using fzf.
 Language: PowerShell
 Created-at: 2026-03-08T16:30:23.301Z
-Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v1.6.0), Gemini 3 Flash (v1.7.0), GLM-4.7 (v1.8.0)
+Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), Gemini 3 Flash (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0)
 #>
 
 
@@ -58,6 +58,13 @@ function .goto {
         } else {
             Write-Error "Target directory does not exist: $target"
         }
+    }
+}
+
+function .switch {
+    $selection = Get-ChildItem $env:GSC_CONTRACT_MAPPED_ROOT -Directory | Select-Object -ExpandProperty Name | fzf --header "Switch Workspace:" --reverse --height 40%
+    if ($selection) {
+        gsc ws $selection
     }
 }
 

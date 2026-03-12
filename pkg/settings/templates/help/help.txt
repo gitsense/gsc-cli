@@ -89,6 +89,14 @@ COMMANDS
         Examples:
         .goto              # Open picker to jump to any block
 
+    .switch
+        Opens an interactive picker (fzf) to switch to a different message
+        workspace within the current contract. This replaces the current shell
+        session with a new one in the selected workspace.
+
+        Examples:
+        .switch            # Open picker to switch workspaces
+
     .ffp [OPTIONS]
         Fuzzy find files in the real project root ($GSC_PROJECT_ROOT).
         This is the primary tool for locating source files to compare

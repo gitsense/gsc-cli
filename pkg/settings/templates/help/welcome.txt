@@ -1,7 +1,7 @@
-GitSense Shadow Workspace
+GitSense Contract Workspace
 -------------------------
 This directory is a structured dump of the AI's response, converted into
-a project-like file tree to help you review and test the proposed code.
+a project-like file tree to help you review and test the generated code.
 
 You can freely modify, build, and test files in this directory. Your 
 changes are isolated and will NOT affect your actual project.
@@ -10,6 +10,7 @@ Available Commands:
   .block   - Navigate between code blocks in the current message
   .map     - Visualize the workspace hierarchy
   .goto    - Jump to any block across all messages
+  .switch  - Switch to a different message workspace
   .ffp     - Fuzzy find files in the project root
   .send    - Send output to the chat
   .help    - Show detailed manual

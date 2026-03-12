@@ -100,7 +100,7 @@ func (w *MappedWriter) WriteProvenance(msgDir string, chats []db.Chat) error {
 }
 
 // WriteBlock handles the persistence of a code block.
-// If the block is mapped, it writes to mapped/<path>/proposed.<ext>.
+// If the block is mapped, it writes to mapped/<path>/generated.<ext>.
 // If unmapped, it writes to unmapped/snippets/ or unmapped/components/.
 func (w *MappedWriter) WriteBlock(msgDir string, block markdown.CodeBlock, trim bool) error {
 	relPath, isMapped := w.PathMap[block.ParentUUID]
@@ -155,7 +155,7 @@ func (w *MappedWriter) WritePatch(msgDir string, patch markdown.PatchBlock, trim
 }
 
 // WritePatchedFile persists the result of a successful patch application.
-// This becomes the 'proposed.<ext>' file in the mapped directory.
+// This becomes the 'generated.<ext>' file in the mapped directory.
 func (w *MappedWriter) WritePatchedFile(msgDir string, patch markdown.PatchBlock, header string, content string) error {
 	relPath, isMapped := w.PathMap[patch.SourceBlockUUID]
 	if !isMapped {
@@ -222,7 +222,7 @@ func (w *MappedWriter) WriteProvenanceJSON(msgDir string, data Provenance) error
 	if isMapped {
 		targetDir = filepath.Join(msgDir, "mapped", relPath)
 	} else {
-		// For unmapped files, we place provenance in the same directory as the proposed file
+		// For unmapped files, we place provenance in the same directory as the generated file
 		if data.FilePath != "" {
 			targetDir = filepath.Join(msgDir, "unmapped", "components", data.FilePath)
 		} else {

@@ -390,7 +390,7 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 			// Update blockMap
 			if patch.TargetBlockUUID != "" {
 				// We need the patched code for the map, but we haven't applied it yet.
-				// This is tricky. For mapped dump, we rely on the 'proposed' file written by WritePatchedFile.
+				// This is tricky. For mapped dump, we rely on the 'generated' file written by WritePatchedFile.
 				// We don't need to update blockMap for subsequent patches in the same message because
 				// patches usually apply to the *original* source, not the result of previous patches in the same message.
 				// However, if there are multiple patches to the same file in one message, we might need to chain them.
@@ -489,7 +489,7 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 						logger.Warning("Failed to apply patch", "target_uuid", patch.TargetBlockUUID, "error", err, "debug_dir", debugPath)
 					}
 				}
-				// If patch fails, we can't write the proposed file.
+				// If patch fails, we can't write the generated file.
 				// We write the raw patch to unmapped/patches for manual review.
 				if err := writer.WritePatch(workspaceDir, patch, trim); err != nil {
 					return nil, err
