@@ -1,12 +1,12 @@
 <#
 Component: GitSense Workspace Shell Init (PowerShell)
-Block-UUID: a60220f9-0902-4afe-b6db-e99d99ba0639
-Parent-UUID: 07a7409e-9f64-41c3-ac2f-98352ce9daf0
-Version: 1.9.0
-Description: Added .switch alias to support switching between message workspaces using fzf.
+Block-UUID: e9221d02-34cb-4902-a586-3cb7ce6aa36d
+Parent-UUID: a60220f9-0902-4afe-b6db-e99d99ba0639
+Version: 1.10.0
+Description: Updated .switch to use 'cd' instead of 'gsc ws' to preserve the current shell session.
 Language: PowerShell
 Created-at: 2026-03-08T16:30:23.301Z
-Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), Gemini 3 Flash (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0)
+Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), Gemini 3 Flash (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0)
 #>
 
 
@@ -64,7 +64,7 @@ function .goto {
 function .switch {
     $selection = Get-ChildItem $env:GSC_CONTRACT_MAPPED_ROOT -Directory | Select-Object -ExpandProperty Name | fzf --header "Switch Workspace:" --reverse --height 40%
     if ($selection) {
-        gsc ws $selection
+        Set-Location "$env:GSC_CONTRACT_MAPPED_ROOT\$selection"
     }
 }
 

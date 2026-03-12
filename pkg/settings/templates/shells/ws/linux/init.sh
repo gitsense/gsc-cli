@@ -1,11 +1,11 @@
 # Component: GitSense Workspace Shell Init (Bash)
-# Block-UUID: cfe41e1d-be4a-45ad-9b68-85fc8e366fd3
-# Parent-UUID: ee1ec9b5-70d5-4866-b218-b3104201f9b8
-# Version: 1.9.0
-# Description: Added .switch alias to support switching between message workspaces using fzf.
+ # Block-UUID: 8a49866c-1e1c-49e8-aefa-6e537d336c32
+# Parent-UUID: cfe41e1d-be4a-45ad-9b68-85fc8e366fd3
+# Version: 1.10.0
+# Description: Updated .switch to use 'cd' instead of 'gsc ws' to preserve the current shell session.
 # Language: Bash
 # Created-at: 2026-03-08T16:30:23.301Z
-# Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), Gemini 3 Flash (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0)
+# Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), Gemini 3 Flash (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0)
 
 
 # 1. User Environment Loading
@@ -59,7 +59,7 @@ alias .map='gsc ws map'
 .switch() {
     local selection=$(ls -1 "$GSC_CONTRACT_MAPPED_ROOT" | fzf --header "Switch Workspace:" --reverse --height 40%)
     if [ -n "$selection" ]; then
-        gsc ws "$selection"
+        cd "$GSC_CONTRACT_MAPPED_ROOT/$selection"
     fi
 }
 

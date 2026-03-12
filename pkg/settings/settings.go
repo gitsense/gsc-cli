@@ -83,7 +83,9 @@ var DefaultSafeSet = []string{
 	// Network
 	"curl", "wget",
 	// System Context
-	"pwd", "date", "whoami", "env",
+	"cd", "pwd", "date", "whoami", "env", "echo",
+	// File Manipulation
+	"mkdir", "touch", "cp", "mv",
 	// Launchers & Editors
 	"open", "osascript", "zed", "code", "vim", "vi",
 }
