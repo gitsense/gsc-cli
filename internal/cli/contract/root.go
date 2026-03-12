@@ -156,75 +156,7 @@ func RegisterContractCommand(root *cobra.Command) {
 // ==========================================
 
 func init() {
-	// ==========================================
-	// Create Flags
-	// ==========================================
-	// Note: These flags are defined here but used in create.go
-	// We attach them to the createContractCmd in create.go's init()
-	
-	// ==========================================
-	// List Flags
-	// ==========================================
-	// Note: These flags are defined here but used in lifecycle.go
 
-	// ==========================================
-	// Renew Flags
-	// ==========================================
-	// Note: These flags are defined here but used in lifecycle.go
-
-	// ==========================================
-	// Update-File Flags
-	// ==========================================
-	// Note: These flags are defined here but used in ops.go
-
-	// ==========================================
-	// New-File Flags
-	// ==========================================
-	// Note: These flags are defined here but used in ops.go
-
-	// ==========================================
-	// Info Flags
-	// ==========================================
-	// Note: These flags are defined here but used in lifecycle.go
-
-	// ==========================================
-	// Test Flags
-	// ==========================================
-	// Note: These flags are defined here but used in ops.go
-
-	// ==========================================
-	// Exec Flags
-	// ==========================================
-	// Note: These flags are defined here but used in exec.go
-
-	// ==========================================
-	// Launch Flags
-	// ==========================================
-	// Note: These flags are defined here but used in exec.go
-
-	// ==========================================
-	// Dump Flags (Refactored)
-	// ==========================================
-	// Note: These flags are defined here but used in dump.go
-
-	// ==========================================
-	// Register Subcommands
-	// ==========================================
-	// The following calls will be added as we create the respective files:
-	contractCmd.AddCommand(createContractCmd)
-	contractCmd.AddCommand(statusContractCmd)
-	contractCmd.AddCommand(ChatsCmd)
-	contractCmd.AddCommand(MessagesCmd)
-	contractCmd.AddCommand(listContractCmd)
-	contractCmd.AddCommand(cancelContractCmd)
-	contractCmd.AddCommand(deleteContractCmd)
-	contractCmd.AddCommand(renewContractCmd)
-	contractCmd.AddCommand(completeContractCmd)
-	contractCmd.AddCommand(infoContractCmd)
-	contractCmd.AddCommand(testContractCmd)
-	contractCmd.AddCommand(execContractCmd)
-	contractCmd.AddCommand(launchContractCmd)
-	contractCmd.AddCommand(dumpContractCmd)
 }
 
 // ==========================================
