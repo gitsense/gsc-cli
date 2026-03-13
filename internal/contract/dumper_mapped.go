@@ -1,12 +1,12 @@
 /**
  * Component: Mapped Dump Strategy
- * Block-UUID: eb6c68b4-6a85-46e6-a777-bf9b66a84122
- * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: Implements the 'mapped' dump strategy, creating a shadow workspace with files organized by project path.
+ * Block-UUID: 5a43590c-a8ce-41d2-aa2a-caf41bf29dee
+ * Parent-UUID: eb6c68b4-6a85-46e6-a777-bf9b66a84122
+ * Version: 1.1.0
+ * Description: Implements the 'mapped' dump strategy, creating a shadow workspace with files organized by project path. Updated to populate FullRelPath for mapped and unmapped files.
  * Language: Go
  * Created-at: 2026-03-10T00:20:00.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0)
  */
 
 
@@ -335,6 +335,14 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 				Position:     block.Index, // 0-indexed position in the message
 				Language:     block.Language,
 			}
+
+			// Calculate FullRelPath
+			if isMapped {
+				entry.FullRelPath = "mapped/" + relPath
+			} else {
+				entry.FullRelPath = "unmapped/components/" + formattedPath
+			}
+
 			result.Files = append(result.Files, entry)
 
 			// Write Source File if mapped
@@ -390,7 +398,7 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 			// Update blockMap
 			if patch.TargetBlockUUID != "" {
 				// We need the patched code for the map, but we haven't applied it yet.
-				// This is tricky. For mapped dump, we rely on the 'generated' file written by WritePatchedFile.
+				// This is tricky. For mapped dump, we rely on the 'proposed' file written by WritePatchedFile.
 				// We don't need to update blockMap for subsequent patches in the same message because
 				// patches usually apply to the *original* source, not the result of previous patches in the same message.
 				// However, if there are multiple patches to the same file in one message, we might need to chain them.
@@ -434,6 +442,14 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 				Position:     patch.Index, // 0-indexed position in the message
 				Language:     patch.Language,
 			}
+
+			// Calculate FullRelPath
+			if isMapped {
+				entry.FullRelPath = "mapped/" + relPath
+			} else {
+				entry.FullRelPath = "unmapped/patches/" + formattedPath
+			}
+
 			result.Files = append(result.Files, entry)
 
 			// Write Source File if mapped
@@ -451,7 +467,7 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 				}
 			} else {
 				// If unmapped, we can't patch it against a source file easily.
-				// We just store the patch in unmapped/patches.
+				// We just store the patch in unmapped/patches for manual review.
 				if err := writer.WritePatch(workspaceDir, patch, trim); err != nil {
 					return nil, err
 				}
@@ -489,7 +505,7 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 						logger.Warning("Failed to apply patch", "target_uuid", patch.TargetBlockUUID, "error", err, "debug_dir", debugPath)
 					}
 				}
-				// If patch fails, we can't write the generated file.
+				// If patch fails, we can't write the proposed file.
 				// We write the raw patch to unmapped/patches for manual review.
 				if err := writer.WritePatch(workspaceDir, patch, trim); err != nil {
 					return nil, err

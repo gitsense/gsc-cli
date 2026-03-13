@@ -1,12 +1,12 @@
 /**
  * Component: Contract Models
- * Block-UUID: 30dd2b6e-7899-4ea7-8a30-a5f07fc1a293
- * Parent-UUID: c16cd618-d390-4721-9c3d-00027a4dece8
- * Version: 1.25.0
- * Description: Added WorkspaceEntry struct and Workspaces map to ContractMetadata to support the Registry-First workspace lookup strategy.
+ * Block-UUID: 5f9ed35e-ca1a-4251-b0a7-21e99fc00bdc
+ * Parent-UUID: 30dd2b6e-7899-4ea7-8a30-a5f07fc1a293
+ * Version: 1.26.0
+ * Description: Added FullRelPath field to MappedFileEntry to provide the complete relative path from the workspace root for both mapped and unmapped files.
  * Language: Go
  * Created-at: 2026-03-09T23:30:13.990Z
- * Authors: Gemini 3 Flash (v1.23.0), GLM-4.7 (v1.24.0), GLM-4.7 (v1.25.0)
+ * Authors: Gemini 3 Flash (v1.23.0), GLM-4.7 (v1.24.0), GLM-4.7 (v1.25.0), GLM-4.7 (v1.26.0)
  */
 
 
@@ -64,7 +64,7 @@ type ContractMetadata struct {
 	// Workspace Preferences
 	PreferredEditor   string `json:"preferred_editor"`   // e.g., "zed", "vscode", "vim-iterm2"
 	PreferredTerminal string `json:"preferred_terminal"` // e.g., "iterm2", "terminal.app"
-	PreferredReview   string `json:"preferred_review"`   // e.g., "vimdiff", "zed --diff"`
+	PreferredReview   string `json:"preferred_review"`   // e.g., "vimdiff", "zed --diff"
 
 	// Workspace Registry
 	// Maps Workspace ID (Composite Hash) -> Workspace Entry
@@ -191,6 +191,7 @@ const (
 type MappedFileEntry struct {
 	Path         string           `json:"path"`         // Relative path in the project (or component name)
 	OriginalPath string           `json:"original_path,omitempty"` // Original component name before sanitization
+	FullRelPath  string           `json:"full_rel_path"` // Full relative path from workspace root (e.g., mapped/... or unmapped/components/...)
 	Status       MappedFileStatus `json:"status"`       // "mapped" or "unmapped"
 	BlockUUID    string           `json:"block_uuid"`   // The UUID of the code block
 	Reason       string           `json:"reason,omitempty"` // Why it was unmapped (e.g., "no_parent_uuid")
