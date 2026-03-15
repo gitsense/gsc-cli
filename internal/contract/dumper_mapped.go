@@ -1,12 +1,12 @@
 /**
  * Component: Mapped Dump Strategy
- * Block-UUID: 5a43590c-a8ce-41d2-aa2a-caf41bf29dee
- * Parent-UUID: eb6c68b4-6a85-46e6-a777-bf9b66a84122
- * Version: 1.1.0
- * Description: Implements the 'mapped' dump strategy, creating a shadow workspace with files organized by project path. Updated to populate FullRelPath for mapped and unmapped files.
+ * Block-UUID: dc9bf34f-b5be-4a3e-83ba-05a32013d1a7
+ * Parent-UUID: 50b02e20-d9e6-4eff-b20f-3a5a14e53618
+ * Version: 1.3.0
+ * Description: Simplified patch naming by removing redundant _patch_<hash> suffix. Patches now use the same naming convention as components (01_sanitized_name or 1_01_sanitized_name).
  * Language: Go
  * Created-at: 2026-03-10T00:20:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
  */
 
 
@@ -313,22 +313,27 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 			// Format the component name for unmapped files
 			var originalPath string
 			var formattedPath string
+			var genFileName string
 
 			if isMapped {
 				formattedPath = relPath
 				originalPath = relPath // For mapped files, the project path is the original reference
+				genFileName = "generated" + getExtension(block.Language)
 			} else {
 				originalPath = block.Component // Capture the AI-generated name
 				// Use the new naming convention
 				formattedPath = formatArtifactPath(isSingleMessage, msgIndex, block.Index, block.Component)
 				// Update the block's component field so the writer uses it
 				block.Component = formattedPath
+				genFileName = "generated" + getExtension(block.Language)
 			}
 
 			// Add to result list
 			entry := MappedFileEntry{
 				Path:         formattedPath,
 				OriginalPath: originalPath,
+				FullRelPath:  "", // Will be set below
+				GenFileName:  genFileName,
 				Status:       status,
 				BlockUUID:    block.BlockUUID,
 				Reason:       reason,
@@ -420,22 +425,27 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 			// Format the component name for unmapped files
 			var originalPath string
 			var formattedPath string
+			var genFileName string
 
 			if isMapped {
 				formattedPath = relPath
 				originalPath = relPath
+				genFileName = "generated" + getExtension(patch.Language)
 			} else {
 				originalPath = patch.Component
-				// Use the new naming convention
+				// Use the simplified naming convention for patches (same as components)
 				formattedPath = formatArtifactPath(isSingleMessage, msgIndex, patch.Index, patch.Component)
 				// Update the patch's component field so the writer uses it
 				patch.Component = formattedPath
+				genFileName = "generated.diff"
 			}
 
 			// Add to result list
 			entry := MappedFileEntry{
 				Path:         formattedPath,
 				OriginalPath: originalPath,
+				FullRelPath:  "", // Will be set below
+				GenFileName:  genFileName,
 				Status:       status,
 				BlockUUID:    patch.TargetBlockUUID,
 				Reason:       reason,
@@ -627,6 +637,25 @@ func formatArtifactPath(isSingleMessage bool, msgIndex int, position int, name s
 	}
 	
 	return fmt.Sprintf("%d_%02d_%s", msgIndex, position+1, sanitized)
+}
+
+// formatPatchPath is now deprecated. Patches use the same naming convention as components.
+// This function is kept for backward compatibility but should not be used.
+// DEPRECATED: Use formatArtifactPath instead.
+func formatPatchPath(isSingleMessage bool, msgIndex int, position int, name string, targetUUID string) string {
+	// Simply delegate to formatArtifactPath
+	return formatArtifactPath(isSingleMessage, msgIndex, position, name)
+}
+
+// formatSnippetPath formats the path for a snippet artifact based on the dump mode and position.
+// Single Message Mode: "001"
+// Full Contract Mode: "1_001" (msgIndex_position)
+func formatSnippetPath(isSingleMessage bool, msgIndex int, position int) string {
+	if isSingleMessage {
+		return fmt.Sprintf("%03d", position+1)
+	}
+	
+	return fmt.Sprintf("%d_%03d", msgIndex, position+1)
 }
 
 // updateContractRegistry updates the ContractMetadata JSON file to include the new workspace.

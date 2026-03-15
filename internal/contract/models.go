@@ -1,12 +1,12 @@
 /**
  * Component: Contract Models
- * Block-UUID: 5f9ed35e-ca1a-4251-b0a7-21e99fc00bdc
- * Parent-UUID: 30dd2b6e-7899-4ea7-8a30-a5f07fc1a293
- * Version: 1.26.0
- * Description: Added FullRelPath field to MappedFileEntry to provide the complete relative path from the workspace root for both mapped and unmapped files.
+ * Block-UUID: 72fb20ad-9082-410a-9384-e8408317b6d5
+ * Parent-UUID: 5f9ed35e-ca1a-4251-b0a7-21e99fc00bdc
+ * Version: 1.27.0
+ * Description: Added GenFileName field to MappedFileEntry to provide the generated filename for frontend URI construction.
  * Language: Go
  * Created-at: 2026-03-09T23:30:13.990Z
- * Authors: Gemini 3 Flash (v1.23.0), GLM-4.7 (v1.24.0), GLM-4.7 (v1.25.0), GLM-4.7 (v1.26.0)
+ * Authors: Gemini 3 Flash (v1.23.0), GLM-4.7 (v1.24.0), GLM-4.7 (v1.25.0), GLM-4.7 (v1.26.0), GLM-4.7 (v1.27.0)
  */
 
 
@@ -192,6 +192,7 @@ type MappedFileEntry struct {
 	Path         string           `json:"path"`         // Relative path in the project (or component name)
 	OriginalPath string           `json:"original_path,omitempty"` // Original component name before sanitization
 	FullRelPath  string           `json:"full_rel_path"` // Full relative path from workspace root (e.g., mapped/... or unmapped/components/...)
+	GenFileName  string           `json:"gen_file_name"` // The generated filename (e.g., "generated.go", "generated.diff")
 	Status       MappedFileStatus `json:"status"`       // "mapped" or "unmapped"
 	BlockUUID    string           `json:"block_uuid"`   // The UUID of the code block
 	Reason       string           `json:"reason,omitempty"` // Why it was unmapped (e.g., "no_parent_uuid")
@@ -209,10 +210,10 @@ type MappedDumpStats struct {
 // It supports both generation and validation modes.
 type MappedDumpResult struct {
 	Success  bool             `json:"success"`
-	Exists   bool             `json:"exists"`   // True if the workspace directory was found (validation mode)
-	Valid    bool             `json:"valid"`    // True if the workspace is not expired (validation mode)
-	Hash     string           `json:"hash"`      // The message hash (directory name)
-	RootDir  string           `json:"root_dir"`  // Absolute path to the dump directory
+	Exists   bool             `json:"exists"`      // True if the workspace directory was found (validation mode)
+	Valid    bool             `json:"valid"`       // True if the workspace is not expired (validation mode)
+	Hash     string           `json:"hash"`        // The message hash (directory name)
+	RootDir  string           `json:"root_dir"`    // Absolute path to the dump directory
 	ExpiresAt string           `json:"expires_at"` // ISO 8601 expiration timestamp
 	Stats    MappedDumpStats  `json:"stats"`
 	Files    []MappedFileEntry `json:"files"`

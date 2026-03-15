@@ -1,12 +1,12 @@
 /**
  * Component: Mapped Dump Writer
- * Block-UUID: cc9b4825-3987-4380-b1d6-640994f4837e
- * Parent-UUID: 3a5faccf-13b7-4325-bc16-85478a957f31
- * Version: 1.7.0
- * Description: Updated WritePatch to use the formatted component name from the dumper for consistent file naming (e.g., 01_name_patch_uuid.diff).
+ * Block-UUID: 46f1be4e-7ca5-4a4b-b290-1d484faa864a
+ * Parent-UUID: cc9b4825-3987-4380-b1d6-640994f4837e
+ * Version: 1.8.0
+ * Description: Updated WritePatch, WriteBlock, and WritePatchedFile to use new directory structure with generated.<ext> files. Patches now create subdirectories with generated.diff, snippets use numbered directories, and orphans use numbered directories.
  * Language: Go
  * Created-at: 2026-03-09T17:36:23.290Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0)
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.4.7 (v1.8.0)
  */
 
 
@@ -101,7 +101,7 @@ func (w *MappedWriter) WriteProvenance(msgDir string, chats []db.Chat) error {
 
 // WriteBlock handles the persistence of a code block.
 // If the block is mapped, it writes to mapped/<path>/generated.<ext>.
-// If unmapped, it writes to unmapped/snippets/ or unmapped/components/.
+// If unmapped, it writes to unmapped/components/<name>/generated.<ext> or unmapped/snippets/<index>/generated.<ext>.
 func (w *MappedWriter) WriteBlock(msgDir string, block markdown.CodeBlock, trim bool) error {
 	relPath, isMapped := w.PathMap[block.ParentUUID]
 	
@@ -117,8 +117,9 @@ func (w *MappedWriter) WriteBlock(msgDir string, block markdown.CodeBlock, trim 
 			targetDir = filepath.Join(msgDir, "unmapped", "components", block.Component)
 			filename = "generated" + getExtension(block.Language)
 		} else {
-			targetDir = filepath.Join(msgDir, "unmapped", "snippets")
-			filename = fmt.Sprintf("generated_%03d%s", block.Index+1, getExtension(block.Language))
+			// Use the formatted snippet path from the dumper (e.g., "001" or "1_001")
+			targetDir = filepath.Join(msgDir, "unmapped", "snippets", block.Component)
+			filename = "generated" + getExtension(block.Language)
 		}
 	}
 
@@ -132,23 +133,20 @@ func (w *MappedWriter) WriteBlock(msgDir string, block markdown.CodeBlock, trim 
 
 // WritePatch handles the persistence of a patch block.
 // For the mapped dump, we only store the patch if it's unmapped or as a reference.
+// NEW: Creates a subdirectory with generated.diff inside.
 func (w *MappedWriter) WritePatch(msgDir string, patch markdown.PatchBlock, trim bool) error {
 	// We don't map patches directly to the project tree; we map the resulting patched file.
 	// However, we store the patch in the unmapped/patches directory for reference.
-	targetDir := filepath.Join(msgDir, "unmapped", "patches")
+	// NEW: Create a subdirectory for the patch
+	
+	// Use the formatted component name from the dumper (e.g., "01_bug_fix_patch_a1b2c3d4")
+	targetDir := filepath.Join(msgDir, "unmapped", "patches", patch.Component)
 	if err := os.MkdirAll(targetDir, 0755); err != nil {
 		return err
 	}
 
-	// Use the formatted component name as the prefix for the patch file
-	// This ensures consistency with the directory naming convention (01_... or 1_01_...)
-	var filename string
-	if patch.Component != "" {
-		filename = fmt.Sprintf("%s_patch_%s.diff", patch.Component, patch.TargetBlockUUID[:8])
-	} else {
-		// Fallback for safety if Component is empty (e.g. for failed mapped patches)
-		filename = fmt.Sprintf("patch_%03d_%s.diff", patch.Index+1, patch.TargetBlockUUID[:8])
-	}
+	// NEW: Always use generated.diff as the filename
+	filename := "generated.diff"
 
 	content := patch.RawHeader + "\n\n\n" + patch.ExecutableCode
 	return os.WriteFile(filepath.Join(targetDir, filename), []byte(content), 0644)
@@ -156,13 +154,15 @@ func (w *MappedWriter) WritePatch(msgDir string, patch markdown.PatchBlock, trim
 
 // WritePatchedFile persists the result of a successful patch application.
 // This becomes the 'generated.<ext>' file in the mapped directory.
+// NEW: For unmapped files, creates a subdirectory with generated.<ext> inside.
 func (w *MappedWriter) WritePatchedFile(msgDir string, patch markdown.PatchBlock, header string, content string) error {
 	relPath, isMapped := w.PathMap[patch.SourceBlockUUID]
 	if !isMapped {
 		// If the target isn't mapped, we treat it as an unmapped component
+		// NEW: Create a subdirectory for the orphan
 		if patch.Component != "" {
 			// Use the formatted component name from the dumper
-			targetDir := filepath.Join(msgDir, "unmapped", "components", patch.Component)
+			targetDir := filepath.Join(msgDir, "unmapped", "orphans", patch.Component)
 			os.MkdirAll(targetDir, 0755)
 			
 			filename := "generated" + getExtension(patch.Language)
@@ -170,11 +170,12 @@ func (w *MappedWriter) WritePatchedFile(msgDir string, patch markdown.PatchBlock
 			return os.WriteFile(filepath.Join(targetDir, filename), []byte(fullContent), 0644)
 		}
 		
-		// Fallback for orphans
-		targetDir := filepath.Join(msgDir, "unmapped", "orphans")
+		// Fallback for orphans without component name
+		// Use the formatted snippet path from the dumper (e.g., "001" or "1_001")
+		targetDir := filepath.Join(msgDir, "unapped", "orphans", patch.Component)
 		os.MkdirAll(targetDir, 0755)
 		
-		filename := fmt.Sprintf("generated_%03d%s", patch.Index+1, getExtension(patch.Language))
+		filename := "generated" + getExtension(patch.Language)
 		fullContent := header + "\n\n\n" + content
 		return os.WriteFile(filepath.Join(targetDir, filename), []byte(fullContent), 0644)
 	}
