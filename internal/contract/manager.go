@@ -1,12 +1,12 @@
 /**
  * Component: Contract Manager
- * Block-UUID: 534f1e34-cd61-425d-9280-a89ea0a912fa
- * Parent-UUID: 8ac71a41-2a12-42d6-8056-ff2e3aa90626
- * Version: 1.16.1
+ * Block-UUID: e887c0f8-74a0-4e38-9690-d2238395c920
+ * Parent-UUID: 534f1e34-cd61-425d-9280-a89ea0a912fa
+ * Version: 1.17.0
  * Description: Removed Terminal and Review Tool fields from the contract info output display.
  * Language: Go
- * Created-at: 2026-03-10T14:31:51.529Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), Gemini 3 Flash (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.16.1)
+ * Created-at: 2026-03-15T17:29:13.653Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), Gemini 3 Flash (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.16.1), GLM-4.7 (v1.17.0)
  */
 
 
@@ -354,6 +354,14 @@ func CancelContract(uuid string) error {
 		return fmt.Errorf("failed to update contract message in database: %w", err)
 	}
 
+	// Notify Frontend via Event
+	payload := ContractChangePayload{
+		Status: string(ContractCancelled),
+	}
+	if err := InsertEvent(meta.UUID, meta.ChatID, EventTypeContractChange, payload, "cli", time.Now().Add(5*time.Second)); err != nil {
+		logger.Warning("Failed to insert contract change event", "error", err)
+	}
+
 	logger.Info("Contract cancelled", "uuid", uuid)
 	return nil
 }
@@ -403,6 +411,14 @@ func CompleteContract(uuid string) error {
 
 	if err := db.UpdateContractMessagesByUUID(sqliteDB, meta.UUID, dbData); err != nil {
 		return fmt.Errorf("failed to update contract message in database: %w", err)
+	}
+
+	// Notify Frontend via Event
+	payload := ContractChangePayload{
+		Status: string(ContractDone),
+	}
+	if err := InsertEvent(meta.UUID, meta.ChatID, EventTypeContractChange, payload, "cli", time.Now().Add(5*time.Second)); err != nil {
+		logger.Warning("Failed to insert contract change event", "error", err)
 	}
 
 	logger.Info("Contract marked as done", "uuid", uuid)
@@ -464,6 +480,15 @@ func RenewContract(uuid string, hours int) error {
 		return fmt.Errorf("failed to update contract message in database: %w", err)
 	}
 
+	// Notify Frontend via Event
+	payload := ContractChangePayload{
+		Status:    string(ContractActive),
+		ExpiresAt: meta.ExpiresAt.Format(time.RFC3339),
+	}
+	if err := InsertEvent(meta.UUID, meta.ChatID, EventTypeContractChange, payload, "cli", time.Now().Add(5*time.Second)); err != nil {
+		logger.Warning("Failed to insert contract change event", "error", err)
+	}
+
 	logger.Info("Contract renewed", "uuid", uuid, "new_expires_at", meta.ExpiresAt)
 	return nil
 }
@@ -521,6 +546,14 @@ func DeleteContract(uuid string) error {
 
 	if err := db.UpdateContractMessagesByUUID(sqliteDB, meta.UUID, dbData); err != nil {
 		logger.Warning("Failed to update contract message in database", "error", err)
+	}
+
+	// Notify Frontend via Event
+	payload := ContractChangePayload{
+		Status: "deleted",
+	}
+	if err := InsertEvent(meta.UUID, meta.ChatID, EventTypeContractChange, payload, "cli", time.Now().Add(5*time.Second)); err != nil {
+		logger.Warning("Failed to insert contract change event", "error", err)
 	}
 
 	logger.Info("Contract deleted", "uuid", uuid)

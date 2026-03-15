@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Contract Events Database Helper
- * Block-UUID: 1c947add-f763-413e-9bdd-f8abb52cf2bd
- * Parent-UUID: 44c7ed6b-27af-4941-81cb-bc6c5f44d5a0
- * Version: 1.4.0
+ * Block-UUID: 82d0b4ca-fc49-4e9b-8896-b343ff533eb5
+ * Parent-UUID: 603656d1-b9f3-4ff0-aa75-6fbce125c462
+ * Version: 1.6.0
  * Description: Added MessageID field to ChatMessagePayload to support the 'chat_message_posted' event type, which carries the ID of the message inserted by the backend.
  * Language: Go
- * Created-at: 2026-03-07T04:11:57.272Z
- * Authors: Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
+ * Created-at: 2026-03-15T17:57:53.790Z
+ * Authors: Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.5.0), GLM-4.7 (v1.6.0)
  */
 
 
@@ -24,6 +24,18 @@ import (
 	"github.com/gitsense/gsc-cli/pkg/logger"
 	"github.com/gitsense/gsc-cli/pkg/settings"
 )
+
+// Event Type Constants
+const (
+	EventTypeTerminalSendMessage = "terminal_send_message"
+	EventTypeContractChange     = "contract_change"
+)
+
+// ContractChangePayload represents the data structure for a contract lifecycle event.
+type ContractChangePayload struct {
+	Status    string `json:"status"`              // The new status (e.g., "cancelled", "done", "active")
+	ExpiresAt string `json:"expires_at,omitempty"` // ISO 8601 timestamp, present if renewed
+}
 
 // ChatMessagePayload represents the data structure for a chat message event.
 // It supports appending new messages as well as manipulating existing messages
@@ -45,7 +57,7 @@ type ChatMessagePayload struct {
 // GetEventsDBPath resolves the absolute path to the events database for a given contract UUID.
 func GetEventsDBPath(uuid string) string {
 	gscHome, _ := settings.GetGSCHome(false)
-	return filepath.Join(gscHome, "data", "dumps", uuid, "events.sqlite3")
+	return filepath.Join(gscHome, settings.HomesRelPath, uuid, "events.sqlite3")
 }
 
 // InsertEvent inserts a new event into the contract_events table.

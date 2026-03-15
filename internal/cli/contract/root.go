@@ -1,12 +1,12 @@
 /**
  * Component: Contract CLI Root
- * Block-UUID: 536083b9-7bbb-4d68-a3e3-946ceb80e90d
- * Parent-UUID: 6d6a4ff5-e27e-42ca-adc9-5988bb4d08f4
- * Version: 1.1.0
- * Description: Root command definition and flag initialization for the contract CLI package.
+ * Block-UUID: 8dc3a18f-3e92-4113-b854-579fe56a507f
+ * Parent-UUID: 536083b9-7bbb-4d68-a3e3-946ceb80e90d
+ * Version: 1.2.0
+ * Description: Added global flags for the add-chat command (contractAddUUID, contractAddForce).
  * Language: Go
  * Created-at: 2026-03-10T16:06:12.776Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.29.1), Gemini 3 Flash (v1.30.0), GLM-4.7 (v1.31.0), GLM-4.7 (v1.1.0)
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.29.1), Gemini 3 Flash (v1.30.0), GLM-4.7 (v1.31.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -119,6 +119,12 @@ var (
 var (
 	contractDumpMessageID int64
 	contractDumpValidate  bool
+)
+
+// Add Chat flags
+var (
+	contractAddUUID string
+	contractAddForce bool
 )
 
 // ==========================================
