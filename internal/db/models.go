@@ -1,12 +1,12 @@
 /**
  * Component: Chat Database Models
- * Block-UUID: f4d1ba5d-07c9-4270-91b4-906cc7965964
- * Parent-UUID: 125e09f0-7f09-415b-b569-af53addb579f
- * Version: 1.7.0
+ * Block-UUID: 8610baa0-6a3d-4b65-86fa-0631c1a058be
+ * Parent-UUID: f4d1ba5d-07c9-4270-91b4-906cc7965964
+ * Version: 1.8.0
  * Description: Added PreferredReview field to ContractMessageData to support specialized review tools (e.g., vimdiff, zed --diff).
  * Language: Go
- * Created-at: 2026-02-20T04:31:47.873Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0)
+ * Created-at: 2026-03-15T04:37:09.549Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0)
  */
 
 
@@ -61,6 +61,7 @@ type Message struct {
 	Role                 string          `json:"role"`
 	Message              sql.NullString  `json:"message"`
 	OriginalMessage      sql.NullString  `json:"original_message"`
+	Hash                 string          `json:"hash"`
 	CopiedFromMsgID      sql.NullInt64   `json:"copied_from_msg_id"`
 	Pinned               sql.NullInt64   `json:"pinned"`
 	ChatCompletionStats  sql.NullString  `json:"chat_completion_stats"`

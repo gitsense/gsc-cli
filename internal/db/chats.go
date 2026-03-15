@@ -1,12 +1,12 @@
 /**
  * Component: Chat Database Operations
- * Block-UUID: 84a4cef4-41fc-463d-a09a-ec3934ab3b4b
- * Parent-UUID: 829d31b2-75b9-43c7-a337-18c1bcf356ba
- * Version: 1.21.0
+ * Block-UUID: 86a66cc7-69a5-4755-8fd9-8cc47b61417b
+ * Parent-UUID: fc346a13-8ed0-4323-9645-914818da2217
+ * Version: 1.23.0
  * Description: Added GetChatsByContractUUID to retrieve all chats associated with a specific contract UUID, enabling the new 'gsc chats' command.
  * Language: Go
- * Created-at: 2026-03-10T14:31:51.529Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), Gemini 3 Flash (v1.16.0), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.19.0), GLM-4.7 (v1.20.0), GLM-4.7 (v1.20.1), GLM-4.7 (v1.21.0)
+ * Created-at: 2026-03-15T04:41:08.532Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), Gemini 3 Flash (v1.16.0), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.19.0), GLM-4.7 (v1.20.0), GLM-4.7 (v1.20.1), GLM-4.7 (v1.21.0), GLM-4.7 (v1.22.0), GLM-4.7 (v1.23.0)
  */
 
 
@@ -14,6 +14,8 @@ package db
 
 import (
 	"database/sql"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -124,16 +126,18 @@ func InsertContractWithAnchor(db *sql.DB, chatID int64, data ContractMessageData
 	// 4. Insert the Contract Message
 	markdown := FormatContractMarkdown(data)
 	now := time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
+	nowTime := time.Now().UTC()
+	hash := calculateMessageHash(markdown, nowTime)
 
 	insertQuery := `
 		INSERT INTO messages (
 			type, deleted, visibility, chat_id, parent_id, level, 
 			model, 
-			real_model, temperature, role, message, meta, created_at, updated_at
+			real_model, temperature, role, message, meta, hash, created_at, updated_at
 		) VALUES (
 			?, ?, ?, ?, ?, ?, 
 			(SELECT main_model FROM chats WHERE id = ?), 
-			?, ?, ?, ?, ?, ?, ?
+			?, ?, ?, ?, ?, ?, ?, ?
 		)`
 
 	result, err := tx.Exec(
@@ -150,6 +154,7 @@ func InsertContractWithAnchor(db *sql.DB, chatID int64, data ContractMessageData
 		"assistant",        // Role
 		sql.NullString{String: markdown, Valid: true},        // Message
 		sql.NullString{String: string(metaJSON), Valid: true},// Meta
+		hash,               // Hash
 		now,                // Created At
 		now,                // Updated At
 	)
@@ -201,9 +206,18 @@ func UpdateContractMessage(db *sql.DB, msgID int64, data ContractMessageData) er
 	markdown := FormatContractMarkdown(data)
 	now := time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
 
+	// Do not update the hash. The hash is DNA marker. We don't care it the message content
+	// changes, we just want to know how things forked.
+
 	// 4. Update the message
 	query := `UPDATE messages SET message = ?, meta = ?, updated_at = ? WHERE id = ? AND deleted = 0`
-	_, err = db.Exec(query, sql.NullString{String: markdown, Valid: true}, sql.NullString{String: string(metaJSON), Valid: true}, now, msgID)
+	_, err = db.Exec(
+		query, 
+		sql.NullString{String: markdown, Valid: true}, 
+		sql.NullString{String: string(metaJSON), Valid: true }, 
+		now, 
+		msgID,
+	)
 	if err != nil {
 		return fmt.Errorf("failed to update contract message: %w", err)
 	}
@@ -226,11 +240,20 @@ func UpdateContractMessagesByUUID(db *sql.DB, contractUUID string, data Contract
 	markdown := FormatContractMarkdown(data)
 	now := time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
 
+	// Do not update the hash. The hash is DNA marker. We don't care it the message content
+	// changes, we just want to know how things forked.
+
 	// 3. Update all matching messages
 	// We use json_extract to query the JSON field safely
 	query := `UPDATE messages SET message = ?, meta = ?, updated_at = ? WHERE type = 'gsc-cli-contract' AND json_extract(meta, '$.contract_uuid') = ? AND deleted = 0`
 	
-	result, err := db.Exec(query, sql.NullString{String: markdown, Valid: true}, sql.NullString{String: string(metaJSON), Valid: true}, now, contractUUID)
+	result, err := db.Exec(
+		query, 
+		sql.NullString{String: markdown, Valid: true}, 
+		sql.NullString{String: string(metaJSON), Valid: true}, 
+		now, 
+		contractUUID,
+	)
 	if err != nil {
 		return fmt.Errorf("failed to update contract messages by UUID: %w", err)
 	}
@@ -390,39 +413,59 @@ func UpdateMessage(db *sql.DB, id int64, content string) error {
 func InsertMessage(db *sql.DB, msg *Message) (int64, error) {
 	query := `
 		INSERT INTO messages (
-			type, deleted, visibility, chat_id, parent_id, level, 
-			model, 
-			real_model, temperature, role, message, created_at, updated_at
+			type, 			-- 1
+			deleted, 		-- 2
+			visibility,  	-- 3
+			chat_id, 		-- 4
+			parent_id, 		-- 5
+			level, 			-- 6
+			model, 			-- 7
+			real_model,		-- 8
+			temperature, 	-- 9
+			role, 			-- 10
+			message, 		-- 11
+			hash, 			-- 12
+			created_at, 	-- 13
+			updated_at		-- 14
 		) VALUES (
 			?, ?, ?, ?, ?, ?, 
 			(SELECT main_model FROM chats WHERE id = ?), 
-			?, ?, ?, ?, ?, ?
+			?, ?, ?, ?, ?, ?, ?
 		)`
 
 	now := time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
+	nowTime := time.Now().UTC()
 	
+	// Calculate hash
+	content := ""
+	if msg.Message.Valid {
+		content = msg.Message.String
+	}
+	hash := calculateMessageHash(content, nowTime)
+
 	// Prepare args for logging (truncate message content)
 	msgContent := ""
 	if msg.Message.Valid {
 		msgContent = truncateString(msg.Message.String, 100)
 	}
-	logger.Debug("InsertMessage", "query", query, "args", []interface{}{msg.Type, msg.Deleted, msg.Visibility, msg.ChatID, msg.ParentID, msg.Level, msg.ChatID, msg.RealModel, msg.Temperature, msg.Role, msgContent, now, now})
+	logger.Debug("InsertMessage", "query", query, "args", []interface{}{msg.Type, msg.Deleted, msg.Visibility, msg.ChatID, msg.ParentID, msg.Level, msg.ChatID, msg.RealModel, msg.Temperature, msg.Role, msgContent, hash, now, now})
 
 	result, err := db.Exec(
 		query,
-		msg.Type,
-		msg.Deleted,
-		msg.Visibility,
-		msg.ChatID,
-		msg.ParentID,
-		msg.Level,
-		msg.ChatID,
-		msg.RealModel,
-		msg.Temperature,
-		msg.Role,
-		msg.Message,
-		now,
-		now,
+		msg.Type,			// 1
+		msg.Deleted,		// 2
+		msg.Visibility,		// 3
+		msg.ChatID,			// 4
+		msg.ParentID,		// 5
+		msg.Level,			// 6
+		msg.ChatID,			// 7
+		msg.RealModel,		// 8
+		msg.Temperature,	// 9
+		msg.Role,			// 10
+		msg.Message,		// 11
+		hash,				// 12
+		now,				// 13
+		now,				// 14
 	)
 
 	if err != nil {
@@ -798,7 +841,7 @@ func GetChatsByContractUUID(db *sql.DB, contractUUID string) ([]Chat, error) {
 		FROM 
 			chats 
 		WHERE id IN (
-			SELECT chat_id FROM messages WHERE type = 'gsc-cli-contract' AND json_extract(meta, '$.contract_uuid') = ? AND deleted = 0
+		SELECT chat_id FROM messages WHERE type = 'gsc-cli-contract' AND json_extract(meta, '$.contract_uuid') = ? AND deleted = 0
 		)`
 		
 	rows, err := db.Query(query, contractUUID)
@@ -817,4 +860,12 @@ func GetChatsByContractUUID(db *sql.DB, contractUUID string) ([]Chat, error) {
 	}
 
 	return chats, nil
+}
+
+// calculateMessageHash generates a SHA256 hash of the message content and created_at timestamp.
+func calculateMessageHash(content string, createdAt time.Time) string {
+	h := sha256.New()
+	h.Write([]byte(content))
+	h.Write([]byte(createdAt.Format(time.RFC3339)))
+	return hex.EncodeToString(h.Sum(nil))
 }

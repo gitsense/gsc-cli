@@ -45,7 +45,7 @@ const RealModelNotes = "GitSense Notes"
 const BridgeHandshakeDir = "data/codes"
 const ManifestStorageDir = "data/storage/manifests"
 const ChatDatabaseRelPath = "data/chats.sqlite3"
-const ExecOutputsRelPath = "exec/outputs"
+const ExecOutputsRelPath = "data/exec/outputs"
 const ContractsRelPath = "data/contracts"
 
 // HomesRelPath is the relative path within GSC_HOME for contract homes
