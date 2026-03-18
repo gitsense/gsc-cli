@@ -51,7 +51,7 @@ It supports a "Shortcut" mode for quick entry and subcommands for specific actio
 	},
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// Enforce GSC_HOME requirement
-		if _, err := settings.GetGSCHome(true); err != nil {
+		if _, err := settings.GetGSCHome(false); err != nil {
 			cmd.SilenceUsage = true
 			return err
 		}

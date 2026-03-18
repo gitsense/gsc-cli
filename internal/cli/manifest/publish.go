@@ -43,7 +43,7 @@ updates the index for user downloads.`,
 			return fmt.Errorf("the --code flag is not yet supported for manifest commands. It will be available in a future release")
 		}
 
-		if _, err := settings.GetGSCHome(true); err != nil {
+		if _, err := settings.GetGSCHome(false); err != nil {
 			return fmt.Errorf("environment error: %w", err)
 		}
 

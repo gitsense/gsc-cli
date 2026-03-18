@@ -140,7 +140,7 @@ GitSense Chat session, enabling secure and traceable code updates.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// Enforce GSC_HOME requirement
 		// This ensures that the web app's data directory is used for contracts and dumps
-		if _, err := settings.GetGSCHome(true); err != nil {
+		if _, err := settings.GetGSCHome(false); err != nil {
 			cmd.SilenceUsage = true
 			return err
 		}

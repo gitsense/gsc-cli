@@ -93,7 +93,7 @@ func Perform(opts Options) error {
 		// --- POST MODE: Direct DB Insertion ---
 		
 		// A. Open Chat Database
-		gscHome, err := settings.GetGSCHome(true)
+		gscHome, err := settings.GetGSCHome(false)
 		if err != nil {
 			return fmt.Errorf("failed to resolve GSC_HOME: %w", err)
 		}

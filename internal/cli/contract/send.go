@@ -87,7 +87,7 @@ func handleContractSend(args []string) error {
 	chatID := sendChatID
 	if chatID == 0 {
 		// Smart Chat Selection
-		gscHome, err := settings.GetGSCHome(true)
+		gscHome, err := settings.GetGSCHome(false)
 		if err != nil {
 			return fmt.Errorf("failed to get GSC home: %w", err)
 		}

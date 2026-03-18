@@ -54,7 +54,7 @@ type ManifestJSON struct {
 // Publish orchestrates the publication of a manifest to the local GitSense Chat app.
 func Publish(manifestPath, owner, repo, branch string) error {
 	// 1. Environment Validation
-	gscHome, err := settings.GetGSCHome(true)
+	gscHome, err := settings.GetGSCHome(false)
 	if err != nil {
 		return err
 	}
@@ -173,7 +173,7 @@ func Publish(manifestPath, owner, repo, branch string) error {
 
 // Unpublish removes a manifest from the index and updates the UI.
 func Unpublish(remoteID string) error {
-	gscHome, err := settings.GetGSCHome(true)
+	gscHome, err := settings.GetGSCHome(false)
 	if err != nil {
 		return err
 	}
