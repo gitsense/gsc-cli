@@ -1,12 +1,12 @@
 /**
  * Component: Docker CLI Lifecycle Commands
- * Block-UUID: 5e7afe59-be6a-4bcb-8c18-069a0ab3f300
- * Parent-UUID: f3b42461-cf37-46ce-83b1-561b64256eb8
- * Version: 1.1.0
+ * Block-UUID: 561354ee-e14f-44eb-9dd5-1d67b0c37899
+ * Parent-UUID: 5e7afe59-be6a-4bcb-8c18-069a0ab3f300
+ * Version: 1.2.0
  * Description: Implements standard Docker lifecycle commands (stop, status, logs, shell, admin) for the gsc CLI.
  * Language: Go
- * Created-at: 2026-03-19T18:34:49.407Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0)
+ * Created-at: 2026-03-19T19:08:25.452Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0)
  */
 
 
@@ -163,35 +163,12 @@ var shellCmd = &cobra.Command{
 	},
 }
 
-// adminCmd represents the docker admin command
-var adminCmd = &cobra.Command{
-	Use:   "admin",
-	Short: "Run the gsc-admin tool inside the container",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		ctx := context.Background()
-		dctx, err := docker_internal.LoadContext()
-		if err != nil {
-			return err
-		}
-
-		name := "gitsense-chat"
-		if dctx != nil {
-			name = dctx.ContainerName
-		}
-
-		// Pass all arguments to gsc-admin
-		adminArgs := append([]string{"gsc-admin"}, args...)
-		return docker_internal.ExecCommand(ctx, name, adminArgs, true, "")
-	},
-}
-
 func init() {
 	DockerCmd.AddCommand(stopCmd)
 	DockerCmd.AddCommand(restartCmd)
 	DockerCmd.AddCommand(statusCmd)
 	DockerCmd.AddCommand(logsCmd)
 	DockerCmd.AddCommand(shellCmd)
-	DockerCmd.AddCommand(adminCmd)
 
 	logsCmd.Flags().BoolVarP(&logsFollow, "follow", "f", false, "Follow log output")
 }

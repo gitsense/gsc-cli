@@ -1,31 +1,28 @@
 /**
  * Component: Docker CLI Start
- * Block-UUID: dc58ec92-1cd0-446c-a56f-cc9204a99b2e
- * Parent-UUID: 04cd91e6-f493-4b9a-99e5-6d2731b91caa
- * Version: 1.7.0
+ * Block-UUID: b578e02c-1c65-4cb0-a0ea-7e73551d68fb
+ * Parent-UUID: dc58ec92-1cd0-446c-a56f-cc9204a99b2e
+ * Version: 1.8.0
  * Description: Fixed compilation error by correcting package alias usage from docker_internal to docker.
  * Language: Go
- * Created-at: 2026-03-19T19:00:56.897Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0)
+ * Created-at: 2026-03-19T19:09:15.890Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), Gemini 3 Flash (v1.8.0)
  */
 
 
 package docker
 
 import (
-	"io"
 	"context"
 	"fmt"
-	"bufio"
+	"io"
 	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/gitsense/gsc-cli/internal/docker"
-	"github.com/gitsense/gsc-cli/internal/git"
 	"github.com/gitsense/gsc-cli/pkg/settings"
 )
 
@@ -201,7 +198,7 @@ mounts the specified repository directory, and launches the application.`,
 		fmt.Printf("   rm %s\n\n", settings.DockerContextFileName)
 
 		// 9. Start Container
-		if err := docker.StartContainer(ctx, dctx, image, "", startPull); err != nil {
+		if err := docker.StartContainer(ctx, dctx, image, startPull); err != nil {
 			// Cleanup context if start fails
 			_ = docker.DeleteContext()
 			return err

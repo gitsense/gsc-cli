@@ -1,12 +1,12 @@
 /**
  * Component: Docker CLI Env Manager
- * Block-UUID: 699d6099-8a52-463f-9a69-f4206cdfe81c
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 37320a07-fb9b-4b3f-b279-454b1d632ac6
+ * Parent-UUID: 699d6099-8a52-463f-9a69-f4206cdfe81c
+ * Version: 1.1.0
  * Description: Implements the 'gsc docker env' command suite, focusing on a Link/Update workflow for synchronizing host-side environment files with the container's persistent data volume.
  * Language: Go
- * Created-at: 2026-03-19T18:59:23.597Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Created-at: 2026-03-19T19:08:54.938Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0)
  */
 
 
@@ -21,11 +21,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/spf13/cobra"
 	docker_internal "github.com/gitsense/gsc-cli/internal/docker"
-	"github.com/gitsense/gsc-cli/pkg/logger"
 )
 
 // envCmd represents the docker env command
@@ -167,6 +165,23 @@ func getFileHash(path string) ([]byte, error) {
 		return nil, err
 	}
 	return h.Sum(nil), nil
+}
+
+func copyFile(src, dst string) error {
+	source, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer source.Close()
+
+	destination, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer destination.Close()
+
+	_, err = io.Copy(destination, source)
+	return err
 }
 
 func promptRestart(containerName string) error {
