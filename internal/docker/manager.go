@@ -1,12 +1,12 @@
 /**
  * Component: Docker Orchestration Manager
- * Block-UUID: 93a6c853-e7a3-40d1-8d51-306d1a041031
- * Parent-UUID: f5271e40-220b-46a4-9e90-5c6d0c45d7d2
- * Version: 1.1.0
+ * Block-UUID: 65eaad1f-2101-47ca-bfd6-77a78a317337
+ * Parent-UUID: 93a6c853-e7a3-40d1-8d51-306d1a041031
+ * Version: 1.2.0
  * Description: Provides low-level orchestration for Docker CLI operations, including container lifecycle management and command execution.
  * Language: Go
- * Created-at: 2026-03-19T02:26:53.139Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.1.0)
+ * Created-at: 2026-03-19T18:45:51.728Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0)
  */
 
 
@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 
 	"github.com/gitsense/gsc-cli/pkg/logger"
@@ -25,7 +24,7 @@ import (
 )
 
 // StartContainer launches the GitSense Chat container with the specified context and options.
-func StartContainer(ctx context.Context, dctx DockerContext, image string, envFile string, pull bool) error {
+func StartContainer(ctx context.Context, dctx DockerContext, image string, pull bool) error {
 	// 1. Ensure Docker is installed
 	if _, err := exec.LookPath("docker"); err != nil {
 		return fmt.Errorf("docker CLI not found. Please install Docker: https://docs.docker.com/get-docker/")
@@ -67,12 +66,6 @@ func StartContainer(ctx context.Context, dctx DockerContext, image string, envFi
 	// Add Repos Volume (Optional)
 	if dctx.ReposHostPath != "" {
 		args = append(args, "-v", fmt.Sprintf("%s:%s/repos:ro", dctx.ReposHostPath, settings.DockerRootPrefix))
-	}
-
-	// Add Env File
-	if envFile != "" {
-		absEnv, _ := filepath.Abs(envFile)
-		args = append(args, "-v", fmt.Sprintf("%s:%s/.env:ro", absEnv, settings.DockerRootPrefix))
 	}
 
 	args = append(args, image)

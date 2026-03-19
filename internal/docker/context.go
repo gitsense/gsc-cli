@@ -1,12 +1,12 @@
 /**
  * Component: Docker Context Manager
- * Block-UUID: 7caf9147-b45a-4834-9337-57e6b9ab520f
- * Parent-UUID: ede1cdd8-e56d-4067-aaa9-47e90bc43470
- * Version: 1.2.0
+ * Block-UUID: 8edd9232-0890-4170-b74d-599fcc9340bf
+ * Parent-UUID: 7caf9147-b45a-4834-9337-57e6b9ab520f
+ * Version: 1.3.0
  * Description: Added inline documentation, secure directory permissions, context validation logic, and thread-safety documentation.
  * Language: Go
- * Created-at: 2026-03-19T02:35:43.668Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
+ * Created-at: 2026-03-19T18:49:31.697Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0)
  */
 
 
@@ -34,6 +34,7 @@ type DockerContext struct {
 	ReposHostPath      string    `json:"repos_host_path"`
 	ReposContainerPath string    `json:"repos_container_path"`
 	DataHostPath       string    `json:"data_host_path"`
+	EnvHostPath        string    `json:"env_host_path"`
 	Port               string    `json:"port"`
 	LastStarted        time.Time `json:"last_started"`
 }

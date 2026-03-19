@@ -1,12 +1,12 @@
 /**
  * Component: Docker CLI Root
- * Block-UUID: 4a9acd55-a824-43c4-8148-8125fe80bf1c
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 7fd3c196-b698-4f4d-a991-d25b2606cd30
+ * Parent-UUID: 4a9acd55-a824-43c4-8148-8125fe80bf1c
+ * Version: 1.0.1
  * Description: Defines the root 'docker' command and registers subcommands for container management and host-side orchestration.
  * Language: Go
- * Created-at: 2026-03-19T01:53:32.531Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Created-at: 2026-03-19T17:19:13.241Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1)
  */
 
 
@@ -32,5 +32,6 @@ func RegisterCommand(root *cobra.Command) {
 
 func init() {
 	// Subcommands will be registered here by their respective files
-	// using the init() function in start.go, watch.go, and lifecycle.go
+	// using the init() function in start.go, watch.go, lifecycle.go, and install.go
 }
+

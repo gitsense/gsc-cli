@@ -1,12 +1,12 @@
 /**
  * Component: Docker CLI Lifecycle Commands
- * Block-UUID: f3b42461-cf37-46ce-83b1-561b64256eb8
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 5e7afe59-be6a-4bcb-8c18-069a0ab3f300
+ * Parent-UUID: f3b42461-cf37-46ce-83b1-561b64256eb8
+ * Version: 1.1.0
  * Description: Implements standard Docker lifecycle commands (stop, status, logs, shell, admin) for the gsc CLI.
  * Language: Go
- * Created-at: 2026-03-19T01:56:34.675Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Created-at: 2026-03-19T18:34:49.407Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0)
  */
 
 
@@ -15,6 +15,8 @@ package docker
 import (
 	"context"
 	"fmt"
+	"os"
+	"os/exec"
 
 	"github.com/spf13/cobra"
 	docker_internal "github.com/gitsense/gsc-cli/internal/docker"
@@ -50,6 +52,36 @@ var stopCmd = &cobra.Command{
 		}
 
 		fmt.Printf("✅ Container '%s' stopped and removed. CLI returned to native mode.\n", name)
+		return nil
+	},
+}
+
+// restartCmd represents the docker restart command
+var restartCmd = &cobra.Command{
+	Use:   "restart",
+	Short: "Restart the GitSense Chat container",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		ctx := context.Background()
+		dctx, err := docker_internal.LoadContext()
+		if err != nil {
+			return err
+		}
+
+		name := "gitsense-chat"
+		if dctx != nil {
+			name = dctx.ContainerName
+		}
+
+		fmt.Printf("🚀 Restarting container '%s'...\n", name)
+		restartCmd := exec.CommandContext(ctx, "docker", "restart", name)
+		restartCmd.Stdout = os.Stdout
+		restartCmd.Stderr = os.Stderr
+
+		if err := restartCmd.Run(); err != nil {
+			return fmt.Errorf("failed to restart container: %w", err)
+		}
+
+		fmt.Printf("✅ Container '%s' restarted successfully.\n", name)
 		return nil
 	},
 }
@@ -155,6 +187,7 @@ var adminCmd = &cobra.Command{
 
 func init() {
 	DockerCmd.AddCommand(stopCmd)
+	DockerCmd.AddCommand(restartCmd)
 	DockerCmd.AddCommand(statusCmd)
 	DockerCmd.AddCommand(logsCmd)
 	DockerCmd.AddCommand(shellCmd)

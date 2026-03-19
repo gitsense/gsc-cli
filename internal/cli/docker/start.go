@@ -1,18 +1,19 @@
 /**
  * Component: Docker CLI Start
- * Block-UUID: 8ad793b8-1842-49d4-bfe7-40c57541d19a
- * Parent-UUID: 90c673bc-9546-4a04-8bf8-7128d2bf7c9f
- * Version: 1.3.1
+ * Block-UUID: dc58ec92-1cd0-446c-a56f-cc9204a99b2e
+ * Parent-UUID: 04cd91e6-f493-4b9a-99e5-6d2731b91caa
+ * Version: 1.7.0
  * Description: Fixed compilation error by correcting package alias usage from docker_internal to docker.
  * Language: Go
- * Created-at: 2026-03-19T02:33:45.688Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1)
+ * Created-at: 2026-03-19T19:00:56.897Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0)
  */
 
 
 package docker
 
 import (
+	"io"
 	"context"
 	"fmt"
 	"bufio"
@@ -29,7 +30,7 @@ import (
 )
 
 var (
-	startReposDir string
+	startReposDir string // Host path to the umbrella directory containing Git repositories
 	startDataDir  string
 	startPort     string
 	startEnvFile  string
@@ -72,19 +73,21 @@ mounts the specified repository directory, and launches the application.`,
 				return fmt.Errorf("repository directory does not exist: %s", absReposDir)
 			}
 			
-			// Validate it is a Git repository
-			if _, err := git.FindGitRootFrom(absReposDir); err != nil {
-				return fmt.Errorf("repository directory '%s' does not appear to be a Git repository. Please provide a directory containing a .git folder", absReposDir)
-			}
-			fmt.Printf("✅ Git repository detected at: %s\n", absReposDir)
+			// Note: --repos-dir is intended to be an umbrella directory for projects/workspaces.
+			// We do not validate if it is a git repo itself, as it may contain multiple repos.
+			fmt.Printf("✅ Umbrella directory set: %s\n", absReposDir)
 			reposDir = absReposDir
 		}
 
 		// 2. Resolve Data Directory
 		dataDir := startDataDir
 		if dataDir == "" {
-			// Default to named volume if not specified
-			dataDir = ""
+			// Default to isolated Docker data directory
+			gscHome, err := settings.GetGSCHome(false)
+			if err != nil {
+				return fmt.Errorf("failed to resolve GSC_HOME: %w", err)
+			}
+			dataDir = filepath.Join(gscHome, settings.DockerDataDirRelPath)
 		} else {
 			absDataDir, err := filepath.Abs(dataDir)
 			if err != nil {
@@ -93,32 +96,44 @@ mounts the specified repository directory, and launches the application.`,
 			dataDir = absDataDir
 		}
 
-		// 3. Resolve Env File
-		envFile := startEnvFile
-		if envFile != "" {
-			// Validate Env File
-			if _, err := os.Stat(envFile); os.IsNotExist(err) {
-				return fmt.Errorf("env file not found: %s", envFile)
-			}
-
-			// Check for critical keys
-			file, err := os.Open(envFile)
+		// 3. Resolve and Consolidate Environment File
+		persistentEnvPath := filepath.Join(dataDir, ".env")
+		sourceEnvPath := ""
+		if startEnvFile != "" {
+			// User provided a source file, copy it to the persistent data directory
+			absSource, err := filepath.Abs(startEnvFile)
 			if err != nil {
-				return fmt.Errorf("failed to open env file: %w", err)
+				return fmt.Errorf("failed to resolve source env file path: %w", err)
 			}
-			defer file.Close()
+			sourceEnvPath = absSource
 
-			scanner := bufio.NewScanner(file)
-			foundKeys := false
-			for scanner.Scan() {
-				line := scanner.Text()
-				if strings.Contains(line, "_API_KEY=") {
-					foundKeys = true
-					break
-				}
+			if _, err := os.Stat(sourceEnvPath); os.IsNotExist(err) {
+				return fmt.Errorf("env file not found: %s", sourceEnvPath)
 			}
-			if !foundKeys {
-				fmt.Fprintf(os.Stderr, "⚠️  Warning: No API keys found in %s. The app may not function correctly.\n", envFile)
+			
+			src, err := os.Open(sourceEnvPath)
+			if err != nil {
+				return fmt.Errorf("failed to open source env file: %w", err)
+			}
+			defer src.Close()
+			
+			dst, err := os.Create(persistentEnvPath)
+			if err != nil {
+				return fmt.Errorf("failed to create persistent env file: %w", err)
+			}
+			defer dst.Close()
+			
+			if _, err := io.Copy(dst, src); err != nil {
+				return fmt.Errorf("failed to copy env file: %w", err)
+			}
+			
+			fmt.Printf("✅ Environment file copied to persistent storage: %s\n", persistentEnvPath)
+		} else {
+			// No source file provided, check if one exists in persistent storage
+			if _, err := os.Stat(persistentEnvPath); err == nil {
+				fmt.Printf("✅ Using existing environment file: %s\n", persistentEnvPath)
+			} else {
+				fmt.Println("⚠️  No environment file found. The app will start without API keys.")
 			}
 		}
 
@@ -165,6 +180,7 @@ mounts the specified repository directory, and launches the application.`,
 			ReposHostPath:      reposDir,
 			ReposContainerPath: filepath.Join(settings.DockerRootPrefix, "repos"),
 			DataHostPath:       dataDir,
+			EnvHostPath:        sourceEnvPath, // Track the source path for Link & Update
 			Port:               port,
 		}
 
@@ -185,7 +201,7 @@ mounts the specified repository directory, and launches the application.`,
 		fmt.Printf("   rm %s\n\n", settings.DockerContextFileName)
 
 		// 9. Start Container
-		if err := docker.StartContainer(ctx, dctx, image, envFile, startPull); err != nil {
+		if err := docker.StartContainer(ctx, dctx, image, "", startPull); err != nil {
 			// Cleanup context if start fails
 			_ = docker.DeleteContext()
 			return err

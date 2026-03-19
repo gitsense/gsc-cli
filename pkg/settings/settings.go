@@ -1,12 +1,12 @@
 /**
  * Component: Settings and Configuration Manager
- * Block-UUID: f881ba64-a5ab-4922-87d6-af4b1db0831b
- * Parent-UUID: 90ee534f-34d1-47cd-a167-7163ab6a1f38
- * Version: 3.9.0
+ * Block-UUID: 971355c2-a775-4c27-9a7c-522e802e1570
+ * Parent-UUID: f881ba64-a5ab-4922-87d6-af4b1db0831b
+ * Version: 3.10.0
  * Description: Added Docker-related constants for container management and context tracking to support the gsc docker command suite.
  * Language: Go
- * Created-at: 2026-03-19T01:47:21.048Z
- * Authors: GLM-4.7 (v3.5.0), GLM-4.7 (v3.6.0), GLM-4.7 (v3.7.0), Gemini 3 Flash (v3.8.0), Gemini 3 Flash (v3.9.0)
+ * Created-at: 2026-03-19T17:16:51.276Z
+ * Authors: GLM-4.7 (v3.5.0), GLM-4.7 (v3.6.0), GLM-4.7 (v3.7.0), Gemini 3 Flash (v3.8.0), Gemini 3 Flash (v3.9.0), GLM-4.7 (v3.10.0)
  */
 
 
@@ -44,6 +44,7 @@ const DockerContextFileName = ".gsc-docker-context.json"
 const DefaultContainerName = "gitsense-chat"
 const DefaultImageName = "gitsense/chat"
 const DefaultAppPort = "3357"
+const DockerDataDirRelPath = "docker/data"
 
 const RegistryFileName = "manifest.json"
 const DefaultDBExtension = ".db"
