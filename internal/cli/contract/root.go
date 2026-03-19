@@ -1,12 +1,12 @@
 /**
  * Component: Contract CLI Root
- * Block-UUID: 4911d6e3-4b7c-48f5-a6f7-5f9b94f33a78
- * Parent-UUID: acef30af-2ab2-4981-9937-8ca4afc1037e
- * Version: 1.4.0
- * Description: Integrated the Smart Proxy interceptor into PersistentPreRunE to ensure contract commands are redirected to the Docker container when a context is active.
+ * Block-UUID: 408c4e32-257c-4b7c-8c58-f6bfd3f25ab9
+ * Parent-UUID: 4911d6e3-4b7c-48f5-a6f7-5f9b94f33a78
+ * Version: 1.5.0
+ * Description: Integrated IsInContainer check into PersistentPreRunE to prevent recursive proxy loops for contract commands.
  * Language: Go
  * Created-at: 2026-03-19T02:25:31.587Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.29.1), Gemini 3 Flash (v1.30.0), GLM-4.7 (v1.31.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0), Gemini 3 Flash (v1.4.0)
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.29.1), Gemini 3 Flash (v1.30.0), GLM-4.7 (v1.31.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0), Gemini 3 Flash (v1.4.0), GLM-4.7 (v1.5.0)
  */
 
 
@@ -144,7 +144,8 @@ GitSense Chat session, enabling secure and traceable code updates.`,
 		// If a Docker context is active and the command is proxyable, redirect to the container.
 		// This is duplicated here because contractCmd defines its own PersistentPreRunE,
 		// which overrides the one in the root command.
-		if docker_internal.IsProxyableCommand(cmd) && docker_internal.HasContext() {
+		// Check if we are already inside a container to prevent recursive loops.
+		if !docker_internal.IsInContainer() && docker_internal.IsProxyableCommand(cmd) && docker_internal.HasContext() {
 			proxied, err := docker_internal.ProxyCommand(cmd, args)
 			if err != nil {
 				// If it's an exit error from the container, exit with that code

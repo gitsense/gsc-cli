@@ -1,12 +1,12 @@
 /**
  * Component: Root CLI Command
- * Block-UUID: 545e4b71-cdf9-4506-a588-b06dd3497cbc
- * Parent-UUID: b313d643-cb04-4dc1-a4a8-febc066966b7
- * Version: 1.36.0
- * Description: Integrated the Docker command suite and implemented the Smart Proxy interceptor in PersistentPreRunE to automatically redirect commands to the container when a Docker context is active.
+ * Block-UUID: 9cc9ad4b-86f1-40ca-b762-273b446ce3b2
+ * Parent-UUID: 545e4b71-cdf9-4506-a588-b06dd3497cbc
+ * Version: 1.37.0
+ * Description: Integrated IsInContainer check into PersistentPreRunE to prevent recursive proxy loops when running inside the Docker container.
  * Language: Go
  * Created-at: 2026-03-19T02:24:30.021Z
- * Authors: GLM-4.7 (v1.34.0), Gemini 3 Flash (v1.35.0), Gemini 3 Flash (v1.36.0)
+ * Authors: GLM-4.7 (v1.34.0), Gemini 3 Flash (v1.35.0), Gemini 3 Flash (v1.36.0), GLM-4.7 (v1.37.0)
  */
 
 
@@ -74,7 +74,8 @@ AI ASSISTANT DISCOVERY:
 
 		// 2. Smart Proxy Interceptor
 		// If a Docker context is active and the command is proxyable, redirect to the container.
-		if docker_internal.IsProxyableCommand(cmd) && docker_internal.HasContext() {
+		// Check if we are already inside a container to prevent recursive loops.
+		if !docker_internal.IsInContainer() && docker_internal.IsProxyableCommand(cmd) && docker_internal.HasContext() {
 			proxied, err := docker_internal.ProxyCommand(cmd, args)
 			if err != nil {
 				// If it's an exit error from the container, exit with that code

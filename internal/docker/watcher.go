@@ -1,12 +1,12 @@
 /**
  * Component: Docker Signal Watcher
- * Block-UUID: c696e665-c7f9-411c-8bd1-23ed2976c52b
- * Parent-UUID: ba2943ab-c677-426f-977b-aa416547006a
- * Version: 1.1.0
- * Description: Implements the log-scanning engine that listens for the Signal Envelope in Docker logs to trigger native host actions.
+ * Block-UUID: d57d2e80-f609-44e6-ad0a-242df210c372
+ * Parent-UUID: c696e665-c7f9-411c-8bd1-23ed2976c52b
+ * Version: 1.2.0
+ * Description: Enhanced signal logging, implemented graceful shutdown with SIGTERM/SIGKILL, and increased scanner buffer to 1MB.
  * Language: Go
  * Created-at: 2026-03-19T02:28:34.992Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0)
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -21,6 +21,8 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/gitsense/gsc-cli/pkg/logger"
 	"github.com/gitsense/gsc-cli/pkg/settings"
@@ -52,16 +54,28 @@ func WatchLogs(ctx context.Context, dctx DockerContext) error {
 		return fmt.Errorf("failed to start log tailing: %w", err)
 	}
 
-	// Graceful shutdown: kill the docker logs process if context is cancelled
+	// Graceful shutdown: send SIGTERM first, then SIGKILL if needed
 	go func() {
 		<-ctx.Done()
-		cmd.Process.Kill()
+		logger.Debug("Context cancelled, initiating graceful shutdown of docker logs process")
+		cmd.Process.Signal(syscall.SIGTERM)
+		
+		// If the process doesn't exit within 2 seconds, force kill
+		time.Sleep(2 * time.Second)
+		if cmd.ProcessState == nil || !cmd.ProcessState.Exited() {
+			logger.Debug("Process did not exit gracefully, forcing kill")
+			cmd.Process.Kill()
+		}
 	}()
 
 	// Regex to find the envelope: @@GSC_SIGNAL:{...}@@
 	re := regexp.MustCompile(`@@GSC_SIGNAL:(\{.*?\})@@`)
 
 	scanner := bufio.NewScanner(stdout)
+	const maxCapacity = 1024 * 1024 // 1MB buffer for large signals
+	buf := make([]byte, maxCapacity)
+	scanner.Buffer(buf, maxCapacity)
+
 	for scanner.Scan() {
 		line := scanner.Text()
 		
@@ -147,8 +161,12 @@ func handleSignal(signalJSON string, dctx DockerContext) error {
 	
 	// We don't wait for the command to finish (e.g., opening an editor shouldn't block the watcher)
 	if err := cmd.Start(); err != nil {
+		fmt.Fprintf(os.Stderr, "❌ [watcher] Failed to launch %s: %v\n", category, err)
 		return fmt.Errorf("failed to launch %s: %w", category, err)
 	}
+
+	fmt.Fprintf(os.Stderr, "✅ [watcher] %s launched successfully at: %s\n", category, hostPath)
+	logger.Info("Host command executed", "category", category, "path", hostPath, "command", cmdStr)
 
 	return nil
 }

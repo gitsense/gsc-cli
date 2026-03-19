@@ -1,12 +1,12 @@
 /**
  * Component: Docker CLI Start
- * Block-UUID: c047fb7b-65ef-42df-bda3-c1884e41100e
- * Parent-UUID: 0ab6fd89-455c-4620-83c0-78ebd640450c
- * Version: 1.2.0
- * Description: Implements the 'gsc docker start' command, handling flags, context file creation, and container initialization.
+ * Block-UUID: 8ad793b8-1842-49d4-bfe7-40c57541d19a
+ * Parent-UUID: 90c673bc-9546-4a04-8bf8-7128d2bf7c9f
+ * Version: 1.3.1
+ * Description: Fixed compilation error by correcting package alias usage from docker_internal to docker.
  * Language: Go
  * Created-at: 2026-03-19T02:33:45.688Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1)
  */
 
 
@@ -16,12 +16,15 @@ import (
 	"context"
 	"fmt"
 	"bufio"
+	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/gitsense/gsc-cli/internal/docker"
+	"github.com/gitsense/gsc-cli/internal/git"
 	"github.com/gitsense/gsc-cli/pkg/settings"
 )
 
@@ -68,6 +71,12 @@ mounts the specified repository directory, and launches the application.`,
 			if _, err := os.Stat(absReposDir); os.IsNotExist(err) {
 				return fmt.Errorf("repository directory does not exist: %s", absReposDir)
 			}
+			
+			// Validate it is a Git repository
+			if _, err := git.FindGitRootFrom(absReposDir); err != nil {
+				return fmt.Errorf("repository directory '%s' does not appear to be a Git repository. Please provide a directory containing a .git folder", absReposDir)
+			}
+			fmt.Printf("✅ Git repository detected at: %s\n", absReposDir)
 			reposDir = absReposDir
 		}
 
@@ -129,7 +138,28 @@ mounts the specified repository directory, and launches the application.`,
 			port = settings.DefaultAppPort
 		}
 
-		// 5. Create Docker Context
+		// 5. Pre-flight Checks
+		
+		// Check Host Port Availability
+		ln, err := net.Listen("tcp", ":"+port)
+		if err != nil {
+			return fmt.Errorf("host port %s is already in use. Use --port to specify a different one", port)
+		}
+		ln.Close()
+
+		// Check Container Name Collision
+		running, err := docker.IsContainerRunning(ctx, containerName)
+		if err == nil && running {
+			return fmt.Errorf("container '%s' is already running. Stop it first with: gsc docker stop", containerName)
+		}
+
+		// Check if container exists but is stopped
+		inspectCmd := exec.Command("docker", "inspect", containerName)
+		if inspectCmd.Run() == nil {
+			return fmt.Errorf("container '%s' already exists (but is stopped). Remove it with: docker rm %s", containerName, containerName)
+		}
+
+		// 6. Create Docker Context
 		dctx := docker.DockerContext{
 			ContainerName:      containerName,
 			ReposHostPath:      reposDir,
@@ -138,12 +168,12 @@ mounts the specified repository directory, and launches the application.`,
 			Port:               port,
 		}
 
-		// 6. Save Context File
+		// 7. Save Context File
 		if err := docker.SaveContext(dctx); err != nil {
 			return fmt.Errorf("failed to save docker context: %w", err)
 		}
 
-		// 7. Print Mode Alert
+		// 8. Print Mode Alert
 		fmt.Println("🚀 GitSense Chat is starting in Docker...")
 		fmt.Printf("✅ Docker context initialized at %s\n\n", settings.DockerContextFileName)
 		fmt.Println("⚠️  MODE ALERT:")
@@ -154,7 +184,7 @@ mounts the specified repository directory, and launches the application.`,
 		fmt.Println("   delete the context file:")
 		fmt.Printf("   rm %s\n\n", settings.DockerContextFileName)
 
-		// 8. Start Container
+		// 9. Start Container
 		if err := docker.StartContainer(ctx, dctx, image, envFile, startPull); err != nil {
 			// Cleanup context if start fails
 			_ = docker.DeleteContext()

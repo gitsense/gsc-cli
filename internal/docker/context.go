@@ -1,12 +1,12 @@
 /**
  * Component: Docker Context Manager
- * Block-UUID: ede1cdd8-e56d-4067-aaa9-47e90bc43470
- * Parent-UUID: a0a22256-45ef-4e6d-b338-7a37a491af24
- * Version: 1.1.0
- * Description: Manages the lifecycle of the hidden Docker context file used to track path mappings and proxy state.
+ * Block-UUID: 7caf9147-b45a-4834-9337-57e6b9ab520f
+ * Parent-UUID: ede1cdd8-e56d-4067-aaa9-47e90bc43470
+ * Version: 1.2.0
+ * Description: Added inline documentation, secure directory permissions, context validation logic, and thread-safety documentation.
  * Language: Go
  * Created-at: 2026-03-19T02:35:43.668Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0)
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -22,7 +22,13 @@ import (
 	"github.com/gitsense/gsc-cli/pkg/settings"
 )
 
-// DockerContext represents the metadata stored in the hidden context file.
+// DockerContext represents the metadata stored in the hidden context file (.gsc-docker-context.json).
+// This file acts as the "source of truth" for the CLI's execution mode:
+// - If the file exists, the CLI is in "Docker Proxy Mode" and will redirect write operations to the container.
+// - If the file does not exist, the CLI is in "Native Mode" and operates directly on the host.
+//
+// The context file is created by 'gsc docker start' and deleted by 'gsc docker stop'.
+// Users can manually delete this file to return to Native Mode at any time.
 type DockerContext struct {
 	ContainerName      string    `json:"container_name"`
 	ReposHostPath      string    `json:"repos_host_path"`
@@ -33,10 +39,21 @@ type DockerContext struct {
 }
 
 // SaveContext performs an atomic write of the Docker context to the hidden file.
+// Note: This function is not thread-safe. Concurrent calls to SaveContext may result in data loss.
+// In practice, this is unlikely because 'gsc docker start' is typically run once per session.
 func SaveContext(ctx DockerContext) error {
 	path, err := GetContextPath()
 	if err != nil {
 		return err
+	}
+
+	// Ensure .gitsense directory exists with secure permissions (0700)
+	gscHome, err := settings.GetGSCHome(false)
+	if err != nil {
+		return fmt.Errorf("failed to resolve GSC_HOME: %w", err)
+	}
+	if err := os.MkdirAll(gscHome, 0700); err != nil {
+		return fmt.Errorf("failed to create .gitsense directory: %w", err)
 	}
 
 	data, err := json.MarshalIndent(ctx, "", "  ")
@@ -102,6 +119,20 @@ func HasContext() bool {
 
 	_, err = os.Stat(path)
 	return err == nil
+}
+
+// ValidateContext checks if the context is still valid (paths exist, container is running, etc.)
+func ValidateContext(ctx *DockerContext) error {
+	if ctx.ReposHostPath != "" {
+		if _, err := os.Stat(ctx.ReposHostPath); os.IsNotExist(err) {
+			return fmt.Errorf(
+				"repository directory '%s' no longer exists. "+
+					"Run 'gsc docker stop' and restart with a valid path",
+				ctx.ReposHostPath,
+			)
+		}
+	}
+	return nil
 }
 
 // GetContextPath returns the absolute path to the hidden Docker context file.

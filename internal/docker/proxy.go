@@ -1,12 +1,12 @@
 /**
  * Component: Docker Proxy Engine
- * Block-UUID: 88d97256-aa7e-4dae-9b97-d284daad11ea
- * Parent-UUID: cab4fef5-d41d-4e08-9f85-4774d2cd066d
- * Version: 1.1.0
- * Description: Implements the Smart Proxy logic for redirecting CLI commands to a running Docker container, including host-to-container path translation.
+ * Block-UUID: 1b969df3-aaa0-49db-9cd8-a0320434eee5
+ * Parent-UUID: 88d97256-aa7e-4dae-9b97-d284daad11ea
+ * Version: 1.2.0
+ * Description: Implemented environment variable forwarding, symlink fallback for Windows, case-insensitive path checking, and added IsInContainer detection to prevent recursive proxy loops.
  * Language: Go
  * Created-at: 2026-03-19T02:30:07.443Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0)
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -23,6 +23,12 @@ import (
 	"github.com/gitsense/gsc-cli/pkg/settings"
 	"github.com/gitsense/gsc-cli/pkg/logger"
 )
+
+// IsInContainer checks if the current process is running inside the Docker container
+// by verifying if GSC_HOME matches the Docker root prefix.
+func IsInContainer() bool {
+	return os.Getenv("GSC_HOME") == settings.DockerRootPrefix
+}
 
 // ProxyCommand intercepts a CLI command and redirects it to the Docker container
 // if a valid Docker context is active.
@@ -55,7 +61,7 @@ func ProxyCommand(cmd *cobra.Command, args []string) (bool, error) {
 
 	// Check if gsc binary exists in container
 	if err := ExecCommand(ctx, dctx.ContainerName, []string{"which", "gsc"}, false, ""); err != nil {
-		return false, fmt.Errorf("gsc binary not found in container: %w", err)
+		return false, fmt.Errorf("gsc binary not found in container '%s'. The container may not be properly initialized. Try: gsc docker stop && gsc docker start --pull", dctx.ContainerName)
 	}
 
 	logger.Debug("Docker proxy active", "container", dctx.ContainerName)
@@ -78,7 +84,18 @@ func ProxyCommand(cmd *cobra.Command, args []string) (bool, error) {
 	proxyArgs = append(proxyArgs, cmd.CommandPath()[4:]) // Strip 'gsc ' prefix from CommandPath
 	proxyArgs = append(proxyArgs, args...)
 
-	// 6. Execute via Docker Exec
+	// 6. Forward Environment Variables
+	// Capture GSC_ prefixed environment variables to pass to the container
+	var envArgs []string
+	for _, env := range os.Environ() {
+		if strings.HasPrefix(env, "GSC_") {
+			envArgs = append(envArgs, "-e", env)
+		}
+	}
+	// Prepend environment variables to the command arguments
+	proxyArgs = append(envArgs, proxyArgs...)
+
+	// 7. Execute via Docker Exec
 	// We use interactive mode to preserve TTY for prompts (like contract creation)
 	err = ExecCommand(ctx, dctx.ContainerName, proxyArgs, true, containerWorkdir)
 	if err != nil {
@@ -99,9 +116,11 @@ func TranslatePathToContainer(hostPath string, dctx *DockerContext) (string, err
 	}
 	
 	// Resolve symlinks to ensure accurate mapping
+	// Fallback to absolute path if symlink resolution fails (e.g., on Windows without permissions)
 	absHostPath, err = filepath.EvalSymlinks(absHostPath)
 	if err != nil {
-		return "", fmt.Errorf("failed to resolve symlinks: %w", err)
+		logger.Debug("Failed to resolve symlinks, using absolute path as-is", "error", err)
+		absHostPath, _ = filepath.Abs(hostPath)
 	}
 
 	// If no repos mount was provided, we cannot translate paths for contracts.
@@ -112,9 +131,18 @@ func TranslatePathToContainer(hostPath string, dctx *DockerContext) (string, err
 	absReposHostPath, _ := filepath.Abs(dctx.ReposHostPath)
 
 	// Check if the host path is within the mapped repos directory
+	// Use case-insensitive check for Windows/macOS compatibility
+	hostPathLower := strings.ToLower(absHostPath)
+	reposHostPathLower := strings.ToLower(absReposHostPath)
+
+	if !strings.HasPrefix(hostPathLower, reposHostPathLower) {
+		return "", fmt.Errorf("current directory (%s) is not inside the repository root defined in your Docker context (%s)", absHostPath, absReposHostPath)
+	}
+
+	// Calculate relative path using the original casing to preserve it in the container
 	rel, err := filepath.Rel(absReposHostPath, absHostPath)
 	if err != nil || strings.HasPrefix(rel, "..") {
-		return "", fmt.Errorf("current directory (%s) is not inside the repository root defined in your Docker context (%s)", absHostPath, absReposHostPath)
+		return "", fmt.Errorf("failed to calculate relative path from %s to %s", absReposHostPath, absHostPath)
 	}
 
 	// Construct the container path: /gsc-docker-app/repos + relative offset
