@@ -1,12 +1,12 @@
 /**
  * Component: Exec Command Executor
- * Block-UUID: d87b45c2-4c23-4a3f-9232-d29bc65f7871
- * Parent-UUID: ce7afdb7-20b2-4c7e-b8d7-822806fee2db
- * Version: 1.6.0
- * Description: Added Env field to Executor struct and updated Run() method to merge custom environment variables with the system environment, enabling shadow workspace context injection.
+ * Block-UUID: be4e23fe-6e3a-424e-907c-f1b2035f6a17
+ * Parent-UUID: ae689c93-9861-4030-8ea4-d09d43accbb5
+ * Version: 1.8.0
+ * Description: Refactored platform-specific process group and signaling logic into separate files to support cross-compilation for Windows.
  * Language: Go
- * Created-at: 2026-03-02T17:04:29.076Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.5.0), GLM-4.7 (v1.6.0)
+ * Created-at: 2026-03-19T13:55:19.643Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.5.0), GLM-4.7 (v1.6.0), Gemini 3 Flash (v1.7.0), GLM-4.7 (v1.8.0)
  */
 
 
@@ -23,9 +23,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
-	"runtime"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/gitsense/gsc-cli/pkg/logger"
@@ -138,11 +136,9 @@ func (e *Executor) Run() (*Result, error) {
 		logger.Debug("Injecting environment variables", "count", len(e.Env))
 	}
 	
-	// Unix-specific for process group management
-	if runtime.GOOS != "windows" {
-		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	}
-
+	// Set platform-specific process attributes (e.g. process groups on Unix)
+	setProcessGroup(cmd)
+	
 	// 6. Start Command
 	logger.Debug("Starting command execution", "command", e.Command, "timeout", timeoutDuration, "shell", shell, "workdir", e.Workdir)
 	if err := cmd.Start(); err != nil {
@@ -153,7 +149,7 @@ func (e *Executor) Run() (*Result, error) {
 
 	// 7. Signal Handling
 	sigChan := make(chan os.Signal, 1)
-	signalNotify(sigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+	signalNotify(sigChan, getSignals()...)
 
 	go func() {
 		sig, ok := <-sigChan
@@ -162,12 +158,7 @@ func (e *Executor) Run() (*Result, error) {
 		}
 		logger.Debug("Signal received, forwarding to child process", "signal", sig, "pid", cmd.Process.Pid)
 		
-		if runtime.GOOS == "windows" {
-			cmd.Process.Signal(sig)
-		} else {
-			// Kill the entire process group
-			syscall.Kill(-cmd.Process.Pid, sig.(syscall.Signal))
-		}
+		killProcessGroup(cmd, sig)
 	}()
 
 	// 8. Wait for Completion
@@ -378,7 +369,7 @@ func generateID() string {
 
 // resolveShell returns the appropriate shell and flag for the current OS.
 func resolveShell() (string, string) {
-	if runtime.GOOS == "windows" {
+	if os.PathSeparator == '\\' {
 		return "cmd", "/c"
 	}
 	return "sh", "-c"
