@@ -1,12 +1,12 @@
 /**
  * Component: Root CLI Command
- * Block-UUID: 77cc4ba0-06ce-495f-aa0d-e02dafe0630a
- * Parent-UUID: b15dd7d1-bd74-4c5a-9974-ee5b1591e7e1
- * Version: 1.34.0
- * Description: Registered contract.SendCmd as a top-level alias 'gsc send'.
+ * Block-UUID: b313d643-cb04-4dc1-a4a8-febc066966b7
+ * Parent-UUID: 77cc4ba0-06ce-495f-aa0d-e02dafe0630a
+ * Version: 1.35.0
+ * Description: Integrated the Docker command suite and implemented the Smart Proxy interceptor in PersistentPreRunE to automatically redirect commands to the container when a Docker context is active.
  * Language: Go
- * Created-at: 2026-03-10T16:15:31.493Z
- * Authors: GLM-4.7 (v1.32.2), GLM-4.7 (v1.32.3), GLM-4.7 (v1.32.4), GLM-4.7 (v1.32.5), GLM-4.7 (v1.32.6), GLM-4.7 (v1.32.7), Gemini 3 Flash (v1.32.8), GLM-4.7 (v1.32.9), GLM-4.7 (v1.32.10), GLM-4.7 (v1.33.0), GLM-4.7 (v1.34.0)
+ * Created-at: 2026-03-19T01:58:47.232Z
+ * Authors: GLM-4.7 (v1.34.0), Gemini 3 Flash (v1.35.0)
  */
 
 
@@ -24,6 +24,8 @@ import (
 	"github.com/gitsense/gsc-cli/internal/cli/manifest"
 	"github.com/gitsense/gsc-cli/internal/git"
 	"github.com/gitsense/gsc-cli/internal/cli/ws"
+	"github.com/gitsense/gsc-cli/internal/cli/docker"
+	docker_internal "github.com/gitsense/gsc-cli/internal/docker"
 	"github.com/gitsense/gsc-cli/pkg/logger"
 	"github.com/gitsense/gsc-cli/pkg/settings"
 )
@@ -69,7 +71,21 @@ AI ASSISTANT DISCOVERY:
 			}
 		}
 
-		// 2. Pre-flight Check: Ensure .gitsense directory exists
+		// 2. Smart Proxy Interceptor
+		// If a Docker context is active and the command is proxyable, redirect to the container.
+		if docker_internal.IsProxyableCommand(cmd) && docker_internal.HasContext() {
+			proxied, err := docker_internal.ProxyCommand(cmd, args)
+			if err != nil {
+				// If proxying failed (e.g., container not running), we exit with error.
+				return err
+			}
+			if proxied {
+				// If the command was successfully proxied, we exit the host process.
+				os.Exit(0)
+			}
+		}
+
+		// 3. Pre-flight Check: Ensure .gitsense directory exists
 		// Skip for excluded commands (init, doctor, exec, ws, contract) and examples
 		if cmd.Name() != "gsc" && !isExcludedCommand(cmd) && !showExamples {
 			root, err := git.FindProjectRoot()
@@ -123,6 +139,7 @@ func init() {
 	RegisterExecCommand(rootCmd)
 	contract.RegisterContractCommand(rootCmd)
 	ws.RegisterCommand(rootCmd)
+	docker.RegisterCommand(rootCmd)
 	rootCmd.AddCommand(contract.ChatsCmd)
 	rootCmd.AddCommand(contract.MessagesCmd)
 	
@@ -145,7 +162,7 @@ func init() {
 // This allows us to skip the .gitsense check for entire command trees (e.g., 'ws' and 'contract')
 // as well as specific top-level commands (e.g., 'init', 'doctor', 'exec').
 func isExcludedCommand(cmd *cobra.Command) bool {
-	excludedRoots := []string{"init", "doctor", "exec", "ws", "contract", "chats", "messages", "send", "tree"}
+	excludedRoots := []string{"init", "doctor", "exec", "ws", "contract", "chats", "messages", "send", "tree", "docker"}
 	current := cmd
 
 	for current != nil {

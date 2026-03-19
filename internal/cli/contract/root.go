@@ -1,12 +1,12 @@
 /**
  * Component: Contract CLI Root
- * Block-UUID: 8dc3a18f-3e92-4113-b854-579fe56a507f
- * Parent-UUID: 536083b9-7bbb-4d68-a3e3-946ceb80e90d
- * Version: 1.2.0
- * Description: Added global flags for the add-chat command (contractAddUUID, contractAddForce).
+ * Block-UUID: acef30af-2ab2-4981-9937-8ca4afc1037e
+ * Parent-UUID: 8dc3a18f-3e92-4113-b854-579fe56a507f
+ * Version: 1.3.0
+ * Description: Integrated the Smart Proxy interceptor into PersistentPreRunE to ensure contract commands are redirected to the Docker container when a context is active.
  * Language: Go
- * Created-at: 2026-03-10T16:06:12.776Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.29.1), Gemini 3 Flash (v1.30.0), GLM-4.7 (v1.31.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
+ * Created-at: 2026-03-19T02:00:25.296Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.29.1), Gemini 3 Flash (v1.30.0), GLM-4.7 (v1.31.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0)
  */
 
 
@@ -21,6 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/gitsense/gsc-cli/internal/contract"
+	docker_internal "github.com/gitsense/gsc-cli/internal/docker"
 	"github.com/gitsense/gsc-cli/pkg/settings"
 	"encoding/json"
 )
@@ -138,7 +139,21 @@ var contractCmd = &cobra.Command{
 	Long: `Contracts establish a formal link between a local working directory and a 
 GitSense Chat session, enabling secure and traceable code updates.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		// Enforce GSC_HOME requirement
+		// 1. Smart Proxy Interceptor
+		// If a Docker context is active and the command is proxyable, redirect to the container.
+		// This is duplicated here because contractCmd defines its own PersistentPreRunE,
+		// which overrides the one in the root command.
+		if docker_internal.IsProxyableCommand(cmd) && docker_internal.HasContext() {
+			proxied, err := docker_internal.ProxyCommand(cmd, args)
+			if err != nil {
+				return err
+			}
+			if proxied {
+				os.Exit(0)
+			}
+		}
+
+		// 2. Enforce GSC_HOME requirement
 		// This ensures that the web app's data directory is used for contracts and dumps
 		if _, err := settings.GetGSCHome(false); err != nil {
 			cmd.SilenceUsage = true
@@ -201,7 +216,7 @@ func sortContracts(contracts []contract.ContractMetadata, field, order string) {
 			if order == "desc" {
 				return contracts[i].CreatedAt.After(contracts[j].CreatedAt)
 			}
-			return contracts[i].CreatedAt.Before(contracts[j].CreatedAt)
+			return contracts[i].CreatedAt.After(contracts[j].CreatedAt)
 		case "description":
 			if order == "desc" {
 				return contracts[i].Description > contracts[j].Description

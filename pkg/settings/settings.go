@@ -1,12 +1,12 @@
 /**
  * Component: Settings and Configuration Manager
- * Block-UUID: 90ee534f-34d1-47cd-a167-7163ab6a1f38
- * Parent-UUID: 322c9710-e789-4219-b391-16707534dbb2
- * Version: 3.8.0
- * Description: Added DockerRootPrefix constant to support zero-shot path translation for containerized environments.
+ * Block-UUID: f881ba64-a5ab-4922-87d6-af4b1db0831b
+ * Parent-UUID: 90ee534f-34d1-47cd-a167-7163ab6a1f38
+ * Version: 3.9.0
+ * Description: Added Docker-related constants for container management and context tracking to support the gsc docker command suite.
  * Language: Go
- * Created-at: 2026-03-07T23:47:46.013Z
- * Authors: GLM-4.7 (v3.5.0), GLM-4.7 (v3.6.0), GLM-4.7 (v3.7.0), Gemini 3 Flash (v3.8.0)
+ * Created-at: 2026-03-19T01:47:21.048Z
+ * Authors: GLM-4.7 (v3.5.0), GLM-4.7 (v3.6.0), GLM-4.7 (v3.7.0), Gemini 3 Flash (v3.8.0), Gemini 3 Flash (v3.9.0)
  */
 
 
@@ -36,6 +36,14 @@ var GitSenseDir = DefaultGitSenseDir
 // DockerRootPrefix is the unique root path used in Docker environments to signal 
 // that paths require translation when accessed from a host machine.
 const DockerRootPrefix = "/gsc-docker-app"
+
+// DockerContextFileName is the hidden file used to track the active Docker proxy context.
+const DockerContextFileName = ".gsc-docker-context.json"
+
+// Docker Defaults
+const DefaultContainerName = "gitsense-chat"
+const DefaultImageName = "gitsense/chat"
+const DefaultAppPort = "3357"
 
 const RegistryFileName = "manifest.json"
 const DefaultDBExtension = ".db"
