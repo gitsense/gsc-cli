@@ -2,11 +2,11 @@
  * Component: Executor Platform Logic (Windows)
  * Block-UUID: ec5df7b8-b520-4762-ab21-a9d2df74bcfd
  * Parent-UUID: N/A
- * Version: 1.1.0
- * Description: Added getSignals helper to provide Windows-specific signal definitions.
+ * Version: 1.2.0
+ * Description: Added missing os/exec import to resolve undefined: exec compilation error.
  * Language: Go
  * Created-at: 2026-03-19T13:45:00.000Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0)
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -16,6 +16,7 @@ package exec
 
 import (
 	"os"
+	"os/exec"
 )
 
 // setProcessGroup is a no-op on Windows as Setpgid is not supported.

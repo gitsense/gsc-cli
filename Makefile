@@ -1,17 +1,17 @@
 # Component: GSC CLI Makefile
 # Block-UUID: 61a6127d-a28d-4e57-929a-0b5419a2374d
 # Parent-UUID: 07fed727-0f26-4c8f-9cd8-d070edb2c5e5
-# Version: 1.2.0
-# Description: Makefile for building, installing, and testing the gsc-cli tool with configurable install paths and go-install support.
+# Version: 1.3.0
+# Description: Added build-all target to compile for Linux, macOS (Intel/ARM), and Windows simultaneously.
 # Language: Makefile
 # Created-at: 2026-02-02T06:50:00.000Z
-# Authors: GLM-4.7 (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0)
+# Authors: GLM-4.7 (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0)
 
 
 # GSC CLI Makefile
 # This makefile provides commands for building, installing, and testing the gsc-cli tool.
 
-.PHONY: build install go-install clean test run help
+.PHONY: build install go-install clean test run help build-all
 
 # Binary name
 BINARY_NAME=gsc
@@ -82,10 +82,23 @@ build-linux: ## Build for Linux
 	@mkdir -p $(DIST_DIR)
 	GOOS=linux GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o $(DIST_DIR)/$(BINARY_NAME)-linux-amd64 $(MAIN_PATH)
 
-build-darwin: ## Build for macOS
+build-darwin: ## Build for macOS (Intel)
 	@mkdir -p $(DIST_DIR)
 	GOOS=darwin GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o $(DIST_DIR)/$(BINARY_NAME)-darwin-amd64 $(MAIN_PATH)
+
+build-darwin-arm: ## Build for macOS (Apple Silicon)
+	@mkdir -p $(DIST_DIR)
+	GOOS=darwin GOARCH=arm64 $(GOBUILD) $(LDFLAGS) -o $(DIST_DIR)/$(BINARY_NAME)-darwin-arm64 $(MAIN_PATH)
 
 build-windows: ## Build for Windows
 	@mkdir -p $(DIST_DIR)
 	GOOS=windows GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o $(DIST_DIR)/$(BINARY_NAME)-windows-amd64.exe $(MAIN_PATH)
+
+build-all: ## Build for all supported platforms (Linux, macOS Intel/ARM, Windows)
+	@echo "Building for all platforms..."
+	@mkdir -p $(DIST_DIR)
+	GOOS=linux GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o $(DIST_DIR)/$(BINARY_NAME)-linux-amd64 $(MAIN_PATH)
+	GOOS=darwin GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o $(DIST_DIR)/$(BINARY_NAME)-darwin-amd64 $(MAIN_PATH)
+	GOOS=darwin GOARCH=arm64 $(GOBUILD) $(LDFLAGS) -o $(DIST_DIR)/$(BINARY_NAME)-darwin-arm64 $(MAIN_PATH)
+	GOOS=windows GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o $(DIST_DIR)/$(BINARY_NAME)-windows-amd64.exe $(MAIN_PATH)
+	@echo "Build complete. Artifacts in ./$(DIST_DIR)"
