@@ -1,12 +1,12 @@
 /**
  * Component: Settings and Configuration Manager
- * Block-UUID: 322c9710-e789-4219-b391-16707534dbb2
- * Parent-UUID: 49339d36-9c22-445f-a754-8432bfdab651
- * Version: 3.7.0
- * Description: Renamed DumpsRelPath to HomesRelPath to reflect the dynamic nature of contract workspaces.
+ * Block-UUID: 90ee534f-34d1-47cd-a167-7163ab6a1f38
+ * Parent-UUID: 322c9710-e789-4219-b391-16707534dbb2
+ * Version: 3.8.0
+ * Description: Added DockerRootPrefix constant to support zero-shot path translation for containerized environments.
  * Language: Go
  * Created-at: 2026-03-07T23:47:46.013Z
- * Authors: GLM-4.7 (v3.5.0), GLM-4.7 (v3.6.0), GLM-4.7 (v3.7.0)
+ * Authors: GLM-4.7 (v3.5.0), GLM-4.7 (v3.6.0), GLM-4.7 (v3.7.0), Gemini 3 Flash (v3.8.0)
  */
 
 
@@ -32,6 +32,10 @@ const DefaultGitSenseDir = ".gitsense"
 
 // GitSenseDir is the name of the directory where GitSense Chat stores its data
 var GitSenseDir = DefaultGitSenseDir
+
+// DockerRootPrefix is the unique root path used in Docker environments to signal 
+// that paths require translation when accessed from a host machine.
+const DockerRootPrefix = "/gsc-docker-app"
 
 const RegistryFileName = "manifest.json"
 const DefaultDBExtension = ".db"
