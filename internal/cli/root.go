@@ -1,12 +1,12 @@
 /**
  * Component: Root CLI Command
- * Block-UUID: b313d643-cb04-4dc1-a4a8-febc066966b7
- * Parent-UUID: 77cc4ba0-06ce-495f-aa0d-e02dafe0630a
- * Version: 1.35.0
+ * Block-UUID: 545e4b71-cdf9-4506-a588-b06dd3497cbc
+ * Parent-UUID: b313d643-cb04-4dc1-a4a8-febc066966b7
+ * Version: 1.36.0
  * Description: Integrated the Docker command suite and implemented the Smart Proxy interceptor in PersistentPreRunE to automatically redirect commands to the container when a Docker context is active.
  * Language: Go
- * Created-at: 2026-03-19T01:58:47.232Z
- * Authors: GLM-4.7 (v1.34.0), Gemini 3 Flash (v1.35.0)
+ * Created-at: 2026-03-19T02:24:30.021Z
+ * Authors: GLM-4.7 (v1.34.0), Gemini 3 Flash (v1.35.0), Gemini 3 Flash (v1.36.0)
  */
 
 
@@ -15,6 +15,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"time"
 
@@ -76,11 +77,16 @@ AI ASSISTANT DISCOVERY:
 		if docker_internal.IsProxyableCommand(cmd) && docker_internal.HasContext() {
 			proxied, err := docker_internal.ProxyCommand(cmd, args)
 			if err != nil {
-				// If proxying failed (e.g., container not running), we exit with error.
+				// If it's an exit error from the container, exit with that code
+				if exitErr, ok := err.(*exec.ExitError); ok {
+					os.Exit(exitErr.ExitCode())
+				}
 				return err
 			}
 			if proxied {
 				// If the command was successfully proxied, we exit the host process.
+				// The exit code was already handled by ProxyCommand if it returned an error.
+				// If it returned nil error and proxied=true, we assume success (0).
 				os.Exit(0)
 			}
 		}

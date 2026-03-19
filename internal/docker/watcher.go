@@ -1,12 +1,12 @@
 /**
  * Component: Docker Signal Watcher
- * Block-UUID: ba2943ab-c677-426f-977b-aa416547006a
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: c696e665-c7f9-411c-8bd1-23ed2976c52b
+ * Parent-UUID: ba2943ab-c677-426f-977b-aa416547006a
+ * Version: 1.1.0
  * Description: Implements the log-scanning engine that listens for the Signal Envelope in Docker logs to trigger native host actions.
  * Language: Go
- * Created-at: 2026-03-19T01:52:07.164Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Created-at: 2026-03-19T02:28:34.992Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0)
  */
 
 
@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"strings"
 
 	"github.com/gitsense/gsc-cli/pkg/logger"
 	"github.com/gitsense/gsc-cli/pkg/settings"
@@ -39,7 +40,7 @@ func WatchLogs(ctx context.Context, dctx DockerContext) error {
 	fmt.Fprintf(os.Stderr, "🐳 [gsc] Watching logs for container '%s'...\n", dctx.ContainerName)
 	fmt.Fprintln(os.Stderr, "   (Listening for terminal/editor launch signals. Ctrl+C to stop)")
 
-	args := []string{"logs", "-f", dctx.ContainerName}
+	args := []string{"logs", "-f", "--tail", "0", dctx.ContainerName}
 	cmd := exec.CommandContext(ctx, "docker", args...)
 
 	stdout, err := cmd.StdoutPipe()
@@ -50,6 +51,12 @@ func WatchLogs(ctx context.Context, dctx DockerContext) error {
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("failed to start log tailing: %w", err)
 	}
+
+	// Graceful shutdown: kill the docker logs process if context is cancelled
+	go func() {
+		<-ctx.Done()
+		cmd.Process.Kill()
+	}()
 
 	// Regex to find the envelope: @@GSC_SIGNAL:{...}@@
 	re := regexp.MustCompile(`@@GSC_SIGNAL:(\{.*?\})@@`)
@@ -129,7 +136,7 @@ func handleSignal(signalJSON string, dctx DockerContext) error {
 
 	// 3. Construct and Execute Command
 	// We assume the template uses %s for the path
-	cmdStr := fmt.Sprintf(template, hostPath)
+	cmdStr := fmt.Sprintf(template, shellQuote(hostPath))
 	
 	fmt.Fprintf(os.Stderr, "🚀 [watcher] Launching %s: %s\n", category, hostPath)
 	logger.Info("Executing host command", "command", cmdStr)
@@ -154,4 +161,10 @@ func resolveShell() (string, string) {
 		return "cmd", "/c"
 	}
 	return "sh", "-c"
+}
+
+// shellQuote escapes a string for safe use in a shell command.
+// It wraps the string in single quotes and escapes any internal single quotes.
+func shellQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", "'\"'\"'") + "'"
 }

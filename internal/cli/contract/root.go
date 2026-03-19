@@ -1,12 +1,12 @@
 /**
  * Component: Contract CLI Root
- * Block-UUID: acef30af-2ab2-4981-9937-8ca4afc1037e
- * Parent-UUID: 8dc3a18f-3e92-4113-b854-579fe56a507f
- * Version: 1.3.0
+ * Block-UUID: 4911d6e3-4b7c-48f5-a6f7-5f9b94f33a78
+ * Parent-UUID: acef30af-2ab2-4981-9937-8ca4afc1037e
+ * Version: 1.4.0
  * Description: Integrated the Smart Proxy interceptor into PersistentPreRunE to ensure contract commands are redirected to the Docker container when a context is active.
  * Language: Go
- * Created-at: 2026-03-19T02:00:25.296Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.29.1), Gemini 3 Flash (v1.30.0), GLM-4.7 (v1.31.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0)
+ * Created-at: 2026-03-19T02:25:31.587Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.29.1), Gemini 3 Flash (v1.30.0), GLM-4.7 (v1.31.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0), Gemini 3 Flash (v1.4.0)
  */
 
 
@@ -15,6 +15,7 @@ package contract
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -146,9 +147,16 @@ GitSense Chat session, enabling secure and traceable code updates.`,
 		if docker_internal.IsProxyableCommand(cmd) && docker_internal.HasContext() {
 			proxied, err := docker_internal.ProxyCommand(cmd, args)
 			if err != nil {
+				// If it's an exit error from the container, exit with that code
+				if exitErr, ok := err.(*exec.ExitError); ok {
+					os.Exit(exitErr.ExitCode())
+				}
 				return err
 			}
 			if proxied {
+				// If the command was successfully proxied, we exit the host process.
+				// The exit code was already handled by ProxyCommand if it returned an error.
+				// If it returned nil error and proxied=true, we assume success (0).
 				os.Exit(0)
 			}
 		}

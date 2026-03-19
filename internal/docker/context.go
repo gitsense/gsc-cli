@@ -1,12 +1,12 @@
 /**
  * Component: Docker Context Manager
- * Block-UUID: a0a22256-45ef-4e6d-b338-7a37a491af24
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: ede1cdd8-e56d-4067-aaa9-47e90bc43470
+ * Parent-UUID: a0a22256-45ef-4e6d-b338-7a37a491af24
+ * Version: 1.1.0
  * Description: Manages the lifecycle of the hidden Docker context file used to track path mappings and proxy state.
  * Language: Go
- * Created-at: 2026-03-19T01:49:11.523Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Created-at: 2026-03-19T02:35:43.668Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0)
  */
 
 
@@ -45,7 +45,7 @@ func SaveContext(ctx DockerContext) error {
 	}
 
 	tmpPath := path + ".tmp"
-	if err := os.WriteFile(tmpPath, data, 0600); err != nil {
+	if err := os.WriteFile(tmpPath, data, 0600); err != nil { // 0600: Read/write for owner only (security: contains path mappings)
 		return fmt.Errorf("failed to write temp docker context file: %w", err)
 	}
 

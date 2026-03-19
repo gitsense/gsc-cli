@@ -1,12 +1,12 @@
 /**
  * Component: Docker Orchestration Manager
- * Block-UUID: f5271e40-220b-46a4-9e90-5c6d0c45d7d2
- * Parent-UUID: 75f82a31-1c5a-415b-bcc6-92d99faccccc
- * Version: 1.0.1
+ * Block-UUID: 93a6c853-e7a3-40d1-8d51-306d1a041031
+ * Parent-UUID: f5271e40-220b-46a4-9e90-5c6d0c45d7d2
+ * Version: 1.1.0
  * Description: Provides low-level orchestration for Docker CLI operations, including container lifecycle management and command execution.
  * Language: Go
- * Created-at: 2026-03-19T02:10:50.622Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1)
+ * Created-at: 2026-03-19T02:26:53.139Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.1.0)
  */
 
 
@@ -39,6 +39,12 @@ func StartContainer(ctx context.Context, dctx DockerContext, image string, envFi
 		pullCmd.Stderr = os.Stderr
 		if err := pullCmd.Run(); err != nil {
 			return fmt.Errorf("failed to pull image %s: %w", image, err)
+		}
+	} else {
+		// Check if image exists locally if not pulling
+		inspectCmd := exec.CommandContext(ctx, "docker", "image", "inspect", image)
+		if err := inspectCmd.Run(); err != nil {
+			return fmt.Errorf("image %s not found locally. Use --pull to fetch it", image)
 		}
 	}
 
@@ -106,7 +112,11 @@ func ExecCommand(ctx context.Context, name string, args []string, interactive bo
 	execArgs := []string{"exec"}
 	
 	if interactive {
-		execArgs = append(execArgs, "-it")
+		// Only use interactive/tty if we are actually in a terminal
+		fileInfo, _ := os.Stdin.Stat()
+		if (fileInfo.Mode() & os.ModeCharDevice) != 0 {
+			execArgs = append(execArgs, "-it")
+		}
 	}
 
 	if workdir != "" {
@@ -122,7 +132,13 @@ func ExecCommand(ctx context.Context, name string, args []string, interactive bo
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
 
-	return cmd.Run()
+	err := cmd.Run()
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			return exitErr
+		}
+	}
+	return err
 }
 
 // IsContainerRunning checks if the specified container is currently in the 'running' state.

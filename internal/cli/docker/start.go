@@ -1,12 +1,12 @@
 /**
  * Component: Docker CLI Start
- * Block-UUID: 2a8fa566-69a5-4db4-b8b3-ce45dff61e2c
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: c047fb7b-65ef-42df-bda3-c1884e41100e
+ * Parent-UUID: 0ab6fd89-455c-4620-83c0-78ebd640450c
+ * Version: 1.2.0
  * Description: Implements the 'gsc docker start' command, handling flags, context file creation, and container initialization.
  * Language: Go
- * Created-at: 2026-03-19T01:54:15.123Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Created-at: 2026-03-19T02:33:45.688Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -15,8 +15,10 @@ package docker
 import (
 	"context"
 	"fmt"
+	"bufio"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/gitsense/gsc-cli/internal/docker"
@@ -85,8 +87,29 @@ mounts the specified repository directory, and launches the application.`,
 		// 3. Resolve Env File
 		envFile := startEnvFile
 		if envFile != "" {
+			// Validate Env File
 			if _, err := os.Stat(envFile); os.IsNotExist(err) {
 				return fmt.Errorf("env file not found: %s", envFile)
+			}
+
+			// Check for critical keys
+			file, err := os.Open(envFile)
+			if err != nil {
+				return fmt.Errorf("failed to open env file: %w", err)
+			}
+			defer file.Close()
+
+			scanner := bufio.NewScanner(file)
+			foundKeys := false
+			for scanner.Scan() {
+				line := scanner.Text()
+				if strings.Contains(line, "_API_KEY=") {
+					foundKeys = true
+					break
+				}
+			}
+			if !foundKeys {
+				fmt.Fprintf(os.Stderr, "⚠️  Warning: No API keys found in %s. The app may not function correctly.\n", envFile)
 			}
 		}
 

@@ -1,12 +1,12 @@
 /**
  * Component: Docker Proxy Engine
- * Block-UUID: cab4fef5-d41d-4e08-9f85-4774d2cd066d
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 88d97256-aa7e-4dae-9b97-d284daad11ea
+ * Parent-UUID: cab4fef5-d41d-4e08-9f85-4774d2cd066d
+ * Version: 1.1.0
  * Description: Implements the Smart Proxy logic for redirecting CLI commands to a running Docker container, including host-to-container path translation.
  * Language: Go
- * Created-at: 2026-03-19T01:51:25.157Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Created-at: 2026-03-19T02:30:07.443Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0)
  */
 
 
@@ -21,6 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/gitsense/gsc-cli/pkg/settings"
+	"github.com/gitsense/gsc-cli/pkg/logger"
 )
 
 // ProxyCommand intercepts a CLI command and redirects it to the Docker container
@@ -52,6 +53,13 @@ func ProxyCommand(cmd *cobra.Command, args []string) (bool, error) {
 		return false, fmt.Errorf("docker context found but container '%s' is not running. Run 'gsc docker start' or delete the context file to use native mode", dctx.ContainerName)
 	}
 
+	// Check if gsc binary exists in container
+	if err := ExecCommand(ctx, dctx.ContainerName, []string{"which", "gsc"}, false, ""); err != nil {
+		return false, fmt.Errorf("gsc binary not found in container: %w", err)
+	}
+
+	logger.Debug("Docker proxy active", "container", dctx.ContainerName)
+
 	// 4. Path Translation (Host -> Container)
 	hostCwd, err := os.Getwd()
 	if err != nil {
@@ -62,6 +70,7 @@ func ProxyCommand(cmd *cobra.Command, args []string) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("path translation failed: %w. To run natively, delete the context file: rm %s", err, settings.DockerContextFileName)
 	}
+	logger.Debug("Path translated", "host", hostCwd, "container", containerWorkdir)
 
 	// 5. Build Proxy Arguments
 	// We reconstruct the full command line to pass to the container's gsc binary.
@@ -87,6 +96,12 @@ func TranslatePathToContainer(hostPath string, dctx *DockerContext) (string, err
 	absHostPath, err := filepath.Abs(hostPath)
 	if err != nil {
 		return "", err
+	}
+	
+	// Resolve symlinks to ensure accurate mapping
+	absHostPath, err = filepath.EvalSymlinks(absHostPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve symlinks: %w", err)
 	}
 
 	// If no repos mount was provided, we cannot translate paths for contracts.
