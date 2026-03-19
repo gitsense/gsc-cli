@@ -1,12 +1,12 @@
 /**
  * Component: Docker Orchestration Manager
- * Block-UUID: 75f82a31-1c5a-415b-bcc6-92d99faccccc
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: f5271e40-220b-46a4-9e90-5c6d0c45d7d2
+ * Parent-UUID: 75f82a31-1c5a-415b-bcc6-92d99faccccc
+ * Version: 1.0.1
  * Description: Provides low-level orchestration for Docker CLI operations, including container lifecycle management and command execution.
  * Language: Go
- * Created-at: 2026-03-19T01:50:01.792Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Created-at: 2026-03-19T02:10:50.622Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1)
  */
 
 
@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/gitsense/gsc-cli/pkg/logger"

@@ -15,7 +15,6 @@ package docker
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 	docker_internal "github.com/gitsense/gsc-cli/internal/docker"
