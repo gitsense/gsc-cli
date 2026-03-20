@@ -1,12 +1,12 @@
 /**
  * Component: Docker CLI Install
- * Block-UUID: 5bee63d9-f259-406b-803d-7eaac2ece383
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 917b0dd3-707a-4031-9515-97ee541c8c45
+ * Parent-UUID: 5bee63d9-f259-406b-803d-7eaac2ece383
+ * Version: 1.1.0
  * Description: Implements the 'gsc docker install' command to verify Docker, create the isolated directory structure, and pull the latest image.
  * Language: Go
- * Created-at: 2026-03-19T17:16:59.236Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Created-at: 2026-03-20T16:08:48.581Z
+ * Authors: GLM-4.7 (v1.0.0), Gemini 3 Flash (v1.1.0)
  */
 
 
@@ -55,7 +55,13 @@ for isolated data storage, and pulls the latest GitSense Chat Docker image.`,
 		if err := os.MkdirAll(dockerDataDir, 0755); err != nil {
 			return fmt.Errorf("failed to create Docker data directory at %s: %w", dockerDataDir, err)
 		}
-		logger.Success("Directory structure created", "path", dockerDataDir)
+
+		// Create the isolated Docker repos sandbox directory
+		dockerReposDir := filepath.Join(gscHome, settings.DockerReposDirRelPath)
+		if err := os.MkdirAll(dockerReposDir, 0755); err != nil {
+			return fmt.Errorf("failed to create Docker repos directory at %s: %w", dockerReposDir, err)
+		}
+		logger.Success("Docker directory structure initialized", "data", dockerDataDir, "repos", dockerReposDir)
 
 		// 4. Image Acquisition
 		image := settings.DefaultImageName
@@ -70,12 +76,13 @@ for isolated data storage, and pulls the latest GitSense Chat Docker image.`,
 		}
 
 		// 5. Success Message
-		fmt.Println("\n🎉 GitSense Chat Docker installation complete!")
-		fmt.Printf("✅ Image: %s\n", image)
-		fmt.Printf("✅ Data Directory: %s\n", dockerDataDir)
+		fmt.Println("\nGitSense Chat Docker installation complete!")
+		fmt.Printf("Image: %s\n", image)
+		fmt.Printf("Data Directory: %s\n", dockerDataDir)
+		fmt.Printf("Repos Sandbox:  %s\n", dockerReposDir)
 		fmt.Println("\nTo start the application, run:")
-		fmt.Println("  gsc docker start --repos-dir ~/path/to/your/projects")
-		fmt.Println("\n(Note: The --repos-dir flag is required to enable code indexing and traceability.)")
+		fmt.Println("  gsc docker start")
+		fmt.Println("\n(Note: Use 'gsc docker configure --repos-dir' to use your own code directory.)")
 
 		return nil
 	},

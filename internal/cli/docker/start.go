@@ -1,12 +1,12 @@
 /**
  * Component: Docker CLI Start
- * Block-UUID: b578e02c-1c65-4cb0-a0ea-7e73551d68fb
- * Parent-UUID: dc58ec92-1cd0-446c-a56f-cc9204a99b2e
- * Version: 1.8.0
+ * Block-UUID: d90bec11-aeda-4a83-9343-c7a5cd70b0df
+ * Parent-UUID: b578e02c-1c65-4cb0-a0ea-7e73551d68fb
+ * Version: 1.9.0
  * Description: Fixed compilation error by correcting package alias usage from docker_internal to docker.
  * Language: Go
- * Created-at: 2026-03-19T19:09:15.890Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), Gemini 3 Flash (v1.8.0)
+ * Created-at: 2026-03-20T16:09:38.409Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), Gemini 3 Flash (v1.8.0), Gemini 3 Flash (v1.9.0)
  */
 
 
@@ -45,37 +45,6 @@ mounts the specified repository directory, and launches the application.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
 
-		// 1. Resolve Repos Directory
-		reposDir := startReposDir
-		if reposDir == "" {
-			reposDir = os.Getenv("GSC_REPOS_DIR")
-		}
-
-		// Warning if no repos dir provided
-		if reposDir == "" {
-			fmt.Println("⚠️  WARNING: No repository directory specified.")
-			fmt.Println("   GitSense Chat will start, but the following features will be DISABLED:")
-			fmt.Println("     - Creating Traceability Contracts")
-			fmt.Println("     - Local file analysis and indexing")
-			fmt.Println("     - Saving AI-generated code to your host machine")
-			fmt.Println("")
-			fmt.Printf("   To enable these features, restart with: gsc docker start --repos-dir /path/to/repos\n\n")
-		} else {
-			// Validate path exists
-			absReposDir, err := filepath.Abs(reposDir)
-			if err != nil {
-				return fmt.Errorf("failed to resolve repos directory: %w", err)
-			}
-			if _, err := os.Stat(absReposDir); os.IsNotExist(err) {
-				return fmt.Errorf("repository directory does not exist: %s", absReposDir)
-			}
-			
-			// Note: --repos-dir is intended to be an umbrella directory for projects/workspaces.
-			// We do not validate if it is a git repo itself, as it may contain multiple repos.
-			fmt.Printf("✅ Umbrella directory set: %s\n", absReposDir)
-			reposDir = absReposDir
-		}
-
 		// 2. Resolve Data Directory
 		dataDir := startDataDir
 		if dataDir == "" {
@@ -92,6 +61,41 @@ mounts the specified repository directory, and launches the application.`,
 			}
 			dataDir = absDataDir
 		}
+
+		// 1. Resolve Repos Directory
+		reposDir := startReposDir
+		if reposDir == "" {
+			reposDir = os.Getenv("GSC_REPOS_DIR")
+		}
+
+		// If still empty, check for an existing context
+		if reposDir == "" {
+			if dctx, _ := docker.LoadContext(); dctx != nil {
+				reposDir = dctx.ReposHostPath
+			}
+		}
+
+		// If still empty, use the default sibling sandbox directory
+		isDefaultRepos := false
+		if reposDir == "" {
+			gscHome, _ := settings.GetGSCHome(false)
+			reposDir = filepath.Join(gscHome, settings.DockerReposDirRelPath)
+			isDefaultRepos = true
+		}
+
+		// Validate path exists
+		absReposDir, err := filepath.Abs(reposDir)
+		if err != nil {
+			return fmt.Errorf("failed to resolve repos directory: %w", err)
+		}
+		
+		// Ensure the directory exists (especially for the default)
+		if err := os.MkdirAll(absReposDir, 0755); err != nil {
+			return fmt.Errorf("failed to create repos directory: %w", err)
+		}
+		
+		// Note: --repos-dir is intended to be an umbrella directory for projects/workspaces.
+		reposDir = absReposDir
 
 		// 3. Resolve and Consolidate Environment File
 		persistentEnvPath := filepath.Join(dataDir, ".env")
@@ -124,13 +128,13 @@ mounts the specified repository directory, and launches the application.`,
 				return fmt.Errorf("failed to copy env file: %w", err)
 			}
 			
-			fmt.Printf("✅ Environment file copied to persistent storage: %s\n", persistentEnvPath)
+			fmt.Printf("Environment file copied to persistent storage: %s\n", persistentEnvPath)
 		} else {
 			// No source file provided, check if one exists in persistent storage
 			if _, err := os.Stat(persistentEnvPath); err == nil {
-				fmt.Printf("✅ Using existing environment file: %s\n", persistentEnvPath)
+				fmt.Printf("Using existing environment file: %s\n", persistentEnvPath)
 			} else {
-				fmt.Println("⚠️  No environment file found. The app will start without API keys.")
+				fmt.Println("No environment file found. The app will start without API keys.")
 			}
 		}
 
@@ -187,15 +191,24 @@ mounts the specified repository directory, and launches the application.`,
 		}
 
 		// 8. Print Mode Alert
-		fmt.Println("🚀 GitSense Chat is starting in Docker...")
-		fmt.Printf("✅ Docker context initialized at %s\n\n", settings.DockerContextFileName)
-		fmt.Println("⚠️  MODE ALERT:")
-		fmt.Println("   The CLI is now in 'Docker Proxy' mode. Commands like 'gsc contract create'")
-		fmt.Println("   will be automatically sent to the container to ensure database integrity.")
+		fmt.Println("\nGitSense Chat is starting in Docker...")
+		fmt.Println("------------------------------------------")
+		fmt.Printf("  Container: %s\n", containerName)
+		fmt.Printf("  Port:      %s\n", port)
+		fmt.Printf("  Data Dir:  %s\n", dataDir)
+		fmt.Printf("  Repos Dir: %s", reposDir)
+		if isDefaultRepos {
+			fmt.Print(" (Default Sandbox)")
+		}
+		fmt.Println("\n------------------------------------------")
+		
+		fmt.Println("\nTIP: To change your repository umbrella directory, run:")
+		fmt.Println("   gsc docker configure --repos-dir /path/to/your/code")
+		
+		fmt.Println("\nDOCKER PROXY MODE ACTIVE:")
+		fmt.Println("   Commands like 'gsc contract create' will be proxied to the container.")
+		fmt.Printf("   Context file: %s\n", settings.DockerContextFileName)
 		fmt.Println("")
-		fmt.Println("   If you want to run GitSense Chat natively on this host again, you MUST")
-		fmt.Println("   delete the context file:")
-		fmt.Printf("   rm %s\n\n", settings.DockerContextFileName)
 
 		// 9. Start Container
 		if err := docker.StartContainer(ctx, dctx, image, startPull); err != nil {
@@ -204,7 +217,7 @@ mounts the specified repository directory, and launches the application.`,
 			return err
 		}
 
-		fmt.Printf("✅ Container '%s' started successfully on port %s\n", containerName, port)
+		fmt.Printf("Container '%s' started successfully on port %s\n", containerName, port)
 		fmt.Printf("   Access it at: http://localhost:%s\n", port)
 		fmt.Printf("   View logs with: gsc docker logs\n")
 
