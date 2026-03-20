@@ -1,12 +1,12 @@
 /**
  * Component: Root CLI Command
- * Block-UUID: 9cc9ad4b-86f1-40ca-b762-273b446ce3b2
- * Parent-UUID: 545e4b71-cdf9-4506-a588-b06dd3497cbc
- * Version: 1.37.0
+ * Block-UUID: 13154028-d260-4444-a9f6-fd0a4549791c
+ * Parent-UUID: 9cc9ad4b-86f1-40ca-b762-273b446ce3b2
+ * Version: 1.38.0
  * Description: Integrated IsInContainer check into PersistentPreRunE to prevent recursive proxy loops when running inside the Docker container.
  * Language: Go
- * Created-at: 2026-03-19T02:24:30.021Z
- * Authors: GLM-4.7 (v1.34.0), Gemini 3 Flash (v1.35.0), Gemini 3 Flash (v1.36.0), GLM-4.7 (v1.37.0)
+ * Created-at: 2026-03-20T23:09:03.350Z
+ * Authors: GLM-4.7 (v1.34.0), Gemini 3 Flash (v1.35.0), Gemini 3 Flash (v1.36.0), GLM-4.7 (v1.37.0), Gemini 3 Flash (v1.38.0)
  */
 
 
@@ -22,6 +22,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/gitsense/gsc-cli/internal/bridge"
 	"github.com/gitsense/gsc-cli/internal/cli/contract"
+	"github.com/gitsense/gsc-cli/internal/cli/app"
 	"github.com/gitsense/gsc-cli/internal/cli/manifest"
 	"github.com/gitsense/gsc-cli/internal/git"
 	"github.com/gitsense/gsc-cli/internal/cli/ws"
@@ -147,6 +148,7 @@ func init() {
 	contract.RegisterContractCommand(rootCmd)
 	ws.RegisterCommand(rootCmd)
 	docker.RegisterCommand(rootCmd)
+	app.RegisterCommand(rootCmd)
 	rootCmd.AddCommand(contract.ChatsCmd)
 	rootCmd.AddCommand(contract.MessagesCmd)
 	
@@ -169,7 +171,7 @@ func init() {
 // This allows us to skip the .gitsense check for entire command trees (e.g., 'ws' and 'contract')
 // as well as specific top-level commands (e.g., 'init', 'doctor', 'exec').
 func isExcludedCommand(cmd *cobra.Command) bool {
-	excludedRoots := []string{"init", "doctor", "exec", "ws", "contract", "chats", "messages", "send", "tree", "docker"}
+	excludedRoots := []string{"init", "doctor", "exec", "ws", "contract", "chats", "messages", "send", "tree", "docker", "app"}
 	current := cmd
 
 	for current != nil {

@@ -1,12 +1,12 @@
-/**
+/*
  * Component: Settings and Configuration Manager
- * Block-UUID: cce037b3-0d6f-4527-96da-e6cb45cefa57
- * Parent-UUID: 36aae72e-ef71-45d0-ae8b-0df66b659311
- * Version: 3.12.0
- * Description: Added Docker-related constants for container management and context tracking to support the gsc docker command suite.
+ * Block-UUID: 3df16dee-b3c2-448c-93f8-c4b6ff7a15fe
+ * Parent-UUID: cce037b3-0d6f-4527-96da-e6cb45cefa57
+ * Version: 3.13.0
+ * Description: Added constants for the native app lifecycle management, including log rotation, retry policies, and PID file naming.
  * Language: Go
- * Created-at: 2026-03-20T16:07:59.833Z
- * Authors: GLM-4.7 (v3.5.0), GLM-4.7 (v3.6.0), GLM-4.7 (v3.7.0), Gemini 3 Flash (v3.8.0), Gemini 3 Flash (v3.9.0), GLM-4.7 (v3.10.0), Gemini 3 Flash (v3.11.0), Gemini 3 Flash (v3.12.0)
+ * Created-at: 2026-03-20T22:58:09.240Z
+ * Authors: GLM-4.7 (v3.5.0), GLM-4.7 (v3.6.0), GLM-4.7 (v3.7.0), Gemini 3 Flash (v3.8.0), Gemini 3 Flash (v3.9.0), GLM-4.7 (v3.10.0), Gemini 3 Flash (v3.11.0), Gemini 3 Flash (v3.12.0), Gemini 3 Flash (v3.13.0)
  */
 
 
@@ -20,6 +20,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"time"
 
 	"github.com/gitsense/gsc-cli/pkg/logger"
 )
@@ -52,6 +53,17 @@ const DockerDataDirRelPath = "docker/data"
 // DockerReposDirRelPath is the relative path within GSC_HOME for the default Docker repository sandbox.
 // This sibling directory to 'data' ensures consistent path translation and isolation.
 const DockerReposDirRelPath = "docker/repos"
+
+// Native App Defaults
+// AppDataDirRelPath is the relative path within GSC_HOME for native app persistent data.
+const AppDataDirRelPath = "app/data"
+
+// App Lifecycle Management Constants
+const AppPIDFileName = "gsc.pid"
+const AppMaxRetries = 5
+const AppRetryWindow = 60 * time.Second
+const AppLogMaxSize = 10 * 1024 * 1024 // 10MB
+const AppLogMaxBackups = 3
 
 const RegistryFileName = "manifest.json"
 const DefaultDBExtension = ".db"
