@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Docker CLI Configure
- * Block-UUID: 29a83bd9-0c4a-4cf8-8efa-4cf57fdb84bc
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: e51fed74-bbd4-4e87-9b9b-54299bbb8e6e
+ * Parent-UUID: 29a83bd9-0c4a-4cf8-8efa-4cf57fdb84bc
+ * Version: 1.1.0
  * Description: Implements the 'gsc docker configure' command to allow users to update their Docker context settings (like repos-dir) without restarting or using complex flags.
  * Language: Go
- * Created-at: 2026-03-20T16:18:05.000Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Created-at: 2026-03-20T22:36:20.686Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0)
  */
 
 
@@ -20,6 +20,7 @@ import (
 	"github.com/spf13/cobra"
 	docker_internal "github.com/gitsense/gsc-cli/internal/docker"
 	"github.com/gitsense/gsc-cli/pkg/logger"
+	"github.com/gitsense/gsc-cli/pkg/settings"
 )
 
 var (
@@ -40,8 +41,22 @@ the container is started or when commands are proxied.`,
 			return fmt.Errorf("failed to load docker context: %w", err)
 		}
 
+		// If no context exists, create a default one to allow pre-start configuration
 		if dctx == nil {
-			return fmt.Errorf("no active Docker context found. Run 'gsc docker start' first to initialize the environment")
+			gscHome, err := settings.GetGSCHome(false)
+			if err != nil {
+				return fmt.Errorf("failed to resolve GSC_HOME: %w", err)
+			}
+			
+			logger.Info("No active context found. Initializing default configuration...")
+			dctx = &docker_internal.DockerContext{
+				ContainerName:      settings.DefaultContainerName,
+				ReposHostPath:      "", // Will be set by flags below if provided
+				ReposContainerPath: filepath.Join(settings.DockerRootPrefix, "repos"),
+				DataHostPath:       filepath.Join(gscHome, settings.DockerDataDirRelPath),
+				EnvHostPath:        "",
+				Port:               settings.DefaultAppPort,
+			}
 		}
 
 		updated := false
@@ -81,8 +96,8 @@ the container is started or when commands are proxied.`,
 			return fmt.Errorf("failed to save updated docker context: %w", err)
 		}
 
-		fmt.Println("\nConfiguration updated successfully.")
-		fmt.Println("Note: If the container is currently running, you must restart it for volume changes to take effect:")
+		fmt.Println("\nConfiguration updated successfully.\n")
+		fmt.Println("Note: If the container is currently running, you must restart it for volume changes to take effect.")
 		fmt.Println("   gsc docker restart")
 
 		return nil
