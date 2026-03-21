@@ -1,12 +1,12 @@
 /**
  * Component: Docker Proxy Engine
- * Block-UUID: 3de2804b-8fce-4ac4-9061-d1aaa1728b25
- * Parent-UUID: 1b969df3-aaa0-49db-9cd8-a0320434eee5
- * Version: 1.3.0
+ * Block-UUID: 92097ffa-0637-40ab-9c53-83466665e8c5
+ * Parent-UUID: 36ea1593-b475-4740-a516-4582d4283888
+ * Version: 1.8.0
  * Description: Implemented environment variable forwarding, symlink fallback for Windows, case-insensitive path checking, and added IsInContainer detection to prevent recursive proxy loops.
  * Language: Go
- * Created-at: 2026-03-21T03:52:14.527Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
+ * Created-at: 2026-03-21T14:24:02.913Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0)
  */
 
 
@@ -16,6 +16,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -61,7 +62,8 @@ func ProxyCommand(cmd *cobra.Command, args []string) (bool, error) {
 	fmt.Fprintf(os.Stderr, "[gsc] Docker Proxy Mode Active\n")
 	fmt.Fprintf(os.Stderr, "   Container: %s\n", dctx.ContainerName)
 	fmt.Fprintf(os.Stderr, "   Status:    %s\n", map[bool]string{true: "Running", false: "Stopped"}[running])
-	fmt.Fprintf(os.Stderr, "   Context:   %s\n\n", contextPath)
+	fmt.Fprintf(os.Stderr, "   Context:   %s\n", contextPath)
+	fmt.Fprintf(os.Stderr, "   Command:   %s\n\n", cmd.CommandPath())
 
 	if running {
 		fmt.Fprintf(os.Stderr, "To disconnect: Stop the container ('gsc docker stop'), then delete the context file.\n")
@@ -77,11 +79,18 @@ func ProxyCommand(cmd *cobra.Command, args []string) (bool, error) {
 	}
 
 	if !running {
-		return false, fmt.Errorf("docker context found but container '%s' is not running. Run 'gsc docker start' or delete the context file to use native mode", dctx.ContainerName)
+		cmd.SilenceUsage = true
+		return false, fmt.Errorf("The GitSense Chat container is currently stopped.\n\n" +
+			"This command requires the container to be running to access the chat database.\n\n" +
+			"To fix this, run: gsc docker start")
 	}
 
 	// Check if gsc binary exists in container
-	if err := ExecCommand(ctx, dctx.ContainerName, []string{"which", "gsc"}, false, ""); err != nil {
+	// We use a direct command here to suppress output (ExecCommand prints to stdout)
+	checkCmd := exec.CommandContext(ctx, "docker", "exec", dctx.ContainerName, "which", "gsc")
+	checkCmd.Stdout = nil
+	checkCmd.Stderr = nil
+	if err := checkCmd.Run(); err != nil {
 		return false, fmt.Errorf("gsc binary not found in container '%s'. The container may not be properly initialized. Try: gsc docker stop && gsc docker start --pull", dctx.ContainerName)
 	}
 
@@ -90,12 +99,14 @@ func ProxyCommand(cmd *cobra.Command, args []string) (bool, error) {
 	// 4. Path Translation (Host -> Container)
 	hostCwd, err := os.Getwd()
 	if err != nil {
+		cmd.SilenceUsage = true
 		return false, fmt.Errorf("failed to get current directory: %w", err)
 	}
 
 	containerWorkdir, err := TranslatePathToContainer(hostCwd, dctx)
 	if err != nil {
-		return false, fmt.Errorf("path translation failed: %w. To run natively, delete the context file: rm %s", err, settings.DockerContextFileName)
+		cmd.SilenceUsage = true
+		return false, err
 	}
 	logger.Debug("Path translated", "host", hostCwd, "container", containerWorkdir)
 
@@ -157,7 +168,7 @@ func TranslatePathToContainer(hostPath string, dctx *DockerContext) (string, err
 	reposHostPathLower := strings.ToLower(absReposHostPath)
 
 	if !strings.HasPrefix(hostPathLower, reposHostPathLower) {
-		return "", fmt.Errorf("current directory (%s) is not inside the repository root defined in your Docker context (%s)", absHostPath, absReposHostPath)
+		return "", fmt.Errorf("The current directory is not accessible to the GitSense Chat container.\n\nIn Docker Proxy Mode, commands are executed inside the container. For this to work, your project must be located within the configured repository umbrella:\n\n   Umbrella Path: %s\n   Current Path:  %s\n\nTo resolve this, you can:\n   1. Move your project into the Umbrella Path.\n   2. Update the Umbrella Path: gsc docker configure --repos-dir <path>\n   3. Delete the context file to switch to native mode", absReposHostPath, absHostPath)
 	}
 
 	// Calculate relative path using the original casing to preserve it in the container

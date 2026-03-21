@@ -1,12 +1,12 @@
 /**
  * Component: Docker CLI Start
- * Block-UUID: c4dd0d95-828d-4cdb-9bbd-c7a2250bea78
- * Parent-UUID: 736a5690-9f25-4c4b-b3cf-4f80abf8d61a
- * Version: 1.12.0
+ * Block-UUID: c8708340-07f2-44bb-a38f-eb8a1cd64462
+ * Parent-UUID: c4dd0d95-828d-4cdb-9bbd-c7a2250bea78
+ * Version: 1.13.0
  * Description: Fixed compilation error by correcting package alias usage from docker_internal to docker.
  * Language: Go
- * Created-at: 2026-03-21T04:10:49.664Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), Gemini 3 Flash (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.10.1), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0)
+ * Created-at: 2026-03-21T15:01:36.811Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), Gemini 3 Flash (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.10.1), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0)
  */
 
 
@@ -156,8 +156,6 @@ mounts the specified repository directory, and launches the application.`,
 		// Final Status Check
 		if _, err := os.Stat(persistentEnvPath); err != nil {
 			if os.IsNotExist(err) {
-				logger.Warning("No environment file found. The app will start without API keys.")
-				fmt.Println("   Tip: Use 'gsc docker configure' or restart with --env-file to provide API keys.")
 			} else {
 				return fmt.Errorf("failed to access persistent env file: %w", err)
 			}
@@ -251,6 +249,21 @@ mounts the specified repository directory, and launches the application.`,
 		fmt.Printf("Container '%s' started successfully on port %s\n", containerName, port)
 		fmt.Printf("   Access it at: http://localhost:%s\n", port)
 		fmt.Printf("   View logs with: gsc docker logs\n")
+
+		// Check for .env file existence for the final warning
+		if _, err := os.Stat(persistentEnvPath); os.IsNotExist(err) {
+			fmt.Println("\n⚠️  CRITICAL WARNING: No API Keys Found")
+			fmt.Println("   The application started, but AI Chat features will be unavailable.")
+			fmt.Println("")
+			fmt.Println("   To fix this, choose one of the following options:")
+			fmt.Println("")
+			fmt.Println("   1. Link an existing file (e.g., ~/.env):")
+			fmt.Println("      gsc docker env link <path-to-your-file>")
+			fmt.Println("")
+			fmt.Println("   2. Create a new master configuration file:")
+			fmt.Println("      gsc docker env init")
+			fmt.Println("      (This creates ~/.gitsense/.env and links it to Docker)")
+		}
 
 		return nil
 	},
