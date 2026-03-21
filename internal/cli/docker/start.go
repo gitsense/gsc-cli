@@ -1,12 +1,12 @@
 /**
  * Component: Docker CLI Start
- * Block-UUID: d90bec11-aeda-4a83-9343-c7a5cd70b0df
- * Parent-UUID: b578e02c-1c65-4cb0-a0ea-7e73551d68fb
- * Version: 1.9.0
+ * Block-UUID: 3de3e9a0-a20c-4a92-a584-6ae4d909de55
+ * Parent-UUID: d90bec11-aeda-4a83-9343-c7a5cd70b0df
+ * Version: 1.10.0
  * Description: Fixed compilation error by correcting package alias usage from docker_internal to docker.
  * Language: Go
- * Created-at: 2026-03-20T16:09:38.409Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), Gemini 3 Flash (v1.8.0), Gemini 3 Flash (v1.9.0)
+ * Created-at: 2026-03-21T00:22:24.112Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), Gemini 3 Flash (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.10.0)
  */
 
 
@@ -15,7 +15,6 @@ package docker
 import (
 	"context"
 	"fmt"
-	"io"
 	"net"
 	"os"
 	"os/exec"
@@ -23,6 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/gitsense/gsc-cli/internal/docker"
+	"github.com/gitsense/gsc-cli/pkg/logger"
 	"github.com/gitsense/gsc-cli/pkg/settings"
 )
 
@@ -100,42 +100,67 @@ mounts the specified repository directory, and launches the application.`,
 		// 3. Resolve and Consolidate Environment File
 		persistentEnvPath := filepath.Join(dataDir, ".env")
 		sourceEnvPath := ""
+		isLinked := false
+
+		// Priority 1: Explicit --env-file flag
 		if startEnvFile != "" {
-			// User provided a source file, copy it to the persistent data directory
 			absSource, err := filepath.Abs(startEnvFile)
 			if err != nil {
 				return fmt.Errorf("failed to resolve source env file path: %w", err)
 			}
 			sourceEnvPath = absSource
-
-			if _, err := os.Stat(sourceEnvPath); os.IsNotExist(err) {
-				return fmt.Errorf("env file not found: %s", sourceEnvPath)
-			}
-			
-			src, err := os.Open(sourceEnvPath)
-			if err != nil {
-				return fmt.Errorf("failed to open source env file: %w", err)
-			}
-			defer src.Close()
-			
-			dst, err := os.Create(persistentEnvPath)
-			if err != nil {
-				return fmt.Errorf("failed to create persistent env file: %w", err)
-			}
-			defer dst.Close()
-			
-			if _, err := io.Copy(dst, src); err != nil {
-				return fmt.Errorf("failed to copy env file: %w", err)
-			}
-			
-			fmt.Printf("Environment file copied to persistent storage: %s\n", persistentEnvPath)
 		} else {
-			// No source file provided, check if one exists in persistent storage
-			if _, err := os.Stat(persistentEnvPath); err == nil {
-				fmt.Printf("Using existing environment file: %s\n", persistentEnvPath)
-			} else {
-				fmt.Println("No environment file found. The app will start without API keys.")
+			// Priority 2: Check Docker Context for existing link
+			if dctx, _ := docker.LoadContext(); dctx != nil && dctx.EnvHostPath != "" {
+				sourceEnvPath = dctx.EnvHostPath
+				isLinked = true
 			}
+		}
+
+		// Handle Source File Logic
+		if sourceEnvPath != "" {
+			if _, err := os.Stat(sourceEnvPath); os.IsNotExist(err) {
+				// Source file is missing
+				if isLinked {
+					logger.Warning("Linked environment file missing on host", "path", sourceEnvPath)
+					fmt.Println("   The container will use the existing cached .env file if available.")
+				} else {
+					return fmt.Errorf("specified env file not found: %s", sourceEnvPath)
+				}
+			} else {
+				// Source file exists
+				if _, err := os.Stat(persistentEnvPath); os.IsNotExist(err) {
+					// Persistent file missing -> Auto Restore
+					logger.Info("Restoring environment file from link/source", "source", sourceEnvPath)
+					if err := copyFile(sourceEnvPath, persistentEnvPath); err != nil {
+						return fmt.Errorf("failed to restore env file: %w", err)
+					}
+					fmt.Printf("Environment file restored to: %s\n", persistentEnvPath)
+				} else {
+					// Both exist -> Check for Drift
+					inSync, err := checkEnvSync(sourceEnvPath, persistentEnvPath)
+					if err != nil {
+						logger.Warning("Failed to check env file sync status", "error", err)
+					} else if !inSync {
+						logger.Warning("Environment file drift detected", "source", sourceEnvPath)
+						fmt.Println("   The linked .env file on the host has changed.")
+						fmt.Println("   The container is currently using an outdated version.")
+						fmt.Println("   Run 'gsc docker env update' to sync changes.")
+					}
+				}
+			}
+		}
+
+		// Final Status Check
+		if _, err := os.Stat(persistentEnvPath); err != nil {
+			if os.IsNotExist(err) {
+				logger.Warning("No environment file found. The app will start without API keys.")
+				fmt.Println("   Tip: Use 'gsc docker configure' or restart with --env-file to provide API keys.")
+			} else {
+				return fmt.Errorf("failed to access persistent env file: %w", err)
+			}
+		} else {
+			fmt.Printf("Using environment file: %s\n", persistentEnvPath)
 		}
 
 		// 4. Resolve Container Name and Image
