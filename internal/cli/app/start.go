@@ -1,12 +1,12 @@
-/*
+/**
  * Component: App CLI Start
- * Block-UUID: b5effeb2-7d7d-4c99-b980-b3dbc999aa8d
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: a04e7939-fadb-4dc5-9130-d0c0de2684a0
+ * Parent-UUID: b5effeb2-7d7d-4c99-b980-b3dbc999aa8d
+ * Version: 1.1.0
  * Description: Implements the 'gsc app start' command, handling path resolution and invoking the process supervisor.
  * Language: Go
- * Created-at: 2026-03-20T23:02:22.825Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Created-at: 2026-03-21T04:16:03.510Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0)
  */
 
 
@@ -40,6 +40,8 @@ var startCmd = &cobra.Command{
 in the background as a daemon. Use --foreground for Docker environments.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// 1. Resolve App Directory (where index.js lives)
+		cmd.SilenceUsage = true // Suppress usage output on error
+
 		appDir := startAppDir
 		if appDir == "" {
 			return fmt.Errorf("--app-dir is required to specify the Node.js application root")

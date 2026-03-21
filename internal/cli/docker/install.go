@@ -1,12 +1,12 @@
 /**
  * Component: Docker CLI Install
- * Block-UUID: 44efbe87-ea3e-4c6e-8fe7-34658039b94d
- * Parent-UUID: 917b0dd3-707a-4031-9515-97ee541c8c45
- * Version: 1.2.0
+ * Block-UUID: e41c901a-7521-463f-8604-f670697f3e29
+ * Parent-UUID: 44efbe87-ea3e-4c6e-8fe7-34658039b94d
+ * Version: 1.3.0
  * Description: Implements the 'gsc docker install' command to verify Docker, create the isolated directory structure, and pull the latest image.
  * Language: Go
- * Created-at: 2026-03-20T22:11:29.926Z
- * Authors: GLM-4.7 (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0)
+ * Created-at: 2026-03-21T04:14:52.055Z
+ * Authors: GLM-4.7 (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
  */
 
 
@@ -32,6 +32,8 @@ var installCmd = &cobra.Command{
 for isolated data storage, and pulls the latest GitSense Chat Docker image.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// 1. Prerequisite Check: Docker CLI
+		cmd.SilenceUsage = true // Suppress usage output on error
+
 		logger.Info("Verifying Docker installation...")
 		if _, err := exec.LookPath("docker"); err != nil {
 			return fmt.Errorf("docker CLI not found. Please install Docker: https://docs.docker.com/get-docker/")

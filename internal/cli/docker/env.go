@@ -1,12 +1,12 @@
 /**
  * Component: Docker CLI Env Manager
- * Block-UUID: 37320a07-fb9b-4b3f-b279-454b1d632ac6
- * Parent-UUID: 699d6099-8a52-463f-9a69-f4206cdfe81c
- * Version: 1.1.0
+ * Block-UUID: 96a84608-3e09-4349-8a3e-7cdc77f96266
+ * Parent-UUID: 37320a07-fb9b-4b3f-b279-454b1d632ac6
+ * Version: 1.2.0
  * Description: Implements the 'gsc docker env' command suite, focusing on a Link/Update workflow for synchronizing host-side environment files with the container's persistent data volume.
  * Language: Go
- * Created-at: 2026-03-19T19:08:54.938Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0)
+ * Created-at: 2026-03-21T04:13:26.380Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -34,6 +34,8 @@ var envCmd = &cobra.Command{
 to link new source files or update the container from the existing link.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		dctx, err := docker_internal.LoadContext()
+		cmd.SilenceUsage = true // Suppress usage output on error
+
 		if err != nil {
 			return err
 		}
@@ -75,6 +77,8 @@ var envLinkCmd = &cobra.Command{
 	Short: "Link a host-side .env file to the container",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true // Suppress usage output on error
+
 		sourcePath, _ := filepath.Abs(args[0])
 		dctx, err := docker_internal.LoadContext()
 		if err != nil {
@@ -103,6 +107,8 @@ var envUpdateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Synchronize the container with the linked host-side .env file",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true // Suppress usage output on error
+
 		dctx, err := docker_internal.LoadContext()
 		if err != nil {
 			return err

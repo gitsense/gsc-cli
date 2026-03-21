@@ -1,12 +1,12 @@
-/*
+/**
  * Component: App CLI Restart
- * Block-UUID: 96d59355-8dfb-452d-aeb9-a1cd2159d44c
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: a25fb846-b3e7-4327-957a-da2ed36c6072
+ * Parent-UUID: 96d59355-8dfb-452d-aeb9-a1cd2159d44c
+ * Version: 1.1.0
  * Description: Implements the 'gsc app restart' command to stop and then start the application.
  * Language: Go
- * Created-at: 2026-03-20T23:56:43.006Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Created-at: 2026-03-21T04:17:05.776Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0)
  */
 
 
@@ -37,6 +37,8 @@ var restartCmd = &cobra.Command{
 	Use:   "restart",
 	Short: "Restart the GitSense Chat application",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true // Suppress usage output on error
+
 		// 1. Resolve Data Directory
 		dataDir := restartDataDir
 		if dataDir == "" {

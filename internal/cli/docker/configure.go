@@ -1,12 +1,12 @@
 /**
  * Component: Docker CLI Configure
- * Block-UUID: e51fed74-bbd4-4e87-9b9b-54299bbb8e6e
- * Parent-UUID: 29a83bd9-0c4a-4cf8-8efa-4cf57fdb84bc
- * Version: 1.1.0
+ * Block-UUID: 6c3ae6dc-2266-4a55-a772-89f0b58bf988
+ * Parent-UUID: e51fed74-bbd4-4e87-9b9b-54299bbb8e6e
+ * Version: 1.2.0
  * Description: Implements the 'gsc docker configure' command to allow users to update their Docker context settings (like repos-dir) without restarting or using complex flags.
  * Language: Go
- * Created-at: 2026-03-20T22:36:20.686Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0)
+ * Created-at: 2026-03-21T04:12:34.494Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -36,6 +36,8 @@ var configureCmd = &cobra.Command{
 stored in your Docker context. Changes will take effect the next time
 the container is started or when commands are proxied.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true // Suppress usage output on error
+
 		dctx, err := docker_internal.LoadContext()
 		if err != nil {
 			return fmt.Errorf("failed to load docker context: %w", err)

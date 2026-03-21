@@ -1,12 +1,12 @@
 /**
  * Component: Docker CLI Watch
- * Block-UUID: 51e38bd2-a3e2-42c5-a2d8-c7880136ead5
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 19eed7cd-658d-4d58-a37b-5634707b4837
+ * Parent-UUID: 51e38bd2-a3e2-42c5-a2d8-c7880136ead5
+ * Version: 1.1.0
  * Description: Implements the 'gsc docker watch' command, which tails container logs to listen for and execute host-side launch signals.
  * Language: Go
- * Created-at: 2026-03-19T01:55:57.439Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Created-at: 2026-03-21T04:14:12.064Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0)
  */
 
 
@@ -28,6 +28,8 @@ var watchCmd = &cobra.Command{
 When the containerized app requests a terminal or editor launch, this command
 translates the path and executes the native command on your host machine.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true // Suppress usage output on error
+
 		ctx := context.Background()
 
 		// 1. Load Docker Context

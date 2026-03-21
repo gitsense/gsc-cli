@@ -1,12 +1,12 @@
 /**
  * Component: Docker CLI Admin
- * Block-UUID: 3c9ed71b-f43f-4a4f-91f5-35238b41fd95
- * Parent-UUID: c8725a42-48f5-4ecb-a406-3cd558d3529d
- * Version: 2.0.0
+ * Block-UUID: f170bd65-1aed-4f15-8b61-da1e14c5e310
+ * Parent-UUID: 3c9ed71b-f43f-4a4f-91f5-35238b41fd95
+ * Version: 2.1.0
  * Description: Implements the 'gsc docker admin' command suite for managing environment files, configuration, and LLM settings within the Docker environment.
  * Language: Go
- * Created-at: 2026-03-19T19:03:55.378Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v2.0.0)
+ * Created-at: 2026-03-21T04:15:27.843Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v2.0.0), GLM-4.7 (v2.1.0)
  */
 
 
@@ -59,6 +59,8 @@ var llmCmd = &cobra.Command{
 	DisableFlagParsing: true, // Pass all flags to the subcommand
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
+		cmd.SilenceUsage = true // Suppress usage output on error
+
 		dctx, _ := docker_internal.LoadContext()
 		
 		// Construct the command to run inside the container
@@ -75,6 +77,8 @@ var doctorCmd = &cobra.Command{
 	Use:   "doctor",
 	Short: "Run diagnostics on the Docker environment",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true // Suppress usage output on error
+
 		ctx := context.Background()
 		dctx, _ := docker_internal.LoadContext()
 

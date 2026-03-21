@@ -1,12 +1,12 @@
 /**
  * Component: Docker CLI Lifecycle Commands
- * Block-UUID: 19b86155-ccda-4378-87c1-b587905b9f8d
- * Parent-UUID: 963b0951-8183-462a-8789-fc342c2bee07
- * Version: 1.5.0
+ * Block-UUID: f764cd78-4ca6-4a16-8e4e-ccc48471d690
+ * Parent-UUID: 19b86155-ccda-4378-87c1-b587905b9f8d
+ * Version: 1.6.0
  * Description: Implements standard Docker lifecycle commands (stop, status, logs, shell, admin) for the gsc CLI.
  * Language: Go
- * Created-at: 2026-03-21T04:07:47.462Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
+ * Created-at: 2026-03-21T04:11:47.473Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0)
  */
 
 
@@ -66,6 +66,8 @@ var restartCmd = &cobra.Command{
 	Use:   "restart",
 	Short: "Restart the GitSense Chat container",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true // Suppress usage output on error
+
 		ctx := context.Background()
 		dctx, err := docker_internal.LoadContext()
 		if err != nil {
@@ -96,6 +98,8 @@ var statusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Show the status of the GitSense Chat container",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true // Suppress usage output on error
+
 		ctx := context.Background()
 		dctx, err := docker_internal.LoadContext()
 		if err != nil {
@@ -133,6 +137,8 @@ var logsCmd = &cobra.Command{
 	Use:   "logs",
 	Short: "View the logs of the GitSense Chat container",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true // Suppress usage output on error
+
 		ctx := context.Background()
 		dctx, err := docker_internal.LoadContext()
 		if err != nil {
@@ -153,6 +159,8 @@ var shellCmd = &cobra.Command{
 	Use:   "shell",
 	Short: "Open an interactive bash session inside the container",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true // Suppress usage output on error
+
 		ctx := context.Background()
 		dctx, err := docker_internal.LoadContext()
 		if err != nil {
@@ -173,6 +181,8 @@ var disconnectCmd = &cobra.Command{
 	Use:   "disconnect",
 	Short: "Disconnect from the Docker environment and return to native mode",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true // Suppress usage output on error
+
 		if err := docker_internal.DeleteContext(); err != nil {
 			return err
 		}

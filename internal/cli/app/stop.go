@@ -1,12 +1,12 @@
-/*
+/**
  * Component: App CLI Stop
- * Block-UUID: 234dc2a4-caa4-4aa5-9cc4-d13a0f3e81d1
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 589b0552-fe03-4e29-bae4-025f0ffaa066
+ * Parent-UUID: 234dc2a4-caa4-4aa5-9cc4-d13a0f3e81d1
+ * Version: 1.1.0
  * Description: Implements the 'gsc app stop' command to gracefully terminate the running application.
  * Language: Go
- * Created-at: 2026-03-20T23:55:33.666Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Created-at: 2026-03-21T04:16:32.818Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0)
  */
 
 
@@ -31,6 +31,8 @@ var stopCmd = &cobra.Command{
 	Use:   "stop",
 	Short: "Stop the running GitSense Chat application",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true // Suppress usage output on error
+
 		// 1. Resolve Data Directory
 		dataDir := stopDataDir
 		if dataDir == "" {
