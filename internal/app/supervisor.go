@@ -1,12 +1,12 @@
-/*
+/**
  * Component: App Process Supervisor
- * Block-UUID: d0614170-b46e-48f8-80a2-b107508a698e
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 2cace8f2-8a80-479e-89bb-fc2fb2249cc0
+ * Parent-UUID: d0614170-b46e-48f8-80a2-b107508a698e
+ * Version: 1.1.0
  * Description: Implements the core process supervision logic, including the retry loop, signal forwarding, and lifecycle management for the Node.js application.
  * Language: Go
- * Created-at: 2026-03-20T23:03:44.334Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Created-at: 2026-03-20T23:46:36.653Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0)
  */
 
 
@@ -15,6 +15,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -64,6 +65,12 @@ func runSupervisorLoop(ctx context.Context, opts SupervisorOptions) error {
 	retryCount := 0
 	startTime := time.Now()
 
+	// Initialize log writer once outside the loop to prevent file handle leaks
+	outputWriter, err := GetOutputWriters(opts.DataDir, opts.Foreground)
+	if err != nil {
+		return fmt.Errorf("failed to initialize log writer: %w", err)
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -80,7 +87,7 @@ func runSupervisorLoop(ctx context.Context, opts SupervisorOptions) error {
 				return fmt.Errorf("max retries (%d) reached; application failed to remain stable", opts.MaxRetries)
 			}
 
-			err := spawnProcess(ctx, opts)
+			err := spawnProcess(ctx, opts, outputWriter)
 			
 			// If context was cancelled, exit normally
 			if ctx.Err() != nil {
@@ -105,7 +112,7 @@ func runSupervisorLoop(ctx context.Context, opts SupervisorOptions) error {
 }
 
 // spawnProcess handles the actual execution of the Node.js application
-func spawnProcess(ctx context.Context, opts SupervisorOptions) error {
+func spawnProcess(ctx context.Context, opts SupervisorOptions, output io.Writer) error {
 	// 1. Prepare Command
 	// We assume 'node' is in the PATH as per Dockerfile requirements
 	cmd := exec.CommandContext(ctx, "node", "index.js")
@@ -116,10 +123,9 @@ func spawnProcess(ctx context.Context, opts SupervisorOptions) error {
 	cmd.Env = append(cmd.Env, fmt.Sprintf("GSC_HOME=%s", settings.DockerRootPrefix))
 	cmd.Env = append(cmd.Env, fmt.Sprintf("DEVBOARD_PORT=%s", opts.Port))
 
-	// 3. Setup Output (Placeholder for log_manager)
-	// For now, we pipe directly to host stdout/stderr
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	// 3. Setup Output
+	cmd.Stdout = output
+	cmd.Stderr = output
 
 	// 4. Start Process
 	if err := cmd.Start(); err != nil {
@@ -128,14 +134,18 @@ func spawnProcess(ctx context.Context, opts SupervisorOptions) error {
 
 	logger.Info("Application process spawned", "pid", cmd.Process.Pid, "dir", opts.AppDir)
 
-	// 5. Write PID (Placeholder for pid_manager)
-	// TODO: WritePID(opts.DataDir, cmd.Process.Pid)
+	// 5. Write PID
+	if err := WritePID(opts.DataDir, cmd.Process.Pid); err != nil {
+		logger.Warning("Failed to write PID file", "error", err)
+	}
 
 	// 6. Wait for exit
 	err := cmd.Wait()
 
 	// 7. Cleanup PID
-	// TODO: RemovePID(opts.DataDir)
+	if err := RemovePID(opts.DataDir); err != nil {
+		logger.Warning("Failed to remove PID file", "error", err)
+	}
 
 	return err
 }

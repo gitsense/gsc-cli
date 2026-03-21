@@ -1,12 +1,12 @@
 /*
  * Component: App CLI Root
- * Block-UUID: 4a8e8a03-be4b-423d-a16d-c81b46780949
- * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: Defines the root 'app' command group for managing the native GitSense Chat application lifecycle.
+ * Block-UUID: ec2931f0-5a37-4524-9915-159279e5a7e9
+ * Parent-UUID: 4a8e8a03-be4b-423d-a16d-c81b46780949
+ * Version: 1.1.0
+ * Description: Defines the root 'app' command group for managing the native GitSense Chat application lifecycle, now supporting start, stop, and restart.
  * Language: Go
  * Created-at: 2026-03-20T23:00:44.410Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0)
  */
 
 
@@ -31,5 +31,5 @@ func RegisterCommand(root *cobra.Command) {
 }
 
 func init() {
-	// Subcommands will be registered here by their respective files
+	// Subcommands (start, stop, restart) are registered by their respective files.
 }

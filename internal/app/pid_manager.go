@@ -1,12 +1,12 @@
-/*
+/**
  * Component: App PID Manager
- * Block-UUID: 58389287-28cc-4c58-a38f-98676b14367a
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: dec1aa6f-c98f-432b-84dd-647d56c8c549
+ * Parent-UUID: 58389287-28cc-4c58-a38f-98676b14367a
+ * Version: 1.1.0
  * Description: Manages the creation, validation, and deletion of the application's PID file to prevent multiple instances and track the running process.
  * Language: Go
- * Created-at: 2026-03-20T23:05:21.143Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Created-at: 2026-03-20T23:55:04.663Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0)
  */
 
 
@@ -75,4 +75,23 @@ func IsProcessRunning(dataDir string) (bool, int, error) {
 	}
 
 	return false, 0, nil
+}
+
+// StopProcess sends a SIGTERM signal to the process identified in the PID file.
+func StopProcess(dataDir string) error {
+	running, pid, err := IsProcessRunning(dataDir)
+	if err != nil {
+		return err
+	}
+
+	if !running {
+		return fmt.Errorf("no process found running for data directory: %s", dataDir)
+	}
+
+	process, err := os.FindProcess(pid)
+	if err != nil {
+		return fmt.Errorf("failed to find process %d: %w", pid, err)
+	}
+
+	return process.Signal(syscall.SIGTERM)
 }
