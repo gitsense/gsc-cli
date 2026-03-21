@@ -1,12 +1,12 @@
 /**
  * Component: Docker CLI Start
- * Block-UUID: 39bf291a-ff52-4df6-879b-c69547f006db
- * Parent-UUID: 3de3e9a0-a20c-4a92-a584-6ae4d909de55
- * Version: 1.10.1
+ * Block-UUID: c4dd0d95-828d-4cdb-9bbd-c7a2250bea78
+ * Parent-UUID: 736a5690-9f25-4c4b-b3cf-4f80abf8d61a
+ * Version: 1.12.0
  * Description: Fixed compilation error by correcting package alias usage from docker_internal to docker.
  * Language: Go
- * Created-at: 2026-03-21T03:35:32.310Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), Gemini 3 Flash (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.10.1)
+ * Created-at: 2026-03-21T04:10:49.664Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), Gemini 3 Flash (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.10.1), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0)
  */
 
 
@@ -43,6 +43,8 @@ var startCmd = &cobra.Command{
 	Long: `Start the GitSense Chat container. This command initializes the Docker context,
 mounts the specified repository directory, and launches the application.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true // Suppress usage output on error
+
 		ctx := context.Background()
 
 		// 2. Resolve Data Directory
@@ -197,7 +199,11 @@ mounts the specified repository directory, and launches the application.`,
 		// Check if container exists but is stopped
 		inspectCmd := exec.Command("docker", "inspect", containerName)
 		if inspectCmd.Run() == nil {
-			return fmt.Errorf("container '%s' already exists (but is stopped). Remove it with: docker rm %s", containerName, containerName)
+			logger.Info("Found existing stopped container. Removing it...", "name", containerName)
+			if err := docker.StopContainer(ctx, containerName); err != nil {
+				return fmt.Errorf("failed to remove existing container '%s': %w", containerName, err)
+			}
+			logger.Success("Existing container removed", "name", containerName)
 		}
 
 		// 6. Create Docker Context

@@ -1,12 +1,12 @@
 /**
  * Component: Contract CLI Chats
- * Block-UUID: 8b15d10e-9ad3-4b02-b6f4-52c28a151180
- * Parent-UUID: N/A
- * Version: 1.1.0
+ * Block-UUID: ee44f8a9-7270-4942-b6b6-a7a2ac455d25
+ * Parent-UUID: 8b15d10e-9ad3-4b02-b6f4-52c28a151180
+ * Version: 1.2.0
  * Description: Implements the 'gsc contract chats' command to list chats associated with a contract, supporting type discovery and JSON output. Removed duplicate resolveContractUUID helper.
  * Language: Go
- * Created-at: 2026-03-10T16:00:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0)
+ * Created-at: 2026-03-21T04:04:36.288Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -57,7 +57,9 @@ This is useful for identifying specific conversation forks or branches.`,
 			return fmt.Errorf("failed to resolve GSC_HOME: %w", err)
 		}
 
-		sqliteDB, err := db.OpenDB(settings.GetChatDatabasePath(gscHome))
+		// Resolve DB path (Native or Docker)
+		dbPath := db.ResolveDBPath(settings.GetChatDatabasePath(gscHome))
+		sqliteDB, err := db.OpenDB(dbPath)
 		if err != nil {
 			return fmt.Errorf("failed to open chat database: %w", err)
 		}

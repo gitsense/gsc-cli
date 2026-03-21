@@ -1,12 +1,12 @@
 /**
  * Component: Contract CLI Messages
- * Block-UUID: 293a90d0-3ec8-49ff-b0e0-23e31665eebc
- * Parent-UUID: ea0ab162-f666-453f-9da7-47ed781148f4
- * Version: 1.1.1
+ * Block-UUID: 1710c268-9d16-4298-b99d-f2d24dc9a4bf
+ * Parent-UUID: 293a90d0-3ec8-49ff-b0e0-23e31665eebc
+ * Version: 1.2.0
  * Description: Implements the 'gsc contract messages' command to list and filter messages, supporting truncation, latest slicing, and visual block formatting.
  * Language: Go
- * Created-at: 2026-03-10T16:19:29.714Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.1)
+ * Created-at: 2026-03-21T04:03:37.882Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.2.0)
  */
 
 
@@ -66,7 +66,9 @@ and visibility. By default, content is truncated to 5 lines for readability.`,
 			return fmt.Errorf("failed to resolve GSC_HOME: %w", err)
 		}
 
-		sqliteDB, err := db.OpenDB(settings.GetChatDatabasePath(gscHome))
+		// Resolve DB path (Native or Docker)
+		dbPath := db.ResolveDBPath(settings.GetChatDatabasePath(gscHome))
+		sqliteDB, err := db.OpenDB(dbPath)
 		if err != nil {
 			return fmt.Errorf("failed to open chat database: %w", err)
 		}

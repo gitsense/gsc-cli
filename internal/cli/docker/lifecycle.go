@@ -1,12 +1,12 @@
 /**
  * Component: Docker CLI Lifecycle Commands
- * Block-UUID: cc58825a-680b-48f1-b2ab-a3d8e54051f9
- * Parent-UUID: 561354ee-e14f-44eb-9dd5-1d67b0c37899
- * Version: 1.3.0
+ * Block-UUID: 19b86155-ccda-4378-87c1-b587905b9f8d
+ * Parent-UUID: 963b0951-8183-462a-8789-fc342c2bee07
+ * Version: 1.5.0
  * Description: Implements standard Docker lifecycle commands (stop, status, logs, shell, admin) for the gsc CLI.
  * Language: Go
- * Created-at: 2026-03-21T03:53:37.935Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0)
+ * Created-at: 2026-03-21T04:07:47.462Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
  */
 
 
@@ -31,6 +31,8 @@ var stopCmd = &cobra.Command{
 	Use:   "stop",
 	Short: "Stop the GitSense Chat container",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true // Suppress usage output on error
+
 		ctx := context.Background()
 		dctx, err := docker_internal.LoadContext()
 		if err != nil {
@@ -40,6 +42,14 @@ var stopCmd = &cobra.Command{
 		name := "gitsense-chat"
 		if dctx != nil {
 			name = dctx.ContainerName
+		}
+
+		// Check if container is running before attempting to stop
+		running, err := docker_internal.IsContainerRunning(ctx, name)
+		if err != nil || !running {
+			// If we can't check status or it's not running, report it as not running.
+			// This prevents the confusing "failed to remove" error from docker rm.
+			return fmt.Errorf("container '%s' is not running", name)
 		}
 
 		if err := docker_internal.StopContainer(ctx, name); err != nil {
@@ -158,6 +168,19 @@ var shellCmd = &cobra.Command{
 	},
 }
 
+// disconnectCmd represents the docker disconnect command
+var disconnectCmd = &cobra.Command{
+	Use:   "disconnect",
+	Short: "Disconnect from the Docker environment and return to native mode",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := docker_internal.DeleteContext(); err != nil {
+			return err
+		}
+		fmt.Println("Disconnected from Docker environment. Returned to native mode.")
+		return nil
+	},
+}
+
 func init() {
 	DockerCmd.AddCommand(stopCmd)
 	DockerCmd.AddCommand(restartCmd)
@@ -165,5 +188,6 @@ func init() {
 	DockerCmd.AddCommand(logsCmd)
 	DockerCmd.AddCommand(shellCmd)
 
+	DockerCmd.AddCommand(disconnectCmd)
 	logsCmd.Flags().BoolVarP(&logsFollow, "follow", "f", false, "Follow log output")
 }
