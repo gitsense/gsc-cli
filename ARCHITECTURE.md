@@ -42,11 +42,11 @@ This document is the definitive "Source of Truth" for the `gsc-cli` architecture
 
 | From Layer | To Layer | Allowed? | Rationale |
 | :--- | :--- | :--- | :--- |
-| `cli` | `internal-logic` | ✅ Yes | Commands must delegate to logic handlers. |
-| `cli` | `data-access` | ❌ No | CLI should never query SQLite or Registry directly. |
-| `internal-logic` | `data-access` | ✅ Yes | Logic layer orchestrates persistence. |
-| `internal-logic` | `pkg-util` | ✅ Yes | Logic uses system wrappers (Git/Ripgrep). |
-| `data-access` | `internal-logic` | ❌ No | Data layer must remain stateless regarding business logic. |
+| `cli` | `internal-logic` | Yes | Commands must delegate to logic handlers. |
+| `cli` | `data-access` | No | CLI should never query SQLite or Registry directly. |
+| `internal-logic` | `data-access` | Yes | Logic layer orchestrates persistence. |
+| `internal-logic` | `pkg-util` | Yes | Logic uses system wrappers (Git/Ripgrep). |
+| `data-access` | `internal-logic` | No | Data layer must remain stateless regarding business logic. |
 
 ## 4. Controlled Topic Taxonomy
 

@@ -104,7 +104,7 @@ Refer to the files provided by the user.
 *   **null:** If a value cannot be found, use `null` without quotes.
 
 **Common Errors to AVOID:**
-| ❌ Incorrect (Invalid JSON) | ✅ Correct | Reason |
+| Incorrect (Invalid JSON) | Correct | Reason |
 | :--- | :--- | :--- |
 | `"count": "5"` | `"count": 5` | A number should not be a string. |
 | `"value": 123 // comment` | `"value": 123` | JSON does not support comments. |

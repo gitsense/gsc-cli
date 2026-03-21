@@ -1,12 +1,12 @@
 /**
  * Component: Docker CLI Lifecycle Commands
- * Block-UUID: 561354ee-e14f-44eb-9dd5-1d67b0c37899
- * Parent-UUID: 5e7afe59-be6a-4bcb-8c18-069a0ab3f300
- * Version: 1.2.0
+ * Block-UUID: cc58825a-680b-48f1-b2ab-a3d8e54051f9
+ * Parent-UUID: 561354ee-e14f-44eb-9dd5-1d67b0c37899
+ * Version: 1.3.0
  * Description: Implements standard Docker lifecycle commands (stop, status, logs, shell, admin) for the gsc CLI.
  * Language: Go
- * Created-at: 2026-03-19T19:08:25.452Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0)
+ * Created-at: 2026-03-21T03:53:37.935Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0)
  */
 
 
@@ -29,7 +29,7 @@ var (
 // stopCmd represents the docker stop command
 var stopCmd = &cobra.Command{
 	Use:   "stop",
-	Short: "Stop and remove the GitSense Chat container",
+	Short: "Stop the GitSense Chat container",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
 		dctx, err := docker_internal.LoadContext()
@@ -46,12 +46,7 @@ var stopCmd = &cobra.Command{
 			return err
 		}
 
-		// Cleanup context file to return to native mode
-		if err := docker_internal.DeleteContext(); err != nil {
-			return err
-		}
-
-		fmt.Printf("✅ Container '%s' stopped and removed. CLI returned to native mode.\n", name)
+		fmt.Printf("Container '%s' stopped. CLI remains in Docker mode.\n", name)
 		return nil
 	},
 }
@@ -72,7 +67,7 @@ var restartCmd = &cobra.Command{
 			name = dctx.ContainerName
 		}
 
-		fmt.Printf("🚀 Restarting container '%s'...\n", name)
+		fmt.Printf("Restarting container '%s'...\n", name)
 		restartCmd := exec.CommandContext(ctx, "docker", "restart", name)
 		restartCmd.Stdout = os.Stdout
 		restartCmd.Stderr = os.Stderr
@@ -81,7 +76,7 @@ var restartCmd = &cobra.Command{
 			return fmt.Errorf("failed to restart container: %w", err)
 		}
 
-		fmt.Printf("✅ Container '%s' restarted successfully.\n", name)
+		fmt.Printf("Container '%s' restarted successfully.\n", name)
 		return nil
 	},
 }

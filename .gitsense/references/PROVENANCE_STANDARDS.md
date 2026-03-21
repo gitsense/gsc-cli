@@ -18,12 +18,12 @@ This document defines the non-negotiable standards for AI-generated code within 
 
 The `Description` field in the Code Block Header is the "Source of Truth" for a file's intent. It must be technically honest and current.
 
-### ✅ ACCURATE Description Criteria
+### ACCURATE Description Criteria
 - **Specific:** Mentions the primary responsibility and key patterns (e.g., "atomic swap strategy", "glob-based filtering").
 - **Current:** Reflects the *actual* code logic present in the file.
 - **Intent-Focused:** Explains what the file *achieves*, not just what it *is*.
 
-### ❌ STALE/DISHONEST Description Criteria
+### STALE/DISHONEST Description Criteria
 - **Outdated:** Describes features that have been removed or logic that has been refactored.
 - **Vague:** Uses generic phrases like "Handles logic" or "Utility functions."
 - **Comment-Code Mismatch:** If the code does something the description doesn't mention (e.g., a hidden database write), it is **Stale**.
@@ -34,12 +34,12 @@ The `Description` field in the Code Block Header is the "Source of Truth" for a 
 
 AI-generated documentation must be technically accurate. Comments that "sound professional" but are technically hollow are a form of hallucination and must be penalized.
 
-### ❌ Examples of Semantic Fluff (Mark as Stale/Minimal):
+### Examples of Semantic Fluff (Mark as Stale/Minimal):
 - `// Process the data` (What data? What processing?)
 - `// Handle the error` (Which error? How is it handled?)
 - `// Update the database` (Which table? What transaction semantics?)
 
-### ✅ Examples of Semantic Honesty:
+### Examples of Semantic Honesty:
 - `// Validate that the file path is within the .gitsense directory to prevent directory traversal attacks.`
 - `// Acquire the import lock before writing to the temp database; release it in a defer to ensure cleanup even on panic.`
 

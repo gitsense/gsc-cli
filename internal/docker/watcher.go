@@ -39,7 +39,7 @@ type DockerSignal struct {
 // WatchLogs tails the container logs and scans for the Signal Envelope.
 func WatchLogs(ctx context.Context, dctx DockerContext) error {
 	logger.Info("Starting Docker Signal Watcher", "container", dctx.ContainerName)
-	fmt.Fprintf(os.Stderr, "🐳 [gsc] Watching logs for container '%s'...\n", dctx.ContainerName)
+	fmt.Fprintf(os.Stderr, "[gsc] Watching logs for container '%s'...\n", dctx.ContainerName)
 	fmt.Fprintln(os.Stderr, "   (Listening for terminal/editor launch signals. Ctrl+C to stop)")
 
 	args := []string{"logs", "-f", "--tail", "0", dctx.ContainerName}
@@ -87,7 +87,7 @@ func WatchLogs(ctx context.Context, dctx DockerContext) error {
 			
 			if err := handleSignal(signalJSON, dctx); err != nil {
 				logger.Error("Failed to handle signal", "error", err)
-				fmt.Fprintf(os.Stderr, "❌ [watcher] Signal error: %v\n", err)
+				fmt.Fprintf(os.Stderr, "[watcher] Signal error: %v\n", err)
 			}
 		} else {
 			// Print regular logs to stderr to keep stdout clean for potential piping
@@ -152,7 +152,7 @@ func handleSignal(signalJSON string, dctx DockerContext) error {
 	// We assume the template uses %s for the path
 	cmdStr := fmt.Sprintf(template, shellQuote(hostPath))
 	
-	fmt.Fprintf(os.Stderr, "🚀 [watcher] Launching %s: %s\n", category, hostPath)
+	fmt.Fprintf(os.Stderr, "[watcher] Launching %s: %s\n", category, hostPath)
 	logger.Info("Executing host command", "command", cmdStr)
 
 	// Execute using the host's shell
@@ -161,11 +161,11 @@ func handleSignal(signalJSON string, dctx DockerContext) error {
 	
 	// We don't wait for the command to finish (e.g., opening an editor shouldn't block the watcher)
 	if err := cmd.Start(); err != nil {
-		fmt.Fprintf(os.Stderr, "❌ [watcher] Failed to launch %s: %v\n", category, err)
+		fmt.Fprintf(os.Stderr, "[watcher] Failed to launch %s: %v\n", category, err)
 		return fmt.Errorf("failed to launch %s: %w", category, err)
 	}
 
-	fmt.Fprintf(os.Stderr, "✅ [watcher] %s launched successfully at: %s\n", category, hostPath)
+	fmt.Fprintf(os.Stderr, "[watcher] %s launched successfully at: %s\n", category, hostPath)
 	logger.Info("Host command executed", "category", category, "path", hostPath, "command", cmdStr)
 
 	return nil

@@ -92,25 +92,25 @@ var doctorCmd = &cobra.Command{
 		// 2. Check .env file
 		envPath := dctx.EnvHostPath
 		if _, err := os.Stat(envPath); os.IsNotExist(err) {
-			fmt.Printf("⚠️  .env file missing: %s\n", envPath)
+			fmt.Printf(".env file missing: %s\n", envPath)
 		} else {
-			fmt.Printf("✅ .env file found: %s\n", envPath)
+			fmt.Printf(".env file found: %s\n", envPath)
 		}
 
 		// 3. Check chat-config.json
 		configPath := dctx.DataHostPath + "/chat-config.json"
 		if _, err := os.Stat(configPath); os.IsNotExist(err) {
-			fmt.Printf("⚠️  chat-config.json missing: %s\n", configPath)
+			fmt.Printf("chat-config.json missing: %s\n", configPath)
 		} else {
-			fmt.Printf("✅ chat-config.json found: %s\n", configPath)
+			fmt.Printf("chat-config.json found: %s\n", configPath)
 		}
 
 		// 4. Check gsc-admin in container
 		checkCmd := exec.CommandContext(ctx, "docker", "exec", dctx.ContainerName, "which", "gsc-admin")
 		if err := checkCmd.Run(); err != nil {
-			fmt.Println("❌ gsc-admin not found in container")
+			fmt.Println("gsc-admin not found in container")
 		} else {
-			fmt.Println("✅ gsc-admin found in container")
+			fmt.Println("gsc-admin found in container")
 		}
 
 		return nil
@@ -131,16 +131,16 @@ func promptRestartIfNeeded() error {
 	if confirm {
 		ctx := context.Background()
 		dctx, _ := docker_internal.LoadContext()
-		fmt.Printf("🚀 Restarting container '%s'...\n", dctx.ContainerName)
+		fmt.Printf("Restarting container '%s'...\n", dctx.ContainerName)
 		restartCmd := exec.CommandContext(ctx, "docker", "restart", dctx.ContainerName)
 		restartCmd.Stdout = os.Stdout
 		restartCmd.Stderr = os.Stderr
 		if err := restartCmd.Run(); err != nil {
 			return fmt.Errorf("failed to restart container: %w", err)
 		}
-		fmt.Println("✅ Container restarted successfully.")
+		fmt.Println("Container restarted successfully.")
 	} else {
-		fmt.Println("⚠️  Remember to restart manually with 'gsc docker restart'")
+		fmt.Println("Remember to restart manually with 'gsc docker restart'")
 	}
 	return nil
 }

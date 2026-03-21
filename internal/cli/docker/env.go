@@ -42,7 +42,7 @@ to link new source files or update the container from the existing link.`,
 			return nil
 		}
 
-		fmt.Println("\n🐳 GitSense Chat Environment Status")
+		fmt.Println("\nGitSense Chat Environment Status")
 		fmt.Println("-----------------------------------")
 
 		if dctx.EnvHostPath == "" {
@@ -59,9 +59,9 @@ to link new source files or update the container from the existing link.`,
 		if err != nil {
 			fmt.Printf("Status: Error checking sync (%v)\n", err)
 		} else if inSync {
-			fmt.Println("Status: ✅ Up to date")
+			fmt.Println("Status: Up to date")
 		} else {
-			fmt.Println("Status: ⚠️  Out of sync (Host source has changed)")
+			fmt.Println("Status: Out of sync (Host source has changed)")
 			fmt.Println("Action: Run 'gsc docker env update' to pull changes.")
 		}
 		fmt.Println("")
@@ -94,7 +94,7 @@ var envLinkCmd = &cobra.Command{
 			return fmt.Errorf("failed to update docker context: %w", err)
 		}
 
-		fmt.Printf("✅ Linked %s to container storage.\n", sourcePath)
+		fmt.Printf("Linked %s to container storage.\n", sourcePath)
 		return promptRestart(dctx.ContainerName)
 	},
 }
@@ -121,7 +121,7 @@ var envUpdateCmd = &cobra.Command{
 		}
 
 		if inSync {
-			fmt.Println("✅ Environment is already up to date.")
+			fmt.Println("Environment is already up to date.")
 			return nil
 		}
 
@@ -130,7 +130,7 @@ var envUpdateCmd = &cobra.Command{
 			return fmt.Errorf("failed to update env file: %w", err)
 		}
 
-		fmt.Printf("✅ Updated container from %s\n", dctx.EnvHostPath)
+		fmt.Printf("Updated container from %s\n", dctx.EnvHostPath)
 		return promptRestart(dctx.ContainerName)
 	},
 }
@@ -194,16 +194,16 @@ func promptRestart(containerName string) error {
 
 	if confirm {
 		ctx := context.Background()
-		fmt.Printf("🚀 Restarting container '%s'...\n", containerName)
+		fmt.Printf("Restarting container '%s'...\n", containerName)
 		restartCmd := exec.CommandContext(ctx, "docker", "restart", containerName)
 		restartCmd.Stdout = os.Stdout
 		restartCmd.Stderr = os.Stderr
 		if err := restartCmd.Run(); err != nil {
 			return fmt.Errorf("failed to restart container: %w", err)
 		}
-		fmt.Println("✅ Container restarted successfully.")
+		fmt.Println("Container restarted successfully.")
 	} else {
-		fmt.Println("⚠️  Remember to restart manually with 'gsc docker restart' to apply changes.")
+		fmt.Println("Remember to restart manually with 'gsc docker restart' to apply changes.")
 	}
 	return nil
 }

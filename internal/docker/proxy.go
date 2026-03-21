@@ -1,12 +1,12 @@
 /**
  * Component: Docker Proxy Engine
- * Block-UUID: 1b969df3-aaa0-49db-9cd8-a0320434eee5
- * Parent-UUID: 88d97256-aa7e-4dae-9b97-d284daad11ea
- * Version: 1.2.0
+ * Block-UUID: 3de2804b-8fce-4ac4-9061-d1aaa1728b25
+ * Parent-UUID: 1b969df3-aaa0-49db-9cd8-a0320434eee5
+ * Version: 1.3.0
  * Description: Implemented environment variable forwarding, symlink fallback for Windows, case-insensitive path checking, and added IsInContainer detection to prevent recursive proxy loops.
  * Language: Go
- * Created-at: 2026-03-19T02:30:07.443Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
+ * Created-at: 2026-03-21T03:52:14.527Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
  */
 
 
@@ -33,6 +33,9 @@ func IsInContainer() bool {
 // ProxyCommand intercepts a CLI command and redirects it to the Docker container
 // if a valid Docker context is active.
 func ProxyCommand(cmd *cobra.Command, args []string) (bool, error) {
+	// Initialize context early as it is needed for the status check in the banner
+	ctx := context.Background()
+
 	// 1. Check for Docker Context
 	dctx, err := LoadContext()
 	if err != nil {
@@ -45,12 +48,30 @@ func ProxyCommand(cmd *cobra.Command, args []string) (bool, error) {
 	}
 
 	// 2. UX: Print the Docker Proxy Banner to stderr
-	fmt.Fprintf(os.Stderr, "🐳 [gsc] Executing inside Docker container '%s'\n", dctx.ContainerName)
-	fmt.Fprintf(os.Stderr, "   (Context active: %s)\n\n", settings.DockerContextFileName)
+	contextPath, err := GetContextPath()
+	if err != nil {
+		contextPath = "unknown"
+	}
+
+	running, err := IsContainerRunning(ctx, dctx.ContainerName)
+	if err != nil {
+		running = false
+	}
+
+	fmt.Fprintf(os.Stderr, "[gsc] Docker Proxy Mode Active\n")
+	fmt.Fprintf(os.Stderr, "   Container: %s\n", dctx.ContainerName)
+	fmt.Fprintf(os.Stderr, "   Status:    %s\n", map[bool]string{true: "Running", false: "Stopped"}[running])
+	fmt.Fprintf(os.Stderr, "   Context:   %s\n\n", contextPath)
+
+	if running {
+		fmt.Fprintf(os.Stderr, "To disconnect: Stop the container ('gsc docker stop'), then delete the context file.\n")
+	} else {
+		fmt.Fprintf(os.Stderr, "To disconnect: Delete the context file at the path above.\n")
+	}
+	fmt.Fprintf(os.Stderr, "\n")
 
 	// 3. Verify Container is Running
-	ctx := context.Background()
-	running, err := IsContainerRunning(ctx, dctx.ContainerName)
+	// Note: running and err are already populated from the banner section above.
 	if err != nil {
 		return false, fmt.Errorf("failed to check container status: %w", err)
 	}

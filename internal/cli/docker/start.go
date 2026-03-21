@@ -1,12 +1,12 @@
 /**
  * Component: Docker CLI Start
- * Block-UUID: 3de3e9a0-a20c-4a92-a584-6ae4d909de55
- * Parent-UUID: d90bec11-aeda-4a83-9343-c7a5cd70b0df
- * Version: 1.10.0
+ * Block-UUID: 39bf291a-ff52-4df6-879b-c69547f006db
+ * Parent-UUID: 3de3e9a0-a20c-4a92-a584-6ae4d909de55
+ * Version: 1.10.1
  * Description: Fixed compilation error by correcting package alias usage from docker_internal to docker.
  * Language: Go
- * Created-at: 2026-03-21T00:22:24.112Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), Gemini 3 Flash (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.10.0)
+ * Created-at: 2026-03-21T03:35:32.310Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), Gemini 3 Flash (v1.8.0), Gemini 3 Flash (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.10.1)
  */
 
 
@@ -256,7 +256,7 @@ func init() {
 	startCmd.Flags().StringVarP(&startReposDir, "repos-dir", "r", "", "Host path to your Git repositories (optional)")
 	startCmd.Flags().StringVarP(&startDataDir, "data-dir", "d", "", "Host path for persistent data (optional, uses named volume if empty)")
 	startCmd.Flags().StringVarP(&startPort, "port", "p", settings.DefaultAppPort, "Host port to map to the container")
-	startCmd.Flags().StringVarP(&startEnvFile, "env-file", "e", ".env", "Path to the .env file containing API keys")
+	startCmd.Flags().StringVarP(&startEnvFile, "env-file", "e", "", "Path to the .env file containing API keys")
 	startCmd.Flags().StringVarP(&startName, "name", "n", settings.DefaultContainerName, "Custom name for the container")
 	startCmd.Flags().StringVarP(&startImage, "image", "i", settings.DefaultImageName, "The Docker image to pull and run")
 	startCmd.Flags().BoolVar(&startPull, "pull", false, "Force pull the latest image before starting")
