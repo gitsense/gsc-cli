@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Execution Manager
- * Block-UUID: e21f0d9f-22e0-43d7-af5a-82aa7d7eed8e
- * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: Orchestrates the Claude Code CLI execution, including database retrieval, state reconstruction, CLI invocation, and metrics collection.
+ * Block-UUID: 38d1f519-4f95-472c-aac4-7a335dd89226
+ * Parent-UUID: 0f4993b2-5a87-4d64-b97c-82108af0616f
+ * Version: 1.0.3
+ * Description: Fixed GetGSCHome calls to handle the error return value and removed unused variable.
  * Language: Go
- * Created-at: 2026-03-22T03:49:12.345Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Created-at: 2026-03-22T04:31:43.119Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), Gemini 3 Flash (v1.0.3)
  */
 
 
@@ -15,7 +15,6 @@ package claude
 import (
 	"bufio"
 	"bytes"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -25,6 +24,7 @@ import (
 
 	"github.com/gitsense/gsc-cli/internal/db"
 	"github.com/gitsense/gsc-cli/internal/exec"
+	"github.com/gitsense/gsc-cli/internal/git"
 	"github.com/gitsense/gsc-cli/pkg/logger"
 	"github.com/gitsense/gsc-cli/pkg/settings"
 )
@@ -33,8 +33,14 @@ import (
 func ExecuteChat(chatUUID string, parentID int64, userMessage string) error {
 	startTime := time.Now()
 
-	// 1. Open Databases
-	chatDBPath := settings.GetChatDatabasePath(settings.GetGSCHome(false)) // Resolve path
+	// 1. Resolve GSC_HOME
+	gscHome, err := settings.GetGSCHome(false)
+	if err != nil {
+		return fmt.Errorf("failed to resolve GSC_HOME: %w", err)
+	}
+
+	// 2. Open Databases
+	chatDBPath := settings.GetChatDatabasePath(gscHome)
 	chatDB, err := db.OpenDB(chatDBPath)
 	if err != nil {
 		return fmt.Errorf("failed to open chat database: %w", err)
@@ -47,7 +53,7 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string) error {
 	}
 	defer metricsDB.Close()
 
-	// 2. Retrieve Chat ID from UUID
+	// 3. Retrieve Chat ID from UUID
 	chat, err := db.FindChatByUUID(chatDB, chatUUID)
 	if err != nil {
 		return fmt.Errorf("failed to find chat: %w", err)
@@ -56,65 +62,67 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string) error {
 		return fmt.Errorf("chat not found")
 	}
 
-	// 3. Retrieve Messages
-	// We need all messages up to the parentID to reconstruct the context.
-	// For simplicity in this iteration, we fetch the full tree and filter.
-	// A more optimized query would be "GetMessagesRecursiveUpTo(chatID, parentID)".
+	// 4. Retrieve Messages and Filter by Ancestry
 	allMessages, err := db.GetMessagesRecursive(chatDB, chat.ID)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve messages: %w", err)
 	}
 
-	// Filter messages to only include those up to the parentID
-	var contextMessages []db.Message
-	for _, msg := range allMessages {
-		if msg.ID <= parentID {
-			contextMessages = append(contextMessages, msg)
-		}
+	// Filter messages to only include ancestors of the parentID (Fork-safe)
+	contextMessages, err := getAncestors(allMessages, parentID)
+	if err != nil {
+		return fmt.Errorf("failed to filter message ancestry: %w", err)
 	}
 
-	// 4. Setup Chat Directory
-	gscHome, _ := settings.GetGSCHome(false)
+	// 5. Setup Chat Directory
 	chatDir := filepath.Join(gscHome, settings.ClaudeCodeDirRelPath, settings.ClaudeChatsDirRelPath, chatUUID)
 	if err := os.MkdirAll(chatDir, 0755); err != nil {
 		return fmt.Errorf("failed to create chat directory: %w", err)
 	}
 
-	// 5. Reconstruct File-Based State
+	// 6. Reconstruct File-Based State
 	archiveSettings := Settings{
 		ChunkSize: settings.DefaultClaudeChunkSize,
 		MaxFiles:  settings.DefaultClaudeMaxFiles,
 	}
 	
-	archiveFiles, err := SyncArchive(chatDir, contextMessages, archiveSettings)
+	_, err = SyncArchive(chatDir, contextMessages, archiveSettings)
 	if err != nil {
 		return fmt.Errorf("failed to sync archive: %w", err)
 	}
 
-	// 6. Write User Message
+	// 7. Write User Message
 	userMsgPath := filepath.Join(chatDir, "user-message.txt")
 	if err := os.WriteFile(userMsgPath, []byte(userMessage), 0644); err != nil {
 		return fmt.Errorf("failed to write user message: %w", err)
 	}
 
-	// 7. Prepare CLAUDE.md
+	// 8. Prepare CLAUDE.md
 	// Merge project CLAUDE.md (if exists) with our protocol template
-	if err := prepareClaudeMD(chatDir); err != nil {
+	if err := prepareClaudeMD(chatDir, gscHome); err != nil {
 		logger.Warning("Failed to prepare CLAUDE.md", "error", err)
 	}
 
-	// 8. Prepare System Prompt
-	// For now, we use a minimal default or the template if it exists.
-	// In a future iteration, this would be the cleaned-up coding-assistant.md.
+	// 9. Prepare System Prompt
 	systemPromptPath := filepath.Join(chatDir, "messages", "system-prompt.md")
-	defaultPrompt := "You are a helpful coding assistant."
+	defaultPrompt := "You are a helpful coding assistant." // Fallback
+
+	// Try to load the bootstrapped coding-assistant.md template
+	templatePath := filepath.Join(gscHome, settings.ClaudeCodeDirRelPath, settings.ClaudeTemplatesDirRelPath, "coding-assistant.md")
+	if data, err := os.ReadFile(templatePath); err == nil {
+		defaultPrompt = string(data)
+		logger.Debug("Loaded coding-assistant.md template")
+	} else {
+		logger.Debug("coding-assistant.md not found, using default prompt", "error", err)
+	}
+
 	if _, err := os.Stat(systemPromptPath); os.IsNotExist(err) {
 		if err := os.WriteFile(systemPromptPath, []byte(defaultPrompt), 0644); err != nil {
 			return fmt.Errorf("failed to write system prompt: %w", err)
 		}
 	}
 
-	// 9. Execute Claude Code CLI
+	// 10. Execute Claude Code CLI
 	// We change directory to chatDir so Claude sees it as the project root.
 	// We use the executor to run the command.
 	
@@ -142,7 +150,7 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string) error {
 		// We still want to save metrics if possible, but the output might be incomplete.
 	}
 
-	// 10. Parse Metrics from Output
+	// 11. Parse Metrics from Output
 	// The output is a stream of JSON objects. The last one usually contains the summary.
 	// We need to scan the output buffer to find the final JSON object.
 	var finalResponse ClaudeResponse
@@ -159,7 +167,7 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string) error {
 		}
 	}
 
-	// 11. Save Metrics
+	// 12. Save Metrics
 	duration := time.Since(startTime)
 	if finalResponse.SessionID != "" {
 		if err := InsertCompletion(
@@ -192,15 +200,20 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string) error {
 }
 
 // prepareClaudeMD merges the project's CLAUDE.md with the GitSense protocol.
-func prepareClaudeMD(chatDir string) error {
-	// 1. Read Project CLAUDE.md (if exists)
-	// We assume the project root is the parent of GSC_HOME or current working directory.
-	// For simplicity, we check the current working directory.
-	cwd, err := os.Getwd()
+func prepareClaudeMD(chatDir string, gscHome string) error {
+	// 1. Resolve Project Root and Read Content
+	// Use git to find the true project root, not just the current working directory.
+	projectRoot, err := git.FindProjectRoot()
 	if err != nil {
-		return err
+		// Fallback to CWD if git fails (e.g., not in a git repo)
+		logger.Warning("Failed to find git project root, falling back to CWD", "error", err)
+		projectRoot, err = os.Getwd()
+		if err != nil {
+			return fmt.Errorf("failed to get current working directory: %w", err)
+		}
 	}
-	projectClaudeMD := filepath.Join(cwd, "CLAUDE.md")
+
+	projectClaudeMD := filepath.Join(projectRoot, "CLAUDE.md")
 	
 	var projectContent string
 	if data, err := os.ReadFile(projectClaudeMD); err == nil {
@@ -208,7 +221,7 @@ func prepareClaudeMD(chatDir string) error {
 	}
 
 	// 2. Read GitSense Protocol Template
-	templatePath := filepath.Join(settings.GetGSCHome(false), settings.ClaudeCodeDirRelPath, settings.ClaudeTemplatesDirRelPath, "claude_template.md")
+	templatePath := filepath.Join(gscHome, settings.ClaudeCodeDirRelPath, settings.ClaudeTemplatesDirRelPath, "claude_template.md")
 	templateContent, err := os.ReadFile(templatePath)
 	if err != nil {
 		return fmt.Errorf("failed to read protocol template: %w", err)
@@ -225,4 +238,30 @@ func prepareClaudeMD(chatDir string) error {
 	// 4. Write to Chat Directory
 	destPath := filepath.Join(chatDir, "CLAUDE.md")
 	return os.WriteFile(destPath, []byte(finalContent), 0644)
+}
+
+// getAncestors retrieves the list of messages from the root up to the target ID.
+// This ensures we only include messages that are actually in the history path,
+// handling forks correctly.
+func getAncestors(allMessages []db.Message, targetID int64) ([]db.Message, error) {
+	// Create a map for O(1) lookup
+	msgMap := make(map[int64]db.Message)
+	for _, m := range allMessages {
+		msgMap[m.ID] = m
+	}
+
+	var ancestors []db.Message
+	currentID := targetID
+
+	for currentID != 0 {
+		msg, ok := msgMap[currentID]
+		if !ok {
+			return nil, fmt.Errorf("message with ID %d not found in message map", currentID)
+		}
+		// Prepend to maintain chronological order
+		ancestors = append([]db.Message{msg}, ancestors...)
+		currentID = msg.ParentID
+	}
+
+	return ancestors, nil
 }

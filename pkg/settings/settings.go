@@ -1,12 +1,12 @@
-/**
+/*
  * Component: Settings and Configuration Manager
- * Block-UUID: 67522d2a-a99a-4385-967a-8abd7e942e6b
- * Parent-UUID: 3df16dee-b3c2-448c-93f8-c4b6ff7a15fe
- * Version: 3.14.0
- * Description: Added constants for the native app lifecycle management, including log rotation, retry policies, and PID file naming.
+ * Block-UUID: 5606b08b-1ef4-4231-bbc8-4ae05ae4f025
+ * Parent-UUID: 67522d2a-a99a-4385-967a-8abd7e942e6b
+ * Version: 3.15.0
+ * Description: Exported TemplateFS to allow other packages to access embedded templates, resolving embed path restrictions.
  * Language: Go
  * Created-at: 2026-03-22T03:31:51.270Z
- * Authors: GLM-4.7 (v3.5.0), GLM-4.7 (v3.6.0), GLM-4.7 (v3.7.0), Gemini 3 Flash (v3.8.0), Gemini 3 Flash (v3.9.0), GLM-4.7 (v3.10.0), Gemini 3 Flash (v3.11.0), Gemini 3 Flash (v3.12.0), Gemini 3 Flash (v3.13.0), Gemini 3 Flash (v3.14.0)
+ * Authors: GLM-4.7 (v3.5.0), ..., Gemini 3 Flash (v3.14.0), Gemini 3 Flash (v3.15.0)
  */
 
 
@@ -26,7 +26,7 @@ import (
 )
 
 //go:embed templates/*
-var templateFS embed.FS
+var TemplateFS embed.FS // Exported for use in other packages
 
 // DefaultGitSenseDir is the default name of the directory where GitSense Chat stores its data
 const DefaultGitSenseDir = ".gitsense"
@@ -198,7 +198,7 @@ func LoadTemplates() error {
 
 // bootstrapTemplatesRecursive walks the embedded filesystem and copies missing files to the local path.
 func bootstrapTemplatesRecursive(srcDir, destDir string) error {
-	entries, err := templateFS.ReadDir(srcDir)
+	entries, err := TemplateFS.ReadDir(srcDir)
 	if err != nil {
 		return err
 	}
@@ -233,7 +233,7 @@ func bootstrapTemplatesRecursive(srcDir, destDir string) error {
 
 // copyEmbeddedFile reads a file from the embedded filesystem and writes it to the local path.
 func copyEmbeddedFile(embedPath, localPath string) error {
-	data, err := templateFS.ReadFile(embedPath)
+	data, err := TemplateFS.ReadFile(embedPath)
 	if err != nil {
 		return err
 	}

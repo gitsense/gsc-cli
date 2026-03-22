@@ -1,19 +1,18 @@
 /**
  * Component: Claude Code Init Command
- * Block-UUID: b25aae1a-d1b6-4e2d-8108-16918fff52b1
- * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: Implements the 'gsc claude init' command to bootstrap the Claude Code environment, including directory structure, templates, and the metrics database.
+ * Block-UUID: d4d07cca-02aa-4296-884f-29e5e2f8f0a9
+ * Parent-UUID: 33f74e8e-151f-4b47-9f75-f78af9d9ec18
+ * Version: 1.0.3
+ * Description: Updated to use the exported TemplateFS from pkg/settings to resolve embed path restrictions.
  * Language: Go
- * Created-at: 2026-03-22T03:39:12.456Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Created-at: 2026-03-22T04:33:08.400Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), Gemini 3 Flash (v1.0.3)
  */
 
 
 package claude
 
 import (
-	"embed"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -22,9 +21,6 @@ import (
 	"github.com/gitsense/gsc-cli/pkg/logger"
 	"github.com/gitsense/gsc-cli/pkg/settings"
 )
-
-//go:embed ../../pkg/settings/templates/claude/claude_template.md
-var templateFS embed.FS
 
 var initCmd = &cobra.Command{
 	Use:   "init",
@@ -43,7 +39,6 @@ and the metrics database.`,
 		claudeRoot := filepath.Join(gscHome, settings.ClaudeCodeDirRelPath)
 		templatesDir := filepath.Join(claudeRoot, settings.ClaudeTemplatesDirRelPath)
 		chatsDir := filepath.Join(claudeRoot, settings.ClaudeChatsDirRelPath)
-		metricsDBPath := filepath.Join(claudeRoot, settings.ClaudeMetricsDBName)
 
 		// 3. Create Directories
 		logger.Info("Creating Claude Code directory structure...")
@@ -58,7 +53,9 @@ and the metrics database.`,
 		templateDest := filepath.Join(templatesDir, "claude_template.md")
 		if _, err := os.Stat(templateDest); os.IsNotExist(err) {
 			logger.Info("Bootstrapping Claude API protocol template...")
-			data, err := templateFS.ReadFile("claude_template.md")
+			// Use the exported TemplateFS from pkg/settings
+			// The path is relative to the 'templates/' root defined in settings.go
+			data, err := settings.TemplateFS.ReadFile("templates/claude/claude_template.md")
 			if err != nil {
 				return fmt.Errorf("failed to read embedded template: %w", err)
 			}
@@ -67,20 +64,6 @@ and the metrics database.`,
 			}
 		} else {
 			logger.Info("Template already exists, skipping.")
-		}
-
-		// 5. Initialize Metrics Database
-		// Note: Schema initialization will be handled by the metrics package upon first open
-		if _, err := os.Stat(metricsDBPath); os.IsNotExist(err) {
-			logger.Info("Initializing metrics database...")
-			// Create an empty file to reserve the path
-			file, err := os.Create(metricsDBPath)
-			if err != nil {
-				return fmt.Errorf("failed to create metrics database file: %w", err)
-			}
-			file.Close()
-		} else {
-			logger.Info("Metrics database already exists, skipping.")
 		}
 
 		logger.Success("Claude Code environment initialized successfully", "path", claudeRoot)

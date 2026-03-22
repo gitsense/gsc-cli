@@ -1,77 +1,59 @@
 /**
- * Component: Claude Code Chat Command
- * Block-UUID: 3957d13f-1a6e-434a-b0bd-1aee0cba0a34
+ * Component: Claude Code Data Models
+ * Block-UUID: e6cef371-716b-49aa-b311-8d4859d1e73b
  * Parent-UUID: N/A
  * Version: 1.0.0
- * Description: Implements the 'gsc claude chat' command to execute chat completions using the Claude Code CLI, handling input validation and orchestrating the execution flow.
+ * Description: Defines the data structures for Claude Code CLI integration, including API responses, usage metrics, and archive settings.
  * Language: Go
- * Created-at: 2026-03-22T03:41:05.789Z
+ * Created-at: 2026-03-22T03:55:00.000Z
  * Authors: Gemini 3 Flash (v1.0.0)
  */
 
 
 package claude
 
-import (
-	"fmt"
-	"os"
-
-	"github.com/spf13/cobra"
-	// Alias the internal logic package to avoid naming conflict with the CLI package
-	claudeint "github.com/gitsense/gsc-cli/internal/claude"
-	"github.com/gitsense/gsc-cli/pkg/logger"
-)
-
-var (
-	chatMessage string
-	chatFile    string
-)
-
-var chatCmd = &cobra.Command{
-	Use:   "chat",
-	Short: "Execute a chat completion using Claude Code CLI",
-	Long: `Executes a chat completion request using the Claude Code CLI as a backend API. 
-It reconstructs the conversation history from the GitSense Chat database, manages the 
-file-based state, and streams the response back to stdout.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		// 1. Validate Inputs
-		if chatUUID == "" {
-			return fmt.Errorf("--uuid is required")
-		}
-		if chatParentID == 0 {
-			return fmt.Errorf("--parent-id is required")
-		}
-
-		var userMessage string
-		var err error
-
-		// 2. Resolve User Message
-		if chatFile != "" {
-			// Read from file
-			data, err := os.ReadFile(chatFile)
-			if err != nil {
-				return fmt.Errorf("failed to read message file: %w", err)
-			}
-			userMessage = string(data)
-		} else if chatMessage != "" {
-			// Use string
-			userMessage = chatMessage
-		} else {
-			return fmt.Errorf("either --message or --file is required")
-		}
-
-		// 3. Execute Chat
-		// Delegate to the internal logic layer
-		logger.Info("Executing Claude Code chat", "uuid", chatUUID, "parent_id", chatParentID)
-		if err := claudeint.ExecuteChat(chatUUID, chatParentID, userMessage); err != nil {
-			return fmt.Errorf("chat execution failed: %w", err)
-		}
-
-		return nil
-	},
+// ClaudeResponse represents the JSON response from the Claude Code CLI.
+type ClaudeResponse struct {
+	Result     string `json:"result"`
+	SessionID  string `json:"session_id"`
+	Usage      Usage  `json:"usage"`
+	Cost       float64 `json:"cost"`
 }
 
-func init() {
-	chatCmd.Flags().StringVar(&chatMessage, "message", "", "The user message to send")
-	chatCmd.Flags().StringVar(&chatFile, "file", "", "Path to a file containing the user message")
+// Usage represents token usage metrics.
+type Usage struct {
+	InputTokens        int `json:"input_tokens"`
+	OutputTokens       int `json:"output_tokens"`
+	CacheCreationTokens int `json:"cache_creation_input_tokens"`
+	CacheReadTokens    int `json:"cache_read_input_tokens"`
+}
+
+// Settings defines the configuration for the Tiered Rolling Archive.
+type Settings struct {
+	ChunkSize int
+	MaxFiles  int
+}
+
+// MessageFile represents a single message in the JSON files.
+type MessageFile struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+// ActiveWindow represents the structure of messages-active.json.
+type ActiveWindow struct {
+	ArchiveMap ArchiveMap   `json:"archive_map"`
+	Messages   []MessageFile `json:"messages"`
+}
+
+// ArchiveMap provides a summary of available archives.
+type ArchiveMap struct {
+	Files []ArchiveFile `json:"files"`
+}
+
+// ArchiveFile represents metadata for a single archive file.
+type ArchiveFile struct {
+	Name     string `json:"name"`
+	Hash     string `json:"hash"`
+	Messages int    `json:"messages"`
 }

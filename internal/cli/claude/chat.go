@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Chat Command
- * Block-UUID: 3957d13f-1a6e-434a-b0bd-1aee0cba0a34
- * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: Implements the 'gsc claude chat' command to execute chat completions using the Claude Code CLI, handling input validation and orchestrating the execution flow.
+ * Block-UUID: 32ba2926-fc23-4ee5-a3f3-abeeb610d7ba
+ * Parent-UUID: 3957d13f-1a6e-434a-b0bd-1aee0cba0a34
+ * Version: 1.0.1
+ * Description: Removed unused 'err' variable declaration to fix compilation error.
  * Language: Go
  * Created-at: 2026-03-22T03:41:05.789Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1)
  */
 
 
@@ -43,7 +43,6 @@ file-based state, and streams the response back to stdout.`,
 		}
 
 		var userMessage string
-		var err error
 
 		// 2. Resolve User Message
 		if chatFile != "" {

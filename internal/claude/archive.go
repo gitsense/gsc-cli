@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Archive Manager
- * Block-UUID: 24354d07-2ed7-4b20-85ad-2fbd58c383bb
- * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: Implements the Tiered Rolling Archive logic for managing conversation history, including chunking, context isolation, and hash-based change detection.
+ * Block-UUID: 748f2d2a-46f7-4711-8277-f61448d02b84
+ * Parent-UUID: 24354d07-2ed7-4b20-85ad-2fbd58c383bb
+ * Version: 1.0.1
+ * Description: Added logging statements for file operations and hash checks to improve observability.
  * Language: Go
  * Created-at: 2026-03-22T03:46:45.910Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1)
  */
 
 
@@ -107,12 +107,14 @@ func writeContextFiles(dir string, messages []db.Message) error {
 		// Check hash to avoid unnecessary writes
 		currentHash := calculateHash(content)
 		if existingHash, err := getFileHash(path); err == nil && existingHash == currentHash {
+			logger.Debug("Skipping context file (hash match)", "file", filename)
 			continue // File hasn't changed
 		}
 
 		if err := os.WriteFile(path, []byte(content), 0644); err != nil {
 			return fmt.Errorf("failed to write context file %s: %w", filename, err)
 		}
+		logger.Debug("Wrote context file", "file", filename)
 	}
 	return nil
 }
@@ -156,6 +158,7 @@ func writeArchiveChunks(dir string, messages []db.Message, settings Settings) ([
 		currentHash := calculateHash(string(data))
 		if existingHash, err := getFileHash(path); err == nil && existingHash == currentHash {
 			// File exists and hasn't changed, just add to list
+			logger.Debug("Skipping archive chunk (hash match)", "file", filename)
 			archiveFiles = append(archiveFiles, ArchiveFile{
 				Name:     filename,
 				Hash:     currentHash,
@@ -168,6 +171,7 @@ func writeArchiveChunks(dir string, messages []db.Message, settings Settings) ([
 		if err := os.WriteFile(path, data, 0644); err != nil {
 			return nil, fmt.Errorf("failed to write archive chunk %s: %w", filename, err)
 		}
+		logger.Info("Wrote archive chunk", "file", filename, "messages", len(chunk))
 
 		archiveFiles = append(archiveFiles, ArchiveFile{
 			Name:     filename,
@@ -210,6 +214,7 @@ func writeActiveWindow(dir string, messages []db.Message, archiveFiles []Archive
 		return fmt.Errorf("failed to marshal active window: %w", err)
 	}
 
+	logger.Debug("Wrote active window", "messages", len(messages))
 	return os.WriteFile(path, data, 0644)
 }
 
