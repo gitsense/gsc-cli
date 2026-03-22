@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Data Models
- * Block-UUID: c29fb104-b569-4a23-81a3-ad9fbcb7c252
- * Parent-UUID: f2d4cd00-7e8c-444c-a190-4ebc9e83df1d
- * Version: 1.2.0
+ * Block-UUID: ea393194-0f3a-4ffa-b837-493ab74ac670
+ * Parent-UUID: 0d95d41c-b017-4bad-aed6-d27d72f3aa9c
+ * Version: 1.4.0
  * Description: Defines the data structures for Claude Code CLI integration, including API responses, usage metrics, and archive settings.
  * Language: Go
- * Created-at: 2026-03-22T20:25:55.286Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
+ * Created-at: 2026-03-22T21:41:57.559Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
  */
 
 
@@ -30,8 +30,9 @@ type Usage struct {
 
 // Settings defines the configuration for the Tiered Rolling Archive.
 type Settings struct {
-	ChunkSize int
-	MaxFiles  int
+	ChunkSize int    `json:"chunk_size"`
+	MaxFiles  int    `json:"max_files"`
+	Model     string `json:"model"` // New field
 }
 
 // MessageFile represents a single message in the JSON files.
@@ -91,4 +92,26 @@ type SystemInitEvent struct {
 	Subtype   string `json:"subtype"`
 	Model     string `json:"model"`
 	SessionID string `json:"session_id"`
+}
+
+// StreamResultEvent represents the final result event containing usage stats and cost.
+type StreamResultEvent struct {
+	Type       string                 `json:"type"`
+	Subtype    string                 `json:"subtype"`
+	DurationMs int                    `json:"duration_ms"`
+	StopReason string                 `json:"stop_reason"`
+	Usage      Usage                  `json:"usage"`
+	ModelUsage map[string]ModelStats  `json:"modelUsage"`
+	TotalCost  float64                `json:"total_cost_usd"`
+}
+
+// ModelStats represents per-model usage details.
+type ModelStats struct {
+	InputTokens              int     `json:"inputTokens"`
+	OutputTokens             int     `json:"outputTokens"`
+	CacheReadInputTokens     int     `json:"cacheReadInputTokens"`
+	CacheCreationInputTokens int     `json:"cacheCreationInputTokens"`
+	CostUSD                  float64 `json:"costUSD"`
+	ContextWindow            int     `json:"contextWindow"`
+	MaxOutputTokens          int     `json:"maxOutputTokens"`
 }

@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Execution Manager
- * Block-UUID: 1d3cb03a-d455-429a-b6c7-2e50072e1958
- * Parent-UUID: 0d15c09a-cb35-4a63-a900-2af7b072d147
- * Version: 1.15.0
+ * Block-UUID: 32d18daf-ec81-4469-80d7-dead9719c3f8
+ * Parent-UUID: 67552167-ff66-46bb-b6e7-7155778615ba
+ * Version: 1.21.0
  * Description: Implemented raw stream logging to file and fixed text extraction from 'assistant' events by properly parsing the nested content structure instead of relying on string matching.
  * Language: Go
- * Created-at: 2026-03-22T20:52:29.046Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0)
+ * Created-at: 2026-03-22T21:52:37.127Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.20.0), GLM-4.7 (v1.21.0)
  */
 
 
@@ -142,11 +142,25 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string, format str
 	}
 
 	// 7. Reconstruct File-Based State
+	// Load Settings
 	archiveSettings := Settings{
 		ChunkSize: settings.DefaultClaudeChunkSize,
 		MaxFiles:  settings.DefaultClaudeMaxFiles,
+		Model:     settings.DefaultClaudeModel,
 	}
-	
+
+	// Try to load from settings.json
+	settingsPath := filepath.Join(gscHome, settings.ClaudeCodeDirRelPath, settings.ClaudeSettingsFileName)
+	if data, err := os.ReadFile(settingsPath); err == nil {
+		if err := json.Unmarshal(data, &archiveSettings); err != nil {
+			logger.Warning("Failed to parse settings.json, using defaults", "error", err)
+		} else {
+			logger.Debug("Loaded settings from file", "model", archiveSettings.Model, "max_files", archiveSettings.MaxFiles)
+		}
+	} else {
+		logger.Debug("Settings file not found, using defaults", "path", settingsPath)
+	}
+
 	_, err = SyncArchive(chatDir, contextMessages, archiveSettings)
 	if err != nil {
 		return fmt.Errorf("failed to sync archive: %w", err)
@@ -223,10 +237,11 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string, format str
 	}
 	prompt += " Follow the protocol in CLAUDE.md."
 
-	// Determine effective model
-	effectiveModel := "Claude Code"
+	// Determine Effective Model (Priority: Flag > Config > Default)
+	effectiveModel := archiveSettings.Model
 	if model != "" {
 		effectiveModel = model
+		logger.Info("Model overridden by CLI flag", "model", effectiveModel)
 	}
 
 	// Inject Identity into System Prompt
@@ -246,14 +261,15 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string, format str
 	flags := []string{
 		"-p", fmt.Sprintf("%q", prompt),
 		"--append-system-prompt-file", "./messages/system-prompt.md",
-		"--verbose",
 		"--allowedTools", "Read",
+		"--verbose",
+		"--include-partial-messages",
 		"--output-format", "stream-json",
 	}
 
 	// Add model flag if specified
-	if model != "" {
-		flags = append(flags, "--model", model)
+	if effectiveModel != "" {
+		flags = append(flags, "--model", effectiveModel)
 	}
 
 	// 11. Execute Claude Code CLI (Streaming)
@@ -282,6 +298,8 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string, format str
 	var finalUsage Usage
 	var finalCost float64
 	var sessionID string
+	var toolsFinished bool
+	var responseBuffer strings.Builder
 	currentTime := time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
 	isFirstLine := true
 
@@ -344,18 +362,25 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string, format str
 				modifiedDelta := strings.ReplaceAll(deltaEvent.Delta, "{{MODEL-NAME}}", effectiveModel)
 				modifiedDelta = strings.ReplaceAll(modifiedDelta, "{{UTC-TIME}}", currentTime)
 
+				// Always write to fullResponse for saving to DB
 				fullResponse.WriteString(modifiedDelta)
 
-				if format == "text" {
-					// Stream text directly to user
-					fmt.Print(modifiedDelta)
-				} else if format == "json" {
-					// Stream Clean Stream JSON to backend
-					cleanJSON, _ := json.Marshal(map[string]interface{}{
-						"event": "text",
-						"delta": modifiedDelta,
-					})
-					fmt.Println(string(cleanJSON))
+				// Gatekeeper: Only stream to user if tools are finished
+				if !toolsFinished {
+					// Buffer the text (suppresses "plan" leaks)
+					responseBuffer.WriteString(modifiedDelta)
+				} else {
+					if format == "text" {
+						// Stream text directly to user
+						fmt.Print(modifiedDelta)
+					} else if format == "json" {
+						// Stream Clean Stream JSON to backend
+						cleanJSON, _ := json.Marshal(map[string]interface{}{
+							"event": "text",
+							"delta": modifiedDelta,
+						})
+						fmt.Println(string(cleanJSON))
+					}
 				}
 			}
 			continue
@@ -366,6 +391,15 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string, format str
 			// Parse the full assistant event to extract content
 			var assistantEvent AssistantMessageEvent
 			if err := json.Unmarshal([]byte(line), &assistantEvent); err == nil {
+				// Check if this event contains a tool_use (indicates a plan/intermediate turn)
+				hasToolUse := false
+				for _, cb := range assistantEvent.Message.Content {
+					if cb.Type == "tool_use" {
+						hasToolUse = true
+						break
+					}
+				}
+
 				for _, contentBlock := range assistantEvent.Message.Content {
 					switch contentBlock.Type {
 					case "thinking":
@@ -389,20 +423,27 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string, format str
 						})
 						fmt.Println(string(statusJSON))
 					case "text":
-						// Extract and process text content
-						modifiedText := strings.ReplaceAll(contentBlock.Text, "{{MODEL-NAME}}", effectiveModel)
-						modifiedText = strings.ReplaceAll(modifiedText, "{{UTC-TIME}}", currentTime)
+						// Only process text if no tool is being used (suppresses "plan" leaks)
+						if !hasToolUse && toolsFinished {
+							modifiedText := strings.ReplaceAll(contentBlock.Text, "{{MODEL-NAME}}", effectiveModel)
+							modifiedText = strings.ReplaceAll(modifiedText, "{{UTC-TIME}}", currentTime)
 
-						fullResponse.WriteString(modifiedText)
+							fullResponse.WriteString(modifiedText)
 
-						if format == "text" {
-							fmt.Print(modifiedText)
-						} else if format == "json" {
-							cleanJSON, _ := json.Marshal(map[string]interface{}{
-								"event": "text",
-								"delta": modifiedText,
-							})
-							fmt.Println(string(cleanJSON))
+							if format == "text" {
+								fmt.Print(modifiedText)
+							} else if format == "json" {
+								cleanJSON, _ := json.Marshal(map[string]interface{}{
+									"event": "text",
+									"delta": modifiedText,
+								})
+								fmt.Println(string(cleanJSON))
+							}
+						} else if !hasToolUse {
+							// Buffer the text if tools aren't finished (suppresses "plan" leaks)
+							modifiedText := strings.ReplaceAll(contentBlock.Text, "{{MODEL-NAME}}", effectiveModel)
+							modifiedText = strings.ReplaceAll(modifiedText, "{{UTC-TIME}}", currentTime)
+							responseBuffer.WriteString(modifiedText)
 						}
 					}
 				}
@@ -419,6 +460,23 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string, format str
 			}
 		case "error":
 			logger.Error("Claude CLI stream error", "data", line)
+		}
+		
+		// Handle User Event (Tool Result) - Signals end of thinking phase
+		if baseEvent.Type == "user" {
+			toolsFinished = true
+		}
+
+		// Handle Result Event - Final stats
+		if baseEvent.Type == "result" {
+			var resultEvent StreamResultEvent
+			if err := json.Unmarshal([]byte(line), &resultEvent); err == nil {
+				doneJSON, _ := json.Marshal(map[string]interface{}{
+					"event": "done",
+					"stats": resultEvent,
+				})
+				fmt.Println(string(doneJSON))
+			}
 		}
 	}
 

@@ -1,18 +1,20 @@
 /**
  * Component: Claude Code Init Command
- * Block-UUID: 1192202f-4901-4bbe-ac58-7cc15e792fcf
- * Parent-UUID: 52d8333f-afa3-40a4-a8d9-b1223fca114d
- * Version: 1.0.5
+ * Block-UUID: 4b202df9-431f-4c3c-a2a2-f47deda7d838
+ * Parent-UUID: 806da7dc-ebfd-4f11-b746-91a8c6b39c6c
+ * Version: 1.0.7
  * Description: Updated to use the exported TemplateFS from pkg/settings to resolve embed path restrictions.
  * Language: Go
- * Created-at: 2026-03-22T19:02:17.843Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), Gemini 3 Flash (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5)
+ * Created-at: 2026-03-22T21:18:18.468Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), Gemini 3 Flash (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7)
  */
 
 
 package claude
 
 import (
+	claudeint "github.com/gitsense/gsc-cli/internal/claude"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -64,6 +66,26 @@ and the metrics database.`,
 			}
 		} else {
 			logger.Info("Template already exists, skipping.")
+		}
+
+		// 5. Create Default Settings File
+		settingsPath := filepath.Join(claudeRoot, settings.ClaudeSettingsFileName)
+		if _, err := os.Stat(settingsPath); os.IsNotExist(err) {
+			defaultSettings := claudeint.Settings{
+				ChunkSize: settings.DefaultClaudeChunkSize,
+				MaxFiles:  settings.DefaultClaudeMaxFiles,
+				Model:     settings.DefaultClaudeModel,
+			}
+			data, err := json.MarshalIndent(defaultSettings, "", "  ")
+			if err != nil {
+				return fmt.Errorf("failed to marshal settings: %w", err)
+			}
+			if err := os.WriteFile(settingsPath, data, 0644); err != nil {
+				return fmt.Errorf("failed to write settings file: %w", err)
+			}
+			logger.Info("Created default settings", "path", settingsPath)
+		} else {
+			logger.Info("Settings file already exists", "path", settingsPath)
 		}
 
 		logger.Success("Claude Code environment initialized successfully", "path", claudeRoot)

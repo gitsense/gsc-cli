@@ -1,13 +1,14 @@
 <!--
 Component: Claude Code API Protocol
-Block-UUID: 0a962b21-e0a8-4e81-a54c-c55d6cad6136
-Parent-UUID: 0a13bb58-b9fb-444a-8444-7098c2416518
-Version: 1.1.1
+Block-UUID: 73502b38-e6a1-4702-950d-57e93a150eb8
+Parent-UUID: 0a962b21-e0a8-4e81-a54c-c55d6cad6136
+Version: 1.1.2
 Description: Defines the session-specific protocol for Claude Code acting as the GitSense Chat API backend, including context reconstruction, sandbox rules, and operational mode.
 Language: Markdown
-Created-at: 2026-03-22T03:35:04.281Z
-Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.1.1)
+Created-at: 2026-03-22T21:28:29.511Z
+Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.1.1), GLM-4.7 (v1.1.2)
 -->
+
 
 # GitSense Chat API Protocol
 
@@ -37,6 +38,9 @@ In your first response, emit a `Read` tool call for every file found in the `mes
 - `messages-active.json`
 - All `messages-archive-*.json` files
 - All `context-*.md` files
+
+**CRITICAL SILENCE RULE:**
+Do NOT emit any text, status messages, or explanations in this first response. Emit ONLY the `Read` tool calls. Do not attempt to analyze the request or provide a partial answer until you have received the contents of all these files in a single tool-result turn.
 
 Do not attempt to analyze the request or provide a partial answer until you have received the contents of all these files in a single tool-result turn.
 
