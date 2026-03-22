@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Init Command
- * Block-UUID: 52d8333f-afa3-40a4-a8d9-b1223fca114d
- * Parent-UUID: d4d07cca-02aa-4296-884f-29e5e2f8f0a9
- * Version: 1.0.4
+ * Block-UUID: 1192202f-4901-4bbe-ac58-7cc15e792fcf
+ * Parent-UUID: 52d8333f-afa3-40a4-a8d9-b1223fca114d
+ * Version: 1.0.5
  * Description: Updated to use the exported TemplateFS from pkg/settings to resolve embed path restrictions.
  * Language: Go
- * Created-at: 2026-03-22T16:57:27.760Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), Gemini 3 Flash (v1.0.3), GLM-4.7 (v1.0.4)
+ * Created-at: 2026-03-22T19:02:17.843Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), Gemini 3 Flash (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5)
  */
 
 
@@ -37,7 +37,7 @@ and the metrics database.`,
 
 		// 2. Define Directory Paths
 		claudeRoot := filepath.Join(gscHome, settings.ClaudeCodeDirRelPath)
-		templatesDir := filepath.Join(claudeRoot, settings.ClaudeTemplatesDirRelPath)
+		templatesDir := filepath.Join(gscHome, settings.ClaudeTemplatesPath)
 		chatsDir := filepath.Join(claudeRoot, settings.ClaudeChatsDirRelPath)
 
 		// 3. Create Directories

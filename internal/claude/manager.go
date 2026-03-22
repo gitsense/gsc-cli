@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Execution Manager
- * Block-UUID: d34f94c7-d1b5-4d60-9f25-eb108e377ce9
- * Parent-UUID: b8233165-f479-4444-b23b-bd88e4669fc6
- * Version: 1.6.0
+ * Block-UUID: 4fca15d2-1cd2-48ff-a8f5-f6df7151d6cf
+ * Parent-UUID: d34f94c7-d1b5-4d60-9f25-eb108e377ce9
+ * Version: 1.7.0
  * Description: Added explicit printing of the Claude response result to stdout so the user can see the answer in the CLI.
  * Language: Go
- * Created-at: 2026-03-22T16:38:44.106Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0)
+ * Created-at: 2026-03-22T19:03:15.562Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0)
  */
 
 
@@ -157,7 +157,7 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string, format str
 	defaultPrompt := "You are a helpful coding assistant." // Fallback
 
 	// Try to load the bootstrapped coding_assistant.md template
-	templatePath := filepath.Join(gscHome, settings.ClaudeCodeDirRelPath, settings.ClaudeTemplatesDirRelPath, "coding_assistant.md")
+	templatePath := filepath.Join(gscHome, settings.ClaudeTemplatesPath, "coding_assistant.md")
 	if data, err := os.ReadFile(templatePath); err == nil {
 		defaultPrompt = string(data)
 		logger.Debug("Loaded coding_assistant.md template")
@@ -391,7 +391,7 @@ func prepareClaudeMD(chatDir string, gscHome string) error {
 	}
 
 	// 2. Read GitSense Protocol Template
-	templatePath := filepath.Join(gscHome, settings.ClaudeCodeDirRelPath, settings.ClaudeTemplatesDirRelPath, "claude_template.md")
+	templatePath := filepath.Join(gscHome, settings.ClaudeTemplatesPath, "claude_template.md")
 	templateContent, err := os.ReadFile(templatePath)
 	if err != nil {
 		return fmt.Errorf("failed to read protocol template: %w", err)
