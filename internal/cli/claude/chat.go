@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Chat Command
- * Block-UUID: a10e09ca-fbc1-4d9e-917d-90a954efd6c5
- * Parent-UUID: 700ab323-1273-4d8c-af37-423efda31958
- * Version: 1.5.0
+ * Block-UUID: e47eac57-65ab-4fbe-9a28-2239476559f3
+ * Parent-UUID: a10e09ca-fbc1-4d9e-917d-90a954efd6c5
+ * Version: 1.5.1
  * Description: Added support for positional arguments and stdin (pipe) for user message input, prioritizing argument > flag > file > stdin.
  * Language: Go
- * Created-at: 2026-03-22T16:21:56.297Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
+ * Created-at: 2026-03-22T16:49:47.152Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1)
  */
 
 
@@ -81,6 +81,7 @@ file-based state, and streams the response back to stdout.`,
 		// 3. Execute Chat
 		logger.Info("Executing Claude Code chat", "uuid", chatUUID, "parent_id", chatParentID, "append", chatAppend, "save", chatSave, "append_save", chatAppendSave, "model", chatModel)
 		if err := claudeint.ExecuteChat(chatUUID, chatParentID, userMessage, chatFormat, chatAppend, chatSave, chatAppendSave, chatModel); err != nil {
+			cmd.SilenceUsage = true
 			return fmt.Errorf("chat execution failed: %w", err)
 		}
 

@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Init Command
- * Block-UUID: d4d07cca-02aa-4296-884f-29e5e2f8f0a9
- * Parent-UUID: 33f74e8e-151f-4b47-9f75-f78af9d9ec18
- * Version: 1.0.3
+ * Block-UUID: 52d8333f-afa3-40a4-a8d9-b1223fca114d
+ * Parent-UUID: d4d07cca-02aa-4296-884f-29e5e2f8f0a9
+ * Version: 1.0.4
  * Description: Updated to use the exported TemplateFS from pkg/settings to resolve embed path restrictions.
  * Language: Go
- * Created-at: 2026-03-22T04:33:08.400Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), Gemini 3 Flash (v1.0.3)
+ * Created-at: 2026-03-22T16:57:27.760Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), Gemini 3 Flash (v1.0.3), GLM-4.7 (v1.0.4)
  */
 
 
@@ -30,7 +30,7 @@ Claude Code CLI integration. This creates the necessary folders for templates, c
 and the metrics database.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// 1. Resolve GSC_HOME
-		gscHome, err := settings.GetGSCHome(true)
+		gscHome, err := settings.GetGSCHome(false)
 		if err != nil {
 			return fmt.Errorf("failed to resolve GSC_HOME: %w", err)
 		}

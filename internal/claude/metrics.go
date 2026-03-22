@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Metrics Database
- * Block-UUID: 2b2d6072-e280-461a-8822-66cdc33d2e8c
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 50d6d90e-97cb-4dc3-83c0-001258e34a04
+ * Parent-UUID: 2b2d6072-e280-461a-8822-66cdc33d2e8c
+ * Version: 1.0.1
  * Description: Manages the SQLite database for storing Claude Code CLI usage metrics, including completions and session aggregations.
  * Language: Go
- * Created-at: 2026-03-22T03:44:15.678Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Created-at: 2026-03-22T16:56:34.523Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1)
  */
 
 
@@ -27,7 +27,7 @@ import (
 
 // OpenMetricsDB opens or creates the Claude Code metrics database.
 func OpenMetricsDB() (*sql.DB, error) {
-	gscHome, err := settings.GetGSCHome(true)
+	gscHome, err := settings.GetGSCHome(false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve GSC_HOME: %w", err)
 	}
@@ -151,3 +151,4 @@ func UpsertSession(db *sql.DB, sessionID string, chatUUID string, usage Usage, c
 
 	return nil
 }
+
