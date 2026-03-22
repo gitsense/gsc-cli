@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Execution Manager
- * Block-UUID: b8233165-f479-4444-b23b-bd88e4669fc6
- * Parent-UUID: 0cebd362-299d-4e18-9ab4-78a342cddcb4
- * Version: 1.5.0
+ * Block-UUID: d34f94c7-d1b5-4d60-9f25-eb108e377ce9
+ * Parent-UUID: b8233165-f479-4444-b23b-bd88e4669fc6
+ * Version: 1.6.0
  * Description: Added explicit printing of the Claude response result to stdout so the user can see the answer in the CLI.
  * Language: Go
- * Created-at: 2026-03-22T16:22:44.629Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
+ * Created-at: 2026-03-22T16:38:44.106Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0)
  */
 
 
@@ -198,11 +198,15 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string, format str
 		effectiveModel = model
 	}
 
+	// Inject Identity into System Prompt
+	identityPrompt := fmt.Sprintf("Your name is %s. When generating code, you must include this name in the Authors field.", effectiveModel)
+
 	prompt := fmt.Sprintf("Read the user message in user-message.txt. IMPORTANT: First, read all context files: [%s]. Follow the protocol in CLAUDE.md.", filesListStr)
 	
 	flags := []string{
 		"-p", fmt.Sprintf("%q", prompt),
 		"--append-system-prompt-file", "./messages/system-prompt.md",
+		"--append-system-prompt", identityPrompt,
 		"--allowedTools", "Read",
 		"--output-format", "stream-json",
 	}
@@ -328,14 +332,19 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string, format str
 		// 1. Get full response
 		responseContent := fullResponse.String()
 
-		// 2. Replace {{GS-UUID}} with real UUID
-		// Pattern: ": {{GS-UUID}}" followed by newline or end of string
-		uuidPattern := regexp.MustCompile(`: {{GS-UUID}}(\n|$)`)
+		// 2. Replace Placeholders
+		uuidPattern := regexp.MustCompile(`{{GS-UUID}}`)
+		timePattern := regexp.MustCompile(`{{UTC-TIME}}`)
+		
+		currentTime := time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
+
+		// Replace UUIDs (each one gets a unique UUID)
 		finalContent := uuidPattern.ReplaceAllStringFunc(responseContent, func(match string) string {
-			newUUID := uuid.New().String()
-			// Preserve the captured newline or end-of-string
-			return ": " + newUUID + "$1"
+			return uuid.New().String()
 		})
+
+		// Replace Time (all get the same timestamp)
+		finalContent = timePattern.ReplaceAllString(finalContent, currentTime)
 
 		// 3. Construct Message
 		newMessage := &db.Message{
@@ -344,7 +353,7 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string, format str
 			Visibility: "public",
 			ChatID:     chat.ID,
 			ParentID:   parentID,
-			Level:      0, // Will be calculated by DB trigger or logic if needed, usually derived from parent
+			Level:      1, // Level is a legacy thing that we will calculate at runtime. Just set it to 1.
 			Role:       "assistant",
 			Message:    sql.NullString{String: finalContent, Valid: true},
 			RealModel:  sql.NullString{String: effectiveModel, Valid: true},
