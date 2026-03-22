@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Settings and Configuration Manager
- * Block-UUID: 3df16dee-b3c2-448c-93f8-c4b6ff7a15fe
- * Parent-UUID: cce037b3-0d6f-4527-96da-e6cb45cefa57
- * Version: 3.13.0
+ * Block-UUID: 67522d2a-a99a-4385-967a-8abd7e942e6b
+ * Parent-UUID: 3df16dee-b3c2-448c-93f8-c4b6ff7a15fe
+ * Version: 3.14.0
  * Description: Added constants for the native app lifecycle management, including log rotation, retry policies, and PID file naming.
  * Language: Go
- * Created-at: 2026-03-20T22:58:09.240Z
- * Authors: GLM-4.7 (v3.5.0), GLM-4.7 (v3.6.0), GLM-4.7 (v3.7.0), Gemini 3 Flash (v3.8.0), Gemini 3 Flash (v3.9.0), GLM-4.7 (v3.10.0), Gemini 3 Flash (v3.11.0), Gemini 3 Flash (v3.12.0), Gemini 3 Flash (v3.13.0)
+ * Created-at: 2026-03-22T03:31:51.270Z
+ * Authors: GLM-4.7 (v3.5.0), GLM-4.7 (v3.6.0), GLM-4.7 (v3.7.0), Gemini 3 Flash (v3.8.0), Gemini 3 Flash (v3.9.0), GLM-4.7 (v3.10.0), Gemini 3 Flash (v3.11.0), Gemini 3 Flash (v3.12.0), Gemini 3 Flash (v3.13.0), Gemini 3 Flash (v3.14.0)
  */
 
 
@@ -90,6 +90,14 @@ const ProvenanceFileName = "provenance.log"
 const ContractHandshakeConsumer = "gsc-contract"
 const DefaultContractTTL = 4
 const DefaultExecTimeout = 60
+
+// Claude Code Integration Constants
+const ClaudeCodeDirRelPath = "claude-code"
+const ClaudeTemplatesDirRelPath = "claude-code/templates"
+const ClaudeChatsDirRelPath = "claude-code/chats"
+const ClaudeMetricsDBName = "claude.sqlite3"
+const DefaultClaudeChunkSize = 5
+const DefaultClaudeMaxFiles = 3
 
 // Sort Modes for the 'merged' dump type
 const SortRecency = "recency"
