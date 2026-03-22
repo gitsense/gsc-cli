@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Execution Manager
- * Block-UUID: 32d18daf-ec81-4469-80d7-dead9719c3f8
- * Parent-UUID: 67552167-ff66-46bb-b6e7-7155778615ba
- * Version: 1.21.0
+ * Block-UUID: 0b6d55c1-c375-461d-8c85-df2d35e7b5ab
+ * Parent-UUID: 6271bec1-3b55-4b95-b42e-da5f9a3f3647
+ * Version: 1.23.0
  * Description: Implemented raw stream logging to file and fixed text extraction from 'assistant' events by properly parsing the nested content structure instead of relying on string matching.
  * Language: Go
- * Created-at: 2026-03-22T21:52:37.127Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.20.0), GLM-4.7 (v1.21.0)
+ * Created-at: 2026-03-22T22:39:22.521Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.20.0), GLM-4.7 (v1.21.0), GLM-4.7 (v1.22.0), GLM-4.7 (v1.23.0)
  */
 
 
@@ -235,7 +235,34 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string, format str
 		filesListStr := strings.Join(contextFiles, ", ")
 		prompt += fmt.Sprintf(" IMPORTANT: First, read all context files: [%s].", filesListStr)
 	}
-	prompt += " Follow the protocol in CLAUDE.md."
+	
+	// Add Few-Shot Reference Example for Haiku
+	prompt += "\n"
+	prompt += "REFERENCE EXAMPLE:\n"
+	prompt += "If your response includes a code modification (a patch), it must look EXACTLY like this:\n"
+	prompt += "\n"
+	prompt += "```diff\n"
+	prompt += "# Patch Metadata\n"
+	prompt += "# Component: Example\n"
+	prompt += "# Source-Block-UUID: 6bb2255d-2a79-4bb4-a5ab-f49ac36f5df1\n"
+	prompt += "# Target-Block-UUID: {{GS-UUID}}\n"
+	prompt += "# Source-Version: 1.0.0\n"
+	prompt += "# Target-Version: 1.0.1\n"
+	prompt += "# Description: Fix bug\n"
+	prompt += "# Language: JavaScript\n"
+	prompt += "# Created-at: {{UTC-TIME}}\n"
+	prompt += "# Authors: User (v1.0.0), {{MODEL-NAME}} (v1.0.1)\n"
+	prompt += "\n"
+	prompt += "\n"
+	prompt += "# --- PATCH START MARKER ---\n"
+	prompt += "--- Original\n"
+	prompt += "+++ Modified\n"
+	prompt += "@@ -1,1 +1,1 @@\n"
+	prompt += "-console.log(\"old\");\n"
+	prompt += "++console.log(\"new\");\n"
+	prompt += "# --- PATCH END MARKER ---\n"
+	prompt += "```\n\n"
+	prompt += "Follow the protocol in CLAUDE.md."
 
 	// Determine Effective Model (Priority: Flag > Config > Default)
 	effectiveModel := archiveSettings.Model
@@ -245,7 +272,7 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string, format str
 	}
 
 	// Inject Identity into System Prompt
-	identityPrompt := fmt.Sprintf("Your name is %s. When generating code, you must include this name in the Authors field.", effectiveModel)
+	identityPrompt := "Your name is {{MODEL-NAME}}. When generating code, you must include this name in the Authors field."
 
 	// Append identity to the system prompt file to avoid CLI flag conflicts
 	f, err := os.OpenFile(systemPromptPath, os.O_APPEND|os.O_WRONLY, 0644)
