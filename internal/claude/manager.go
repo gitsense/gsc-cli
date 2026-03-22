@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Execution Manager
- * Block-UUID: 0d15c09a-cb35-4a63-a900-2af7b072d147
- * Parent-UUID: 14e6b532-169b-4670-8431-3f00628037a7
- * Version: 1.14.0
+ * Block-UUID: 1d3cb03a-d455-429a-b6c7-2e50072e1958
+ * Parent-UUID: 0d15c09a-cb35-4a63-a900-2af7b072d147
+ * Version: 1.15.0
  * Description: Implemented raw stream logging to file and fixed text extraction from 'assistant' events by properly parsing the nested content structure instead of relying on string matching.
  * Language: Go
- * Created-at: 2026-03-22T20:47:44.355Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0)
+ * Created-at: 2026-03-22T20:52:29.046Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0)
  */
 
 
@@ -286,7 +286,8 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string, format str
 	isFirstLine := true
 
 	// Setup Raw Stream Logging
-	logDir := filepath.Join(gscHome, settings.ClaudeCodeDirRelPath, "logs")
+	// Move logs to chat-specific directory for better lifecycle management
+	logDir := filepath.Join(chatDir, "logs")
 	if err := os.MkdirAll(logDir, 0755); err != nil {
 		return fmt.Errorf("failed to create logs directory: %w", err)
 	}
