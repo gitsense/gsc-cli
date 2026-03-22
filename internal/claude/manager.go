@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Execution Manager
- * Block-UUID: d241f455-71df-4b3d-a8d4-37fee92d8d6b
- * Parent-UUID: 3b2d9ab2-5e90-4253-9c07-bb9fdb751b72
- * Version: 1.10.0
+ * Block-UUID: 6143623f-1c9c-4ed5-a7d9-8168c99274e7
+ * Parent-UUID: d241f455-71df-4b3d-a8d4-37fee92d8d6b
+ * Version: 1.11.0
  * Description: Added explicit printing of the Claude response result to stdout so the user can see the answer in the CLI.
  * Language: Go
- * Created-at: 2026-03-22T19:57:49.665Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0)
+ * Created-at: 2026-03-22T20:24:08.095Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0)
  */
 
 
@@ -254,6 +254,8 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string, format str
 	var finalUsage Usage
 	var finalCost float64
 	var sessionID string
+	currentTime := time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
+	isFirstLine := true
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -268,20 +270,79 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string, format str
 			continue
 		}
 
-		switch baseEvent.Type {
-		case "text_delta":
+		// Handle Init Event (First Line)
+		if isFirstLine && baseEvent.Type == "system" {
+			var initEvent SystemInitEvent
+			if err := json.Unmarshal([]byte(line), &initEvent); err == nil {
+				effectiveModel = initEvent.Model
+				sessionID = initEvent.SessionID
+				
+				// Emit Clean Stream Init Event
+				initJSON, _ := json.Marshal(map[string]interface{}{
+					"event":      "init",
+					"model":      effectiveModel,
+					"session_id": sessionID,
+				})
+				fmt.Println(string(initJSON))
+			}
+			isFirstLine = false
+			continue
+		}
+
+		// Handle Text Delta (On-the-fly replacement)
+		if baseEvent.Type == "text_delta" {
 			var deltaEvent TextDeltaEvent
 			if err := json.Unmarshal([]byte(line), &deltaEvent); err == nil {
-				fullResponse.WriteString(deltaEvent.Delta)
+				// Replace placeholders on the fly
+				modifiedDelta := strings.ReplaceAll(deltaEvent.Delta, "{{MODEL-NAME}}", effectiveModel)
+				modifiedDelta = strings.ReplaceAll(modifiedDelta, "{{UTC-TIME}}", currentTime)
+
+				fullResponse.WriteString(modifiedDelta)
 
 				if format == "text" {
 					// Stream text directly to user
-					fmt.Print(deltaEvent.Delta)
+					fmt.Print(modifiedDelta)
 				} else if format == "json" {
-					// Stream raw JSON to backend
-					fmt.Println(line)
+					// Stream Clean Stream JSON to backend
+					cleanJSON, _ := json.Marshal(map[string]interface{}{
+						"event": "text",
+						"delta": modifiedDelta,
+					})
+					fmt.Println(string(cleanJSON))
 				}
 			}
+			continue
+		}
+
+		// Handle Thinking / Tool Use (Status Events)
+		if baseEvent.Type == "assistant" {
+			// We need to peek into the content to see if it's thinking or tool use
+			// This is a simplified check. A robust implementation would fully parse the nested structure.
+			if strings.Contains(line, `"type":"thinking"`) {
+				statusJSON, _ := json.Marshal(map[string]interface{}{
+					"event":   "status",
+					"message": "Thinking...",
+				})
+				fmt.Println(string(statusJSON))
+			} else if strings.Contains(line, `"type":"tool_use"`) {
+				// Extract tool name if possible, otherwise generic message
+				toolName := "Working..."
+				if strings.Contains(line, `"name":"Read"`) {
+					toolName = "Reading context files..."
+				} else if strings.Contains(line, `"name":"Glob"`) {
+					toolName = "Scanning directory..."
+				}
+				
+				statusJSON, _ := json.Marshal(map[string]interface{}{
+					"event":   "status",
+					"message": toolName,
+				})
+				fmt.Println(string(statusJSON))
+			}
+			continue
+		}
+
+		switch baseEvent.Type {
 		case "usage":
 			var usageEvent StreamUsageEvent
 			if err := json.Unmarshal([]byte(line), &usageEvent); err == nil {
@@ -291,6 +352,14 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string, format str
 		case "error":
 			logger.Error("Claude CLI stream error", "data", line)
 		}
+	}
+
+	// Emit Done Event
+	if format == "json" {
+		doneJSON, _ := json.Marshal(map[string]interface{}{
+			"event": "done",
+		})
+		fmt.Println(string(doneJSON))
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -387,8 +456,6 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string, format str
 		// 2. Replace Placeholders
 		uuidPattern := regexp.MustCompile(`{{GS-UUID}}`)
 		timePattern := regexp.MustCompile(`{{UTC-TIME}}`)
-		
-		currentTime := time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
 
 		// Replace UUIDs (each one gets a unique UUID)
 		finalContent := uuidPattern.ReplaceAllStringFunc(responseContent, func(match string) string {

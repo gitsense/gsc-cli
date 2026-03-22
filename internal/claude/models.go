@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Data Models
- * Block-UUID: f2d4cd00-7e8c-444c-a190-4ebc9e83df1d
- * Parent-UUID: e6cef371-716b-49aa-b311-8d4859d1e73b
- * Version: 1.1.0
+ * Block-UUID: c29fb104-b569-4a23-81a3-ad9fbcb7c252
+ * Parent-UUID: f2d4cd00-7e8c-444c-a190-4ebc9e83df1d
+ * Version: 1.2.0
  * Description: Defines the data structures for Claude Code CLI integration, including API responses, usage metrics, and archive settings.
  * Language: Go
- * Created-at: 2026-03-22T15:34:50.192Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0)
+ * Created-at: 2026-03-22T20:25:55.286Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -83,4 +83,12 @@ type StreamErrorEvent struct {
 		Type    string `json:"type"`
 		Message string `json:"message"`
 	} `json:"error"`
+}
+
+// SystemInitEvent represents the first event from Claude containing session info
+type SystemInitEvent struct {
+	Type      string `json:"type"`
+	Subtype   string `json:"subtype"`
+	Model     string `json:"model"`
+	SessionID string `json:"session_id"`
 }
