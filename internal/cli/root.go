@@ -1,12 +1,12 @@
 /**
  * Component: Root CLI Command
- * Block-UUID: 024fef31-9013-45fe-a8dd-214afed013e8
- * Parent-UUID: 13154028-d260-4444-a9f6-fd0a4549791c
- * Version: 1.39.0
- * Description: Integrated IsInContainer check into PersistentPreRunE to prevent recursive proxy loops when running inside the Docker container.
+ * Block-UUID: ee4b9d43-dc49-4abd-88ec-2118b81c7120
+ * Parent-UUID: 024fef31-9013-45fe-a8dd-214afed013e8
+ * Version: 1.40.0
+ * Description: Registered the 'claude' command group and added it to the excluded commands list to support the Claude Code CLI integration.
  * Language: Go
- * Created-at: 2026-03-22T03:36:51.889Z
- * Authors: GLM-4.7 (v1.34.0), Gemini 3 Flash (v1.35.0), Gemini 3 Flash (v1.36.0), GLM-4.7 (v1.37.0), Gemini 3 Flash (v1.38.0), Gemini 3 Flash (v1.39.0)
+ * Created-at: 2026-03-22T04:39:43.440Z
+ * Authors: GLM-4.7 (v1.34.0), Gemini 3 Flash (v1.35.0), Gemini 3 Flash (v1.36.0), GLM-4.7 (v1.37.0), Gemini 3 Flash (v1.38.0), Gemini 3 Flash (v1.39.0), Gemini 3 Flash (v1.40.0)
  */
 
 

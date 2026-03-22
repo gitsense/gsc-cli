@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Chat Command
- * Block-UUID: 32ba2926-fc23-4ee5-a3f3-abeeb610d7ba
- * Parent-UUID: 3957d13f-1a6e-434a-b0bd-1aee0cba0a34
- * Version: 1.0.1
- * Description: Removed unused 'err' variable declaration to fix compilation error.
+ * Block-UUID: bf92e3cb-0300-4d93-935b-cdf5c19d9c3e
+ * Parent-UUID: 32ba2926-fc23-4ee5-a3f3-abeeb610d7ba
+ * Version: 1.1.0
+ * Description: Updated validation to allow 'parent-id' to be 0, enabling the creation of new chat sessions.
  * Language: Go
- * Created-at: 2026-03-22T03:41:05.789Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1)
+ * Created-at: 2026-03-22T04:39:43.440Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.1.0)
  */
 
 
@@ -17,7 +17,6 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	// Alias the internal logic package to avoid naming conflict with the CLI package
 	claudeint "github.com/gitsense/gsc-cli/internal/claude"
 	"github.com/gitsense/gsc-cli/pkg/logger"
 )
@@ -38,10 +37,8 @@ file-based state, and streams the response back to stdout.`,
 		if chatUUID == "" {
 			return fmt.Errorf("--uuid is required")
 		}
-		if chatParentID == 0 {
-			return fmt.Errorf("--parent-id is required")
-		}
-
+		
+		// parent-id can be 0 for new chats
 		var userMessage string
 
 		// 2. Resolve User Message
@@ -60,7 +57,6 @@ file-based state, and streams the response back to stdout.`,
 		}
 
 		// 3. Execute Chat
-		// Delegate to the internal logic layer
 		logger.Info("Executing Claude Code chat", "uuid", chatUUID, "parent_id", chatParentID)
 		if err := claudeint.ExecuteChat(chatUUID, chatParentID, userMessage); err != nil {
 			return fmt.Errorf("chat execution failed: %w", err)
