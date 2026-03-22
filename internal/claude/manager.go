@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Execution Manager
- * Block-UUID: 6143623f-1c9c-4ed5-a7d9-8168c99274e7
- * Parent-UUID: d241f455-71df-4b3d-a8d4-37fee92d8d6b
- * Version: 1.11.0
- * Description: Added explicit printing of the Claude response result to stdout so the user can see the answer in the CLI.
+ * Block-UUID: 0d15c09a-cb35-4a63-a900-2af7b072d147
+ * Parent-UUID: 14e6b532-169b-4670-8431-3f00628037a7
+ * Version: 1.14.0
+ * Description: Implemented raw stream logging to file and fixed text extraction from 'assistant' events by properly parsing the nested content structure instead of relying on string matching.
  * Language: Go
- * Created-at: 2026-03-22T20:24:08.095Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0)
+ * Created-at: 2026-03-22T20:47:44.355Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0)
  */
 
 
@@ -32,6 +32,17 @@ import (
 	"github.com/gitsense/gsc-cli/pkg/settings"
 	"github.com/google/uuid"
 )
+
+// AssistantMessageEvent represents the full assistant message event containing text content
+type AssistantMessageEvent struct {
+	Type    string `json:"type"`
+	Message struct {
+		Content []struct {
+			Type string `json:"type"`
+			Text string `json:"text"`
+		} `json:"content"`
+	} `json:"message"`
+}
 
 // ExecuteChat is the main entry point for executing a Claude Code chat session.
 func ExecuteChat(chatUUID string, parentID int64, userMessage string, format string, appendMsg bool, save bool, appendSave bool, model string) error {
@@ -142,7 +153,9 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string, format str
 	}
 
 	// 8. Write User Message
-	userMsgPath := filepath.Join(chatDir, "user-message.txt")
+	// Moved to messages/ directory to align with protocol and prevent path hallucinations
+	// Changed extension to .md to indicate it is part of the context documentation set
+	userMsgPath := filepath.Join(chatDir, "messages", "user-message.md")
 	if err := os.WriteFile(userMsgPath, []byte(userMessage), 0644); err != nil {
 		return fmt.Errorf("failed to write user message: %w", err)
 	}
@@ -185,14 +198,31 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string, format str
 	for _, entry := range entries {
 		name := entry.Name()
 		// Include active, archives, and context files. Exclude system-prompt.md (loaded via flag).
-		if name == "messages-active.json" || strings.HasPrefix(name, "messages-archive-") || strings.HasPrefix(name, "context-") {
+		if name == "messages-active.json" {
+			// Check if file has content before adding to context list to prevent hallucinations
+			fullPath := filepath.Join(msgDir, name)
+			data, err := os.ReadFile(fullPath)
+			if err == nil {
+				var window ActiveWindow
+				if json.Unmarshal(data, &window) == nil && len(window.Messages) > 0 {
+					contextFiles = append(contextFiles, filepath.Join("messages", name))
+				}
+			}
+		} else if strings.HasPrefix(name, "messages-archive-") || strings.HasPrefix(name, "context-") {
 			contextFiles = append(contextFiles, filepath.Join("messages", name))
 		}
 	}
 	
 	sort.Strings(contextFiles)
-	filesListStr := strings.Join(contextFiles, ", ")
 	
+	// Construct prompt with explicit file paths
+	prompt := "Read the user message in messages/user-message.md."
+	if len(contextFiles) > 0 {
+		filesListStr := strings.Join(contextFiles, ", ")
+		prompt += fmt.Sprintf(" IMPORTANT: First, read all context files: [%s].", filesListStr)
+	}
+	prompt += " Follow the protocol in CLAUDE.md."
+
 	// Determine effective model
 	effectiveModel := "Claude Code"
 	if model != "" {
@@ -213,8 +243,6 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string, format str
 	}
 	f.Close()
 
-	prompt := fmt.Sprintf("Read the user message in user-message.txt. IMPORTANT: First, read all context files: [%s]. Follow the protocol in CLAUDE.md.", filesListStr)
-	
 	flags := []string{
 		"-p", fmt.Sprintf("%q", prompt),
 		"--append-system-prompt-file", "./messages/system-prompt.md",
@@ -257,10 +285,28 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string, format str
 	currentTime := time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
 	isFirstLine := true
 
+	// Setup Raw Stream Logging
+	logDir := filepath.Join(gscHome, settings.ClaudeCodeDirRelPath, "logs")
+	if err := os.MkdirAll(logDir, 0755); err != nil {
+		return fmt.Errorf("failed to create logs directory: %w", err)
+	}
+	logFileName := fmt.Sprintf("raw-stream-%s.ndjson", time.Now().Format("20060102-150405"))
+	logFilePath := filepath.Join(logDir, logFileName)
+	logFile, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to create raw stream log file: %w", err)
+	}
+	defer logFile.Close()
+
 	for scanner.Scan() {
 		line := scanner.Text()
 		if line == "" {
 			continue
+		}
+
+		// Write raw line to log file
+		if _, err := logFile.WriteString(line + "\n"); err != nil {
+			logger.Warning("Failed to write to raw stream log", "error", err)
 		}
 
 		// Parse event type to determine unmarshaling target
@@ -316,28 +362,49 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string, format str
 
 		// Handle Thinking / Tool Use (Status Events)
 		if baseEvent.Type == "assistant" {
-			// We need to peek into the content to see if it's thinking or tool use
-			// This is a simplified check. A robust implementation would fully parse the nested structure.
-			if strings.Contains(line, `"type":"thinking"`) {
-				statusJSON, _ := json.Marshal(map[string]interface{}{
-					"event":   "status",
-					"message": "Thinking...",
-				})
-				fmt.Println(string(statusJSON))
-			} else if strings.Contains(line, `"type":"tool_use"`) {
-				// Extract tool name if possible, otherwise generic message
-				toolName := "Working..."
-				if strings.Contains(line, `"name":"Read"`) {
-					toolName = "Reading context files..."
-				} else if strings.Contains(line, `"name":"Glob"`) {
-					toolName = "Scanning directory..."
+			// Parse the full assistant event to extract content
+			var assistantEvent AssistantMessageEvent
+			if err := json.Unmarshal([]byte(line), &assistantEvent); err == nil {
+				for _, contentBlock := range assistantEvent.Message.Content {
+					switch contentBlock.Type {
+					case "thinking":
+						statusJSON, _ := json.Marshal(map[string]interface{}{
+							"event":   "status",
+							"message": "Thinking...",
+						})
+						fmt.Println(string(statusJSON))
+					case "tool_use":
+						// Extract tool name if possible, otherwise generic message
+						toolName := "Working..."
+						if strings.Contains(line, `"name":"Read"`) {
+							toolName = "Reading context files..."
+						} else if strings.Contains(line, `"name":"Glob"`) {
+							toolName = "Scanning directory..."
+						}
+						
+						statusJSON, _ := json.Marshal(map[string]interface{}{
+							"event":   "status",
+							"message": toolName,
+						})
+						fmt.Println(string(statusJSON))
+					case "text":
+						// Extract and process text content
+						modifiedText := strings.ReplaceAll(contentBlock.Text, "{{MODEL-NAME}}", effectiveModel)
+						modifiedText = strings.ReplaceAll(modifiedText, "{{UTC-TIME}}", currentTime)
+
+						fullResponse.WriteString(modifiedText)
+
+						if format == "text" {
+							fmt.Print(modifiedText)
+						} else if format == "json" {
+							cleanJSON, _ := json.Marshal(map[string]interface{}{
+								"event": "text",
+								"delta": modifiedText,
+							})
+							fmt.Println(string(cleanJSON))
+						}
+					}
 				}
-				
-				statusJSON, _ := json.Marshal(map[string]interface{}{
-					"event":   "status",
-					"message": toolName,
-				})
-				fmt.Println(string(statusJSON))
 			}
 			continue
 		}
