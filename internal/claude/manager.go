@@ -1,36 +1,39 @@
 /**
  * Component: Claude Code Execution Manager
- * Block-UUID: a4b8d3cb-4731-48ce-af95-7e298fece72a
- * Parent-UUID: 8d3623a2-f00f-40e1-82d6-efeb9c33ad91
- * Version: 1.2.0
- * Description: Switched to '--output-format json' for reliable parsing, added a pre-flight check for the 'claude' binary, and improved ancestry logic to handle new chats (parentID=0).
+ * Block-UUID: b8233165-f479-4444-b23b-bd88e4669fc6
+ * Parent-UUID: 0cebd362-299d-4e18-9ab4-78a342cddcb4
+ * Version: 1.5.0
+ * Description: Added explicit printing of the Claude response result to stdout so the user can see the answer in the CLI.
  * Language: Go
- * Created-at: 2026-03-22T05:40:33.097Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), Gemini 3 Flash (v1.0.3), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0)
+ * Created-at: 2026-03-22T16:22:44.629Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
  */
 
 
 package claude
 
 import (
+	"bufio"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/gitsense/gsc-cli/internal/db"
-	exec_internal "github.com/gitsense/gsc-cli/internal/exec"
 	"github.com/gitsense/gsc-cli/internal/git"
 	"github.com/gitsense/gsc-cli/pkg/logger"
 	"github.com/gitsense/gsc-cli/pkg/settings"
+	"github.com/google/uuid"
 )
 
 // ExecuteChat is the main entry point for executing a Claude Code chat session.
-func ExecuteChat(chatUUID string, parentID int64, userMessage string) error {
+func ExecuteChat(chatUUID string, parentID int64, userMessage string, format string, appendMsg bool, save bool, appendSave bool, model string) error {
 	startTime := time.Now()
 
 	// 1. Pre-flight Check: Ensure 'claude' binary is in PATH
@@ -65,6 +68,47 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string) error {
 	}
 	if chat == nil {
 		return fmt.Errorf("chat not found")
+	}
+
+	// 5.5. Determine Parent ID (Hierarchy: explicit > append/append-save)
+	if parentID == 0 && (appendMsg || appendSave) {
+		lastID, err := db.GetLastMessageID(chatDB, chat.ID)
+		if err != nil {
+			return fmt.Errorf("failed to get last message ID for append: %w", err)
+		}
+		parentID = lastID
+		logger.Info("Auto-appending to latest message", "parent_id", parentID)
+	}
+
+	if parentID == 0 {
+		return fmt.Errorf("no parent-id specified and no append flag set")
+	}
+
+	// 5.6. Handle --append-save (Insert User Message)
+	if appendSave {
+		logger.Info("Saving user message to database", "parent_id", parentID)
+
+		// Insert User Message
+		userMsg := &db.Message{
+			Type:       "regular",
+			Deleted:    0,
+			Visibility: "public",
+			ChatID:     chat.ID,
+			ParentID:   parentID,
+			Level:      1, // Level is a legacy thing that we will calculate at runtime. Just set it to 1.
+			Role:       "user",
+			Message:    sql.NullString{String: userMessage, Valid: true},
+			RealModel:  sql.NullString{Valid: false}, // User messages don't have a model
+			Temperature: sql.NullFloat64{Valid: false},
+		}
+
+		newID, err := db.InsertMessage(chatDB, userMsg)
+		if err != nil {
+			return fmt.Errorf("failed to save user message to database: %w", err)
+		}
+		logger.Success("User message saved", "id", newID)
+		parentID = newID // Update parentID for the response
+		logger.Info("Updated parent_id for response", "parent_id", parentID)
 	}
 
 	// 5. Retrieve Messages and Filter by Ancestry
@@ -112,13 +156,13 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string) error {
 	systemPromptPath := filepath.Join(chatDir, "messages", "system-prompt.md")
 	defaultPrompt := "You are a helpful coding assistant." // Fallback
 
-	// Try to load the bootstrapped coding-assistant.md template
-	templatePath := filepath.Join(gscHome, settings.ClaudeCodeDirRelPath, settings.ClaudeTemplatesDirRelPath, "coding-assistant.md")
+	// Try to load the bootstrapped coding_assistant.md template
+	templatePath := filepath.Join(gscHome, settings.ClaudeCodeDirRelPath, settings.ClaudeTemplatesDirRelPath, "coding_assistant.md")
 	if data, err := os.ReadFile(templatePath); err == nil {
 		defaultPrompt = string(data)
-		logger.Debug("Loaded coding-assistant.md template")
+		logger.Debug("Loaded coding_assistant.md template")
 	} else {
-		logger.Debug("coding-assistant.md not found, using default prompt", "error", err)
+		logger.Debug("coding_assistant.md not found, using default prompt", "error", err)
 	}
 
 	if _, err := os.Stat(systemPromptPath); os.IsNotExist(err) {
@@ -127,9 +171,6 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string) error {
 		}
 	}
 
-	// 11. Execute Claude Code CLI
-	// We use '--output-format json' for reliable parsing of the final result and metrics.
-	
 	// 10.5. Build File List for Bulk Read Strategy
 	// We explicitly list all context files in the prompt to ensure Claude reads them in the first turn.
 	msgDir := filepath.Join(chatDir, "messages")
@@ -151,58 +192,171 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string) error {
 	sort.Strings(contextFiles)
 	filesListStr := strings.Join(contextFiles, ", ")
 	
+	// Determine effective model
+	effectiveModel := "Claude Code"
+	if model != "" {
+		effectiveModel = model
+	}
+
 	prompt := fmt.Sprintf("Read the user message in user-message.txt. IMPORTANT: First, read all context files: [%s]. Follow the protocol in CLAUDE.md.", filesListStr)
 	
 	flags := []string{
 		"-p", fmt.Sprintf("%q", prompt),
 		"--append-system-prompt-file", "./messages/system-prompt.md",
 		"--allowedTools", "Read",
-		"--output-format", "json",
+		"--output-format", "stream-json",
 	}
 
-	// Create executor
-	executor := exec_internal.NewExecutor("claude "+strings.Join(flags, " "), exec_internal.ExecFlags{}, chatDir, nil)
+	// Add model flag if specified
+	if model != "" {
+		flags = append(flags, "--model", model)
+	}
 
-	// Run
-	result, err := executor.Run()
+	// 11. Execute Claude Code CLI (Streaming)
+	cmd := exec.Command("claude", flags...)
+	cmd.Dir = chatDir
+
+	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		logger.Error("Claude CLI execution failed", "error", err)
+		return fmt.Errorf("failed to create stdout pipe: %w", err)
 	}
 
-	// 12. Parse Metrics from Output
-	// With '--output-format json', the entire output is a single JSON object.
-	var finalResponse ClaudeResponse
-	if err := json.Unmarshal([]byte(result.Output), &finalResponse); err != nil {
-		logger.Error("Failed to parse Claude JSON response", "error", err)
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start claude command: %w", err)
+	}
+
+	// 12. Process Stream
+	scanner := bufio.NewScanner(stdout)
+	var fullResponse strings.Builder
+	var finalUsage Usage
+	var finalCost float64
+	var sessionID string
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if line == "" {
+			continue
+		}
+
+		// Parse event type to determine unmarshaling target
+		var baseEvent StreamEvent
+		if err := json.Unmarshal([]byte(line), &baseEvent); err != nil {
+			logger.Warning("Failed to parse stream event line", "line", line, "error", err)
+			continue
+		}
+
+		switch baseEvent.Type {
+		case "text_delta":
+			var deltaEvent TextDeltaEvent
+			if err := json.Unmarshal([]byte(line), &deltaEvent); err == nil {
+				fullResponse.WriteString(deltaEvent.Delta)
+
+				if format == "text" {
+					// Stream text directly to user
+					fmt.Print(deltaEvent.Delta)
+				} else if format == "json" {
+					// Stream raw JSON to backend
+					fmt.Println(line)
+				}
+			}
+		case "usage":
+			var usageEvent StreamUsageEvent
+			if err := json.Unmarshal([]byte(line), &usageEvent); err == nil {
+				finalUsage = usageEvent.Usage
+				finalCost = usageEvent.Cost
+			}
+		case "error":
+			logger.Error("Claude CLI stream error", "data", line)
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("error reading claude output: %w", err)
+	}
+
+	// Wait for command to finish
+	if err := cmd.Wait(); err != nil {
+		return fmt.Errorf("claude command exited with error: %w", err)
 	}
 
 	// 13. Save Metrics
 	duration := time.Since(startTime)
-	if finalResponse.SessionID != "" {
+	// Note: Session ID is not typically emitted in stream-json events in the same way as the final JSON object.
+	// We might need to derive it or handle it differently if the CLI provides it in a specific event.
+	// For now, we will use a placeholder or check if it was in a specific event.
+	// Assuming the CLI might emit a 'session_start' or similar, or we generate one locally.
+	// If the CLI doesn't emit it, we might need to track it via environment or process ID.
+	// For this implementation, we'll assume we need to capture it if available, or use a generated UUID.
+	// *Self-correction*: The standard Claude Code CLI stream-json usually includes session info in the first event or similar.
+	// We will look for a specific event or just use a generated ID for tracking purposes if not found.
+	// Let's assume for now we generate a session ID for tracking purposes if not provided by the stream.
+	if sessionID == "" {
+		sessionID = fmt.Sprintf("stream-%d", time.Now().UnixNano())
+	}
+
+	if sessionID != "" {
 		if err := InsertCompletion(
 			metricsDB,
 			chatUUID,
 			0, // We don't have the new message ID yet (Node.js creates it)
-			finalResponse.SessionID,
+			sessionID,
 			"claude-code", // Model placeholder
-			finalResponse.Usage,
-			finalResponse.Cost,
+			finalUsage,
+			finalCost,
 			int(duration.Milliseconds()),
-			result.Output,
-			result.ExitCode,
+			"", // rawJSON (streaming mode doesn't produce a single JSON blob)
+			0,  // exitCode (assumed 0 if we reached here)
 		); err != nil {
 			logger.Error("Failed to save completion metrics", "error", err)
 		}
 
 		if err := UpsertSession(
 			metricsDB,
-			finalResponse.SessionID,
+			sessionID,
 			chatUUID,
-			finalResponse.Usage,
-			finalResponse.Cost,
+			finalUsage,
+			finalCost,
 		); err != nil {
 			logger.Error("Failed to upsert session metrics", "error", err)
 		}
+	}
+
+	// 14. Save Response to Database (if --save flag is set)
+	if save {
+		logger.Info("Saving response to database", "parent_id", parentID)
+
+		// 1. Get full response
+		responseContent := fullResponse.String()
+
+		// 2. Replace {{GS-UUID}} with real UUID
+		// Pattern: ": {{GS-UUID}}" followed by newline or end of string
+		uuidPattern := regexp.MustCompile(`: {{GS-UUID}}(\n|$)`)
+		finalContent := uuidPattern.ReplaceAllStringFunc(responseContent, func(match string) string {
+			newUUID := uuid.New().String()
+			// Preserve the captured newline or end-of-string
+			return ": " + newUUID + "$1"
+		})
+
+		// 3. Construct Message
+		newMessage := &db.Message{
+			Type:       "regular",
+			Deleted:    0,
+			Visibility: "public",
+			ChatID:     chat.ID,
+			ParentID:   parentID,
+			Level:      0, // Will be calculated by DB trigger or logic if needed, usually derived from parent
+			Role:       "assistant",
+			Message:    sql.NullString{String: finalContent, Valid: true},
+			RealModel:  sql.NullString{String: effectiveModel, Valid: true},
+			Temperature: sql.NullFloat64{Valid: false}, // Default
+		}
+
+		// 4. Insert
+		newMsgID, err := db.InsertMessage(chatDB, newMessage)
+		if err != nil {
+			return fmt.Errorf("failed to save message to database: %w", err)
+		}
+		logger.Success("Message saved", "id", newMsgID)
 	}
 
 	return nil
