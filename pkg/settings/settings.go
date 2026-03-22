@@ -1,12 +1,12 @@
 /**
  * Component: Settings and Configuration Manager
- * Block-UUID: 981bdb8d-1221-42c4-9d27-536e3dfa0222
- * Parent-UUID: 7717b600-00dc-40ec-8380-dd4c2489ddd9
- * Version: 3.16.0
+ * Block-UUID: 1f4e8007-a724-44c3-8963-a333cba090e9
+ * Parent-UUID: 981bdb8d-1221-42c4-9d27-536e3dfa0222
+ * Version: 3.17.0
  * Description: Exported TemplateFS to allow other packages to access embedded templates, resolving embed path restrictions.
  * Language: Go
- * Created-at: 2026-03-22T18:59:37.466Z
- * Authors: GLM-4.7 (v3.5.0), ..., Gemini 3 Flash (v3.14.0), Gemini 3 Flash (v3.15.0), GLM-4.7 (v3.15.1), GLM-4.7 (v3.16.0)
+ * Created-at: 2026-03-22T19:41:06.321Z
+ * Authors: GLM-4.7 (v3.5.0), ..., Gemini 3 Flash (v3.14.0), Gemini 3 Flash (v3.15.0), GLM-4.7 (v3.16.0), GLM-4.7 (v3.17.0)
  */
 
 
@@ -92,7 +92,7 @@ const DefaultContractTTL = 4
 const DefaultExecTimeout = 60
 
 // Claude Code Integration Constants
-const ClaudeCodeDirRelPath = "claude-code"
+const ClaudeCodeDirRelPath = "data/claude-code"
 const ClaudeChatsDirRelPath = "claude-code/chats"
 const ClaudeTemplatesPath = "data/templates/claude"
 const ClaudeMetricsDBName = "claude.sqlite3"

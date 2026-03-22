@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Archive Manager
- * Block-UUID: 748f2d2a-46f7-4711-8277-f61448d02b84
- * Parent-UUID: 24354d07-2ed7-4b20-85ad-2fbd58c383bb
- * Version: 1.0.1
+ * Block-UUID: 8d29ff8e-8f73-401e-8b6b-aa9f58e532a2
+ * Parent-UUID: 748f2d2a-46f7-4711-8277-f61448d02b84
+ * Version: 1.1.0
  * Description: Added logging statements for file operations and hash checks to improve observability.
  * Language: Go
- * Created-at: 2026-03-22T03:46:45.910Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1)
+ * Created-at: 2026-03-22T19:42:50.637Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.1.0)
  */
 
 
@@ -138,6 +138,9 @@ func writeArchiveChunks(dir string, messages []db.Message, settings Settings) ([
 		// Convert to MessageFile format
 		var msgFiles []MessageFile
 		for _, m := range chunk {
+			if m.Role == "system" {
+				continue
+			}
 			content := ""
 			if m.Message.Valid {
 				content = m.Message.String
@@ -193,6 +196,9 @@ func writeActiveWindow(dir string, messages []db.Message, archiveFiles []Archive
 	// Convert messages
 	var msgFiles []MessageFile
 	for _, m := range messages {
+		if m.Role == "system" {
+			continue
+		}
 		content := ""
 		if m.Message.Valid {
 			content = m.Message.String

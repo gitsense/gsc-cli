@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Execution Manager
- * Block-UUID: 4fca15d2-1cd2-48ff-a8f5-f6df7151d6cf
- * Parent-UUID: d34f94c7-d1b5-4d60-9f25-eb108e377ce9
- * Version: 1.7.0
+ * Block-UUID: d241f455-71df-4b3d-a8d4-37fee92d8d6b
+ * Parent-UUID: 3b2d9ab2-5e90-4253-9c07-bb9fdb751b72
+ * Version: 1.10.0
  * Description: Added explicit printing of the Claude response result to stdout so the user can see the answer in the CLI.
  * Language: Go
- * Created-at: 2026-03-22T19:03:15.562Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0)
+ * Created-at: 2026-03-22T19:57:49.665Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0)
  */
 
 
@@ -15,6 +15,7 @@ package claude
 import (
 	"bufio"
 	"database/sql"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -201,12 +202,23 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string, format str
 	// Inject Identity into System Prompt
 	identityPrompt := fmt.Sprintf("Your name is %s. When generating code, you must include this name in the Authors field.", effectiveModel)
 
+	// Append identity to the system prompt file to avoid CLI flag conflicts
+	f, err := os.OpenFile(systemPromptPath, os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to open system prompt for appending: %w", err)
+	}
+	if _, err := f.WriteString(identityPrompt); err != nil {
+		f.Close()
+		return fmt.Errorf("failed to append identity to system prompt: %w", err)
+	}
+	f.Close()
+
 	prompt := fmt.Sprintf("Read the user message in user-message.txt. IMPORTANT: First, read all context files: [%s]. Follow the protocol in CLAUDE.md.", filesListStr)
 	
 	flags := []string{
 		"-p", fmt.Sprintf("%q", prompt),
 		"--append-system-prompt-file", "./messages/system-prompt.md",
-		"--append-system-prompt", identityPrompt,
+		"--verbose",
 		"--allowedTools", "Read",
 		"--output-format", "stream-json",
 	}
@@ -220,6 +232,9 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string, format str
 	cmd := exec.Command("claude", flags...)
 	cmd.Dir = chatDir
 
+	// Log the full command for debugging
+	logger.Debug("Executing Claude CLI command", "command", strings.Join(cmd.Args, " "))
+
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return fmt.Errorf("failed to create stdout pipe: %w", err)
@@ -228,6 +243,10 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string, format str
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("failed to start claude command: %w", err)
 	}
+
+	// Capture stderr for debugging and history logging
+	var stderrBuf bytes.Buffer
+	cmd.Stderr = &stderrBuf
 
 	// 12. Process Stream
 	scanner := bufio.NewScanner(stdout)
@@ -278,13 +297,46 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string, format str
 		return fmt.Errorf("error reading claude output: %w", err)
 	}
 
-	// Wait for command to finish
-	if err := cmd.Wait(); err != nil {
-		return fmt.Errorf("claude command exited with error: %w", err)
+	// Wait for command to finish and capture exit details
+	exitCode := 0
+	waitErr := cmd.Wait()
+	if waitErr != nil {
+		if exitError, ok := waitErr.(*exec.ExitError); ok {
+			exitCode = exitError.ExitCode()
+		} else {
+			exitCode = 1
+		}
+	}
+
+	// Log stderr if present
+	stderrStr := stderrBuf.String()
+	if stderrStr != "" {
+		// Print stderr to console so the user sees the error immediately
+		fmt.Fprintln(os.Stderr, stderrStr)
+
+		logger.Error("Claude CLI stderr output", "output", stderrStr)
+	}
+
+	// Log execution history
+	duration := time.Since(startTime)
+	historyEntry := HistoryEntry{
+		Timestamp:   time.Now().UTC().Format(time.RFC3339),
+		ChatUUID:    chatUUID,
+		Command:     strings.Join(cmd.Args, " "),
+		WorkingDir:  chatDir,
+		ExitCode:    exitCode,
+		Stderr:      stderrStr,
+		DurationMs:  duration.Milliseconds(),
+	}
+	if err := logExecutionHistory(gscHome, historyEntry); err != nil {
+		logger.Warning("Failed to write execution history", "error", err)
+	}
+
+	if waitErr != nil {
+		return fmt.Errorf("claude command exited with error: %w", waitErr)
 	}
 
 	// 13. Save Metrics
-	duration := time.Since(startTime)
 	// Note: Session ID is not typically emitted in stream-json events in the same way as the final JSON object.
 	// We might need to derive it or handle it differently if the CLI provides it in a specific event.
 	// For now, we will use a placeholder or check if it was in a specific event.
@@ -435,4 +487,39 @@ func getAncestors(allMessages []db.Message, targetID int64) ([]db.Message, error
 	}
 
 	return ancestors, nil
+}
+
+// HistoryEntry represents a single execution record in history.jsonl
+type HistoryEntry struct {
+	Timestamp   string `json:"timestamp"`
+	ChatUUID    string `json:"chat_uuid"`
+	Command     string `json:"command"`
+	WorkingDir  string `json:"working_dir"`
+	ExitCode    int    `json:"exit_code"`
+	Stderr      string `json:"stderr"`
+	DurationMs  int64  `json:"duration_ms"`
+}
+
+// logExecutionHistory appends an execution record to history.jsonl
+func logExecutionHistory(gscHome string, entry HistoryEntry) error {
+	historyPath := filepath.Join(gscHome, settings.ClaudeCodeDirRelPath, "history.jsonl")
+
+	// Ensure directory exists
+	if err := os.MkdirAll(filepath.Dir(historyPath), 0755); err != nil {
+		return err
+	}
+
+	f, err := os.OpenFile(historyPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	data, err := json.Marshal(entry)
+	if err != nil {
+		return err
+	}
+
+	_, err = f.Write(append(data, '\n'))
+	return err
 }
