@@ -526,8 +526,6 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 					modifiedText := strings.ReplaceAll(wrapperEvent.Event.Delta.Text, "{{MODEL-NAME}}", effectiveModel)
 					modifiedText = strings.ReplaceAll(modifiedText, "{{UTC-TIME}}", currentTime)
 
-					fullResponse.WriteString(modifiedText)
-
 					if !toolsFinished {
 						responseBuffer.WriteString(modifiedText)
 					} else {
