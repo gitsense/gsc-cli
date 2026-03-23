@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Execution Manager
- * Block-UUID: 6669c036-bc78-4307-85fe-f2ab3c7f1a06
- * Parent-UUID: 638d9dd7-8dfa-4363-ad3a-780d3ff33e91
- * Version: 1.28.0
+ * Block-UUID: e39be4b7-bb6e-4107-a3de-ddca3b92a4e0
+ * Parent-UUID: 6669c036-bc78-4307-85fe-f2ab3c7f1a06
+ * Version: 1.29.0
  * Description: Implemented raw stream logging to file and fixed text extraction from 'assistant' events by properly parsing the nested content structure instead of relying on string matching.
  * Language: Go
- * Created-at: 2026-03-23T17:34:34.852Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.26.0), GLM-4.7 (v1.27.0), GLM-4.7 (v1.28.0)
+ * Created-at: 2026-03-23T18:08:37.161Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.28.0), GLM-4.7 (v1.29.0)
  */
 
 
@@ -433,15 +433,6 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 			// Parse the full assistant event to extract content
 			var assistantEvent AssistantMessageEvent
 			if err := json.Unmarshal([]byte(line), &assistantEvent); err == nil {
-				// Check if this event contains a tool_use (indicates a plan/intermediate turn)
-				hasToolUse := false
-				for _, cb := range assistantEvent.Message.Content {
-					if cb.Type == "tool_use" {
-						hasToolUse = true
-						break
-					}
-				}
-
 				for _, contentBlock := range assistantEvent.Message.Content {
 					switch contentBlock.Type {
 					case "thinking":
@@ -464,27 +455,6 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 							"message": toolName,
 						})
 						fmt.Println(string(statusJSON))
-					case "text":
-						// Only process text if no tool is being used (suppresses "plan" leaks)
-						if !hasToolUse && toolsFinished {
-							modifiedText := strings.ReplaceAll(contentBlock.Text, "{{MODEL-NAME}}", effectiveModel)
-							modifiedText = strings.ReplaceAll(modifiedText, "{{UTC-TIME}}", currentTime)
-
-							if format == "text" {
-								fmt.Print(modifiedText)
-							} else if format == "json" {
-								cleanJSON, _ := json.Marshal(map[string]interface{}{
-									"event": "text",
-									"delta": modifiedText,
-								})
-								fmt.Println(string(cleanJSON))
-							}
-						} else if !hasToolUse {
-							// Buffer the text if tools aren't finished (suppresses "plan" leaks)
-							modifiedText := strings.ReplaceAll(contentBlock.Text, "{{MODEL-NAME}}", effectiveModel)
-							modifiedText = strings.ReplaceAll(modifiedText, "{{UTC-TIME}}", currentTime)
-							responseBuffer.WriteString(modifiedText)
-						}
 					}
 				}
 			}
