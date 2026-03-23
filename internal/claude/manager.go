@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Execution Manager
- * Block-UUID: 1e1d8407-1f9c-4b55-905d-372c0bee8293
- * Parent-UUID: ef26ec10-7815-49cf-99fd-ff03e4eb8dd3
- * Version: 1.25.0
+ * Block-UUID: 638d9dd7-8dfa-4363-ad3a-780d3ff33e91
+ * Parent-UUID: 89dfe67a-3a0b-4f44-821e-ec102124d5b3
+ * Version: 1.27.0
  * Description: Implemented raw stream logging to file and fixed text extraction from 'assistant' events by properly parsing the nested content structure instead of relying on string matching.
  * Language: Go
- * Created-at: 2026-03-23T05:58:21.131Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.20.0), GLM-4.7 (v1.21.0), GLM-4.7 (v1.22.0), GLM-4.7 (v1.23.0), GLM-4.7 (v1.24.0), GLM-4.7 (v1.25.0)
+ * Created-at: 2026-03-23T17:20:21.136Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.26.0), GLM-4.7 (v1.27.0)
  */
 
 
@@ -46,7 +46,8 @@ type AssistantMessageEvent struct {
 }
 
 // ExecuteChat is the main entry point for executing a Claude Code chat session.
-func ExecuteChat(chatUUID string, parentID int64, userMessage string, format string, appendMsg bool, save bool, appendSave bool, model string, thinkingBudget int) error {
+// assistantMessageID is the ID of the assistant message (placeholder) in the database.
+func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, format string, appendMsg bool, save bool, appendSave bool, model string, thinkingBudget int) error {
 	startTime := time.Now()
 
 	// 1. Pre-flight Check: Ensure 'claude' binary is in PATH
@@ -84,22 +85,22 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string, format str
 	}
 
 	// 5.5. Determine Parent ID (Hierarchy: explicit > append/append-save)
-	if parentID == 0 && (appendMsg || appendSave) {
+	if assistantMessageID == 0 && (appendMsg || appendSave) {
 		lastID, err := db.GetLastMessageID(chatDB, chat.ID)
 		if err != nil {
 			return fmt.Errorf("failed to get last message ID for append: %w", err)
 		}
-		parentID = lastID
-		logger.Info("Auto-appending to latest message", "parent_id", parentID)
+		assistantMessageID = lastID
+		logger.Info("Auto-appending to latest message", "assistant_message_id", assistantMessageID)
 	}
 
-	if parentID == 0 {
-		return fmt.Errorf("no parent-id specified and no append flag set")
+	if assistantMessageID == 0 {
+		return fmt.Errorf("no assistant-message-id specified and no append flag set")
 	}
 
 	// 5.6. Handle --append-save (Insert User Message)
 	if appendSave {
-		logger.Info("Saving user message to database", "parent_id", parentID)
+		logger.Info("Saving user message to database", "assistant_message_id", assistantMessageID)
 
 		// Insert User Message
 		userMsg := &db.Message{
@@ -107,7 +108,7 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string, format str
 			Deleted:    0,
 			Visibility: "public",
 			ChatID:     chat.ID,
-			ParentID:   parentID,
+			ParentID:   assistantMessageID,
 			Level:      1, // Level is a legacy thing that we will calculate at runtime. Just set it to 1.
 			Role:       "user",
 			Message:    sql.NullString{String: userMessage, Valid: true},
@@ -120,8 +121,8 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string, format str
 			return fmt.Errorf("failed to save user message to database: %w", err)
 		}
 		logger.Success("User message saved", "id", newID)
-		parentID = newID // Update parentID for the response
-		logger.Info("Updated parent_id for response", "parent_id", parentID)
+		assistantMessageID = newID // Update assistantMessageID for the response
+		logger.Info("Updated assistant_message_id for response", "assistant_message_id", assistantMessageID)
 	}
 
 	// 5. Retrieve Messages and Filter by Ancestry
@@ -131,7 +132,7 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string, format str
 	}
 
 	// Filter messages to only include ancestors of the parentID (Fork-safe)
-	contextMessages, err := getAncestors(allMessages, parentID)
+	contextMessages, err := getAncestors(allMessages, assistantMessageID)
 	if err != nil {
 		return fmt.Errorf("failed to filter message ancestry: %w", err)
 	}
@@ -162,7 +163,15 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string, format str
 		logger.Debug("Settings file not found, using defaults", "path", settingsPath)
 	}
 
-	_, err = SyncArchive(chatDir, contextMessages, archiveSettings)
+	// Exclude the current user message from the archive contextMessages 
+	// ends with the current user message (chatParentID) We want everything 
+	// BEFORE it for the archive (historical context only)
+	var historicalMessages []db.Message
+	if len(contextMessages) > 0 {
+		historicalMessages = contextMessages[:len(contextMessages)-1]
+	}
+
+	_, err = SyncArchive(chatDir, historicalMessages, archiveSettings)
 	if err != nil {
 		return fmt.Errorf("failed to sync archive: %w", err)
 	}
@@ -662,7 +671,7 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string, format str
 
 	// 14. Save Response to Database (if --save flag is set)
 	if save {
-		logger.Info("Saving response to database", "parent_id", parentID)
+		logger.Info("Saving response to database", "parent_id", assistantMessageID)
 
 		// 1. Get full response
 		responseContent := fullResponse.String()
@@ -685,7 +694,7 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string, format str
 			Deleted:    0,
 			Visibility: "public",
 			ChatID:     chat.ID,
-			ParentID:   parentID,
+			ParentID:   assistantMessageID,
 			Level:      1, // Level is a legacy thing that we will calculate at runtime. Just set it to 1.
 			Role:       "assistant",
 			Message:    sql.NullString{String: finalContent, Valid: true},
