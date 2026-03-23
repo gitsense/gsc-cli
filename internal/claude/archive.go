@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Archive Manager
- * Block-UUID: 8d29ff8e-8f73-401e-8b6b-aa9f58e532a2
- * Parent-UUID: 748f2d2a-46f7-4711-8277-f61448d02b84
- * Version: 1.1.0
+ * Block-UUID: f4face29-c90a-46af-befa-eb92bc62dcdc
+ * Parent-UUID: 8d29ff8e-8f73-401e-8b6b-aa9f58e532a2
+ * Version: 1.2.0
  * Description: Added logging statements for file operations and hash checks to improve observability.
  * Language: Go
- * Created-at: 2026-03-22T19:42:50.637Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.1.0)
+ * Created-at: 2026-03-23T06:26:45.059Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -183,8 +183,76 @@ func writeArchiveChunks(dir string, messages []db.Message, settings Settings) ([
 		})
 	}
 
-	// TODO: Implement Merge Logic here if len(archiveFiles) > settings.MaxFiles
-	// This would combine the oldest chunks into a single large archive.
+	// Merge Logic: Consolidate oldest chunks if we exceed MaxFiles
+	if len(archiveFiles) > settings.MaxFiles {
+		// Calculate how many files to merge to get under the limit
+		// We merge the oldest files (start of the slice)
+		excess := len(archiveFiles) - settings.MaxFiles
+		filesToMergeCount := excess + 1 // Merging N files reduces count by N-1
+
+		var mergedMessages []MessageFile
+		var filesToDelete []string
+
+		for i := 0; i < filesToMergeCount; i++ {
+			file := archiveFiles[i]
+			path := filepath.Join(dir, file.Name)
+
+			// Read content
+			data, err := os.ReadFile(path)
+			if err != nil {
+				logger.Warning("Failed to read archive file for merging", "file", file.Name, "error", err)
+				continue
+			}
+
+			var chunk []MessageFile
+			if err := json.Unmarshal(data, &chunk); err != nil {
+				logger.Warning("Failed to unmarshal archive file for merging", "file", file.Name, "error", err)
+				continue
+			}
+
+			mergedMessages = append(mergedMessages, chunk...)
+			filesToDelete = append(filesToDelete, path)
+		}
+
+		if len(mergedMessages) > 0 {
+			// Create new merged filename (e.g., messages-archive-1-2.json)
+			mergedFilename := fmt.Sprintf("messages-archive-1-%d.json", filesToMergeCount)
+			mergedPath := filepath.Join(dir, mergedFilename)
+
+			// Write merged file
+			data, err := json.MarshalIndent(mergedMessages, "", "  ")
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal merged archive: %w", err)
+			}
+
+			if err := os.WriteFile(mergedPath, data, 0644); err != nil {
+				return nil, fmt.Errorf("failed to write merged archive: %w", err)
+			}
+
+			// Calculate hash
+			mergedHash := calculateHash(string(data))
+
+			// Delete old files
+			for _, delPath := range filesToDelete {
+				if err := os.Remove(delPath); err != nil {
+					logger.Warning("Failed to delete old archive file", "path", delPath, "error", err)
+				}
+			}
+
+			// Reconstruct archiveFiles list: [Merged] + [Remaining]
+			newArchiveFiles := []ArchiveFile{
+				{
+					Name:     mergedFilename,
+					Hash:     mergedHash,
+					Messages: len(mergedMessages),
+				},
+			}
+			newArchiveFiles = append(newArchiveFiles, archiveFiles[filesToMergeCount:]...)
+			archiveFiles = newArchiveFiles
+
+			logger.Info("Merged archive chunks", "merged_files", filesToMergeCount, "new_file", mergedFilename)
+		}
+	}
 
 	return archiveFiles, nil
 }

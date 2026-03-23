@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Chat Command
- * Block-UUID: e47eac57-65ab-4fbe-9a28-2239476559f3
- * Parent-UUID: a10e09ca-fbc1-4d9e-917d-90a954efd6c5
- * Version: 1.5.1
- * Description: Added support for positional arguments and stdin (pipe) for user message input, prioritizing argument > flag > file > stdin.
+ * Block-UUID: 1a39a9f0-b1c9-4a3c-af24-4358cdf969c1
+ * Parent-UUID: e47eac57-65ab-4fbe-9a28-2239476559f3
+ * Version: 1.6.0
+ * Description: Added --thinking flag to allow users to set the extended thinking budget for Claude Code CLI.
  * Language: Go
- * Created-at: 2026-03-22T16:49:47.152Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1)
+ * Created-at: 2026-03-23T05:55:57.681Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0)
  */
 
 
@@ -30,6 +30,7 @@ var (
 	chatSave      bool
 	chatModel     string
 	chatAppendSave bool
+	chatThinkingBudget int
 )
 
 var chatCmd = &cobra.Command{
@@ -79,8 +80,8 @@ file-based state, and streams the response back to stdout.`,
 		}
 
 		// 3. Execute Chat
-		logger.Info("Executing Claude Code chat", "uuid", chatUUID, "parent_id", chatParentID, "append", chatAppend, "save", chatSave, "append_save", chatAppendSave, "model", chatModel)
-		if err := claudeint.ExecuteChat(chatUUID, chatParentID, userMessage, chatFormat, chatAppend, chatSave, chatAppendSave, chatModel); err != nil {
+		logger.Info("Executing Claude Code chat", "uuid", chatUUID, "parent_id", chatParentID, "append", chatAppend, "save", chatSave, "append_save", chatAppendSave, "model", chatModel, "thinking", chatThinkingBudget)
+		if err := claudeint.ExecuteChat(chatUUID, chatParentID, userMessage, chatFormat, chatAppend, chatSave, chatAppendSave, chatModel, chatThinkingBudget); err != nil {
 			cmd.SilenceUsage = true
 			return fmt.Errorf("chat execution failed: %w", err)
 		}
@@ -97,4 +98,5 @@ func init() {
 	chatCmd.Flags().BoolVar(&chatSave, "save", false, "Save the response to the database")
 	chatCmd.Flags().StringVar(&chatModel, "model", "", "The model to use (e.g., claude-3-5-sonnet)")
 	chatCmd.Flags().BoolVar(&chatAppendSave, "append-save", false, "Save the user message to the database and append to the latest message")
+	chatCmd.Flags().IntVar(&chatThinkingBudget, "thinking", 0, "Thinking budget in tokens (0 = disabled)")
 }

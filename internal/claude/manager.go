@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Execution Manager
- * Block-UUID: 0b6d55c1-c375-461d-8c85-df2d35e7b5ab
- * Parent-UUID: 6271bec1-3b55-4b95-b42e-da5f9a3f3647
- * Version: 1.23.0
+ * Block-UUID: 1e1d8407-1f9c-4b55-905d-372c0bee8293
+ * Parent-UUID: ef26ec10-7815-49cf-99fd-ff03e4eb8dd3
+ * Version: 1.25.0
  * Description: Implemented raw stream logging to file and fixed text extraction from 'assistant' events by properly parsing the nested content structure instead of relying on string matching.
  * Language: Go
- * Created-at: 2026-03-22T22:39:22.521Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.20.0), GLM-4.7 (v1.21.0), GLM-4.7 (v1.22.0), GLM-4.7 (v1.23.0)
+ * Created-at: 2026-03-23T05:58:21.131Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.20.0), GLM-4.7 (v1.21.0), GLM-4.7 (v1.22.0), GLM-4.7 (v1.23.0), GLM-4.7 (v1.24.0), GLM-4.7 (v1.25.0)
  */
 
 
@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"regexp"
 	"sort"
 	"strings"
@@ -45,7 +46,7 @@ type AssistantMessageEvent struct {
 }
 
 // ExecuteChat is the main entry point for executing a Claude Code chat session.
-func ExecuteChat(chatUUID string, parentID int64, userMessage string, format string, appendMsg bool, save bool, appendSave bool, model string) error {
+func ExecuteChat(chatUUID string, parentID int64, userMessage string, format string, appendMsg bool, save bool, appendSave bool, model string, thinkingBudget int) error {
 	startTime := time.Now()
 
 	// 1. Pre-flight Check: Ensure 'claude' binary is in PATH
@@ -298,6 +299,11 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string, format str
 	if effectiveModel != "" {
 		flags = append(flags, "--model", effectiveModel)
 	}
+	
+	// Add thinking flag if specified
+	if thinkingBudget > 0 {
+		flags = append(flags, "--thinking", strconv.Itoa(thinkingBudget))
+	}
 
 	// 11. Execute Claude Code CLI (Streaming)
 	cmd := exec.Command("claude", flags...)
@@ -471,6 +477,61 @@ func ExecuteChat(chatUUID string, parentID int64, userMessage string, format str
 							modifiedText := strings.ReplaceAll(contentBlock.Text, "{{MODEL-NAME}}", effectiveModel)
 							modifiedText = strings.ReplaceAll(modifiedText, "{{UTC-TIME}}", currentTime)
 							responseBuffer.WriteString(modifiedText)
+						}
+					}
+				}
+			}
+			continue
+		}
+
+		// Handle Stream Wrapper (for content_block_delta events like thinking)
+		if baseEvent.Type == "stream_event" {
+			var wrapperEvent struct {
+				Type  string `json:"type"`
+				Event struct {
+					Type  string `json:"type"`
+					Index int    `json:"index"`
+					Delta struct {
+						Type     string `json:"type"`
+						Thinking string `json:"thinking"`
+						Text     string `json:"text"`
+					} `json:"delta"`
+				} `json:"event"`
+			}
+			
+			if err := json.Unmarshal([]byte(line), &wrapperEvent); err == nil {
+				// Check if this is a thinking delta
+				if wrapperEvent.Event.Type == "content_block_delta" && 
+				   wrapperEvent.Event.Delta.Type == "thinking_delta" {
+					
+					if format == "json" {
+						// Emit Clean Stream JSON for thinking
+						cleanJSON, _ := json.Marshal(map[string]interface{}{
+							"event": "thinking",
+							"delta": wrapperEvent.Event.Delta.Thinking,
+						})
+						fmt.Println(string(cleanJSON))
+					}
+				}
+				
+				// Handle Text (Index 1)
+				if wrapperEvent.Event.Delta.Type == "text_delta" {
+					modifiedText := strings.ReplaceAll(wrapperEvent.Event.Delta.Text, "{{MODEL-NAME}}", effectiveModel)
+					modifiedText = strings.ReplaceAll(modifiedText, "{{UTC-TIME}}", currentTime)
+
+					fullResponse.WriteString(modifiedText)
+
+					if !toolsFinished {
+						responseBuffer.WriteString(modifiedText)
+					} else {
+						if format == "text" {
+							fmt.Print(modifiedText)
+						} else if format == "json" {
+							cleanJSON, _ := json.Marshal(map[string]interface{}{
+								"event": "text",
+								"delta": modifiedText,
+							})
+							fmt.Println(string(cleanJSON))
 						}
 					}
 				}
