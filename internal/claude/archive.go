@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Archive Manager
- * Block-UUID: f4face29-c90a-46af-befa-eb92bc62dcdc
- * Parent-UUID: 8d29ff8e-8f73-401e-8b6b-aa9f58e532a2
- * Version: 1.2.0
+ * Block-UUID: 1aa89362-375b-4dd4-ac27-dbb2d2266bf2
+ * Parent-UUID: f4face29-c90a-46af-befa-eb92bc62dcdc
+ * Version: 1.3.0
  * Description: Added logging statements for file operations and hash checks to improve observability.
  * Language: Go
- * Created-at: 2026-03-23T06:26:45.059Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
+ * Created-at: 2026-03-23T17:35:27.051Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
  */
 
 
@@ -275,6 +275,12 @@ func writeActiveWindow(dir string, messages []db.Message, archiveFiles []Archive
 			Role:    m.Role,
 			Content: content,
 		})
+	}
+
+	// Skip writing if there is no content
+	if len(msgFiles) == 0 && len(archiveFiles) == 0 {
+		logger.Debug("Skipping active window write (no content)")
+		return nil
 	}
 
 	// Construct Active Window

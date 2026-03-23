@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Execution Manager
- * Block-UUID: 638d9dd7-8dfa-4363-ad3a-780d3ff33e91
- * Parent-UUID: 89dfe67a-3a0b-4f44-821e-ec102124d5b3
- * Version: 1.27.0
+ * Block-UUID: 6669c036-bc78-4307-85fe-f2ab3c7f1a06
+ * Parent-UUID: 638d9dd7-8dfa-4363-ad3a-780d3ff33e91
+ * Version: 1.28.0
  * Description: Implemented raw stream logging to file and fixed text extraction from 'assistant' events by properly parsing the nested content structure instead of relying on string matching.
  * Language: Go
- * Created-at: 2026-03-23T17:20:21.136Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.26.0), GLM-4.7 (v1.27.0)
+ * Created-at: 2026-03-23T17:34:34.852Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.26.0), GLM-4.7 (v1.27.0), GLM-4.7 (v1.28.0)
  */
 
 
@@ -469,8 +469,6 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 						if !hasToolUse && toolsFinished {
 							modifiedText := strings.ReplaceAll(contentBlock.Text, "{{MODEL-NAME}}", effectiveModel)
 							modifiedText = strings.ReplaceAll(modifiedText, "{{UTC-TIME}}", currentTime)
-
-							fullResponse.WriteString(modifiedText)
 
 							if format == "text" {
 								fmt.Print(modifiedText)
