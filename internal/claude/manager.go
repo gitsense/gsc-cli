@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Execution Manager
- * Block-UUID: 23e6f27b-1ce4-499a-affd-a2d37f79d57b
- * Parent-UUID: e39be4b7-bb6e-4107-a3de-ddca3b92a4e0
- * Version: 1.30.0
+ * Block-UUID: ae911a52-9816-48bd-80b3-32f42b5b9cfa
+ * Parent-UUID: 23e6f27b-1ce4-499a-affd-a2d37f79d57b
+ * Version: 1.31.0
  * Description: Verified compatibility with new cache-optimized context file construction. No changes required as SyncArchive interface remains unchanged and settings structure is compatible.
  * Language: Go
- * Created-at: 2026-03-23T18:08:37.161Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.28.0), GLM-4.7 (v1.29.0), GLM-4.7 (v1.30.0)
+ * Created-at: 2026-03-24T04:58:35.351Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.28.0), GLM-4.7 (v1.29.0), GLM-4.7 (v1.30.0), GLM-4.7 (v1.31.0)
  */
 
 
@@ -337,6 +337,10 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 
 	// 12. Process Stream
 	scanner := bufio.NewScanner(stdout)
+	// Increase buffer size to handle large JSON objects or long log lines
+	const maxTokenSize = 10 * 1024 * 1024 // 10MB
+	buf := make([]byte, 0, 64*1024)       // Initial 64KB buffer
+	scanner.Buffer(buf, maxTokenSize)
 	var fullResponse strings.Builder
 	var finalUsage Usage
 	var finalCost float64
