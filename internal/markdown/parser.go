@@ -1,12 +1,12 @@
 /**
  * Component: Markdown Parser Utility
- * Block-UUID: e4b4e576-10da-42a2-b788-d4f55be5a35b
- * Parent-UUID: 0901ea0a-f9ce-4d5d-bbbd-a3865bd54e7b
- * Version: 1.6.0
+ * Block-UUID: 7b677193-8b29-43a0-acaf-c1afc6eb714d
+ * Parent-UUID: e4b4e576-10da-42a2-b788-d4f55be5a35b
+ * Version: 1.7.0
  * Description: Added smart trimming logic to splitHeaderAndCode. It now removes leading/trailing blank lines and trailing whitespace from executable code while preserving semantic indentation. The ExtractCodeBlocks function now accepts a trim boolean to control this behavior.
  * Language: Go
- * Created-at: 2026-03-03T07:37:28.018Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0), Gemini 3 Flash (v1.3.0), Gemini 3 Flash (v1.4.0), Gemini 3 Flash (v1.5.0), Gemini 3 Flash (v1.5.1), GLM-4.7 (v1.5.2), Gemini 3 Flash (v1.6.0)
+ * Created-at: 2026-03-24T05:18:33.296Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0), Gemini 3 Flash (v1.3.0), Gemini 3 Flash (v1.4.0), Gemini 3 Flash (v1.5.0), Gemini 3 Flash (v1.5.1), GLM-4.7 (v1.5.2), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0)
  */
 
 
@@ -212,4 +212,24 @@ func isCommentLine(line string) bool {
 	       strings.HasPrefix(line, "<!--") ||
 	       strings.HasPrefix(line, "=") ||
 	       (strings.HasPrefix(line, "--") && !strings.HasPrefix(line, "---")) // SQL but not Diff
+}
+
+// Reconstruct returns the full code block with header and executable code
+// properly formatted according to GitSense standards.
+func (cb *CodeBlock) Reconstruct() string {
+	var sb strings.Builder
+	sb.WriteString(cb.RawHeader)
+	sb.WriteString("\n\n\n")  // Two blank lines as per spec
+	sb.WriteString(cb.ExecutableCode)
+	return sb.String()
+}
+
+// Reconstruct returns the full patch block with header and executable code
+// properly formatted according to GitSense standards.
+func (pb *PatchBlock) Reconstruct() string {
+	var sb strings.Builder
+	sb.WriteString(pb.RawHeader)
+	sb.WriteString("\n\n\n")  // Two blank lines as per spec
+	sb.WriteString(pb.ExecutableCode)
+	return sb.String()
 }
