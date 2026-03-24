@@ -1,18 +1,19 @@
 /**
  * Component: Claude Code Archive Manager
- * Block-UUID: 1aa89362-375b-4dd4-ac27-dbb2d2266bf2
- * Parent-UUID: f4face29-c90a-46af-befa-eb92bc62dcdc
- * Version: 1.3.0
+ * Block-UUID: cda1b093-f015-4532-a193-b1d3def0b079
+ * Parent-UUID: 1aa89362-375b-4dd4-ac27-dbb2d2266bf2
+ * Version: 1.4.0
  * Description: Added logging statements for file operations and hash checks to improve observability.
  * Language: Go
- * Created-at: 2026-03-23T17:35:27.051Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
+ * Created-at: 2026-03-23T18:36:36.252Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
  */
 
 
 package claude
 
 import (
+	"strings"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -42,6 +43,13 @@ func SyncArchive(chatDir string, messages []db.Message, settings Settings) ([]Ar
 		// Filter by visibility
 		if msg.Visibility != "public" {
 			continue
+		}
+		
+		// Filter out empty user messages
+		if msg.Role == "user" {
+			if !msg.Message.Valid || strings.TrimSpace(msg.Message.String) == "" {
+				continue
+			}
 		}
 
 		// Separate context messages
