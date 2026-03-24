@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Execution Manager
- * Block-UUID: e39be4b7-bb6e-4107-a3de-ddca3b92a4e0
- * Parent-UUID: 6669c036-bc78-4307-85fe-f2ab3c7f1a06
- * Version: 1.29.0
- * Description: Implemented raw stream logging to file and fixed text extraction from 'assistant' events by properly parsing the nested content structure instead of relying on string matching.
+ * Block-UUID: 23e6f27b-1ce4-499a-affd-a2d37f79d57b
+ * Parent-UUID: e39be4b7-bb6e-4107-a3de-ddca3b92a4e0
+ * Version: 1.30.0
+ * Description: Verified compatibility with new cache-optimized context file construction. No changes required as SyncArchive interface remains unchanged and settings structure is compatible.
  * Language: Go
  * Created-at: 2026-03-23T18:08:37.161Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.28.0), GLM-4.7 (v1.29.0)
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.28.0), GLM-4.7 (v1.29.0), GLM-4.7 (v1.30.0)
  */
 
 
@@ -21,9 +21,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -171,6 +171,7 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 		historicalMessages = contextMessages[:len(contextMessages)-1]
 	}
 
+	// Sync Archive with new cache-optimized context file construction
 	_, err = SyncArchive(chatDir, historicalMessages, archiveSettings)
 	if err != nil {
 		return fmt.Errorf("failed to sync archive: %w", err)
@@ -598,11 +599,8 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 	// Note: Session ID is not typically emitted in stream-json events in the same way as the final JSON object.
 	// We might need to derive it or handle it differently if the CLI provides it in a specific event.
 	// For now, we will use a placeholder or check if it was in a specific event.
-	// Assuming the CLI might emit a 'session_start' or similar, or we generate one locally.
-	// If the CLI doesn't emit it, we might need to track it via environment or process ID.
-	// For this implementation, we'll assume we need to capture it if available, or use a generated UUID.
 	// *Self-correction*: The standard Claude Code CLI stream-json usually includes session info in the first event or similar.
-	// We will look for a specific event or just use a generated ID for tracking purposes if not found.
+	// We will look for a specific event or just use a generated UUID for tracking purposes if not found.
 	// Let's assume for now we generate a session ID for tracking purposes if not provided by the stream.
 	if sessionID == "" {
 		sessionID = fmt.Sprintf("stream-%d", time.Now().UnixNano())
