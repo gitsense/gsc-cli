@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Init Command
- * Block-UUID: 4b202df9-431f-4c3c-a2a2-f47deda7d838
- * Parent-UUID: 806da7dc-ebfd-4f11-b746-91a8c6b39c6c
- * Version: 1.0.7
+ * Block-UUID: e4a1ecfc-ccd9-40a0-acf3-35b07e307ae8
+ * Parent-UUID: 4b202df9-431f-4c3c-a2a2-f47deda7d838
+ * Version: 1.0.8
  * Description: Updated to use the exported TemplateFS from pkg/settings to resolve embed path restrictions.
  * Language: Go
- * Created-at: 2026-03-22T21:18:18.468Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), Gemini 3 Flash (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7)
+ * Created-at: 2026-03-24T14:17:58.340Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), Gemini 3 Flash (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), GLM-4.7 (v1.0.8)
  */
 
 
@@ -16,6 +16,7 @@ import (
 	claudeint "github.com/gitsense/gsc-cli/internal/claude"
 	"encoding/json"
 	"fmt"
+	"os/exec"
 	"os"
 	"path/filepath"
 
@@ -86,6 +87,18 @@ and the metrics database.`,
 			logger.Info("Created default settings", "path", settingsPath)
 		} else {
 			logger.Info("Settings file already exists", "path", settingsPath)
+		}
+
+		// 6. Check Claude Authentication Status
+		if _, err := exec.LookPath("claude"); err == nil {
+			cmd := exec.Command("claude", "auth", "status")
+			if err := cmd.Run(); err != nil {
+				if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() != 0 {
+					logger.Warning("You are not authenticated with Claude Code CLI. You will not be able to use your Claude Code subscription to chat complete with GitSense Chat. Please run 'claude' to authenticate.")
+				}
+			}
+		} else {
+			logger.Debug("Claude CLI not found in PATH, skipping auth check")
 		}
 
 		logger.Success("Claude Code environment initialized successfully", "path", claudeRoot)

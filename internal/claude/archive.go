@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Archive Manager
- * Block-UUID: 94b5287f-caad-4145-9a98-a14f617f0b4d
- * Parent-UUID: 064b570e-2579-4980-8c47-275edf5107ff
- * Version: 1.7.0
+ * Block-UUID: f0d2d71d-0fdc-44da-a084-01bb5eeea5c5
+ * Parent-UUID: 94b5287f-caad-4145-9a98-a14f617f0b4d
+ * Version: 1.8.0
  * Description: Integrated context parser and bucketer for cache-optimized context file construction. Implemented zombie cleanup for orphaned context files and updated messages.map generation with proper bucket metadata.
  * Language: Go
- * Created-at: 2026-03-24T05:30:53.297Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0)
+ * Created-at: 2026-03-24T14:25:59.901Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0)
  */
 
 
@@ -73,6 +73,11 @@ func SyncArchive(chatDir string, messages []db.Message, settings Settings) ([]Ar
 	// 3. Write CLI Output Files (always isolated)
 	if err := writeCliOutputFiles(messagesDir, cliOutputMessages); err != nil {
 		return nil, fmt.Errorf("failed to write CLI output files: %w", err)
+	}
+
+	// Cleanup orphaned CLI output files
+	if err := cleanupOrphanedCliOutputFiles(messagesDir, cliOutputMessages); err != nil {
+		return nil, fmt.Errorf("failed to cleanup orphaned CLI output files: %w", err)
 	}
 
 	// 4. Chunk Dialogue Messages
@@ -237,6 +242,46 @@ func cleanupOrphanedContextFiles(dir string, writtenFiles []string) error {
 				} else {
 					logger.Debug("Deleted orphaned context file", "file", name)
 				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// cleanupOrphanedCliOutputFiles deletes cli-output-*.md files that are not in the current messages list.
+func cleanupOrphanedCliOutputFiles(dir string, currentMessages []db.Message) error {
+	// Create a set of valid IDs for quick lookup
+	validIDs := make(map[int64]bool)
+	for _, msg := range currentMessages {
+		validIDs[msg.ID] = true
+	}
+
+	// Read directory and delete orphaned files
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return fmt.Errorf("failed to read messages directory: %w", err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+
+		name := entry.Name()
+		var msgID int64
+		_, err := fmt.Sscanf(name, "cli-output-%d.md", &msgID)
+		if err != nil {
+			continue // Not a CLI output file
+		}
+
+		// If ID not in valid set, delete the file
+		if !validIDs[msgID] {
+			path := filepath.Join(dir, name)
+			if err := os.Remove(path); err != nil {
+				logger.Warning("Failed to delete orphaned CLI output file", "file", name, "error", err)
+			} else {
+				logger.Debug("Deleted orphaned CLI output file", "file", name)
 			}
 		}
 	}
