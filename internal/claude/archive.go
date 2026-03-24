@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Archive Manager
- * Block-UUID: f0d2d71d-0fdc-44da-a084-01bb5eeea5c5
- * Parent-UUID: 94b5287f-caad-4145-9a98-a14f617f0b4d
- * Version: 1.8.0
+ * Block-UUID: 8d36df44-6b93-46d5-9db9-6f061fca13bb
+ * Parent-UUID: f0d2d71d-0fdc-44da-a084-01bb5eeea5c5
+ * Version: 1.8.1
  * Description: Integrated context parser and bucketer for cache-optimized context file construction. Implemented zombie cleanup for orphaned context files and updated messages.map generation with proper bucket metadata.
  * Language: Go
- * Created-at: 2026-03-24T14:25:59.901Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0)
+ * Created-at: 2026-03-24T15:15:31.413Z
+ * Authors: GLM-4.7 (v1.8.0), claude-haiku-4-5-20251001 (v1.8.1)
  */
 
 
@@ -196,6 +196,7 @@ func writeContextFiles(dir string, messages []db.Message) error {
 		currentHash := calculateHash(content.String())
 		if existingHash, err := getFileHash(path); err == nil && existingHash == currentHash {
 			logger.Debug("Skipping context bucket (hash match)", "file", filename)
+			writtenFiles = append(writtenFiles, filename)
 			continue
 		}
 

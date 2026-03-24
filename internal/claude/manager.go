@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Execution Manager
- * Block-UUID: ae911a52-9816-48bd-80b3-32f42b5b9cfa
- * Parent-UUID: 23e6f27b-1ce4-499a-affd-a2d37f79d57b
- * Version: 1.31.0
+ * Block-UUID: 7e48cfbe-c217-4b8d-8207-6f31d5a4eab6
+ * Parent-UUID: ae911a52-9816-48bd-80b3-32f42b5b9cfa
+ * Version: 1.31.1
  * Description: Verified compatibility with new cache-optimized context file construction. No changes required as SyncArchive interface remains unchanged and settings structure is compatible.
  * Language: Go
- * Created-at: 2026-03-24T04:58:35.351Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.28.0), GLM-4.7 (v1.29.0), GLM-4.7 (v1.30.0), GLM-4.7 (v1.31.0)
+ * Created-at: 2026-03-24T15:15:51.579Z
+ * Authors: GLM-4.7 (v1.31.0), claude-haiku-4-5-20251001 (v1.31.1)
  */
 
 
@@ -285,16 +285,28 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 	// Inject Identity into System Prompt
 	identityPrompt := "Your name is {{MODEL-NAME}}. When generating code, you must include this name in the Authors field."
 
-	// Append identity to the system prompt file to avoid CLI flag conflicts
-	f, err := os.OpenFile(systemPromptPath, os.O_APPEND|os.O_WRONLY, 0644)
+	// Check if identity prompt already exists before appending
+	existingContent, err := os.ReadFile(systemPromptPath)
+	needsAppend := true
 	if err != nil {
-		return fmt.Errorf("failed to open system prompt for appending: %w", err)
+		return fmt.Errorf("failed to read system prompt: %w", err)
 	}
-	if _, err := f.WriteString(identityPrompt); err != nil {
+	
+	if strings.Contains(string(existingContent), identityPrompt) {
+		needsAppend = false
+	}
+	
+	if needsAppend {
+		f, err := os.OpenFile(systemPromptPath, os.O_APPEND|os.O_WRONLY, 0644)
+		if err != nil {
+			return fmt.Errorf("failed to open system prompt for appending: %w", err)
+		}
+		if _, err := f.WriteString(identityPrompt); err != nil {
+			f.Close()
+			return fmt.Errorf("failed to append identity to system prompt: %w", err)
+		}
 		f.Close()
-		return fmt.Errorf("failed to append identity to system prompt: %w", err)
 	}
-	f.Close()
 
 	flags := []string{
 		"-p", fmt.Sprintf("%q", prompt),
