@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Execution Manager
- * Block-UUID: 7e48cfbe-c217-4b8d-8207-6f31d5a4eab6
- * Parent-UUID: ae911a52-9816-48bd-80b3-32f42b5b9cfa
- * Version: 1.31.1
- * Description: Verified compatibility with new cache-optimized context file construction. No changes required as SyncArchive interface remains unchanged and settings structure is compatible.
+ * Block-UUID: 8bac9fac-467c-4369-9b6e-46f2ea884bd7
+ * Parent-UUID: 119587a6-ee7c-44ef-b3ac-bea067eadd08
+ * Version: 1.46.0
+ * Description: Added deferred error logging to capture stack traces if the function returns before metrics are written.
  * Language: Go
- * Created-at: 2026-03-24T15:15:51.579Z
- * Authors: GLM-4.7 (v1.31.0), claude-haiku-4-5-20251001 (v1.31.1)
+ * Created-at: 2026-03-24T19:46:01.704Z
+ * Authors: GLM-4.7 (v1.31.0), ..., GLM-4.7 (v1.45.0), GLM-4.7 (v1.46.0)
  */
 
 
@@ -22,6 +22,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
@@ -43,6 +44,27 @@ type AssistantMessageEvent struct {
 			Text string `json:"text"`
 		} `json:"content"`
 	} `json:"message"`
+}
+
+// MetricsDebugData represents the data payload for debugging metrics insertion.
+type MetricsDebugData struct {
+	InsertCompletionArgs struct {
+		ChatUUID   string `json:"chat_uuid"`
+		MessageID  int64  `json:"message_id"`
+		SessionID  string `json:"session_id"`
+		Model      string `json:"model"`
+		Usage      Usage  `json:"usage"`
+		Cost       float64 `json:"cost"`
+		DurationMs int    `json:"duration_ms"`
+		RawJSON    string `json:"raw_json"`
+		ExitCode   int    `json:"exit_code"`
+	} `json:"insert_completion_args"`
+	UpsertSessionArgs struct {
+		SessionID string `json:"session_id"`
+		ChatUUID  string `json:"chat_uuid"`
+		Usage     Usage  `json:"usage"`
+		Cost      float64 `json:"cost"`
+	} `json:"upsert_session_args"`
 }
 
 // ExecuteChat is the main entry point for executing a Claude Code chat session.
@@ -82,6 +104,15 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 	}
 	if chat == nil {
 		return fmt.Errorf("chat not found")
+	}
+
+	// 5.5.1. Check if we have a stored session ID for this chat
+	var storedSessionID string
+	storedSessionID, err = GetSessionByChatUUID(metricsDB, chatUUID)
+	if err != nil {
+		logger.Warning("Failed to query stored session ID", "error", err)
+	} else if storedSessionID != "" {
+		logger.Info("Found stored session ID", "session_id", storedSessionID)
 	}
 
 	// 5.5. Determine Parent ID (Hierarchy: explicit > append/append-save)
@@ -141,6 +172,12 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 	chatDir := filepath.Join(gscHome, settings.ClaudeCodeDirRelPath, settings.ClaudeChatsDirRelPath, chatUUID)
 	if err := os.MkdirAll(chatDir, 0755); err != nil {
 		return fmt.Errorf("failed to create chat directory: %w", err)
+	}
+	
+	// Setup Logs Directory early for checkpointing
+	logDir := filepath.Join(chatDir, "logs")
+	if err := os.MkdirAll(logDir, 0755); err != nil {
+		return fmt.Errorf("failed to create logs directory: %w", err)
 	}
 
 	// 7. Reconstruct File-Based State
@@ -224,6 +261,12 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 		name := entry.Name()
 		// Include active, archives, and context files. Exclude system-prompt.md (loaded via flag).
 		if name == "messages-active.json" {
+			// CRITICAL: If we have a session ID, the CLI loads history from the API.
+			// We must NOT tell it to read messages-active.json, or we get double history.
+			if storedSessionID != "" {
+				continue
+			}
+
 			// Check if file has content before adding to context list to prevent hallucinations
 			fullPath := filepath.Join(msgDir, name)
 			data, err := os.ReadFile(fullPath)
@@ -322,6 +365,12 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 		flags = append(flags, "--model", effectiveModel)
 	}
 	
+	// Add session ID flag if we have a stored session
+	if storedSessionID != "" {
+		flags = append(flags, "--resume", storedSessionID)
+		logger.Info("Reusing session", "session_id", storedSessionID)
+	}
+	
 	// Add thinking flag if specified
 	if thinkingBudget > 0 {
 		flags = append(flags, "--thinking", strconv.Itoa(thinkingBudget))
@@ -330,6 +379,20 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 	// 11. Execute Claude Code CLI (Streaming)
 	cmd := exec.Command("claude", flags...)
 	cmd.Dir = chatDir
+
+	// DEBUG: Write full command to checkpoint file for debugging
+	fullCommand := strings.Join(cmd.Args, " ")
+	checkpointPath := filepath.Join(logDir, "checkpoint-cli-start.txt")
+	checkpointContent := fmt.Sprintf(
+		"ExecuteChat started at %s\nUUID: %s\nParentID: %d\nCommand: %s\n",
+		time.Now().UTC().Format(time.RFC3339),
+		chatUUID,
+		assistantMessageID,
+		fullCommand,
+	)
+	if err := os.WriteFile(checkpointPath, []byte(checkpointContent), 0644); err != nil {
+		logger.Warning("Failed to write checkpoint file", "error", err)
+	}
 
 	// Log the full command for debugging
 	logger.Debug("Executing Claude CLI command", "command", strings.Join(cmd.Args, " "))
@@ -354,6 +417,33 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 	buf := make([]byte, 0, 64*1024)       // Initial 64KB buffer
 	scanner.Buffer(buf, maxTokenSize)
 	var fullResponse strings.Builder
+	var nonJSONOutput strings.Builder // New buffer to capture non-JSON lines
+	var exitCode int // Declare exitCode at function scope so defer can access it
+	
+	// CRITICAL: Deferred cleanup to ensure checkpoint and error logs are written even on panic/early return
+	defer func() {
+		// DEBUG: Unconditionally write non-JSON stdout if it has content
+		if nonJSONOutput.Len() > 0 {
+			nonJSONPath := filepath.Join(logDir, "debug-stdout-non-json.txt")
+			if writeErr := os.WriteFile(nonJSONPath, []byte(nonJSONOutput.String()), 0644); writeErr != nil {
+				logger.Warning("Failed to write debug non-JSON stdout file", "error", writeErr)
+			}
+		}
+
+		// If the process exited with an error, capture stderr to a specific error file
+		if exitCode != 0 {
+			errorPath := filepath.Join(logDir, fmt.Sprintf("error-output-%s.txt", time.Now().Format("20060102-150405")))
+			stderrStr := stderrBuf.String()
+			if stderrStr != "" {
+				if writeErr := os.WriteFile(errorPath, []byte(stderrStr), 0644); writeErr != nil {
+					logger.Warning("Failed to write error output file", "error", writeErr)
+				}
+			} else {
+				os.WriteFile(errorPath, []byte("Process exited with error but no stderr output was captured."), 0644)
+			}
+		}
+	}()
+
 	var finalUsage Usage
 	var finalCost float64
 	var sessionID string
@@ -362,12 +452,6 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 	currentTime := time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
 	isFirstLine := true
 
-	// Setup Raw Stream Logging
-	// Move logs to chat-specific directory for better lifecycle management
-	logDir := filepath.Join(chatDir, "logs")
-	if err := os.MkdirAll(logDir, 0755); err != nil {
-		return fmt.Errorf("failed to create logs directory: %w", err)
-	}
 	logFileName := fmt.Sprintf("raw-stream-%s.ndjson", time.Now().Format("20060102-150405"))
 	logFilePath := filepath.Join(logDir, logFileName)
 	logFile, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
@@ -375,6 +459,26 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 		return fmt.Errorf("failed to create raw stream log file: %w", err)
 	}
 	defer logFile.Close()
+
+	// DEBUG: Flag to track if metrics were successfully written
+	metricsWritten := false
+	
+	// DEBUG: Defer function to catch early returns and log stack trace
+	defer func() {
+		if !metricsWritten {
+			// Capture the stack trace at the point of return
+			stackTrace := debug.Stack()
+			
+			errorMsg := fmt.Sprintf("ExecuteChat returned before metrics were written.\n\nStack Trace:\n%s", string(stackTrace))
+			
+			// Write to error file
+			errorPath := filepath.Join(logDir, fmt.Sprintf("error-return-%s.txt", time.Now().Format("20060102-150405")))
+			if writeErr := os.WriteFile(errorPath, []byte(errorMsg), 0644); writeErr != nil {
+				// If we can't write to the log dir, print to stderr as a last resort
+				fmt.Fprintf(os.Stderr, "CRITICAL: Failed to write error return log: %v\nOriginal Error:\n%s", writeErr, errorMsg)
+			}
+		}
+	}()
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -391,6 +495,9 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 		var baseEvent StreamEvent
 		if err := json.Unmarshal([]byte(line), &baseEvent); err != nil {
 			logger.Warning("Failed to parse stream event line", "line", line, "error", err)
+			// CRITICAL DEBUGGING: Capture non-JSON lines
+			nonJSONOutput.WriteString(line + "\n")
+
 			continue
 		}
 
@@ -408,6 +515,19 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 					"session_id": sessionID,
 				})
 				fmt.Println(string(initJSON))
+			} else {
+				// Fallback: Try to extract session_id directly from JSON
+				logger.Warning("Failed to unmarshal SystemInitEvent, attempting fallback extraction", "error", err)
+				var rawEvent map[string]interface{}
+				if rawErr := json.Unmarshal([]byte(line), &rawEvent); rawErr == nil {
+					if sid, ok := rawEvent["session_id"].(string); ok && sid != "" {
+						sessionID = sid
+						logger.Info("Extracted session_id via fallback", "session_id", sessionID)
+					}
+					if model, ok := rawEvent["model"].(string); ok && model != "" {
+						effectiveModel = model
+					}
+				}
 			}
 			isFirstLine = false
 			continue
@@ -545,12 +665,33 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 		// Handle User Event (Tool Result) - Signals end of thinking phase
 		if baseEvent.Type == "user" {
 			toolsFinished = true
+			
+			// CRITICAL FIX: Flush the buffered "plan" text to the user
+			if responseBuffer.Len() > 0 {
+				bufferedText := responseBuffer.String()
+				responseBuffer.Reset()
+				
+				if format == "text" {
+					fmt.Print(bufferedText)
+				} else if format == "json" {
+					cleanJSON, _ := json.Marshal(map[string]interface{}{
+						"event": "text",
+						"delta": bufferedText,
+					})
+					fmt.Println(string(cleanJSON))
+				}
+			}
 		}
 
 		// Handle Result Event - Final stats
 		if baseEvent.Type == "result" {
 			var resultEvent StreamResultEvent
 			if err := json.Unmarshal([]byte(line), &resultEvent); err == nil {
+				// CRITICAL FIX: Update final usage and cost from the result event
+				// The stream does not emit a standalone "usage" event, only this one.
+				finalUsage = resultEvent.Usage
+				finalCost = resultEvent.TotalCost
+
 				doneJSON, _ := json.Marshal(map[string]interface{}{
 					"event": "done",
 					"stats": resultEvent,
@@ -569,17 +710,21 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 	}
 
 	if err := scanner.Err(); err != nil {
+		// DEBUG: Log the specific scanner error to diagnose why the stream failed
+		logger.Error("Stream scanner encountered an error", "error", err, "stderr", stderrBuf.String(), "non_json_output", nonJSONOutput.String())
+		fmt.Fprintln(os.Stderr, "Stream Error:", err)
+		exitCode = -2 // Use a distinct exit code for scanner errors
 		return fmt.Errorf("error reading claude output: %w", err)
 	}
 
 	// Wait for command to finish and capture exit details
-	exitCode := 0
+	exitCode = 0
 	waitErr := cmd.Wait()
 	if waitErr != nil {
 		if exitError, ok := waitErr.(*exec.ExitError); ok {
-			exitCode = exitError.ExitCode()
+			exitCode = exitError.ExitCode() // Update the outer scope exitCode
 		} else {
-			exitCode = 1
+			exitCode = 1 // Update the outer scope exitCode
 		}
 	}
 
@@ -614,6 +759,29 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 	// 13. Save Metrics
 	// Note: Session ID is not typically emitted in stream-json events in the same way as the final JSON object.
 	// We might need to derive it or handle it differently if the CLI provides it in a specific event.
+	// Fallback: Parse raw stream log to extract session ID if not found during streaming
+	if sessionID == "" {
+		logger.Info("Session ID not found during streaming, attempting to extract from raw stream log")
+		if data, err := os.ReadFile(logFilePath); err == nil {
+			scanner := bufio.NewScanner(bytes.NewReader(data))
+			for scanner.Scan() {
+				line := scanner.Text()
+				var rawEvent map[string]interface{}
+				if err := json.Unmarshal([]byte(line), &rawEvent); err == nil {
+					if eventType, ok := rawEvent["type"].(string); ok && eventType == "system" {
+						if sid, ok := rawEvent["session_id"].(string); ok && sid != "" {
+							sessionID = sid
+							logger.Info("Extracted session_id from raw stream log", "session_id", sessionID)
+							break
+						}
+					}
+				}
+			}
+		} else {
+			logger.Warning("Failed to read raw stream log for session ID extraction", "error", err)
+		}
+	}
+	
 	// For now, we will use a placeholder or check if it was in a specific event.
 	// *Self-correction*: The standard Claude Code CLI stream-json usually includes session info in the first event or similar.
 	// We will look for a specific event or just use a generated UUID for tracking purposes if not found.
@@ -623,6 +791,48 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 	}
 
 	if sessionID != "" {
+		// DEBUG: Write metrics payload to JSON file before DB insertion
+		debugData := MetricsDebugData{
+			InsertCompletionArgs: struct {
+				ChatUUID   string `json:"chat_uuid"`
+				MessageID  int64  `json:"message_id"`
+				SessionID  string `json:"session_id"`
+				Model      string `json:"model"`
+				Usage      Usage  `json:"usage"`
+				Cost       float64 `json:"cost"`
+				DurationMs int    `json:"duration_ms"`
+				RawJSON    string `json:"raw_json"`
+				ExitCode   int    `json:"exit_code"`
+			}{
+				ChatUUID:   chatUUID,
+				MessageID:  0, // Placeholder as per current code
+				SessionID:  sessionID,
+				Model:      effectiveModel,
+				Usage:      finalUsage,
+				Cost:       finalCost,
+				DurationMs: int(duration.Milliseconds()),
+				RawJSON:    "", // Streaming mode
+				ExitCode:   0,  // Assumed 0 if we reached here
+			},
+			UpsertSessionArgs: struct {
+				SessionID string `json:"session_id"`
+				ChatUUID  string `json:"chat_uuid"`
+				Usage     Usage  `json:"usage"`
+				Cost      float64 `json:"cost"`
+			}{
+				SessionID: sessionID,
+				ChatUUID:  chatUUID,
+				Usage:     finalUsage,
+				Cost:      finalCost,
+			},
+		}
+
+		debugJSON, _ := json.MarshalIndent(debugData, "", "  ")
+		debugPath := filepath.Join(logDir, fmt.Sprintf("metrics-debug-%s.json", time.Now().Format("20060102-150405")))
+		if err := os.WriteFile(debugPath, debugJSON, 0644); err != nil {
+			logger.Warning("Failed to write metrics debug file", "error", err)
+		}
+
 		if err := InsertCompletion(
 			metricsDB,
 			chatUUID,
@@ -647,6 +857,9 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 		); err != nil {
 			logger.Error("Failed to upsert session metrics", "error", err)
 		}
+
+		// Mark metrics as successfully written
+		metricsWritten = true
 	}
 
 	// 14. Save Response to Database (if --save flag is set)

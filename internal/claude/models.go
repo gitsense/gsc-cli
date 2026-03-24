@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Data Models
- * Block-UUID: 15e2f650-c79d-4451-b220-bcc3fee05159
- * Parent-UUID: 30ba37c0-1f73-4b90-9448-527adf193fc6
- * Version: 1.6.0
+ * Block-UUID: e079530a-2ffc-4a6d-accf-190aa618ae3f
+ * Parent-UUID: 15e2f650-c79d-4451-b220-bcc3fee05159
+ * Version: 1.7.0
  * Description: Updated to support cache-optimized context file construction with bucket-based organization. Added ContextFile struct reference and ensured compatibility with context parser and bucketer.
  * Language: Go
- * Created-at: 2026-03-22T21:41:57.559Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0)
+ * Created-at: 2026-03-24T16:07:00.001Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.1.1), Gemini 3 Flash (v1.1.2), GLM-4.7 (v1.2.0), claude-haiku-4-5-20251001 (v1.3.0), GLM-4.7 (v1.7.0)
  */
 
 
@@ -95,7 +95,10 @@ type SystemInitEvent struct {
 	Type      string `json:"type"`
 	Subtype   string `json:"subtype"`
 	Model     string `json:"model"`
-	SessionID string `json:"session_id"`
+	SessionID         string `json:"session_id"`         // CRITICAL: Fixed missing JSON tag
+	CWD               string `json:"cwd"`                // Working directory for debugging
+	UUID              string `json:"uuid"`               // Unique event ID for tracing
+	ClaudeCodeVersion string `json:"claude_code_version"` // Claude Code CLI version
 }
 
 // StreamResultEvent represents the final result event containing usage stats and cost.

@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Metrics Database
- * Block-UUID: 50d6d90e-97cb-4dc3-83c0-001258e34a04
- * Parent-UUID: 2b2d6072-e280-461a-8822-66cdc33d2e8c
- * Version: 1.0.1
+ * Block-UUID: 9222f7a0-bec7-4c4b-ac67-04b9cd6c9812
+ * Parent-UUID: 50d6d90e-97cb-4dc3-83c0-001258e34a04
+ * Version: 1.1.0
  * Description: Manages the SQLite database for storing Claude Code CLI usage metrics, including completions and session aggregations.
  * Language: Go
- * Created-at: 2026-03-22T16:56:34.523Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1)
+ * Created-at: 2026-03-24T15:54:35.067Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.1.0)
  */
 
 
@@ -152,3 +152,25 @@ func UpsertSession(db *sql.DB, sessionID string, chatUUID string, usage Usage, c
 	return nil
 }
 
+// GetSessionByChatUUID retrieves the most recent session ID for a given chat UUID.
+// Returns empty string if no session exists for this chat.
+func GetSessionByChatUUID(db *sql.DB, chatUUID string) (string, error) {
+	query := `
+	SELECT claude_session_id 
+	FROM sessions 
+	WHERE chat_uuid = ? 
+	ORDER BY last_request_at DESC 
+	LIMIT 1
+	`
+	
+	var sessionID string
+	err := db.QueryRow(query, chatUUID).Scan(&sessionID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", nil // No session found, return empty string
+		}
+		return "", fmt.Errorf("failed to query session: %w", err)
+	}
+	
+	return sessionID, nil
+}
