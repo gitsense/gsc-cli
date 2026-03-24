@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Archive Manager
- * Block-UUID: 064b570e-2579-4980-8c47-275edf5107ff
- * Parent-UUID: 38b753eb-b3e0-4207-afdb-00d6a6f1798c
- * Version: 1.6.0
+ * Block-UUID: 94b5287f-caad-4145-9a98-a14f617f0b4d
+ * Parent-UUID: 064b570e-2579-4980-8c47-275edf5107ff
+ * Version: 1.7.0
  * Description: Integrated context parser and bucketer for cache-optimized context file construction. Implemented zombie cleanup for orphaned context files and updated messages.map generation with proper bucket metadata.
  * Language: Go
- * Created-at: 2026-03-24T02:06:18.566Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0)
+ * Created-at: 2026-03-24T05:30:53.297Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0)
  */
 
 
@@ -109,7 +109,9 @@ func SyncArchive(chatDir string, messages []db.Message, settings Settings) ([]Ar
 	}
 
 	// 7. Generate or Update messages.map
-	if err := writeMessagesMap(messagesDir, contextMessages, cliOutputMessages, archiveFiles); err != nil {
+	// Extract context files for messages.map generation
+	contextFiles := context.ExtractContextFiles(contextMessages)
+	if err := writeMessagesMap(messagesDir, contextFiles, cliOutputMessages, archiveFiles); err != nil {
 		return nil, fmt.Errorf("failed to write messages.map: %w", err)
 	}
 
@@ -271,11 +273,11 @@ func writeCliOutputFiles(dir string, messages []db.Message) error {
 
 // writeMessagesMap generates or updates the messages.map file.
 // Creates a stable-to-volatile read sequence and includes file metadata.
-func writeMessagesMap(dir string, contextMessages []db.Message, cliOutputMessages []db.Message, archiveFiles []ArchiveFile) error {
+func writeMessagesMap(dir string, contextFiles []context.ContextFile, cliOutputMessages []db.Message, archiveFiles []ArchiveFile) error {
 	mapPath := filepath.Join(dir, "messages.map")
 
 	// Build context file metadata from actual files on disk
-	var contextFiles []FileMeta
+	var contextFileMetas []FileMeta
 	contextDir, err := os.ReadDir(dir)
 	if err != nil {
 		return fmt.Errorf("failed to read messages directory: %w", err)
@@ -307,41 +309,19 @@ func writeMessagesMap(dir string, contextMessages []db.Message, cliOutputMessage
 				stability = "low"
 			}
 
-			// Extract file entries from the bucket file
+			// Extract file entries from contextFiles
 			var fileEntries []FileEntry
-			path := filepath.Join(dir, entry.Name())
-			if data, err := os.ReadFile(path); err == nil {
-				// Parse the bucket file to extract file entries
-				// This is a simplified approach - in production, you'd want to parse the markdown properly
-				lines := strings.Split(string(data), "\n")
-				for _, line := range lines {
-					if strings.Contains(line, "Chat ID:") {
-						// Extract Chat ID from line like "- Chat ID: 12345"
-						parts := strings.Split(line, ":")
-						if len(parts) == 2 {
-							var chatID int64
-							if _, err := fmt.Sscanf(strings.TrimSpace(parts[1]), "%d", &chatID); err == nil {
-								// Find the corresponding file name from the context messages
-								for _, msg := range contextMessages {
-									if msg.ID == chatID {
-										// Extract file name from the context message
-										// This is simplified - in production, you'd parse the message properly
-										fileName := fmt.Sprintf("file-%d", chatID)
-										fileEntries = append(fileEntries, FileEntry{
-											ChatID: chatID,
-											Name:   fileName,
-											Size:   len(msg.Message.String),
-										})
-										break
-									}
-								}
-							}
-						}
-					}
+			for _, file := range contextFiles {
+				if file.ChatID >= minID && file.ChatID <= maxID {
+					fileEntries = append(fileEntries, FileEntry{
+						ChatID: file.ChatID,
+						Name:   file.Name,
+						Size:   file.Size,
+					})
 				}
 			}
 
-			contextFiles = append(contextFiles, FileMeta{
+			contextFileMetas = append(contextFileMetas, FileMeta{
 				ID:        fmt.Sprintf("context-range-%d-%d", minID, maxID),
 				File:      entry.Name(),
 				MinID:     minID,
@@ -355,8 +335,8 @@ func writeMessagesMap(dir string, contextMessages []db.Message, cliOutputMessage
 	}
 
 	// Sort context files by MinID
-	sort.Slice(contextFiles, func(i, j int) bool {
-		return contextFiles[i].MinID < contextFiles[j].MinID
+	sort.Slice(contextFileMetas, func(i, j int) bool {
+		return contextFileMetas[i].MinID < contextFileMetas[j].MinID
 	})
 
 	// Build CLI output file metadata
@@ -402,7 +382,7 @@ func writeMessagesMap(dir string, contextMessages []db.Message, cliOutputMessage
 	var readSequence []string
 
 	// 1. Context files (most stable)
-	for _, cf := range contextFiles {
+	for _, cf := range contextFileMetas {
 		readSequence = append(readSequence, cf.File)
 	}
 
@@ -423,7 +403,7 @@ func writeMessagesMap(dir string, contextMessages []db.Message, cliOutputMessage
 	mapFile := MapFile{
 		Version:        "1.0",
 		ReadSequence:   readSequence,
-		ContextFiles:   contextFiles,
+		ContextFiles:   contextFileMetas,
 		CliOutputFiles: cliOutputFiles,
 		Messages: MessagesMeta{
 			Active:   "messages-active.json",
@@ -442,7 +422,7 @@ func writeMessagesMap(dir string, contextMessages []db.Message, cliOutputMessage
 		return fmt.Errorf("failed to write messages.map: %w", err)
 	}
 
-	logger.Debug("Wrote messages.map", "context_files", len(contextFiles), "cli_output_files", len(cliOutputFiles))
+	logger.Debug("Wrote messages.map", "context_files", len(contextFileMetas), "cli_output_files", len(cliOutputFiles))
 	return nil
 }
 

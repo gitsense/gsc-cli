@@ -1,12 +1,12 @@
 /**
  * Component: Context Parser
- * Block-UUID: ff333a95-13f0-42ee-828f-a4e71f3cf5c0
- * Parent-UUID: 4397dd26-a9ab-4809-a376-4df405df1e9d
- * Version: 1.1.0
+ * Block-UUID: e785909d-8c17-4e3a-beed-9ef19fba62c7
+ * Parent-UUID: ff333a95-13f0-42ee-828f-a4e71f3cf5c0
+ * Version: 1.2.0
  * Description: Provides utilities for extracting, deduplicating, and formatting context files from chat messages. Implements deterministic sorting by Chat ID and markdown escaping for cache-optimized bucket construction.
  * Language: Go
- * Created-at: 2026-03-24T05:20:01.607Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0)
+ * Created-at: 2026-03-24T05:29:14.149Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -145,6 +145,7 @@ func ParseContextSection(section string) (ContextFile, error) {
 	block := result.Blocks[0]
 	file.Content = block.Reconstruct()
 	file.Language = block.Language
+	file.Size = len(file.Content)
 
 	return file, nil
 }
