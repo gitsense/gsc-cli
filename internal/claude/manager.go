@@ -1,29 +1,26 @@
 /**
  * Component: Claude Code Execution Manager
- * Block-UUID: b613af12-716c-4e49-b32c-3aac3a2c00dd
- * Parent-UUID: 2a0287bb-f6a6-4e33-9627-35bb651dead5
- * Version: 1.53.1
+ * Block-UUID: 7e503cc3-40d8-4567-92bd-77565018e5df
+ * Parent-UUID: b613af12-716c-4e49-b32c-3aac3a2c00dd
+ * Version: 1.53.2
  * Description: Strengthen context reading protocol prompt to ensure LLM always reads messages.map, user-message.md, and messages-active.json at every turn for proper context reconstruction
  * Language: Go
- * Created-at: 2026-03-25T15:03:42.189Z
- * Authors: claude-haiku-4-5-20251001 (v1.53.0), claude-haiku-4-5-20251001 (v1.53.1)
+ * Created-at: 2026-03-25T15:18:18.206Z
+ * Authors: claude-haiku-4-5-20251001 (v1.53.1), claude-haiku-4-5-20251001 (v1.53.2)
  */
 
 
 package claude
 
 import (
-	"bufio"
 	"database/sql"
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -49,7 +46,7 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 	startTime := time.Now()
 
 	// Phase 1: Setup & Prepare
-	chatDB, metricsDB, gscHome, chatDir, systemPromptPath, effectiveModel, storedSessionID, contextMessages, archiveSettings, err := setupAndPrepare(
+	chatDB, metricsDB, _, chatDir, systemPromptPath, effectiveModel, storedSessionID, _, archiveSettings, err := setupAndPrepare(
 		chatUUID, userMessage, assistantMessageID, appendMsg, appendSave, model,
 	)
 	if err != nil {
