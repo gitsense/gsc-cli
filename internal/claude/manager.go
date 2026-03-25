@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Execution Manager
- * Block-UUID: 8bac9fac-467c-4369-9b6e-46f2ea884bd7
- * Parent-UUID: 119587a6-ee7c-44ef-b3ac-bea067eadd08
- * Version: 1.46.0
+ * Block-UUID: fa48684c-a562-43cd-8bfa-db257467d976
+ * Parent-UUID: 581915a2-b9c2-40f6-93a5-82ef0048714d
+ * Version: 1.49.0
  * Description: Added deferred error logging to capture stack traces if the function returns before metrics are written.
  * Language: Go
- * Created-at: 2026-03-24T19:46:01.704Z
- * Authors: GLM-4.7 (v1.31.0), ..., GLM-4.7 (v1.45.0), GLM-4.7 (v1.46.0)
+ * Created-at: 2026-03-25T00:13:47.724Z
+ * Authors: GLM-4.7 (v1.31.0), ..., GLM-4.7 (v1.48.0), GLM-4.7 (v1.49.0)
  */
 
 
@@ -23,7 +23,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime/debug"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -44,27 +43,6 @@ type AssistantMessageEvent struct {
 			Text string `json:"text"`
 		} `json:"content"`
 	} `json:"message"`
-}
-
-// MetricsDebugData represents the data payload for debugging metrics insertion.
-type MetricsDebugData struct {
-	InsertCompletionArgs struct {
-		ChatUUID   string `json:"chat_uuid"`
-		MessageID  int64  `json:"message_id"`
-		SessionID  string `json:"session_id"`
-		Model      string `json:"model"`
-		Usage      Usage  `json:"usage"`
-		Cost       float64 `json:"cost"`
-		DurationMs int    `json:"duration_ms"`
-		RawJSON    string `json:"raw_json"`
-		ExitCode   int    `json:"exit_code"`
-	} `json:"insert_completion_args"`
-	UpsertSessionArgs struct {
-		SessionID string `json:"session_id"`
-		ChatUUID  string `json:"chat_uuid"`
-		Usage     Usage  `json:"usage"`
-		Cost      float64 `json:"cost"`
-	} `json:"upsert_session_args"`
 }
 
 // ExecuteChat is the main entry point for executing a Claude Code chat session.
@@ -248,48 +226,11 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 	}
 
 	// 10.5. Build File List for Bulk Read Strategy
-	// We explicitly list all context files in the prompt to ensure Claude reads them in the first turn.
-	msgDir := filepath.Join(chatDir, "messages")
-	var contextFiles []string
-	
-	entries, err := os.ReadDir(msgDir)
-	if err != nil {
-		return fmt.Errorf("failed to read messages directory: %w", err)
-	}
-	
-	for _, entry := range entries {
-		name := entry.Name()
-		// Include active, archives, and context files. Exclude system-prompt.md (loaded via flag).
-		if name == "messages-active.json" {
-			// CRITICAL: If we have a session ID, the CLI loads history from the API.
-			// We must NOT tell it to read messages-active.json, or we get double history.
-			if storedSessionID != "" {
-				continue
-			}
+	// We use a static prompt to ensure cache stability. The agent reads the map to discover files.
+	prompt := "1. Read messages/messages.map to understand the available context.\n" +
+	          "2. Read messages/user-message.md to understand the user's request.\n" +
+	          "3. Use the Read tool to access any files you need."
 
-			// Check if file has content before adding to context list to prevent hallucinations
-			fullPath := filepath.Join(msgDir, name)
-			data, err := os.ReadFile(fullPath)
-			if err == nil {
-				var window ActiveWindow
-				if json.Unmarshal(data, &window) == nil && len(window.Messages) > 0 {
-					contextFiles = append(contextFiles, filepath.Join("messages", name))
-				}
-			}
-		} else if strings.HasPrefix(name, "messages-archive-") || strings.HasPrefix(name, "context-") {
-			contextFiles = append(contextFiles, filepath.Join("messages", name))
-		}
-	}
-	
-	sort.Strings(contextFiles)
-	
-	// Construct prompt with explicit file paths
-	prompt := "Read the user message in messages/user-message.md."
-	if len(contextFiles) > 0 {
-		filesListStr := strings.Join(contextFiles, ", ")
-		prompt += fmt.Sprintf(" IMPORTANT: First, read all context files: [%s].", filesListStr)
-	}
-	
 	// Add Few-Shot Reference Example for Haiku
 	prompt += "\n"
 	prompt += "REFERENCE EXAMPLE:\n"
@@ -380,19 +321,19 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 	cmd := exec.Command("claude", flags...)
 	cmd.Dir = chatDir
 
-	// DEBUG: Write full command to checkpoint file for debugging
-	fullCommand := strings.Join(cmd.Args, " ")
-	checkpointPath := filepath.Join(logDir, "checkpoint-cli-start.txt")
-	checkpointContent := fmt.Sprintf(
-		"ExecuteChat started at %s\nUUID: %s\nParentID: %d\nCommand: %s\n",
-		time.Now().UTC().Format(time.RFC3339),
-		chatUUID,
-		assistantMessageID,
-		fullCommand,
-	)
-	if err := os.WriteFile(checkpointPath, []byte(checkpointContent), 0644); err != nil {
-		logger.Warning("Failed to write checkpoint file", "error", err)
-	}
+	//// DEBUG: Write full command to checkpoint file for debugging
+	//fullCommand := strings.Join(cmd.Args, " ")
+	//checkpointPath := filepath.Join(logDir, "checkpoint-cli-start.txt")
+	//checkpointContent := fmt.Sprintf(
+	//	"ExecuteChat started at %s\nUUID: %s\nParentID: %d\nCommand: %s\n",
+	//	time.Now().UTC().Format(time.RFC3339),
+	//	chatUUID,
+	//	assistantMessageID,
+	//	fullCommand,
+	//)
+	//if err := os.WriteFile(checkpointPath, []byte(checkpointContent), 0644); err != nil {
+	//	logger.Warning("Failed to write checkpoint file", "error", err)
+	//}
 
 	// Log the full command for debugging
 	logger.Debug("Executing Claude CLI command", "command", strings.Join(cmd.Args, " "))
@@ -695,18 +636,11 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 				doneJSON, _ := json.Marshal(map[string]interface{}{
 					"event": "done",
 					"stats": resultEvent,
+					"result": resultEvent.Result,
 				})
 				fmt.Println(string(doneJSON))
 			}
 		}
-	}
-
-	// Emit Done Event
-	if format == "json" {
-		doneJSON, _ := json.Marshal(map[string]interface{}{
-			"event": "done",
-		})
-		fmt.Println(string(doneJSON))
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -790,77 +724,33 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 		sessionID = fmt.Sprintf("stream-%d", time.Now().UnixNano())
 	}
 
-	if sessionID != "" {
-		// DEBUG: Write metrics payload to JSON file before DB insertion
-		debugData := MetricsDebugData{
-			InsertCompletionArgs: struct {
-				ChatUUID   string `json:"chat_uuid"`
-				MessageID  int64  `json:"message_id"`
-				SessionID  string `json:"session_id"`
-				Model      string `json:"model"`
-				Usage      Usage  `json:"usage"`
-				Cost       float64 `json:"cost"`
-				DurationMs int    `json:"duration_ms"`
-				RawJSON    string `json:"raw_json"`
-				ExitCode   int    `json:"exit_code"`
-			}{
-				ChatUUID:   chatUUID,
-				MessageID:  0, // Placeholder as per current code
-				SessionID:  sessionID,
-				Model:      effectiveModel,
-				Usage:      finalUsage,
-				Cost:       finalCost,
-				DurationMs: int(duration.Milliseconds()),
-				RawJSON:    "", // Streaming mode
-				ExitCode:   0,  // Assumed 0 if we reached here
-			},
-			UpsertSessionArgs: struct {
-				SessionID string `json:"session_id"`
-				ChatUUID  string `json:"chat_uuid"`
-				Usage     Usage  `json:"usage"`
-				Cost      float64 `json:"cost"`
-			}{
-				SessionID: sessionID,
-				ChatUUID:  chatUUID,
-				Usage:     finalUsage,
-				Cost:      finalCost,
-			},
-		}
-
-		debugJSON, _ := json.MarshalIndent(debugData, "", "  ")
-		debugPath := filepath.Join(logDir, fmt.Sprintf("metrics-debug-%s.json", time.Now().Format("20060102-150405")))
-		if err := os.WriteFile(debugPath, debugJSON, 0644); err != nil {
-			logger.Warning("Failed to write metrics debug file", "error", err)
-		}
-
-		if err := InsertCompletion(
-			metricsDB,
-			chatUUID,
-			0, // We don't have the new message ID yet (Node.js creates it)
-			sessionID,
-			"claude-code", // Model placeholder
-			finalUsage,
-			finalCost,
-			int(duration.Milliseconds()),
-			"", // rawJSON (streaming mode doesn't produce a single JSON blob)
-			0,  // exitCode (assumed 0 if we reached here)
-		); err != nil {
-			logger.Error("Failed to save completion metrics", "error", err)
-		}
-
-		if err := UpsertSession(
-			metricsDB,
-			sessionID,
-			chatUUID,
-			finalUsage,
-			finalCost,
-		); err != nil {
-			logger.Error("Failed to upsert session metrics", "error", err)
-		}
-
-		// Mark metrics as successfully written
-		metricsWritten = true
+	if err := InsertCompletion(
+		metricsDB,
+		chatUUID,
+		0, // We don't have the new message ID yet (Node.js creates it)
+		sessionID,
+		"claude-code", // Model placeholder
+		finalUsage,
+		finalCost,
+		int(duration.Milliseconds()),
+		"", // rawJSON (streaming mode doesn't produce a single JSON blob)
+		0,  // exitCode (assumed 0 if we reached here)
+	); err != nil {
+		logger.Error("Failed to save completion metrics", "error", err)
 	}
+
+	if err := UpsertSession(
+		metricsDB,
+		sessionID,
+		chatUUID,
+		finalUsage,
+		finalCost,
+	); err != nil {
+		logger.Error("Failed to upsert session metrics", "error", err)
+	}
+
+	// Mark metrics as successfully written
+	metricsWritten = true
 
 	// 14. Save Response to Database (if --save flag is set)
 	if save {
@@ -919,7 +809,7 @@ func prepareClaudeMD(chatDir string, gscHome string) error {
 	}
 
 	projectClaudeMD := filepath.Join(projectRoot, "CLAUDE.md")
-	
+
 	var projectContent string
 	if data, err := os.ReadFile(projectClaudeMD); err == nil {
 		projectContent = string(data)

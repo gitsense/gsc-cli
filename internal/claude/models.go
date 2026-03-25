@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Data Models
- * Block-UUID: e079530a-2ffc-4a6d-accf-190aa618ae3f
- * Parent-UUID: 15e2f650-c79d-4451-b220-bcc3fee05159
- * Version: 1.7.0
+ * Block-UUID: a352eba2-d03c-4c05-b6dd-f3ead27df6d6
+ * Parent-UUID: e079530a-2ffc-4a6d-accf-190aa618ae3f
+ * Version: 1.8.0
  * Description: Updated to support cache-optimized context file construction with bucket-based organization. Added ContextFile struct reference and ensured compatibility with context parser and bucketer.
  * Language: Go
- * Created-at: 2026-03-24T16:07:00.001Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.1.1), Gemini 3 Flash (v1.1.2), GLM-4.7 (v1.2.0), claude-haiku-4-5-20251001 (v1.3.0), GLM-4.7 (v1.7.0)
+ * Created-at: 2026-03-24T21:00:35.108Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.1.1), Gemini 3 Flash (v1.1.2), GLM-4.7 (v1.2.0), claude-haiku-4-5-20251001 (v1.3.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0)
  */
 
 
@@ -104,6 +104,7 @@ type SystemInitEvent struct {
 // StreamResultEvent represents the final result event containing usage stats and cost.
 type StreamResultEvent struct {
 	Type       string                 `json:"type"`
+	Result     string                 `json:"result"`
 	Subtype    string                 `json:"subtype"`
 	DurationMs int                    `json:"duration_ms"`
 	StopReason string                 `json:"stop_reason"`
