@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Archive Manager
- * Block-UUID: 8d36df44-6b93-46d5-9db9-6f061fca13bb
- * Parent-UUID: f0d2d71d-0fdc-44da-a084-01bb5eeea5c5
- * Version: 1.8.1
+ * Block-UUID: de40f4c2-01b2-4e75-9d82-9c3a7f75fb4b
+ * Parent-UUID: 1c8a8bda-a4fb-4fe1-a73b-f7d9f87ae748
+ * Version: 1.10.0
  * Description: Integrated context parser and bucketer for cache-optimized context file construction. Implemented zombie cleanup for orphaned context files and updated messages.map generation with proper bucket metadata.
  * Language: Go
- * Created-at: 2026-03-24T15:15:31.413Z
- * Authors: GLM-4.7 (v1.8.0), claude-haiku-4-5-20251001 (v1.8.1)
+ * Created-at: 2026-03-25T02:29:05.596Z
+ * Authors: GLM-4.7 (v1.8.0), claude-haiku-4-5-20251001 (v1.8.1), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0)
  */
 
 
@@ -370,6 +370,7 @@ func writeMessagesMap(dir string, contextFiles []context.ContextFile, cliOutputM
 			contextFileMetas = append(contextFileMetas, FileMeta{
 				ID:        fmt.Sprintf("context-range-%d-%d", minID, maxID),
 				File:      entry.Name(),
+				Type:      "source_code_archive",
 				MinID:     minID,
 				MaxID:     maxID,
 				Size:      int(info.Size()),
@@ -427,10 +428,8 @@ func writeMessagesMap(dir string, contextFiles []context.ContextFile, cliOutputM
 	// Build read sequence (stable-to-volatile order)
 	var readSequence []string
 
-	// 1. Context files (most stable)
-	for _, cf := range contextFileMetas {
-		readSequence = append(readSequence, cf.File)
-	}
+	// Context files are excluded from read_sequence to implement lazy loading.
+	// They are available via metadata in context_files but not auto-loaded.
 
 	// 2. CLI output files (moderately volatile)
 	for _, cof := range cliOutputFiles {

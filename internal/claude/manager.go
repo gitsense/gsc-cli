@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Execution Manager
- * Block-UUID: fa48684c-a562-43cd-8bfa-db257467d976
- * Parent-UUID: 581915a2-b9c2-40f6-93a5-82ef0048714d
- * Version: 1.49.0
+ * Block-UUID: 6a934fe7-6cb9-4c02-af5d-6b6d9efdbea9
+ * Parent-UUID: fa48684c-a562-43cd-8bfa-db257467d976
+ * Version: 1.50.0
  * Description: Added deferred error logging to capture stack traces if the function returns before metrics are written.
  * Language: Go
- * Created-at: 2026-03-25T00:13:47.724Z
- * Authors: GLM-4.7 (v1.31.0), ..., GLM-4.7 (v1.48.0), GLM-4.7 (v1.49.0)
+ * Created-at: 2026-03-25T02:04:22.098Z
+ * Authors: GLM-4.7 (v1.31.0), ..., GLM-4.7 (v1.48.0), GLM-4.7 (v1.49.0), GLM-4.7 (v1.50.0)
  */
 
 
@@ -228,8 +228,10 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 	// 10.5. Build File List for Bulk Read Strategy
 	// We use a static prompt to ensure cache stability. The agent reads the map to discover files.
 	prompt := "1. Read messages/messages.map to understand the available context.\n" +
-	          "2. Read messages/user-message.md to understand the user's request.\n" +
-	          "3. Use the Read tool to access any files you need."
+	          "2. The 'messages' section of the map contains the conversation history (dialogue).\n" +
+	          "3. The 'context_files' section contains source code archives. Each archive file (e.g., context-range-*.md) is a container that holds one or more project files. These are NOT messages; they are reference materials.\n" +
+	          "4. Read messages/user-message.md to understand the user's request.\n" +
+	          "5. Use the Read tool to inspect these archives as needed."
 
 	// Add Few-Shot Reference Example for Haiku
 	prompt += "\n"

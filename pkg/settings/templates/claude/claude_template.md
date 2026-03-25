@@ -1,12 +1,12 @@
 <!--
 Component: Claude Code API Protocol
-Block-UUID: 4d4929de-9445-45b9-bf6b-7965c79a3f7d
-Parent-UUID: 73502b38-e6a1-4702-950d-57e93a150eb8
-Version: 1.2.0
-Description: Updated Context Reconstruction Protocol to use messages.map as the single entry point with stable-to-volatile read sequence for cache optimization.
+Block-UUID: ef07e2e7-210f-4b45-b960-48637edaab03
+Parent-UUID: 4d4929de-9445-45b9-bf6b-7965c79a3f7d
+Version: 1.3.0
+Description: Updated Context Reconstruction Protocol to explicitly label context files as archives/reference materials, distinct from dialogue messages, aligning with the Wording-First strategy.
 Language: Markdown
-Created-at: 2026-03-22T21:28:29.511Z
-Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.1.1), GLM-4.7 (v1.1.2), GLM-4.7 (v1.2.0)
+Created-at: 2026-03-25T02:10:21.701Z
+Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.1.1), GLM-4.7 (v1.1.2), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
 -->
 
 
@@ -22,7 +22,7 @@ Your entire context for this session is contained within the `messages/` directo
 
 ### File Types
 *   **`messages.map`**: The single entry point that contains metadata and the read sequence for all context files. **READ THIS FILE FIRST.**
-*   **`context-range-{min}-{max}.md`**: Contains project files grouped into buckets by ID range. These files represent the current state of the project as understood by the system.
+*   **`context-range-{min}-{max}.md`**: Contains project files grouped into buckets by ID range. These are **archive files** containing source code. They are **reference materials**, not conversation messages.
 *   **`cli-output-{id}.md`**: Contains CLI output messages isolated by database ID.
 *   **`messages-active.json`**: Contains the most recent dialogue (last 5 messages).
 *   **`messages-archive-*.json`**: Contains historical conversation chunks.
@@ -67,6 +67,8 @@ When you need to locate a specific file in the context:
 2. **Use the file list**: Each context bucket has a `files` array with `chat_id`, `name`, and `size` for each file
 3. **Query by extension**: You can scan the `files` arrays to answer questions like "what Ruby files are in context?"
 
+**Note:** Context files are explicitly marked with `type: "source_code_archive"` in the map metadata to distinguish them from dialogue messages.
+
 **Example:**
 ```json
 {
@@ -81,7 +83,6 @@ When you need to locate a specific file in the context:
     }
   ]
 }
-
 
 ```
 

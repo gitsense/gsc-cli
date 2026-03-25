@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Data Models
- * Block-UUID: a352eba2-d03c-4c05-b6dd-f3ead27df6d6
- * Parent-UUID: e079530a-2ffc-4a6d-accf-190aa618ae3f
- * Version: 1.8.0
+ * Block-UUID: 928885b3-b03c-47b1-9bb7-75724f85882f
+ * Parent-UUID: a352eba2-d03c-4c05-b6dd-f3ead27df6d6
+ * Version: 1.9.0
  * Description: Updated to support cache-optimized context file construction with bucket-based organization. Added ContextFile struct reference and ensured compatibility with context parser and bucketer.
  * Language: Go
- * Created-at: 2026-03-24T21:00:35.108Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.1.1), Gemini 3 Flash (v1.1.2), GLM-4.7 (v1.2.0), claude-haiku-4-5-20251001 (v1.3.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0)
+ * Created-at: 2026-03-25T02:06:00.110Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), ..., GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0)
  */
 
 
@@ -145,6 +145,7 @@ type FileMeta struct {
 	FileCount int          `json:"file_count"` // Number of files in bucket
 	Files     []FileEntry  `json:"files"`     // List of files in this bucket (for context files)
 	Lifecycle string       `json:"lifecycle"` // "long-lived" or "volatile" (for CLI output files)
+	Type      string       `json:"type"`
 }
 
 // FileEntry represents a single file entry within a context bucket.
