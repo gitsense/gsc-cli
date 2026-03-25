@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Execution Manager
- * Block-UUID: 6a934fe7-6cb9-4c02-af5d-6b6d9efdbea9
- * Parent-UUID: fa48684c-a562-43cd-8bfa-db257467d976
- * Version: 1.50.0
+ * Block-UUID: 82807d70-f9f7-417c-873a-51cadba5843f
+ * Parent-UUID: 6a934fe7-6cb9-4c02-af5d-6b6d9efdbea9
+ * Version: 1.51.0
  * Description: Added deferred error logging to capture stack traces if the function returns before metrics are written.
  * Language: Go
- * Created-at: 2026-03-25T02:04:22.098Z
- * Authors: GLM-4.7 (v1.31.0), ..., GLM-4.7 (v1.48.0), GLM-4.7 (v1.49.0), GLM-4.7 (v1.50.0)
+ * Created-at: 2026-03-25T03:48:14.295Z
+ * Authors: GLM-4.7 (v1.31.0), ..., GLM-4.7 (v1.48.0), GLM-4.7 (v1.49.0), GLM-4.7 (v1.50.0), claude-haiku-4-5-20251001 (v1.51.0)
  */
 
 
@@ -34,16 +34,13 @@ import (
 	"github.com/google/uuid"
 )
 
-// AssistantMessageEvent represents the full assistant message event containing text content
-type AssistantMessageEvent struct {
-	Type    string `json:"type"`
-	Message struct {
-		Content []struct {
-			Type string `json:"type"`
-			Text string `json:"text"`
-		} `json:"content"`
-	} `json:"message"`
-}
+// Constants for stream processing
+const (
+	maxTokenSize = 10 * 1024 * 1024 // 10MB max buffer
+	initialBufSize = 64 * 1024       // 64KB initial buffer
+	dirPermissions = 0755
+	filePermissions = 0644
+)
 
 // ExecuteChat is the main entry point for executing a Claude Code chat session.
 // assistantMessageID is the ID of the assistant message (placeholder) in the database.
@@ -148,13 +145,13 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 
 	// 6. Setup Chat Directory
 	chatDir := filepath.Join(gscHome, settings.ClaudeCodeDirRelPath, settings.ClaudeChatsDirRelPath, chatUUID)
-	if err := os.MkdirAll(chatDir, 0755); err != nil {
+	if err := os.MkdirAll(chatDir, dirPermissions); err != nil {
 		return fmt.Errorf("failed to create chat directory: %w", err)
 	}
 	
 	// Setup Logs Directory early for checkpointing
 	logDir := filepath.Join(chatDir, "logs")
-	if err := os.MkdirAll(logDir, 0755); err != nil {
+	if err := os.MkdirAll(logDir, dirPermissions); err != nil {
 		return fmt.Errorf("failed to create logs directory: %w", err)
 	}
 
@@ -196,7 +193,7 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 	// Moved to messages/ directory to align with protocol and prevent path hallucinations
 	// Changed extension to .md to indicate it is part of the context documentation set
 	userMsgPath := filepath.Join(chatDir, "messages", "user-message.md")
-	if err := os.WriteFile(userMsgPath, []byte(userMessage), 0644); err != nil {
+	if err := os.WriteFile(userMsgPath, []byte(userMessage), filePermissions); err != nil {
 		return fmt.Errorf("failed to write user message: %w", err)
 	}
 
@@ -220,7 +217,7 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 	}
 
 	if _, err := os.Stat(systemPromptPath); os.IsNotExist(err) {
-		if err := os.WriteFile(systemPromptPath, []byte(defaultPrompt), 0644); err != nil {
+		if err := os.WriteFile(systemPromptPath, []byte(defaultPrompt), filePermissions); err != nil {
 			return fmt.Errorf("failed to write system prompt: %w", err)
 		}
 	}
@@ -283,7 +280,7 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 	}
 	
 	if needsAppend {
-		f, err := os.OpenFile(systemPromptPath, os.O_APPEND|os.O_WRONLY, 0644)
+		f, err := os.OpenFile(systemPromptPath, os.O_APPEND|os.O_WRONLY, filePermissions)
 		if err != nil {
 			return fmt.Errorf("failed to open system prompt for appending: %w", err)
 		}
@@ -333,7 +330,7 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 	//	assistantMessageID,
 	//	fullCommand,
 	//)
-	//if err := os.WriteFile(checkpointPath, []byte(checkpointContent), 0644); err != nil {
+	//if err := os.WriteFile(checkpointPath, []byte(checkpointContent), filePermissions); err != nil {
 	//	logger.Warning("Failed to write checkpoint file", "error", err)
 	//}
 
@@ -356,8 +353,7 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 	// 12. Process Stream
 	scanner := bufio.NewScanner(stdout)
 	// Increase buffer size to handle large JSON objects or long log lines
-	const maxTokenSize = 10 * 1024 * 1024 // 10MB
-	buf := make([]byte, 0, 64*1024)       // Initial 64KB buffer
+	buf := make([]byte, 0, initialBufSize)
 	scanner.Buffer(buf, maxTokenSize)
 	var fullResponse strings.Builder
 	var nonJSONOutput strings.Builder // New buffer to capture non-JSON lines
@@ -368,7 +364,7 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 		// DEBUG: Unconditionally write non-JSON stdout if it has content
 		if nonJSONOutput.Len() > 0 {
 			nonJSONPath := filepath.Join(logDir, "debug-stdout-non-json.txt")
-			if writeErr := os.WriteFile(nonJSONPath, []byte(nonJSONOutput.String()), 0644); writeErr != nil {
+			if writeErr := os.WriteFile(nonJSONPath, []byte(nonJSONOutput.String()), filePermissions); writeErr != nil {
 				logger.Warning("Failed to write debug non-JSON stdout file", "error", writeErr)
 			}
 		}
@@ -378,11 +374,11 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 			errorPath := filepath.Join(logDir, fmt.Sprintf("error-output-%s.txt", time.Now().Format("20060102-150405")))
 			stderrStr := stderrBuf.String()
 			if stderrStr != "" {
-				if writeErr := os.WriteFile(errorPath, []byte(stderrStr), 0644); writeErr != nil {
+				if writeErr := os.WriteFile(errorPath, []byte(stderrStr), filePermissions); writeErr != nil {
 					logger.Warning("Failed to write error output file", "error", writeErr)
 				}
 			} else {
-				os.WriteFile(errorPath, []byte("Process exited with error but no stderr output was captured."), 0644)
+				os.WriteFile(errorPath, []byte("Process exited with error but no stderr output was captured."), filePermissions)
 			}
 		}
 	}()
@@ -397,7 +393,7 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 
 	logFileName := fmt.Sprintf("raw-stream-%s.ndjson", time.Now().Format("20060102-150405"))
 	logFilePath := filepath.Join(logDir, logFileName)
-	logFile, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	logFile, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, filePermissions)
 	if err != nil {
 		return fmt.Errorf("failed to create raw stream log file: %w", err)
 	}
@@ -416,7 +412,7 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 			
 			// Write to error file
 			errorPath := filepath.Join(logDir, fmt.Sprintf("error-return-%s.txt", time.Now().Format("20060102-150405")))
-			if writeErr := os.WriteFile(errorPath, []byte(errorMsg), 0644); writeErr != nil {
+			if writeErr := os.WriteFile(errorPath, []byte(errorMsg), filePermissions); writeErr != nil {
 				// If we can't write to the log dir, print to stderr as a last resort
 				fmt.Fprintf(os.Stderr, "CRITICAL: Failed to write error return log: %v\nOriginal Error:\n%s", writeErr, errorMsg)
 			}
@@ -480,9 +476,7 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 		if baseEvent.Type == "text_delta" {
 			var deltaEvent TextDeltaEvent
 			if err := json.Unmarshal([]byte(line), &deltaEvent); err == nil {
-				// Replace placeholders on the fly
-				modifiedDelta := strings.ReplaceAll(deltaEvent.Delta, "{{MODEL-NAME}}", effectiveModel)
-				modifiedDelta = strings.ReplaceAll(modifiedDelta, "{{UTC-TIME}}", currentTime)
+				modifiedDelta := replacePlaceholders(deltaEvent.Delta, effectiveModel, currentTime)
 
 				// Always write to fullResponse for saving to DB
 				fullResponse.WriteString(modifiedDelta)
@@ -543,19 +537,7 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 
 		// Handle Stream Wrapper (for content_block_delta events like thinking)
 		if baseEvent.Type == "stream_event" {
-			var wrapperEvent struct {
-				Type  string `json:"type"`
-				Event struct {
-					Type  string `json:"type"`
-					Index int    `json:"index"`
-					Delta struct {
-						Type     string `json:"type"`
-						Thinking string `json:"thinking"`
-						Text     string `json:"text"`
-					} `json:"delta"`
-				} `json:"event"`
-			}
-			
+			var wrapperEvent ContentBlockDeltaEvent
 			if err := json.Unmarshal([]byte(line), &wrapperEvent); err == nil {
 				// Check if this is a thinking delta
 				if wrapperEvent.Event.Type == "content_block_delta" && 
@@ -573,8 +555,7 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 				
 				// Handle Text (Index 1)
 				if wrapperEvent.Event.Delta.Type == "text_delta" {
-					modifiedText := strings.ReplaceAll(wrapperEvent.Event.Delta.Text, "{{MODEL-NAME}}", effectiveModel)
-					modifiedText = strings.ReplaceAll(modifiedText, "{{UTC-TIME}}", currentTime)
+					modifiedText := replacePlaceholders(wrapperEvent.Event.Delta.Text, effectiveModel, currentTime)
 
 					if !toolsFinished {
 						responseBuffer.WriteString(modifiedText)
@@ -834,7 +815,7 @@ func prepareClaudeMD(chatDir string, gscHome string) error {
 
 	// 4. Write to Chat Directory
 	destPath := filepath.Join(chatDir, "CLAUDE.md")
-	return os.WriteFile(destPath, []byte(finalContent), 0644)
+	return os.WriteFile(destPath, []byte(finalContent), filePermissions)
 }
 
 // getAncestors retrieves the list of messages from the root up to the target ID.
@@ -864,6 +845,13 @@ func getAncestors(allMessages []db.Message, targetID int64) ([]db.Message, error
 	return ancestors, nil
 }
 
+// replacePlaceholders replaces template variables in text content
+func replacePlaceholders(text, modelName, utcTime string) string {
+	text = strings.ReplaceAll(text, "claude-haiku-4-5-20251001", modelName)
+	text = strings.ReplaceAll(text, "2026-03-25T03:42:59.750Z", utcTime)
+	return text
+}
+
 // HistoryEntry represents a single execution record in history.jsonl
 type HistoryEntry struct {
 	Timestamp   string `json:"timestamp"`
@@ -880,11 +868,11 @@ func logExecutionHistory(gscHome string, entry HistoryEntry) error {
 	historyPath := filepath.Join(gscHome, settings.ClaudeCodeDirRelPath, "history.jsonl")
 
 	// Ensure directory exists
-	if err := os.MkdirAll(filepath.Dir(historyPath), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(historyPath), dirPermissions); err != nil {
 		return err
 	}
 
-	f, err := os.OpenFile(historyPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(historyPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, filePermissions)
 	if err != nil {
 		return err
 	}

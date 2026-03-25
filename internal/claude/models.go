@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Data Models
- * Block-UUID: 928885b3-b03c-47b1-9bb7-75724f85882f
- * Parent-UUID: a352eba2-d03c-4c05-b6dd-f3ead27df6d6
- * Version: 1.9.0
+ * Block-UUID: f5cd823c-5202-4355-95f1-c77941f176aa
+ * Parent-UUID: 928885b3-b03c-47b1-9bb7-75724f85882f
+ * Version: 1.10.0
  * Description: Updated to support cache-optimized context file construction with bucket-based organization. Added ContextFile struct reference and ensured compatibility with context parser and bucketer.
  * Language: Go
- * Created-at: 2026-03-25T02:06:00.110Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), ..., GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0)
+ * Created-at: 2026-03-25T03:47:11.844Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), ..., GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), claude-haiku-4-5-20251001 (v1.10.0)
  */
 
 
@@ -66,6 +66,37 @@ type ArchiveFile struct {
 // StreamEvent represents the base structure for stream-json events.
 type StreamEvent struct {
 	Type string `json:"type"`
+}
+
+// AssistantMessageEvent represents the full assistant message event containing text content
+type AssistantMessageEvent struct {
+	Type    string `json:"type"`
+	Message struct {
+		Content []struct {
+			Type string `json:"type"`
+			Text string `json:"text"`
+		} `json:"content"`
+	} `json:"message"`
+}
+
+// ContentBlockDeltaEvent represents a streaming content block delta event with thinking or text
+type ContentBlockDeltaEvent struct {
+	Type  string `json:"type"`
+	Event struct {
+		Type  string `json:"type"`
+		Index int    `json:"index"`
+		Delta struct {
+			Type     string `json:"type"`
+			Thinking string `json:"thinking"`
+			Text     string `json:"text"`
+		} `json:"delta"`
+	} `json:"event"`
+}
+
+// PlaceholderMap holds the template variables for text replacement
+type PlaceholderMap struct {
+	ModelName string
+	UTCTime   string
 }
 
 // TextDeltaEvent represents a chunk of text content.
