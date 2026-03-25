@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Execution Manager
- * Block-UUID: 82807d70-f9f7-417c-873a-51cadba5843f
- * Parent-UUID: 6a934fe7-6cb9-4c02-af5d-6b6d9efdbea9
- * Version: 1.51.0
- * Description: Added deferred error logging to capture stack traces if the function returns before metrics are written.
+ * Block-UUID: 0e021bd2-b19e-498a-87fa-fca21e2ac080
+ * Parent-UUID: 82807d70-f9f7-417c-873a-51cadba5843f
+ * Version: 1.52.0
+ * Description: Strengthen context reading protocol prompt to ensure LLM always reads messages.map, user-message.md, and messages-active.json at every turn for proper context reconstruction
  * Language: Go
  * Created-at: 2026-03-25T03:48:14.295Z
- * Authors: GLM-4.7 (v1.31.0), ..., GLM-4.7 (v1.48.0), GLM-4.7 (v1.49.0), GLM-4.7 (v1.50.0), claude-haiku-4-5-20251001 (v1.51.0)
+ * Authors: GLM-4.7 (v1.31.0), ..., GLM-4.7 (v1.48.0), GLM-4.7 (v1.49.0), GLM-4.7 (v1.50.0), claude-haiku-4-5-20251001 (v1.51.0), claude-haiku-4-5-20251001 (v1.52.0)
  */
 
 
@@ -224,11 +224,31 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 
 	// 10.5. Build File List for Bulk Read Strategy
 	// We use a static prompt to ensure cache stability. The agent reads the map to discover files.
-	prompt := "1. Read messages/messages.map to understand the available context.\n" +
-	          "2. The 'messages' section of the map contains the conversation history (dialogue).\n" +
-	          "3. The 'context_files' section contains source code archives. Each archive file (e.g., context-range-*.md) is a container that holds one or more project files. These are NOT messages; they are reference materials.\n" +
-	          "4. Read messages/user-message.md to understand the user's request.\n" +
-	          "5. Use the Read tool to inspect these archives as needed."
+	prompt := "CRITICAL: At every turn, follow these steps in order:\n\n" +
+	          "## Step 1: Read messages/messages.map (ALWAYS)\n" +
+	          "This is your entry point. It contains metadata for all available files:\n" +
+	          "- read_sequence: Ordered list of files for this request\n" +
+	          "- context_files: Metadata for source code archive files\n" +
+	          "- messages: Metadata for dialogue files\n\n" +
+	          "## Step 2: Read messages/user-message.md (ALWAYS)\n" +
+	          "This contains the current user's request. Read immediately after messages.map.\n\n" +
+	          "## Step 3: Read messages-active.json (ALWAYS)\n" +
+	          "This contains the recent conversation window (last 5 messages).\n" +
+	          "This is current context, not history. Always read it.\n\n" +
+	          "## Step 4: Read Historical/Archive Files (AS NEEDED)\n" +
+	          "Use messages.map to find relevant files:\n" +
+	          "- messages-archive-*.json: Older conversation chunks (read if context requires it)\n" +
+	          "- context-range-*.md: Source code archives (read only the files needed to answer the request)\n" +
+	          "- cli-output-*.md: CLI output (read only if relevant)\n\n" +
+	          "## CRITICAL: Do Not Emit Analysis Until After Step 3\n" +
+	          "Emit ONLY Read tool calls for messages.map, user-message.md, and messages-active.json in your first response.\n" +
+	          "Do not attempt to analyze the request or provide a partial answer until you have read all three.\n" +
+	          "After reading these three files, you may selectively read additional archives as needed.\n\n" +
+	          "## Optimize for Cache Hit Rate\n" +
+	          "The read_sequence in messages.map is pre-ordered for cache optimization.\n" +
+	          "Only read additional files that are actually relevant to the current request.\n" +
+	          "Unnecessary reads waste tokens and reduce cache efficiency.\n\n" +
+	          "See CLAUDE.md for the complete protocol."
 
 	// Add Few-Shot Reference Example for Haiku
 	prompt += "\n"
