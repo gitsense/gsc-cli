@@ -619,7 +619,7 @@ func ExecuteChat(chatUUID string, assistantMessageID int64, userMessage string, 
 				doneJSON, _ := json.Marshal(map[string]interface{}{
 					"event": "done",
 					"stats": resultEvent,
-					"result": resultEvent.Result,
+					"result": replacePlaceholders(resultEvent.Result, effectiveModel, currentTime),
 				})
 				fmt.Println(string(doneJSON))
 			}
@@ -847,8 +847,8 @@ func getAncestors(allMessages []db.Message, targetID int64) ([]db.Message, error
 
 // replacePlaceholders replaces template variables in text content
 func replacePlaceholders(text, modelName, utcTime string) string {
-	text = strings.ReplaceAll(text, "claude-haiku-4-5-20251001", modelName)
-	text = strings.ReplaceAll(text, "2026-03-25T03:42:59.750Z", utcTime)
+	text = strings.ReplaceAll(text, "{{MODEL-NAME}}", modelName)
+	text = strings.ReplaceAll(text, "{{UTC-TIME}}", utcTime)
 	return text
 }
 
