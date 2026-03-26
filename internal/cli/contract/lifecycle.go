@@ -1,12 +1,12 @@
 /**
  * Component: Contract CLI Lifecycle
- * Block-UUID: 57f701d0-afb3-404d-b423-d8e6919cd77a
- * Parent-UUID: b4a0c085-3ecd-4d20-81b7-ed8630c9519b
- * Version: 1.0.3
+ * Block-UUID: cb23e448-37c2-4db9-8aa3-8cbf7ce507cd
+ * Parent-UUID: 57f701d0-afb3-404d-b423-d8e6919cd77a
+ * Version: 1.0.4
  * Description: CLI commands for managing contract lifecycle: status, list, cancel, renew, complete, delete, and info.
  * Language: Go
- * Created-at: 2026-03-26T16:14:05.132Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3)
+ * Created-at: 2026-03-26T20:43:43.495Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4)
  */
 
 
@@ -48,10 +48,7 @@ var statusContractCmd = &cobra.Command{
 
 		display := output.ContractDisplay{
 			UUID:        meta.UUID,
-			Workdir: func() string {
-				if len(meta.Workdirs) > 0 { return meta.Workdirs[0].Path }
-				return ""
-			}(),
+			Workdirs:    meta.Workdirs,
 			Description: meta.Description,
 			Status:      string(meta.Status),
 			ExpiresAt:   meta.ExpiresAt.Format("2006-01-02 15:04:05"),
@@ -83,10 +80,7 @@ var listContractCmd = &cobra.Command{
 		for i, c := range filtered {
 			displayContracts[i] = output.ContractDisplay{
 				UUID: c.UUID,
-				Workdir: func() string {
-					if len(c.Workdirs) > 0 { return c.Workdirs[0].Path }
-					return ""
-				}(),
+				Workdirs:    c.Workdirs,
 				Description: c.Description,
 				Status:      string(c.Status),
 				ExpiresAt:   c.ExpiresAt.Format("2006-01-02 15:04:05"),

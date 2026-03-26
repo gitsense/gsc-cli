@@ -1,12 +1,12 @@
 /**
  * Component: Contract Intent Handler
- * Block-UUID: fbd8af6d-36fd-4322-b23f-470d8eb767a8
- * Parent-UUID: 2dbfe88f-6218-4ab1-a26a-cf7af81180a0
- * Version: 1.26.0
+ * Block-UUID: eeeec5f7-25ba-43ec-986c-9bb738010768
+ * Parent-UUID: fbd8af6d-36fd-4322-b23f-470d8eb767a8
+ * Version: 1.27.0
  * Description: Simplified terminal intent handling to delegate shell spawning to 'gsc ws'. Removed script generation and environment variable injection logic.
  * Language: Go
- * Created-at: 2026-03-26T15:29:38.056Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.21.0), GLM-4.7 (v1.22.0), GLM-4.7 (v1.23.0), GLM-4.7 (v1.24.0), GLM-4.7 (v1.25.0), GLM-4.7 (v1.26.0)
+ * Created-at: 2026-03-26T17:12:52.028Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.21.0), GLM-4.7 (v1.22.0), GLM-4.7 (v1.23.0), GLM-4.7 (v1.24.0), GLM-4.7 (v1.25.0), GLM-4.7 (v1.26.0), GLM-4.7 (v1.27.0)
  */
 
 
@@ -162,7 +162,7 @@ func handleTerminalIntent(meta *ContractMetadata, req LaunchRequest) (LaunchResu
 		Success: result.ExitCode == 0,
 		Message: msg,
 		Alias:   "terminal",
-		Workdir: workdir,
+		PrimaryWorkdir: workdir,
 		Command: cmdStr,
 	}, nil
 }
@@ -202,7 +202,7 @@ func handleEditorRootIntent(meta *ContractMetadata, override string) (LaunchResu
 		Success: result.ExitCode == 0,
 		Message: msg,
 		Alias:   "editor",
-		Workdir: meta.Workdirs[0].Path,
+		PrimaryWorkdir: meta.Workdirs[0].Path,
 		Command: cmdStr,
 	}, nil
 }
@@ -235,7 +235,7 @@ func handleReviewIntent(meta *ContractMetadata, req LaunchRequest) (LaunchResult
 			Success:    true,
 			Message:    "Code staged successfully, but no editor is configured.",
 			Alias:      "review",
-			Workdir:    meta.Workdirs[0].Path,
+			PrimaryWorkdir:    meta.Workdirs[0].Path,
 			StagedPath: stagedPath,
 		}, nil
 	}
@@ -264,7 +264,7 @@ func handleReviewIntent(meta *ContractMetadata, req LaunchRequest) (LaunchResult
 		Success:    result.ExitCode == 0,
 		Message:    msg,
 		Alias:      "review",
-		Workdir:    meta.Workdirs[0].Path,
+			PrimaryWorkdir:    meta.Workdirs[0].Path,
 		StagedPath: stagedPath,
 		Command:    cmdStr,
 	}, nil
@@ -342,7 +342,7 @@ func handleExecIntent(meta *ContractMetadata, cmdStr string) (LaunchResult, erro
 		Success: result.ExitCode == 0,
 		Message: msg,
 		Alias:   "exec",
-		Workdir: meta.Workdirs[0].Path,
+		PrimaryWorkdir: meta.Workdirs[0].Path,
 		Command: cmdStr,
 	}, nil
 }

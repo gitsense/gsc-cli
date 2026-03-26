@@ -1,12 +1,12 @@
 /**
  * Component: Contract CLI Root
- * Block-UUID: f323efa6-40d0-4b78-88e1-9b9bc4de2a7b
- * Parent-UUID: 13bf0652-a4c1-418a-8ee4-2fb9c3e77aa4
- * Version: 1.7.0
+ * Block-UUID: efd7900d-ffd5-46f6-a5bb-61bcbf2489eb
+ * Parent-UUID: f323efa6-40d0-4b78-88e1-9b9bc4de2a7b
+ * Version: 1.8.0
  * Description: Integrated IsInContainer check into PersistentPreRunE to prevent recursive proxy loops for contract commands.
  * Language: Go
- * Created-at: 2026-03-26T16:14:42.351Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0)
+ * Created-at: 2026-03-26T17:00:18.817Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0)
  */
 
 
@@ -24,6 +24,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/gitsense/gsc-cli/internal/contract"
 	docker_internal "github.com/gitsense/gsc-cli/internal/docker"
+	"github.com/gitsense/gsc-cli/pkg/logger"
 	"github.com/gitsense/gsc-cli/pkg/settings"
 	"encoding/json"
 )
@@ -246,6 +247,7 @@ func sortContracts(contracts []contract.ContractMetadata, field, order string) {
 func findContractUUIDByWorkdir() (string, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
+		logger.Debug("Error getting CWD", "error", err)
 		return "", fmt.Errorf("failed to get current directory: %w", err)
 	}
 
@@ -254,6 +256,8 @@ func findContractUUIDByWorkdir() (string, error) {
 		return "", fmt.Errorf("failed to resolve absolute path: %w", err)
 	}
 
+	logger.Debug("Resolving contract by workdir", "abs_cwd", absCwd)
+
 	contracts, err := contract.ListContracts()
 	if err != nil {
 		return "", err
@@ -261,12 +265,19 @@ func findContractUUIDByWorkdir() (string, error) {
 
 	var matches []string
 	for _, c := range contracts {
+		logger.Debug("Inspecting contract", "uuid", c.UUID, "status", c.Status, "workdirs_count", len(c.Workdirs))
+
 		if c.Status == typescontract.ContractActive && len(c.Workdirs) > 0 && c.Workdirs[0].Path == absCwd {
+			primaryPath := c.Workdirs[0].Path
+			isMatch := primaryPath == absCwd
+			logger.Debug("Path comparison result", "uuid", c.UUID, "primary_path", primaryPath, "target_cwd", absCwd, "is_match", isMatch)
+
 			matches = append(matches, c.UUID)
 		}
 	}
 
 	if len(matches) == 0 {
+		logger.Debug("No contracts found matching CWD", "abs_cwd", absCwd)
 		return "", fmt.Errorf("no active contracts found in this directory")
 	}
 	if len(matches) > 1 {

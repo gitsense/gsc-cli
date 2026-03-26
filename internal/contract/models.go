@@ -1,12 +1,12 @@
 /**
  * Component: Contract Models
- * Block-UUID: 098b045e-a49a-4452-a2c6-6a2af7740075
- * Parent-UUID: 1b4f735f-b7b2-4b7b-b02e-195262299296
- * Version: 1.30.0
+ * Block-UUID: 80ba47b9-0768-4317-8c98-4f22d94b0a5b
+ * Parent-UUID: 66933633-4307-4e2c-8196-9a449ae13f78
+ * Version: 1.32.0
  * Description: Added GenFileName field to MappedFileEntry to provide the generated filename for frontend URI construction.
  * Language: Go
- * Created-at: 2026-03-26T15:54:17.409Z
- * Authors: GLM-4.7 (v1.28.0), GLM-4.7 (v1.29.0), GLM-4.7 (v1.30.0)
+ * Created-at: 2026-03-26T17:11:36.716Z
+ * Authors: GLM-4.7 (v1.28.0), GLM-4.7 (v1.29.0), GLM-4.7 (v1.30.0), GLM-4.7 (v1.31.0), GLM-4.7 (v1.32.0)
  */
 
 
@@ -74,7 +74,7 @@ type LaunchResult struct {
 	Success    bool   `json:"success"`
 	Message    string `json:"message"`
 	Alias      string `json:"alias"`
-	Workdir    string `json:"workdir"`
+	PrimaryWorkdir string `json:"primary_workdir"`
 	StagedPath string `json:"staged_path,omitempty"`
 	Command    string `json:"command,omitempty"`
 }
@@ -125,20 +125,20 @@ type ProvenanceEntry struct {
 
 // ContractInfoResult represents the sanitized output of the 'contract info' command.
 type ContractInfoResult struct {
-	UUID              string    `json:"uuid"`
-	Description       string    `json:"description"`
-	Workdir           string    `json:"workdir"`
-	Workdirs          []string  `json:"workdirs"`
-	Status            string    `json:"status"`
-	CreatedAt         time.Time `json:"created_at"`
-	ExpiresAt         time.Time `json:"expires_at"`
-	Authcode          string    `json:"authcode"`
-	ExecTimeout       int       `json:"exec_timeout"`
-	Whitelist         []string  `json:"whitelist"`
-	NoWhitelist       bool      `json:"no_whitelist"`
-	PreferredEditor   string    `json:"preferred_editor"`
-	PreferredTerminal string    `json:"preferred_terminal"`
-	PreferredReview   string    `json:"preferred_review"`
+	UUID              string                   `json:"uuid"`
+	Description       string                   `json:"description"`
+	PrimaryWorkdir    string                   `json:"primary_workdir"`
+	Workdirs          []contract.WorkdirEntry  `json:"workdirs"`
+	Status            string                   `json:"status"`
+	CreatedAt         time.Time                `json:"created_at"`
+	ExpiresAt         time.Time                `json:"expires_at"`
+	Authcode          string                   `json:"authcode"`
+	ExecTimeout       int                      `json:"exec_timeout"`
+	Whitelist         []string                 `json:"whitelist"`
+	NoWhitelist       bool                     `json:"no_whitelist"`
+	PreferredEditor   string                   `json:"preferred_editor"`
+	PreferredTerminal string                   `json:"preferred_terminal"`
+	PreferredReview   string                   `json:"preferred_review"`
 }
 
 // ContractTestResult represents the output of the 'contract test' command.

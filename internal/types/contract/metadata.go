@@ -1,12 +1,12 @@
 /**
  * Component: Contract Types
- * Block-UUID: 441aff46-be65-48ff-bd02-9c40ba9eca52
- * Parent-UUID: e6a0bef5-6d2b-409f-91b4-ebc048eba3cd
- * Version: 1.1.0
+ * Block-UUID: a5116024-48a9-4153-b3c3-30707648be78
+ * Parent-UUID: 57aa5d85-9a96-486f-a76a-ccf62f9ad4e6
+ * Version: 1.4.0
  * Description: Defines the core data structures for contracts, including the WorkdirEntry and ContractData. Implements backward-compatible unmarshalling for the workdir to workdirs migration.
  * Language: Go
- * Created-at: 2026-03-26T15:53:44.473Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0)
+ * Created-at: 2026-03-26T17:04:38.216Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
  */
 
 
@@ -64,22 +64,21 @@ func (c *ContractData) UnmarshalJSON(data []byte) error {
 
 	// Define a temporary struct that captures both the old and new formats
 	type TempContract struct {
-		Workdir    string         `json:"workdir"` // Legacy field
-		Workdirs   []WorkdirEntry `json:"workdirs"` // New field
-		AliasFields Alias         `json:"-"`        // All other fields
+		Workdir  string         `json:"workdir"`
+		Workdirs []WorkdirEntry `json:"workdirs"`
+		*Alias                 // Embed pointer to receiver
 	}
 
-	var temp TempContract
+	temp := &TempContract{ Alias: (*Alias)(c) }
 	if err := json.Unmarshal(data, &temp); err != nil {
 		return err
 	}
 
-	// Copy alias fields
-	*c = ContractData(temp.AliasFields)
-
 	// Handle Migration
+	// Note: temp.Workdirs is actually pointing to c.Workdirs because of the embedding
 	if len(temp.Workdirs) > 0 {
-		// New format: use the array directly
+		// New format: array is populated in temp.Workdirs due to shadowing
+		// We must explicitly copy it to c.Workdirs
 		c.Workdirs = temp.Workdirs
 	} else if temp.Workdir != "" {
 		// Legacy format: migrate single string to array
@@ -95,4 +94,3 @@ func (c *ContractData) UnmarshalJSON(data []byte) error {
 
 	return nil
 }
-

@@ -1,12 +1,12 @@
 /**
  * Component: Provenance Manager
- * Block-UUID: 21694a60-f64b-45b1-aa35-190a08115093
- * Parent-UUID: d0d5d818-5e72-4f21-9a1c-96b3c308d780
- * Version: 1.4.0
- * Description: Added TestFile function to support the 'contract test' command, enabling pre-flight validation of code changes including UUID uniqueness and diff generation. Updated UpdateFile and NewFile to accept and validate the authcode parameter for security.
+ * Block-UUID: 8ec1ff3d-4f83-4bc1-96df-f92cd89ac542
+ * Parent-UUID: a469711c-0628-425f-ab30-87323542c53f
+ * Version: 1.6.0
+ * Description: Updated ContractInfoResult struct literals to use PrimaryWorkdir instead of the deprecated Workdir field.
  * Language: Go
- * Created-at: 2026-03-26T15:59:55.693Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
+ * Created-at: 2026-03-26T16:41:51.870Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0)
  */
 
 
@@ -276,7 +276,7 @@ func TestFile(contractUUID string, sourceFile string, sanitize bool) (*ContractT
 				UUID:        contract.UUID,
 				Status:      string(contract.Status),
 				Description: contract.Description,
-				Workdir:     contract.Workdirs[0].Path,
+				PrimaryWorkdir: contract.Workdirs[0].Path,
 				CreatedAt:   contract.CreatedAt,
 				ExpiresAt:   contract.ExpiresAt,
 			},
@@ -292,7 +292,7 @@ func TestFile(contractUUID string, sourceFile string, sanitize bool) (*ContractT
 				UUID:        contract.UUID,
 				Status:      string(contract.Status),
 				Description: contract.Description,
-				Workdir:     contract.Workdirs[0].Path,
+				PrimaryWorkdir: contract.Workdirs[0].Path,
 				CreatedAt:   contract.CreatedAt,
 				ExpiresAt:   contract.ExpiresAt,
 			},
@@ -315,7 +315,7 @@ func TestFile(contractUUID string, sourceFile string, sanitize bool) (*ContractT
 				UUID:        contract.UUID,
 				Status:      string(contract.Status),
 				Description: contract.Description,
-				Workdir:     contract.Workdirs[0].Path,
+				PrimaryWorkdir: contract.Workdirs[0].Path,
 				CreatedAt:   contract.CreatedAt,
 				ExpiresAt:   contract.ExpiresAt,
 			},
@@ -328,7 +328,7 @@ func TestFile(contractUUID string, sourceFile string, sanitize bool) (*ContractT
 	// 4. Check Block-UUID Uniqueness
 	if len(contract.Workdirs) == 0 {
 		return &ContractTestResult{
-			ContractInfoResult: ContractInfoResult{UUID: contract.UUID, Status: string(contract.Status), Description: contract.Description, Workdir: "", CreatedAt: contract.CreatedAt, ExpiresAt: contract.ExpiresAt},
+			ContractInfoResult: ContractInfoResult{UUID: contract.UUID, Status: string(contract.Status), Description: contract.Description, PrimaryWorkdir: "", CreatedAt: contract.CreatedAt, ExpiresAt: contract.ExpiresAt},
 			Success: false, ErrorCode: "NO_WORKDIRS", Message: "Contract has no working directories defined",
 		}, nil
 	}
@@ -343,7 +343,7 @@ func TestFile(contractUUID string, sourceFile string, sanitize bool) (*ContractT
 					UUID:        contract.UUID,
 					Status:      string(contract.Status),
 					Description: contract.Description,
-					Workdir:     contract.Workdirs[0].Path,
+					PrimaryWorkdir: contract.Workdirs[0].Path,
 					CreatedAt:   contract.CreatedAt,
 					ExpiresAt:   contract.ExpiresAt,
 				},
@@ -364,7 +364,7 @@ func TestFile(contractUUID string, sourceFile string, sanitize bool) (*ContractT
 				UUID:        contract.UUID,
 				Status:      string(contract.Status),
 				Description: contract.Description,
-				Workdir:     contract.Workdirs[0].Path,
+				PrimaryWorkdir: contract.Workdirs[0].Path,
 				CreatedAt:   contract.CreatedAt,
 				ExpiresAt:   contract.ExpiresAt,
 			},
@@ -378,7 +378,7 @@ func TestFile(contractUUID string, sourceFile string, sanitize bool) (*ContractT
 
 	// Update scenario: Find Parent
 	if len(contract.Workdirs) == 0 {
-		return &ContractTestResult{ContractInfoResult: ContractInfoResult{UUID: contract.UUID, Status: string(contract.Status), Description: contract.Description, Workdir: "", CreatedAt: contract.CreatedAt, ExpiresAt: contract.ExpiresAt}, Success: false, ErrorCode: "NO_WORKDIRS", Message: "Contract has no working directories defined"}, nil
+		return &ContractTestResult{ContractInfoResult: ContractInfoResult{UUID: contract.UUID, Status: string(contract.Status), Description: contract.Description, PrimaryWorkdir: "", CreatedAt: contract.CreatedAt, ExpiresAt: contract.ExpiresAt}, Success: false, ErrorCode: "NO_WORKDIRS", Message: "Contract has no working directories defined"}, nil
 	}
 	targetPath, _, err := engine.FindBlockByUUID(ctx, contract.Workdirs[0].Path, newMeta.ParentUUID)
 	if err != nil {
@@ -387,7 +387,7 @@ func TestFile(contractUUID string, sourceFile string, sanitize bool) (*ContractT
 				UUID:        contract.UUID,
 				Status:      string(contract.Status),
 				Description: contract.Description,
-				Workdir:     contract.Workdirs[0].Path,
+				PrimaryWorkdir: contract.Workdirs[0].Path,
 				CreatedAt:   contract.CreatedAt,
 				ExpiresAt:   contract.ExpiresAt,
 			},
@@ -413,7 +413,7 @@ func TestFile(contractUUID string, sourceFile string, sanitize bool) (*ContractT
 				UUID:        contract.UUID,
 				Status:      string(contract.Status),
 				Description: contract.Description,
-				Workdir:     contract.Workdirs[0].Path,
+				PrimaryWorkdir: contract.Workdirs[0].Path,
 				CreatedAt:   contract.CreatedAt,
 				ExpiresAt:   contract.ExpiresAt,
 			},
@@ -433,7 +433,7 @@ func TestFile(contractUUID string, sourceFile string, sanitize bool) (*ContractT
 				UUID:        contract.UUID,
 				Status:      string(contract.Status),
 				Description: contract.Description,
-				Workdir:     contract.Workdirs[0].Path,
+				PrimaryWorkdir: contract.Workdirs[0].Path,
 				CreatedAt:   contract.CreatedAt,
 				ExpiresAt:   contract.ExpiresAt,
 			},
@@ -463,7 +463,7 @@ func TestFile(contractUUID string, sourceFile string, sanitize bool) (*ContractT
 
 	// 7. Sanitize Paths
 	if len(contract.Workdirs) == 0 {
-		return &ContractTestResult{ContractInfoResult: ContractInfoResult{UUID: contract.UUID, Status: string(contract.Status), Description: contract.Description, Workdir: "", CreatedAt: contract.CreatedAt, ExpiresAt: contract.ExpiresAt}, Success: false, ErrorCode: "NO_WORKDIRS", Message: "Contract has no working directories defined"}, nil
+		return &ContractTestResult{ContractInfoResult: ContractInfoResult{UUID: contract.UUID, Status: string(contract.Status), Description: contract.Description, PrimaryWorkdir: "", CreatedAt: contract.CreatedAt, ExpiresAt: contract.ExpiresAt}, Success: false, ErrorCode: "NO_WORKDIRS", Message: "Contract has no working directories defined"}, nil
 	}
 	relPath := targetPath
 	if sanitize {
@@ -475,7 +475,7 @@ func TestFile(contractUUID string, sourceFile string, sanitize bool) (*ContractT
 			UUID:        contract.UUID,
 			Status:      string(contract.Status),
 			Description: contract.Description,
-			Workdir:     contract.Workdirs[0].Path,
+			PrimaryWorkdir: contract.Workdirs[0].Path,
 			CreatedAt:   contract.CreatedAt,
 			ExpiresAt:   contract.ExpiresAt,
 		},

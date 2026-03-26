@@ -219,7 +219,7 @@ func renderOverview(meta *contract.ContractMetadata, mappedRoot string) {
 		fmt.Printf("  Desc:   %s\n", meta.Description)
 	}
 	if len(meta.Workdirs) > 0 {
-		fmt.Printf("  Proj:   %s\n", meta.Workdirs[0].Path)
+		fmt.Printf("P-Workdir: %s\n", meta.Workdirs[0].Path)
 	}
 	fmt.Printf("  Dumps:  %s\n", filepath.Dir(mappedRoot))
 	fmt.Printf("  Status: %s\n", meta.Status)

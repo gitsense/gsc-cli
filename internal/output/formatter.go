@@ -1,12 +1,12 @@
 /**
  * Component: Output Formatter
- * Block-UUID: fa6ea9ea-22fd-4cf5-9a22-e4557a5a2e9e
- * Parent-UUID: 490b567d-a4ab-4ac0-9607-d888324b0b34
- * Version: 1.15.0
+ * Block-UUID: 8fcb5580-1ca1-45fd-96e1-918713c3f1f2
+ * Parent-UUID: 024969de-ce14-4b2c-9082-25bb43166c43
+ * Version: 1.17.0
  * Description: Removed FormatContractInfo and FormatContractTest to resolve import cycle. These functions have been moved to internal/contract/manager.go.
  * Language: Go
- * Created-at: 2026-02-27T07:04:22.864Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), Gemini 3 Flash (v1.7.0), Gemini 3 Flash (v1.8.0), GLM-4.7 (v1.9.0), Gemini 3 Flash (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0)
+ * Created-at: 2026-03-26T20:42:52.215Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), Gemini 3 Flash (v1.7.0), Gemini 3 Flash (v1.8.0), GLM-4.7 (v1.9.0), Gemini 3 Flash (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.17.0)
  */
 
 
@@ -17,9 +17,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/gitsense/gsc-cli/internal/types/contract"
 	"github.com/mattn/go-isatty"
 	"golang.org/x/term"
 )
@@ -224,7 +226,7 @@ func FormatExecList(outputs []ExecOutput) string {
 type ContractDisplay struct {
 	UUID        string
 	Description string
-	Workdir     string
+	Workdirs    []contract.WorkdirEntry
 	Status      string
 	ExpiresAt   string
 }
@@ -235,14 +237,18 @@ func FormatContractList(contracts []ContractDisplay) string {
 		return "No contracts found."
 	}
 
-	headers := []string{"UUID", "Description", "Workdir", "Status", "Expires"}
+	headers := []string{"UUID", "Description", "Primary Workdir", "Status", "Expires"}
 	
 	rows := make([][]string, len(contracts))
 	for i, c := range contracts {
+		workdirPath := ""
+		if len(c.Workdirs) > 0 {
+			workdirPath = c.Workdirs[0].Path
+		}
 		rows[i] = []string{
 			c.UUID,
 			truncate(c.Description, 30),
-			truncate(c.Workdir, 40),
+			truncate(workdirPath, 40),
 			c.Status,
 			c.ExpiresAt,
 		}
@@ -287,11 +293,23 @@ func FormatProvenanceList(entries []ProvenanceDisplay) string {
 func FormatContractStatus(c ContractDisplay) string {
 	var sb strings.Builder
 
-	sb.WriteString(fmt.Sprintf("Contract Status for: %s\n\n", c.Workdir))
+	sb.WriteString("Contract Status\n\n")
 	sb.WriteString(fmt.Sprintf("  UUID:         %s\n", c.UUID))
 	sb.WriteString(fmt.Sprintf("  Description:  %s\n", c.Description))
 	sb.WriteString(fmt.Sprintf("  Status:       %s\n", c.Status))
-	sb.WriteString(fmt.Sprintf("  Expires At:   %s\n", c.ExpiresAt))
+	sb.WriteString(fmt.Sprintf("  Expires At:   %s\n\n", c.ExpiresAt))
+
+	if len(c.Workdirs) > 0 {
+		primary := c.Workdirs[0]
+		sb.WriteString(fmt.Sprintf("  Primary Workdir:   %s (%s)\n", filepath.Base(primary.Path), primary.Path))
+		if len(c.Workdirs) > 1 {
+			sb.WriteString("  Secondary Workdirs:\n")
+			for i := 1; i < len(c.Workdirs); i++ {
+				sec := c.Workdirs[i]
+				sb.WriteString(fmt.Sprintf("    - %s (%s)\n", sec.Name, sec.Path))
+			}
+		}
+	}
 
 	return sb.String()
 }

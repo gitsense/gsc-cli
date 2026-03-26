@@ -1,12 +1,12 @@
 /**
  * Component: Contract Manager
- * Block-UUID: d5c4ae73-40e7-4ac1-8735-34706b244cea
- * Parent-UUID: 19cb9bb2-6951-4408-9e80-d753b10a0c9a
- * Version: 1.21.0
- * Description: Removed Terminal and Review Tool fields from the contract info output display.
+ * Block-UUID: bdc7389f-e364-47fa-9f87-197f853418eb
+ * Parent-UUID: 98c87d6f-04c8-4390-a691-0b09e8948caa
+ * Version: 1.24.0
+ * Description: Add workdir management methods (AddWorkdir, RemoveWorkdir, SetPrimaryWorkdir) with conflict validation and event notifications.
  * Language: Go
- * Created-at: 2026-03-26T15:58:26.955Z
- * Authors: GLM-4.7 (v1.20.0), GLM-4.7 (v1.21.0)
+ * Created-at: 2026-03-26T21:20:26.777Z
+ * Authors: GLM-4.7 (v1.23.0), claude-haiku-4-5-20251001 (v1.24.0)
  */
 
 
@@ -253,23 +253,17 @@ func GetContractInfo(uuid string, sanitize bool) (*ContractInfoResult, error) {
 	}
 
 	result := &ContractInfoResult{
-		UUID: meta.UUID,
-		Workdirs: func() []string {
-			paths := make([]string, len(meta.Workdirs)) // Helper to extract paths
-			for i, w := range meta.Workdirs {
-				paths[i] = w.Path
-			}
-			return paths
-		}(),
-		Description: meta.Description,
-		Status:      status,
-		CreatedAt:   meta.CreatedAt,
-		ExpiresAt:   meta.ExpiresAt,
-		Authcode:    meta.Authcode,
-		Workdir:     meta.Workdirs[0].Path,
-		ExecTimeout: meta.ExecTimeout,
-		Whitelist:   meta.Whitelist,
-		NoWhitelist: meta.NoWhitelist,
+		UUID:           meta.UUID,
+		PrimaryWorkdir: meta.Workdirs[0].Path,
+		Workdirs:       meta.Workdirs,
+		Description:    meta.Description,
+		Status:         status,
+		CreatedAt:      meta.CreatedAt,
+		ExpiresAt:      meta.ExpiresAt,
+		Authcode:       meta.Authcode,
+		ExecTimeout:    meta.ExecTimeout,
+		Whitelist:      meta.Whitelist,
+		NoWhitelist:    meta.NoWhitelist,
 		PreferredTerminal: meta.PreferredTerminal,
 		PreferredReview:   meta.PreferredReview,
 	}
@@ -279,12 +273,12 @@ func GetContractInfo(uuid string, sanitize bool) (*ContractInfoResult, error) {
 		if err == nil {
 			relPath, err := filepath.Rel(cwd, meta.Workdirs[0].Path)
 			if err == nil {
-				result.Workdir = relPath
+				result.PrimaryWorkdir = relPath
 			} else {
-				result.Workdir = filepath.Base(meta.Workdirs[0].Path)
+				result.PrimaryWorkdir = filepath.Base(meta.Workdirs[0].Path)
 			}
 		} else {
-			result.Workdir = filepath.Base(meta.Workdirs[0].Path)
+			result.PrimaryWorkdir = filepath.Base(meta.Workdirs[0].Path)
 		}
 		result.Authcode = "****"
 	}
@@ -497,6 +491,268 @@ func DeleteContract(uuid string) error {
 	return nil
 }
 
+// AddWorkdir adds a new secondary working directory to an active contract.
+// Validates path is a git repository, checks for duplicates, and enforces conflict constraints.
+func AddWorkdir(uuid, path, name string) error {
+	// 1. Load contract
+	meta, err := GetContract(uuid)
+	if err != nil {
+		return err
+	}
+
+	if meta.Status != typescontract.ContractActive {
+		return fmt.Errorf("contract must be active to add workdirs. Current status: %s", meta.Status)
+	}
+
+	// 2. Resolve absolute path
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return fmt.Errorf("failed to resolve absolute path: %w", err)
+	}
+
+	// 3. Validate path is a git repository
+	if _, err := git.FindGitRootFrom(absPath); err != nil {
+		return fmt.Errorf("invalid workdir: %w", err)
+	}
+
+	// 4. Default name to basename if not provided
+	if name == "" {
+		name = filepath.Base(absPath)
+	}
+
+	// 5. Check for duplicates (by path)
+	for _, w := range meta.Workdirs {
+		if w.Path == absPath {
+			return fmt.Errorf("workdir already exists in contract: %s", absPath)
+		}
+	}
+
+	// 6. Check for duplicates (by name)
+	for _, w := range meta.Workdirs {
+		if w.Name == name {
+			return fmt.Errorf("workdir with name '%s' already exists in contract", name)
+		}
+	}
+
+	// 7. Check if path is already primary of another active contract
+	contracts, err := ListContracts()
+	if err != nil {
+		return fmt.Errorf("failed to list contracts for conflict check: %w", err)
+	}
+	for _, other := range contracts {
+		if other.UUID != meta.UUID && other.Status == typescontract.ContractActive {
+			if len(other.Workdirs) > 0 && other.Workdirs[0].Path == absPath {
+				return fmt.Errorf("directory is already primary in another active contract: %s", other.UUID)
+			}
+		}
+	}
+
+	// 8. Append new workdir
+	meta.Workdirs = append(meta.Workdirs, typescontract.WorkdirEntry{
+		Name:    name,
+		Path:    absPath,
+		AddedAt: time.Now(),
+		Status:  "active",
+	})
+
+	// 9. Persist changes
+	if err := saveContractMetadata(meta); err != nil {
+		return fmt.Errorf("failed to save contract metadata: %w", err)
+	}
+
+	gscHome, err := settings.GetGSCHome(false)
+	if err != nil {
+		return fmt.Errorf("failed to resolve GSC_HOME: %w", err)
+	}
+
+	sqliteDB, err := db.OpenDB(settings.GetChatDatabasePath(gscHome))
+	if err != nil {
+		return fmt.Errorf("failed to open chat database: %w", err)
+	}
+	defer sqliteDB.Close()
+
+	dbData := db.ContractMessageData{ContractData: meta.ContractData}
+	if err := db.UpdateContractMessagesByUUID(sqliteDB, meta.UUID, dbData); err != nil {
+		return fmt.Errorf("failed to update contract message in database: %w", err)
+	}
+
+	// 10. Notify Frontend via Event
+	payload := ContractChangePayload{
+		Status: string(typescontract.ContractActive),
+	}
+	if err := InsertEvent(meta.UUID, meta.ChatID, EventTypeContractChange, payload, "cli", time.Now().Add(5*time.Second)); err != nil {
+		logger.Warning("Failed to insert contract change event", "error", err)
+	}
+
+	logger.Info("Workdir added to contract", "uuid", uuid, "name", name, "path", absPath)
+	return nil
+}
+
+// RemoveWorkdir removes a secondary working directory from an active contract.
+// Prevents removal of the primary workdir (index 0).
+func RemoveWorkdir(uuid, name string) error {
+	// 1. Load contract
+	meta, err := GetContract(uuid)
+	if err != nil {
+		return err
+	}
+
+	if meta.Status != typescontract.ContractActive {
+		return fmt.Errorf("contract must be active to remove workdirs. Current status: %s", meta.Status)
+	}
+
+	// 2. Find workdir by name
+	foundIndex := -1
+	for i, w := range meta.Workdirs {
+		if w.Name == name {
+			foundIndex = i
+			break
+		}
+	}
+
+	if foundIndex == -1 {
+		var names []string
+		for i, w := range meta.Workdirs {
+			if i == 0 {
+				names = append(names, w.Name+" (primary)")
+			} else {
+				names = append(names, w.Name)
+			}
+		}
+		return fmt.Errorf("workdir '%s' not found. Available: %v", name, names)
+	}
+
+	// 3. Prevent removal of primary workdir
+	if foundIndex == 0 {
+		return fmt.Errorf("cannot remove primary workdir. Use set-primary-workdir to change the primary first")
+	}
+
+	// 4. Remove from slice
+	meta.Workdirs = append(meta.Workdirs[:foundIndex], meta.Workdirs[foundIndex+1:]...)
+
+	// 5. Persist changes
+	if err := saveContractMetadata(meta); err != nil {
+		return fmt.Errorf("failed to save contract metadata: %w", err)
+	}
+
+	gscHome, err := settings.GetGSCHome(false)
+	if err != nil {
+		return fmt.Errorf("failed to resolve GSC_HOME: %w", err)
+	}
+
+	sqliteDB, err := db.OpenDB(settings.GetChatDatabasePath(gscHome))
+	if err != nil {
+		return fmt.Errorf("failed to open chat database: %w", err)
+	}
+	defer sqliteDB.Close()
+
+	dbData := db.ContractMessageData{ContractData: meta.ContractData}
+	if err := db.UpdateContractMessagesByUUID(sqliteDB, meta.UUID, dbData); err != nil {
+		return fmt.Errorf("failed to update contract message in database: %w", err)
+	}
+
+	// 6. Notify Frontend via Event
+	payload := ContractChangePayload{
+		Status: string(typescontract.ContractActive),
+	}
+	if err := InsertEvent(meta.UUID, meta.ChatID, EventTypeContractChange, payload, "cli", time.Now().Add(5*time.Second)); err != nil {
+		logger.Warning("Failed to insert contract change event", "error", err)
+	}
+
+	logger.Info("Workdir removed from contract", "uuid", uuid, "name", name)
+	return nil
+}
+
+// SetPrimaryWorkdir changes the primary workdir by swapping with the workdir at index 0.
+// Validates no conflicts with other active contracts.
+func SetPrimaryWorkdir(uuid, name string) error {
+	// 1. Load contract
+	meta, err := GetContract(uuid)
+	if err != nil {
+		return err
+	}
+
+	if meta.Status != typescontract.ContractActive {
+		return fmt.Errorf("contract must be active to change primary workdir. Current status: %s", meta.Status)
+	}
+
+	// 2. Find workdir by name
+	foundIndex := -1
+	for i, w := range meta.Workdirs {
+		if w.Name == name {
+			foundIndex = i
+			break
+		}
+	}
+
+	if foundIndex == -1 {
+		var names []string
+		for i, w := range meta.Workdirs {
+			if i == 0 {
+				names = append(names, w.Name+" (primary)")
+			} else {
+				names = append(names, w.Name)
+			}
+		}
+		return fmt.Errorf("workdir '%s' not found. Available: %v", name, names)
+	}
+
+	// 3. Check if already primary
+	if foundIndex == 0 {
+		logger.Info("Workdir is already primary", "uuid", uuid, "name", name)
+		return nil
+	}
+
+	// 4. Check if target path is already primary of another active contract
+	targetPath := meta.Workdirs[foundIndex].Path
+	contracts, err := ListContracts()
+	if err != nil {
+		return fmt.Errorf("failed to list contracts for conflict check: %w", err)
+	}
+	for _, other := range contracts {
+		if other.UUID != meta.UUID && other.Status == typescontract.ContractActive {
+			if len(other.Workdirs) > 0 && other.Workdirs[0].Path == targetPath {
+				return fmt.Errorf("cannot swap: directory is already primary in another active contract: %s", other.UUID)
+			}
+		}
+	}
+
+	// 5. Perform swap
+	meta.Workdirs[foundIndex], meta.Workdirs[0] = meta.Workdirs[0], meta.Workdirs[foundIndex]
+
+	// 6. Persist changes
+	if err := saveContractMetadata(meta); err != nil {
+		return fmt.Errorf("failed to save contract metadata: %w", err)
+	}
+
+	gscHome, err := settings.GetGSCHome(false)
+	if err != nil {
+		return fmt.Errorf("failed to resolve GSC_HOME: %w", err)
+	}
+
+	sqliteDB, err := db.OpenDB(settings.GetChatDatabasePath(gscHome))
+	if err != nil {
+		return fmt.Errorf("failed to open chat database: %w", err)
+	}
+	defer sqliteDB.Close()
+
+	dbData := db.ContractMessageData{ContractData: meta.ContractData}
+	if err := db.UpdateContractMessagesByUUID(sqliteDB, meta.UUID, dbData); err != nil {
+		return fmt.Errorf("failed to update contract message in database: %w", err)
+	}
+
+	// 7. Notify Frontend via Event
+	payload := ContractChangePayload{
+		Status: string(typescontract.ContractActive),
+	}
+	if err := InsertEvent(meta.UUID, meta.ChatID, EventTypeContractChange, payload, "cli", time.Now().Add(5*time.Second)); err != nil {
+		logger.Warning("Failed to insert contract change event", "error", err)
+	}
+
+	logger.Info("Primary workdir changed", "uuid", uuid, "name", name, "path", targetPath)
+	return nil
+}
+
 // saveContractMetadata performs an atomic write of the contract metadata to disk.
 func saveContractMetadata(meta *ContractMetadata) error {
 	contractDir, err := manifest.ResolveGlobalContractDir()
@@ -560,7 +816,16 @@ func FormatContractInfo(info *ContractInfoResult, format string) string {
 	sb.WriteString(fmt.Sprintf("  Status:       %s\n", info.Status))
 	sb.WriteString(fmt.Sprintf("  Description:  %s\n", info.Description))
 	sb.WriteString(fmt.Sprintf("  Authcode:     %s\n", info.Authcode))
-	sb.WriteString(fmt.Sprintf("  Workdir:      %s\n", info.Workdir))
+	
+	// Format Workdirs
+	sb.WriteString("  Workdirs:\n")
+	for i, w := range info.Workdirs {
+		if i == 0 {
+			sb.WriteString(fmt.Sprintf("    [Primary]   %s (%s)\n", filepath.Base(w.Path), w.Path))
+		} else {
+			sb.WriteString(fmt.Sprintf("    [Secondary] %s (%s)\n", w.Name, w.Path))
+		}
+	}
 	
 	// Calculate and display Homedir
 	homedir := GetDefaultHomeDir(info.UUID, "")
@@ -607,7 +872,7 @@ func FormatContractTest(result *ContractTestResult, format string) string {
 	sb.WriteString(fmt.Sprintf("  UUID:         %s\n", result.UUID))
 	sb.WriteString(fmt.Sprintf("  Status:       %s\n", result.Status))
 	sb.WriteString(fmt.Sprintf("  Expires At:   %s\n", result.ExpiresAt.Format(time.RFC3339)))
-	sb.WriteString(fmt.Sprintf("  Workdir:      %s\n", result.Workdir))
+	sb.WriteString(fmt.Sprintf("  Primary Workdir: %s\n", result.PrimaryWorkdir))
 	sb.WriteString("\n")
 
 	sb.WriteString("Contract Test Result:\n")
