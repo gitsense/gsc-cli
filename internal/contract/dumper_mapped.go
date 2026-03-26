@@ -1,12 +1,12 @@
 /**
  * Component: Mapped Dump Strategy
- * Block-UUID: dc9bf34f-b5be-4a3e-83ba-05a32013d1a7
- * Parent-UUID: 50b02e20-d9e6-4eff-b20f-3a5a14e53618
- * Version: 1.3.0
+ * Block-UUID: 728ba984-f7d6-4dcd-8309-628f8fa39b61
+ * Parent-UUID: dc9bf34f-b5be-4a3e-83ba-05a32013d1a7
+ * Version: 1.4.0
  * Description: Simplified patch naming by removing redundant _patch_<hash> suffix. Patches now use the same naming convention as components (01_sanitized_name or 1_01_sanitized_name).
  * Language: Go
- * Created-at: 2026-03-10T00:20:00.000Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
+ * Created-at: 2026-03-26T15:28:43.214Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
  */
 
 
@@ -223,7 +223,11 @@ func executeMappedDump(contractUUID string, chats []db.Chat, sqliteDB *sql.DB, w
 	if err != nil {
 		return nil, fmt.Errorf("failed to load contract metadata: %w", err)
 	}
-	workdir := meta.Workdir
+	
+	if len(meta.Workdirs) == 0 {
+		return nil, fmt.Errorf("contract has no working directories defined")
+	}
+	workdir := meta.Workdirs[0].Path
 
 	logger.Debug("Using contract workdir for discovery", "uuid", contractUUID, "workdir", workdir)
 

@@ -1,18 +1,19 @@
 /**
  * Component: Workspace Root Command
- * Block-UUID: 365d4d66-7345-4e6b-8108-581281427b97
- * Parent-UUID: 822e15f9-9213-47fc-b030-a46f523aaef2
- * Version: 1.13.0
+ * Block-UUID: 08772585-03e6-4bfc-be9a-6d614ad70fd2
+ * Parent-UUID: 365d4d66-7345-4e6b-8108-581281427b97
+ * Version: 1.14.0
  * Description: Added GSC_CONTRACT_MAPPED_ROOT environment variable to shell initialization to support cross-workspace mapping and navigation.
  * Language: Go
- * Created-at: 2026-03-12T16:20:55.019Z
- * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0)
+ * Created-at: 2026-03-26T16:07:34.607Z
+ * Authors: GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0)
  */
 
 
 package ws
 
 import (
+	typescontract "github.com/gitsense/gsc-cli/internal/types/contract"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -203,7 +204,7 @@ func findContractByPrefix(prefix string) (*contract.ContractMetadata, error) {
 	var matches []*contract.ContractMetadata
 	for _, c := range contracts {
 		// Only consider active contracts
-		if c.Status != contract.ContractActive {
+		if c.Status != typescontract.ContractActive {
 			continue
 		}
 		if strings.HasPrefix(c.UUID, prefix) {
@@ -237,8 +238,13 @@ func executeContractHomeShell(homeDir string, meta *contract.ContractMetadata) e
 	// 1. Prepare Template Replacements
 	// In the contract home, the mapped root is the home dir itself.
 	replacements := map[string]string{
-		"{{GSC_CHAT_ID}}":             fmt.Sprintf("%d", meta.ChatID),
-		"{{GSC_PROJECT_ROOT}}":        meta.Workdir,
+		"{{GSC_CHAT_ID}}":       fmt.Sprintf("%d", meta.ChatID),
+		"{{GSC_PROJECT_ROOT}}": func() string {
+			if len(meta.Workdirs) > 0 {
+				return meta.Workdirs[0].Path
+			}
+			return ""
+		}(),
 		"{{GSC_CONTRACT_UUID}}":       meta.UUID,
 		"{{GSC_CONTRACT_MAPPED_ROOT}}": homeDir,
 		"{{GSC_SCRIPTS_DIR}}":         homeDir,
@@ -336,8 +342,13 @@ func executeShell(workspaceRoot, targetDir string, meta *contract.ContractMetada
 	// 2. Prepare Template Replacements
 	mappedDir := filepath.Dir(workspaceRoot)
 	replacements := map[string]string{
-		"{{GSC_CHAT_ID}}":             fmt.Sprintf("%d", meta.ChatID),
-		"{{GSC_PROJECT_ROOT}}":        meta.Workdir,
+		"{{GSC_CHAT_ID}}":       fmt.Sprintf("%d", meta.ChatID),
+		"{{GSC_PROJECT_ROOT}}": func() string {
+			if len(meta.Workdirs) > 0 {
+				return meta.Workdirs[0].Path
+			}
+			return ""
+		}(),
 		"{{GSC_CONTRACT_UUID}}":       meta.UUID,
 		"{{GSC_CONTRACT_MAPPED_ROOT}}": mappedDir,
 		"{{GSC_SCRIPTS_DIR}}":         mappedDir,

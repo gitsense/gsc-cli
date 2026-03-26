@@ -1,27 +1,20 @@
 /**
  * Component: Contract Models
- * Block-UUID: 72fb20ad-9082-410a-9384-e8408317b6d5
- * Parent-UUID: 5f9ed35e-ca1a-4251-b0a7-21e99fc00bdc
- * Version: 1.27.0
+ * Block-UUID: 098b045e-a49a-4452-a2c6-6a2af7740075
+ * Parent-UUID: 1b4f735f-b7b2-4b7b-b02e-195262299296
+ * Version: 1.30.0
  * Description: Added GenFileName field to MappedFileEntry to provide the generated filename for frontend URI construction.
  * Language: Go
- * Created-at: 2026-03-09T23:30:13.990Z
- * Authors: Gemini 3 Flash (v1.23.0), GLM-4.7 (v1.24.0), GLM-4.7 (v1.25.0), GLM-4.7 (v1.26.0), GLM-4.7 (v1.27.0)
+ * Created-at: 2026-03-26T15:54:17.409Z
+ * Authors: GLM-4.7 (v1.28.0), GLM-4.7 (v1.29.0), GLM-4.7 (v1.30.0)
  */
 
 
 package contract
 
-import "time"
-
-// ContractStatus defines the lifecycle state of a contract.
-type ContractStatus string
-
-const (
-	ContractActive    ContractStatus = "active"
-	ContractCancelled ContractStatus = "cancelled"
-	ContractExpired   ContractStatus = "expired"
-	ContractDone      ContractStatus = "done"
+import (
+	"github.com/gitsense/gsc-cli/internal/types/contract"
+	"time"
 )
 
 // EventStatus defines the state of an event in the messaging queue.
@@ -45,26 +38,14 @@ type WorkspaceEntry struct {
 
 // ContractMetadata represents a traceability contract stored in ~/.gitsense/contracts.
 type ContractMetadata struct {
-	UUID             string         `json:"uuid"`
-	Authcode         string         `json:"authcode"`
-	Description      string         `json:"description"`
-	Workdir          string         `json:"workdir"`
-	ChatID           int64          `json:"chat_id"`
-	ChatUUID         string         `json:"chat_uuid"`
-	ContractMessageID int64         `json:"contract_message_id"`
-	Status           ContractStatus `json:"status"`
-	CreatedAt        time.Time      `json:"created_at"`
-	ExpiresAt        time.Time      `json:"expires_at"`
-	
-	// Execution Security Fields
-	Whitelist []string `json:"whitelist"`
-	NoWhitelist bool      `json:"no_whitelist"`
-	ExecTimeout int       `json:"exec_timeout"`
+	// Embed the core data structure. This handles UnmarshalJSON automatically.
+	contract.ContractData
 
-	// Workspace Preferences
-	PreferredEditor   string `json:"preferred_editor"`   // e.g., "zed", "vscode", "vim-iterm2"
-	PreferredTerminal string `json:"preferred_terminal"` // e.g., "iterm2", "terminal.app"
-	PreferredReview   string `json:"preferred_review"`   // e.g., "vimdiff", "zed --diff"
+	// Contract-specific fields not stored in the DB message
+	ChatID            int64                    `json:"chat_id"`
+	ChatUUID          string                   `json:"chat_uuid"`
+	ContractMessageID int64                    `json:"contract_message_id"`
+	CreatedAt         time.Time                `json:"created_at"`
 
 	// Workspace Registry
 	// Maps Workspace ID (Composite Hash) -> Workspace Entry
@@ -147,6 +128,7 @@ type ContractInfoResult struct {
 	UUID              string    `json:"uuid"`
 	Description       string    `json:"description"`
 	Workdir           string    `json:"workdir"`
+	Workdirs          []string  `json:"workdirs"`
 	Status            string    `json:"status"`
 	CreatedAt         time.Time `json:"created_at"`
 	ExpiresAt         time.Time `json:"expires_at"`

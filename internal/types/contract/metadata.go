@@ -1,20 +1,30 @@
 /**
  * Component: Contract Types
- * Block-UUID: e6a0bef5-6d2b-409f-91b4-ebc048eba3cd
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 441aff46-be65-48ff-bd02-9c40ba9eca52
+ * Parent-UUID: e6a0bef5-6d2b-409f-91b4-ebc048eba3cd
+ * Version: 1.1.0
  * Description: Defines the core data structures for contracts, including the WorkdirEntry and ContractData. Implements backward-compatible unmarshalling for the workdir to workdirs migration.
  * Language: Go
- * Created-at: 2026-03-26T15:15:00.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Created-at: 2026-03-26T15:53:44.473Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0)
  */
 
 
 package contract
 
 import (
-	"encoding/json"
 	"time"
+	"encoding/json"
+)
+
+// ContractStatus defines the lifecycle state of a contract.
+type ContractStatus string
+
+const (
+	ContractActive    ContractStatus = "active"
+	ContractCancelled ContractStatus = "cancelled"
+	ContractExpired   ContractStatus = "expired"
+	ContractDone      ContractStatus = "done"
 )
 
 // WorkdirEntry represents a working directory associated with a contract.
@@ -30,7 +40,7 @@ type ContractData struct {
 	Description string
 	ExpiresAt   time.Time
 	UUID        string
-	Status      string
+	Status      ContractStatus
 	Authcode    string
 
 	// Security Fields
@@ -85,3 +95,4 @@ func (c *ContractData) UnmarshalJSON(data []byte) error {
 
 	return nil
 }
+

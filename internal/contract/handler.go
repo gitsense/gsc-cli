@@ -1,12 +1,12 @@
 /**
  * Component: Contract Intent Handler
- * Block-UUID: 2dbfe88f-6218-4ab1-a26a-cf7af81180a0
- * Parent-UUID: 61517e95-bc9c-4938-8fc0-ebf20e758f0b
- * Version: 1.25.0
+ * Block-UUID: fbd8af6d-36fd-4322-b23f-470d8eb767a8
+ * Parent-UUID: 2dbfe88f-6218-4ab1-a26a-cf7af81180a0
+ * Version: 1.26.0
  * Description: Simplified terminal intent handling to delegate shell spawning to 'gsc ws'. Removed script generation and environment variable injection logic.
  * Language: Go
- * Created-at: 2026-03-10T14:36:39.746Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.21.0), GLM-4.7 (v1.22.0), GLM-4.7 (v1.23.0), GLM-4.7 (v1.24.0), GLM-4.7 (v1.25.0)
+ * Created-at: 2026-03-26T15:29:38.056Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.21.0), GLM-4.7 (v1.22.0), GLM-4.7 (v1.23.0), GLM-4.7 (v1.24.0), GLM-4.7 (v1.25.0), GLM-4.7 (v1.26.0)
  */
 
 
@@ -36,6 +36,10 @@ func HandleLaunch(req LaunchRequest) (LaunchResult, error) {
 
 	if meta.Authcode != req.Authcode {
 		return LaunchResult{}, fmt.Errorf("invalid authorization code")
+	}
+
+	if len(meta.Workdirs) == 0 {
+		return LaunchResult{}, fmt.Errorf("contract has no working directories defined")
 	}
 
 	// 2. Handle Alias
@@ -134,10 +138,10 @@ func handleTerminalIntent(meta *ContractMetadata, req LaunchRequest) (LaunchResu
 		}
 
 		cmdStr = fmt.Sprintf(template, wsArg)
-		workdir = meta.Workdir // Run from project root
+		workdir = meta.Workdirs[0].Path // Run from project root
 	} else {
 		// Standard Terminal Mode
-		targetDir := meta.Workdir
+		targetDir := meta.Workdirs[0].Path
 		cmdStr = fmt.Sprintf(template, targetDir)
 		workdir = targetDir
 	}
@@ -180,16 +184,16 @@ func handleEditorRootIntent(meta *ContractMetadata, override string) (LaunchResu
 	}
 
 	// Pass the absolute workdir to ensure the editor opens the correct project root
-	cmdStr := fmt.Sprintf(template, meta.Workdir)
+	cmdStr := fmt.Sprintf(template, meta.Workdirs[0].Path)
 	
 	// Increased timeout to 15s to allow for slow AppleScript/App startup
-	executor := exec.NewExecutor(cmdStr, exec.ExecFlags{TimeoutSeconds: 15, Silent: true}, meta.Workdir, nil)
+	executor := exec.NewExecutor(cmdStr, exec.ExecFlags{TimeoutSeconds: 15, Silent: true}, meta.Workdirs[0].Path, nil)
 	result, err := executor.Run()
 	if err != nil {
 		return LaunchResult{}, fmt.Errorf("failed to launch editor: %w", err)
 	}
 
-	msg := fmt.Sprintf("Launched %s in %s", editor, meta.Workdir)
+	msg := fmt.Sprintf("Launched %s in %s", editor, meta.Workdirs[0].Path)
 	if result.ExitCode != 0 {
 		msg = fmt.Sprintf("Failed to launch %s: %s", editor, getExitCodeDescription(result.ExitCode))
 	}
@@ -198,7 +202,7 @@ func handleEditorRootIntent(meta *ContractMetadata, override string) (LaunchResu
 		Success: result.ExitCode == 0,
 		Message: msg,
 		Alias:   "editor",
-		Workdir: meta.Workdir,
+		Workdir: meta.Workdirs[0].Path,
 		Command: cmdStr,
 	}, nil
 }
@@ -206,7 +210,7 @@ func handleEditorRootIntent(meta *ContractMetadata, override string) (LaunchResu
 // handleReviewIntent stages AI code and launches an editor for review.
 func handleReviewIntent(meta *ContractMetadata, req LaunchRequest) (LaunchResult, error) {
 	// 1. Resolve Target File via Parent-UUID
-	targetFile, err := ResolveFileByParentUUID(req.ParentUUID, meta.Workdir)
+	targetFile, err := ResolveFileByParentUUID(req.ParentUUID, meta.Workdirs[0].Path)
 	if err != nil {
 		return LaunchResult{}, err
 	}
@@ -231,7 +235,7 @@ func handleReviewIntent(meta *ContractMetadata, req LaunchRequest) (LaunchResult
 			Success:    true,
 			Message:    "Code staged successfully, but no editor is configured.",
 			Alias:      "review",
-			Workdir:    meta.Workdir,
+			Workdir:    meta.Workdirs[0].Path,
 			StagedPath: stagedPath,
 		}, nil
 	}
@@ -245,7 +249,7 @@ func handleReviewIntent(meta *ContractMetadata, req LaunchRequest) (LaunchResult
 	cmdStr := fmt.Sprintf(template, stagedPath)
 
 	// 4. Execute (with extended timeout for editors)
-	executor := exec.NewExecutor(cmdStr, exec.ExecFlags{TimeoutSeconds: 0}, meta.Workdir, nil)
+	executor := exec.NewExecutor(cmdStr, exec.ExecFlags{TimeoutSeconds: 0}, meta.Workdirs[0].Path, nil)
 	result, err := executor.Run()
 	if err != nil {
 		return LaunchResult{}, fmt.Errorf("failed to launch editor: %w", err)
@@ -260,7 +264,7 @@ func handleReviewIntent(meta *ContractMetadata, req LaunchRequest) (LaunchResult
 		Success:    result.ExitCode == 0,
 		Message:    msg,
 		Alias:      "review",
-		Workdir:    meta.Workdir,
+		Workdir:    meta.Workdirs[0].Path,
 		StagedPath: stagedPath,
 		Command:    cmdStr,
 	}, nil
@@ -323,7 +327,7 @@ func handleExecIntent(meta *ContractMetadata, cmdStr string) (LaunchResult, erro
 		return LaunchResult{}, fmt.Errorf("no command provided")
 	}
 
-	executor := exec.NewExecutor(cmdStr, exec.ExecFlags{TimeoutSeconds: meta.ExecTimeout}, meta.Workdir, nil)
+	executor := exec.NewExecutor(cmdStr, exec.ExecFlags{TimeoutSeconds: meta.ExecTimeout}, meta.Workdirs[0].Path, nil)
 	result, err := executor.Run()
 	if err != nil {
 		return LaunchResult{}, err
@@ -338,7 +342,7 @@ func handleExecIntent(meta *ContractMetadata, cmdStr string) (LaunchResult, erro
 		Success: result.ExitCode == 0,
 		Message: msg,
 		Alias:   "exec",
-		Workdir: meta.Workdir,
+		Workdir: meta.Workdirs[0].Path,
 		Command: cmdStr,
 	}, nil
 }

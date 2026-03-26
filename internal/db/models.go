@@ -1,18 +1,19 @@
 /**
  * Component: Chat Database Models
- * Block-UUID: 8610baa0-6a3d-4b65-86fa-0631c1a058be
- * Parent-UUID: f4d1ba5d-07c9-4270-91b4-906cc7965964
- * Version: 1.8.0
+ * Block-UUID: 8138446f-59bb-48cc-80a3-4b77621d1d4a
+ * Parent-UUID: 8610baa0-6a3d-4b65-86fa-0631c1a058be
+ * Version: 1.9.0
  * Description: Added PreferredReview field to ContractMessageData to support specialized review tools (e.g., vimdiff, zed --diff).
  * Language: Go
- * Created-at: 2026-03-15T04:37:09.549Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0)
+ * Created-at: 2026-03-26T15:22:50.544Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0)
  */
 
 
 package db
 
 import (
+	"github.com/gitsense/gsc-cli/internal/types/contract"
 	"database/sql"
 	"time"
 )
@@ -101,22 +102,7 @@ type PublishedManifest struct {
 }
 
 // ContractMessageData holds the data required to generate a contract message.
-// This struct is defined here to avoid circular dependencies with the manifest package.
+// It embeds the core ContractData schema to share the definition and unmarshalling logic.
 type ContractMessageData struct {
-	Description string
-	Workdir     string
-	ExpiresAt   time.Time
-	UUID        string
-	Status      string // "active", "cancelled", "expired"
-	Authcode    string // 4-digit authorization code
-	
-	// Security Fields
-	Whitelist   []string // List of allowed commands
-	NoWhitelist bool     // If true, bypass whitelist checks
-	ExecTimeout int      // Execution timeout in seconds
-
-	// Workspace Preferences
-	PreferredEditor   string // e.g., "zed", "vscode", "vim-iterm2"
-	PreferredTerminal string // e.g., "iterm2", "terminal.app"
-	PreferredReview   string // e.g., "vimdiff", "zed --diff"
+	contract.ContractData
 }

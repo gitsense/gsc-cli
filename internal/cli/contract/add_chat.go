@@ -1,12 +1,12 @@
 /**
  * Component: Contract CLI Add Chat
- * Block-UUID: c09a5f8d-19de-47eb-8d09-15282a21705f
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: df84d0ad-596a-4a49-b6e2-2328e3a3e81f
+ * Parent-UUID: c09a5f8d-19de-47eb-8d09-15282a21705f
+ * Version: 1.1.0
  * Description: CLI command for adding an existing contract to a chat by inserting/updating the contract message.
  * Language: Go
- * Created-at: 2026-03-15T22:25:00.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Created-at: 2026-03-26T16:06:23.028Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0)
  */
 
 
@@ -86,19 +86,7 @@ This is useful for auditing purposes or when you want to include a chat in a con
 		}
 
 		// 6. Prepare contract message data from contract metadata
-		dbData := db.ContractMessageData{
-			Description: meta.Description,
-			Workdir:     meta.Workdir,
-			ExpiresAt:   meta.ExpiresAt,
-			UUID:        meta.UUID,
-			Status:      string(meta.Status),
-			ExecTimeout: meta.ExecTimeout,
-			Whitelist:   meta.Whitelist,
-			NoWhitelist: meta.NoWhitelist,
-			PreferredEditor:   meta.PreferredEditor,
-			PreferredTerminal: meta.PreferredTerminal,
-			PreferredReview:   meta.PreferredReview,
-		}
+		dbData := db.ContractMessageData{ContractData: meta.ContractData}
 
 		// 7. Upsert contract message
 		_, err = db.UpsertContractMessage(sqliteDB, chat.ID, dbData)

@@ -1,12 +1,12 @@
 /**
  * Component: Chat Database Operations
- * Block-UUID: 86a66cc7-69a5-4755-8fd9-8cc47b61417b
- * Parent-UUID: fc346a13-8ed0-4323-9645-914818da2217
- * Version: 1.23.0
+ * Block-UUID: 926e7b17-00e4-4bf0-a381-8b64e7eeb596
+ * Parent-UUID: 86a66cc7-69a5-4755-8fd9-8cc47b61417b
+ * Version: 1.24.0
  * Description: Added GetChatsByContractUUID to retrieve all chats associated with a specific contract UUID, enabling the new 'gsc chats' command.
  * Language: Go
- * Created-at: 2026-03-15T04:41:08.532Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), Gemini 3 Flash (v1.16.0), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.19.0), GLM-4.7 (v1.20.0), GLM-4.7 (v1.20.1), GLM-4.7 (v1.21.0), GLM-4.7 (v1.22.0), GLM-4.7 (v1.23.0)
+ * Created-at: 2026-03-26T15:55:36.708Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.23.0), GLM-4.7 (v1.24.0)
  */
 
 
@@ -29,7 +29,7 @@ import (
 func FormatContractMarkdown(data ContractMessageData) string {
 	var sb strings.Builder
 
-	sb.WriteString(fmt.Sprintf("### CLI Contract (%s)\n\n", strings.Title(data.Status)))
+	sb.WriteString(fmt.Sprintf("### CLI Contract (%s)\n\n", strings.Title(string(data.Status))))
 
 	// Table Header
 	sb.WriteString("| Field | Value |\n")

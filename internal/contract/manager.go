@@ -1,18 +1,19 @@
 /**
  * Component: Contract Manager
- * Block-UUID: e887c0f8-74a0-4e38-9690-d2238395c920
- * Parent-UUID: 534f1e34-cd61-425d-9280-a89ea0a912fa
- * Version: 1.17.0
+ * Block-UUID: d5c4ae73-40e7-4ac1-8735-34706b244cea
+ * Parent-UUID: 19cb9bb2-6951-4408-9e80-d753b10a0c9a
+ * Version: 1.21.0
  * Description: Removed Terminal and Review Tool fields from the contract info output display.
  * Language: Go
- * Created-at: 2026-03-15T17:29:13.653Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), Gemini 3 Flash (v1.0.7), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), Gemini 3 Flash (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.16.1), GLM-4.7 (v1.17.0)
+ * Created-at: 2026-03-26T15:58:26.955Z
+ * Authors: GLM-4.7 (v1.20.0), GLM-4.7 (v1.21.0)
  */
 
 
 package contract
 
 import (
+	typescontract "github.com/gitsense/gsc-cli/internal/types/contract"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -69,38 +70,27 @@ func CreateContract(code string, description string, authcode string, workdir st
 	// 3. Generate Metadata
 	now := time.Now()
 	
-	// Apply Defaults for Security Settings
-	finalWhitelist := whitelist
-	finalNoWhitelist := noWhitelist
-	finalExecTimeout := execTimeout
-
-	// If no whitelist provided and not unrestricted, use the default safe set
-	if len(finalWhitelist) == 0 && !finalNoWhitelist {
-		finalWhitelist = settings.DefaultSafeSet
-	}
-
-	// If timeout is 0 (default flag value), use the system default
-	if finalExecTimeout == 0 {
-		finalExecTimeout = settings.DefaultExecTimeout
-	}
-
 	meta := &ContractMetadata{
-		UUID:        uuid.New().String(),
-		Authcode:    authcode,
-		Description: description,
-		Workdir:     absWorkdir,
-		ChatID:      h.ChatID,
+		ContractData: typescontract.ContractData{
+			UUID:        uuid.New().String(),
+			Workdirs: []typescontract.WorkdirEntry{
+				{Name: "primary", Path: absWorkdir, AddedAt: now, Status: "active"},
+			},
+			Authcode:    authcode,
+			Description: description,
+			Status:      typescontract.ContractActive,
+			ExpiresAt:   now.Add(time.Duration(settings.DefaultContractTTL) * time.Hour),
+			Whitelist:   whitelist,
+			NoWhitelist: noWhitelist,
+			ExecTimeout: execTimeout,
+			PreferredEditor:   preferredEditor,
+			PreferredTerminal: preferredTerminal,
+			PreferredReview:   preferredReview,
+		},
+		ChatID:            h.ChatID,
 		ContractMessageID: 0, // Will be set after DB insertion
-		ChatUUID:    h.ChatUUID,
-		Status:      ContractActive,
-		CreatedAt:   now,
-		ExpiresAt:   now.Add(time.Duration(settings.DefaultContractTTL) * time.Hour),
-		Whitelist:   finalWhitelist,
-		NoWhitelist: finalNoWhitelist,
-		ExecTimeout: finalExecTimeout,
-		PreferredEditor:   preferredEditor,
-		PreferredTerminal: preferredTerminal,
-		PreferredReview:   preferredReview,
+		ChatUUID:          h.ChatUUID,
+		CreatedAt:         now,
 	}
 
 	// 4. Persist JSON
@@ -117,19 +107,7 @@ func CreateContract(code string, description string, authcode string, workdir st
 	}
 	defer sqliteDB.Close()
 
-	dbData := db.ContractMessageData{
-		Description: meta.Description,
-		Workdir:     meta.Workdir,
-		ExpiresAt:   meta.ExpiresAt,
-		UUID:        meta.UUID,
-		Status:      string(meta.Status),
-		ExecTimeout: meta.ExecTimeout,
-		Whitelist:   meta.Whitelist,
-		NoWhitelist: meta.NoWhitelist,
-		PreferredEditor:   meta.PreferredEditor,
-		PreferredTerminal: meta.PreferredTerminal,
-		PreferredReview:   meta.PreferredReview,
-	}
+	dbData := db.ContractMessageData{ContractData: meta.ContractData}
 
 	// Use UpsertContractMessage to ensure only one contract message exists per chat
 	contractMsgID, err := db.UpsertContractMessage(sqliteDB, h.ChatID, dbData)
@@ -216,8 +194,8 @@ func ListContracts() ([]ContractMetadata, error) {
 		}
 
 		// Lazy Expiration Check
-		if meta.Status == ContractActive && now.After(meta.ExpiresAt) {
-			meta.Status = ContractExpired
+		if meta.Status == typescontract.ContractActive && now.After(meta.ExpiresAt) {
+			meta.Status = typescontract.ContractExpired
 		}
 
 		contracts = append(contracts, *meta)
@@ -246,7 +224,7 @@ func GetContractByWorkdir(workdir string) (*ContractMetadata, error) {
 
 	var matches []ContractMetadata
 	for _, c := range contracts {
-		if c.Status == ContractActive && c.Workdir == absWorkdir {
+		if c.Status == typescontract.ContractActive && len(c.Workdirs) > 0 && c.Workdirs[0].Path == absWorkdir {
 			matches = append(matches, c)
 		}
 	}
@@ -270,22 +248,28 @@ func GetContractInfo(uuid string, sanitize bool) (*ContractInfoResult, error) {
 	}
 
 	status := string(meta.Status)
-	if meta.Status != ContractCancelled && meta.Status == ContractActive && time.Now().After(meta.ExpiresAt) {
-		status = string(ContractExpired)
+	if meta.Status != typescontract.ContractCancelled && meta.Status == typescontract.ContractActive && time.Now().After(meta.ExpiresAt) {
+		status = string(typescontract.ContractExpired)
 	}
 
 	result := &ContractInfoResult{
-		UUID:        meta.UUID,
+		UUID: meta.UUID,
+		Workdirs: func() []string {
+			paths := make([]string, len(meta.Workdirs)) // Helper to extract paths
+			for i, w := range meta.Workdirs {
+				paths[i] = w.Path
+			}
+			return paths
+		}(),
 		Description: meta.Description,
 		Status:      status,
 		CreatedAt:   meta.CreatedAt,
 		ExpiresAt:   meta.ExpiresAt,
 		Authcode:    meta.Authcode,
-		Workdir:     meta.Workdir,
+		Workdir:     meta.Workdirs[0].Path,
 		ExecTimeout: meta.ExecTimeout,
 		Whitelist:   meta.Whitelist,
 		NoWhitelist: meta.NoWhitelist,
-		PreferredEditor:   meta.PreferredEditor,
 		PreferredTerminal: meta.PreferredTerminal,
 		PreferredReview:   meta.PreferredReview,
 	}
@@ -293,14 +277,14 @@ func GetContractInfo(uuid string, sanitize bool) (*ContractInfoResult, error) {
 	if sanitize {
 		cwd, err := os.Getwd()
 		if err == nil {
-			relPath, err := filepath.Rel(cwd, meta.Workdir)
+			relPath, err := filepath.Rel(cwd, meta.Workdirs[0].Path)
 			if err == nil {
 				result.Workdir = relPath
 			} else {
-				result.Workdir = filepath.Base(meta.Workdir)
+				result.Workdir = filepath.Base(meta.Workdirs[0].Path)
 			}
 		} else {
-			result.Workdir = filepath.Base(meta.Workdir)
+			result.Workdir = filepath.Base(meta.Workdirs[0].Path)
 		}
 		result.Authcode = "****"
 	}
@@ -315,11 +299,11 @@ func CancelContract(uuid string) error {
 		return err
 	}
 
-	if meta.Status == ContractCancelled {
+	if meta.Status == typescontract.ContractCancelled {
 		return fmt.Errorf("contract %s is already cancelled", uuid)
 	}
 
-	meta.Status = ContractCancelled
+	meta.Status = typescontract.ContractCancelled
 
 	if err := saveContractMetadata(meta); err != nil {
 		return fmt.Errorf("failed to update contract metadata: %w", err)
@@ -336,19 +320,7 @@ func CancelContract(uuid string) error {
 	}
 	defer sqliteDB.Close()
 
-	dbData := db.ContractMessageData{
-		Description: meta.Description,
-		Workdir:     meta.Workdir,
-		ExpiresAt:   meta.ExpiresAt,
-		UUID:        meta.UUID,
-		Status:      string(meta.Status),
-		ExecTimeout: meta.ExecTimeout,
-		Whitelist:   meta.Whitelist,
-		NoWhitelist: meta.NoWhitelist,
-		PreferredEditor:   meta.PreferredEditor,
-		PreferredTerminal: meta.PreferredTerminal,
-		PreferredReview:   meta.PreferredReview,
-	}
+	dbData := db.ContractMessageData{ContractData: meta.ContractData}
 
 	if err := db.UpdateContractMessagesByUUID(sqliteDB, meta.UUID, dbData); err != nil {
 		return fmt.Errorf("failed to update contract message in database: %w", err)
@@ -356,7 +328,7 @@ func CancelContract(uuid string) error {
 
 	// Notify Frontend via Event
 	payload := ContractChangePayload{
-		Status: string(ContractCancelled),
+		Status: string(typescontract.ContractCancelled),
 	}
 	if err := InsertEvent(meta.UUID, meta.ChatID, EventTypeContractChange, payload, "cli", time.Now().Add(5*time.Second)); err != nil {
 		logger.Warning("Failed to insert contract change event", "error", err)
@@ -374,11 +346,11 @@ func CompleteContract(uuid string) error {
 		return err
 	}
 
-	if meta.Status == ContractDone {
+	if meta.Status == typescontract.ContractDone {
 		return fmt.Errorf("contract %s is already marked as done", uuid)
 	}
 
-	meta.Status = ContractDone
+	meta.Status = typescontract.ContractDone
 
 	if err := saveContractMetadata(meta); err != nil {
 		return fmt.Errorf("failed to update contract metadata: %w", err)
@@ -395,19 +367,7 @@ func CompleteContract(uuid string) error {
 	}
 	defer sqliteDB.Close()
 
-	dbData := db.ContractMessageData{
-		Description: meta.Description,
-		Workdir:     meta.Workdir,
-		ExpiresAt:   meta.ExpiresAt,
-		UUID:        meta.UUID,
-		Status:      string(meta.Status),
-		ExecTimeout: meta.ExecTimeout,
-		Whitelist:   meta.Whitelist,
-		NoWhitelist: meta.NoWhitelist,
-		PreferredEditor:   meta.PreferredEditor,
-		PreferredTerminal: meta.PreferredTerminal,
-		PreferredReview:   meta.PreferredReview,
-	}
+	dbData := db.ContractMessageData{ContractData: meta.ContractData}
 
 	if err := db.UpdateContractMessagesByUUID(sqliteDB, meta.UUID, dbData); err != nil {
 		return fmt.Errorf("failed to update contract message in database: %w", err)
@@ -415,7 +375,7 @@ func CompleteContract(uuid string) error {
 
 	// Notify Frontend via Event
 	payload := ContractChangePayload{
-		Status: string(ContractDone),
+		Status: string(typescontract.ContractDone),
 	}
 	if err := InsertEvent(meta.UUID, meta.ChatID, EventTypeContractChange, payload, "cli", time.Now().Add(5*time.Second)); err != nil {
 		logger.Warning("Failed to insert contract change event", "error", err)
@@ -432,7 +392,7 @@ func RenewContract(uuid string, hours int) error {
 		return err
 	}
 
-	if meta.Status == ContractCancelled {
+	if meta.Status == typescontract.ContractCancelled {
 		return fmt.Errorf("cannot renew a cancelled contract")
 	}
 
@@ -443,8 +403,8 @@ func RenewContract(uuid string, hours int) error {
 	}
 	meta.ExpiresAt = newStart.Add(duration)
 
-	if meta.Status == ContractExpired || meta.Status == ContractDone {
-		meta.Status = ContractActive
+	if meta.Status == typescontract.ContractExpired || meta.Status == typescontract.ContractDone {
+		meta.Status = typescontract.ContractActive
 	}
 
 	if err := saveContractMetadata(meta); err != nil {
@@ -462,19 +422,7 @@ func RenewContract(uuid string, hours int) error {
 	}
 	defer sqliteDB.Close()
 
-	dbData := db.ContractMessageData{
-		Description: meta.Description,
-		Workdir:     meta.Workdir,
-		ExpiresAt:   meta.ExpiresAt,
-		UUID:        meta.UUID,
-		Status:      string(meta.Status),
-		ExecTimeout: meta.ExecTimeout,
-		Whitelist:   meta.Whitelist,
-		NoWhitelist: meta.NoWhitelist,
-		PreferredEditor:   meta.PreferredEditor,
-		PreferredTerminal: meta.PreferredTerminal,
-		PreferredReview:   meta.PreferredReview,
-	}
+	dbData := db.ContractMessageData{ContractData: meta.ContractData}
 
 	if err := db.UpdateContractMessagesByUUID(sqliteDB, meta.UUID, dbData); err != nil {
 		return fmt.Errorf("failed to update contract message in database: %w", err)
@@ -482,7 +430,7 @@ func RenewContract(uuid string, hours int) error {
 
 	// Notify Frontend via Event
 	payload := ContractChangePayload{
-		Status:    string(ContractActive),
+		Status:    string(typescontract.ContractActive),
 		ExpiresAt: meta.ExpiresAt.Format(time.RFC3339),
 	}
 	if err := InsertEvent(meta.UUID, meta.ChatID, EventTypeContractChange, payload, "cli", time.Now().Add(5*time.Second)); err != nil {
@@ -530,19 +478,8 @@ func DeleteContract(uuid string) error {
 	}
 	defer sqliteDB.Close()
 
-	dbData := db.ContractMessageData{
-		Description: meta.Description,
-		Workdir:     meta.Workdir,
-		ExpiresAt:   meta.ExpiresAt,
-		UUID:        meta.UUID,
-		Status:      "deleted",
-		ExecTimeout: meta.ExecTimeout,
-		Whitelist:   meta.Whitelist,
-		NoWhitelist: meta.NoWhitelist,
-		PreferredEditor:   meta.PreferredEditor,
-		PreferredTerminal: meta.PreferredTerminal,
-		PreferredReview:   meta.PreferredReview,
-	}
+	dbData := db.ContractMessageData{ContractData: meta.ContractData}
+	dbData.Status = "deleted"
 
 	if err := db.UpdateContractMessagesByUUID(sqliteDB, meta.UUID, dbData); err != nil {
 		logger.Warning("Failed to update contract message in database", "error", err)

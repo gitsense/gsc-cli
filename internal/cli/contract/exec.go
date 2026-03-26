@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Contract CLI Execution
- * Block-UUID: 91152f9e-1154-4ca4-9686-b126479986c4
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 635c038f-8763-4468-9cb0-b2b971099314
+ * Parent-UUID: 91152f9e-1154-4ca4-9686-b126479986c4
+ * Version: 1.0.1
  * Description: CLI commands for executing commands within a contract context and launching workspace tools.
  * Language: Go
- * Created-at: 2026-03-08T00:23:01.234Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.29.1), Gemini 3 Flash (v1.30.0), GLM-4.7 (v1.31.0)
+ * Created-at: 2026-03-26T16:13:37.071Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1)
  */
 
 
@@ -65,7 +65,10 @@ var execContractCmd = &cobra.Command{
 
 		executor := exec.NewExecutor(contractExecCmd, exec.ExecFlags{
 			TimeoutSeconds: meta.ExecTimeout,
-		}, meta.Workdir, nil)
+		}, func() string {
+			if len(meta.Workdirs) > 0 { return meta.Workdirs[0].Path }
+			return ""
+		}(), nil)
 
 		result, err := executor.Run()
 		if err != nil {

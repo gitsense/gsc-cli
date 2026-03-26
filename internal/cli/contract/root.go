@@ -1,18 +1,19 @@
 /**
  * Component: Contract CLI Root
- * Block-UUID: 408c4e32-257c-4b7c-8c58-f6bfd3f25ab9
- * Parent-UUID: 4911d6e3-4b7c-48f5-a6f7-5f9b94f33a78
- * Version: 1.5.0
+ * Block-UUID: f323efa6-40d0-4b78-88e1-9b9bc4de2a7b
+ * Parent-UUID: 13bf0652-a4c1-418a-8ee4-2fb9c3e77aa4
+ * Version: 1.7.0
  * Description: Integrated IsInContainer check into PersistentPreRunE to prevent recursive proxy loops for contract commands.
  * Language: Go
- * Created-at: 2026-03-19T02:25:31.587Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.29.1), Gemini 3 Flash (v1.30.0), GLM-4.7 (v1.31.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0), Gemini 3 Flash (v1.4.0), GLM-4.7 (v1.5.0)
+ * Created-at: 2026-03-26T16:14:42.351Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0)
  */
 
 
 package contract
 
 import (
+	typescontract "github.com/gitsense/gsc-cli/internal/types/contract"
 	"fmt"
 	"os"
 	"os/exec"
@@ -260,7 +261,7 @@ func findContractUUIDByWorkdir() (string, error) {
 
 	var matches []string
 	for _, c := range contracts {
-		if c.Status == contract.ContractActive && c.Workdir == absCwd {
+		if c.Status == typescontract.ContractActive && len(c.Workdirs) > 0 && c.Workdirs[0].Path == absCwd {
 			matches = append(matches, c.UUID)
 		}
 	}

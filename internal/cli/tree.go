@@ -1,12 +1,12 @@
 /**
  * Component: Tree Command
- * Block-UUID: ddaceecb-fa19-4713-870d-0d889804d903
- * Parent-UUID: 33a47bc0-d526-4b95-99dd-5c63eb53e43c
- * Version: 1.7.1
+ * Block-UUID: 40a19b61-70d6-42dd-9f3a-8cf6c7397e04
+ * Parent-UUID: ddaceecb-fa19-4713-870d-0d889804d903
+ * Version: 1.7.2
  * Description: Implemented 'prune by default when filtering' behavior. Added --no-prune flag to allow users to see the full heat map. Updated EnrichTree call to pass requested fields for metadata projection. Updated help text for --prune to reflect new defaults.
  * Language: Go
  * Created-at: 2026-03-11T15:31:46.846Z
- * Authors: GLM-4.7 (v1.7.0), Gemini 3 Flash (v1.7.1)
+ * Authors: GLM-4.7 (v1.7.1), GLM-4.7 (v1.7.2)
  */
 
 
@@ -86,18 +86,23 @@ Filtering & Pruning:
 				return fmt.Errorf("invalid authorization code for contract %s", treeUUID)
 			}
 
+			if len(meta.Workdirs) == 0 {
+				return fmt.Errorf("contract has no working directories defined")
+			}
+			workdir := meta.Workdirs[0].Path
+
 			// Verify workdir exists before changing
-			if info, err := os.Stat(meta.Workdir); err != nil || !info.IsDir() {
-				return fmt.Errorf("contract workdir does not exist or is not a directory: %s", meta.Workdir)
+			if info, err := os.Stat(workdir); err != nil || !info.IsDir() {
+				return fmt.Errorf("contract workdir does not exist or is not a directory: %s", workdir)
 			}
 
 			// Change to workdir
-			if err := os.Chdir(meta.Workdir); err != nil {
-				return fmt.Errorf("failed to change to workdir %s: %w", meta.Workdir, err)
+			if err := os.Chdir(workdir); err != nil {
+				return fmt.Errorf("failed to change to workdir %s: %w", workdir, err)
 			}
 
 			newCwd, _ := os.Getwd()
-			logger.Info("Successfully changed working directory", "target", meta.Workdir, "actual", newCwd)
+			logger.Info("Successfully changed working directory", "target", workdir, "actual", newCwd)
 		}
 
 		logger.Debug("Starting tree command execution", "db", treeDB, "format", treeFormat)

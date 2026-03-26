@@ -1,12 +1,12 @@
 /**
  * Component: Workspace Map Command
- * Block-UUID: 5fd67aa2-8d78-4e97-a0ea-46dacef09f1a
- * Parent-UUID: cc7b8cfe-4e41-4383-abbe-0c724dd41d07
- * Version: 1.2.0
+ * Block-UUID: e6769197-77f1-4364-a8a3-23bd86f972f4
+ * Parent-UUID: 5fd67aa2-8d78-4e97-a0ea-46dacef09f1a
+ * Version: 1.3.0
  * Description: Implements the 'gsc ws map' command for visualizing and listing workspace blocks across a contract.
  * Language: Go
- * Created-at: 2026-03-10T03:40:02.439Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.2.0)
+ * Created-at: 2026-03-26T16:06:58.499Z
+ * Authors: GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
  */
 
 
@@ -218,7 +218,9 @@ func renderOverview(meta *contract.ContractMetadata, mappedRoot string) {
 	if meta.Description != "" {
 		fmt.Printf("  Desc:   %s\n", meta.Description)
 	}
-	fmt.Printf("  Proj:   %s\n", meta.Workdir)
+	if len(meta.Workdirs) > 0 {
+		fmt.Printf("  Proj:   %s\n", meta.Workdirs[0].Path)
+	}
 	fmt.Printf("  Dumps:  %s\n", filepath.Dir(mappedRoot))
 	fmt.Printf("  Status: %s\n", meta.Status)
 	

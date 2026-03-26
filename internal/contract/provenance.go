@@ -1,18 +1,19 @@
 /**
  * Component: Provenance Manager
- * Block-UUID: d0d5d818-5e72-4f21-9a1c-96b3c308d780
- * Parent-UUID: b4f3a8fa-e1e5-48ce-87c1-d16f78cf9ab6
- * Version: 1.3.0
+ * Block-UUID: 21694a60-f64b-45b1-aa35-190a08115093
+ * Parent-UUID: d0d5d818-5e72-4f21-9a1c-96b3c308d780
+ * Version: 1.4.0
  * Description: Added TestFile function to support the 'contract test' command, enabling pre-flight validation of code changes including UUID uniqueness and diff generation. Updated UpdateFile and NewFile to accept and validate the authcode parameter for security.
  * Language: Go
- * Created-at: 2026-02-26T18:13:46.301Z
- * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
+ * Created-at: 2026-03-26T15:59:55.693Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
  */
 
 
 package contract
 
 import (
+	typescontract "github.com/gitsense/gsc-cli/internal/types/contract"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -82,7 +83,10 @@ func UpdateFile(contractUUID string, authcode string, sourceFile string) error {
 	}
 
 	// 3. Find Target File in Workdir via Parent-UUID
-	targetPath, _, err := engine.FindBlockByUUID(ctx, contract.Workdir, newMeta.ParentUUID)
+	if len(contract.Workdirs) == 0 {
+		return &ContractError{Code: ExitTargetFileNotFound, Message: "Contract has no working directories defined"}
+	}
+	targetPath, _, err := engine.FindBlockByUUID(ctx, contract.Workdirs[0].Path, newMeta.ParentUUID)
 	if err != nil {
 		return &ContractError{Code: ExitTargetFileNotFound, Message: fmt.Sprintf("Failed to locate target file for Parent-UUID %s: %v", newMeta.ParentUUID, err)}
 	}
@@ -104,7 +108,10 @@ func UpdateFile(contractUUID string, authcode string, sourceFile string) error {
 	}
 
 	// Calculate relative path for provenance log
-	relPath, err := filepath.Rel(contract.Workdir, targetPath)
+	if len(contract.Workdirs) == 0 {
+		return fmt.Errorf("contract has no working directories defined")
+	}
+	relPath, err := filepath.Rel(contract.Workdirs[0].Path, targetPath)
 	if err != nil {
 		return fmt.Errorf("failed to calculate relative path: %w", err)
 	}
@@ -134,7 +141,7 @@ func UpdateFile(contractUUID string, authcode string, sourceFile string) error {
 		Description:   "Updated via gsc contract",
 	}
 
-	if err := logProvenance(entry, contract.Workdir); err != nil {
+	if err := logProvenance(entry, contract.Workdirs[0].Path); err != nil {
 		// Log failure is fatal as per requirements
 		return fmt.Errorf("failed to write provenance log: %w", err)
 	}
@@ -170,8 +177,11 @@ func NewFile(contractUUID string, authcode string, targetRelativePath string, so
 	}
 
 	// Resolve absolute path and check for directory traversal
-	absTargetPath := filepath.Join(contract.Workdir, targetRelativePath)
-	relPath, err := filepath.Rel(contract.Workdir, absTargetPath)
+	if len(contract.Workdirs) == 0 {
+		return &ContractError{Code: ExitInvalidTargetPath, Message: "Contract has no working directories defined"}
+	}
+	absTargetPath := filepath.Join(contract.Workdirs[0].Path, targetRelativePath)
+	relPath, err := filepath.Rel(contract.Workdirs[0].Path, absTargetPath)
 	if err != nil || strings.HasPrefix(relPath, "..") {
 		return &ContractError{Code: ExitInvalidTargetPath, Message: "Target path escapes workdir"}
 	}
@@ -193,12 +203,18 @@ func NewFile(contractUUID string, authcode string, targetRelativePath string, so
 	}
 
 	// 4. Ensure UUID Uniqueness
-	if err := engine.EnsureUUIDUniqueness(ctx, contract.Workdir, newMeta.BlockUUID); err != nil {
+	if len(contract.Workdirs) == 0 {
+		return &ContractError{Code: ExitDuplicateBlockUUID, Message: "Contract has no working directories defined"}
+	}
+	if err := engine.EnsureUUIDUniqueness(ctx, contract.Workdirs[0].Path, newMeta.BlockUUID); err != nil {
 		return &ContractError{Code: ExitDuplicateBlockUUID, Message: fmt.Sprintf("Block-UUID %s already exists in workdir", newMeta.BlockUUID)}
 	}
 
 	// Calculate relative path for provenance log
-	relPath, err = filepath.Rel(contract.Workdir, absTargetPath)
+	if len(contract.Workdirs) == 0 {
+		return fmt.Errorf("contract has no working directories defined")
+	}
+	relPath, err = filepath.Rel(contract.Workdirs[0].Path, absTargetPath)
 	if err != nil {
 		return fmt.Errorf("failed to calculate relative path: %w", err)
 	}
@@ -233,7 +249,7 @@ func NewFile(contractUUID string, authcode string, targetRelativePath string, so
 		Description:   "Created via gsc contract",
 	}
 
-	if err := logProvenance(entry, contract.Workdir); err != nil {
+	if err := logProvenance(entry, contract.Workdirs[0].Path); err != nil {
 		return fmt.Errorf("failed to write provenance log: %w", err)
 	}
 
@@ -254,13 +270,13 @@ func TestFile(contractUUID string, sourceFile string, sanitize bool) (*ContractT
 	}
 
 	// 2. Check Contract Status
-	if contract.Status == ContractCancelled {
+	if contract.Status == typescontract.ContractCancelled {
 		return &ContractTestResult{
 			ContractInfoResult: ContractInfoResult{
 				UUID:        contract.UUID,
 				Status:      string(contract.Status),
 				Description: contract.Description,
-				Workdir:     contract.Workdir,
+				Workdir:     contract.Workdirs[0].Path,
 				CreatedAt:   contract.CreatedAt,
 				ExpiresAt:   contract.ExpiresAt,
 			},
@@ -270,13 +286,13 @@ func TestFile(contractUUID string, sourceFile string, sanitize bool) (*ContractT
 		}, nil
 	}
 
-	if contract.Status == ContractExpired || time.Now().After(contract.ExpiresAt) {
+	if contract.Status == typescontract.ContractExpired || time.Now().After(contract.ExpiresAt) {
 		return &ContractTestResult{
 			ContractInfoResult: ContractInfoResult{
 				UUID:        contract.UUID,
 				Status:      string(contract.Status),
 				Description: contract.Description,
-				Workdir:     contract.Workdir,
+				Workdir:     contract.Workdirs[0].Path,
 				CreatedAt:   contract.CreatedAt,
 				ExpiresAt:   contract.ExpiresAt,
 			},
@@ -299,7 +315,7 @@ func TestFile(contractUUID string, sourceFile string, sanitize bool) (*ContractT
 				UUID:        contract.UUID,
 				Status:      string(contract.Status),
 				Description: contract.Description,
-				Workdir:     contract.Workdir,
+				Workdir:     contract.Workdirs[0].Path,
 				CreatedAt:   contract.CreatedAt,
 				ExpiresAt:   contract.ExpiresAt,
 			},
@@ -310,18 +326,24 @@ func TestFile(contractUUID string, sourceFile string, sanitize bool) (*ContractT
 	}
 
 	// 4. Check Block-UUID Uniqueness
+	if len(contract.Workdirs) == 0 {
+		return &ContractTestResult{
+			ContractInfoResult: ContractInfoResult{UUID: contract.UUID, Status: string(contract.Status), Description: contract.Description, Workdir: "", CreatedAt: contract.CreatedAt, ExpiresAt: contract.ExpiresAt},
+			Success: false, ErrorCode: "NO_WORKDIRS", Message: "Contract has no working directories defined",
+		}, nil
+	}
 	isUnique := true
-	if err := engine.EnsureUUIDUniqueness(ctx, contract.Workdir, newMeta.BlockUUID); err != nil {
+	if err := engine.EnsureUUIDUniqueness(ctx, contract.Workdirs[0].Path, newMeta.BlockUUID); err != nil {
 		isUnique = false
 		// Try to find where it exists for a better error message
-		if targetPath, _, findErr := engine.FindBlockByUUID(ctx, contract.Workdir, newMeta.BlockUUID); findErr == nil {
-			relPath, _ := filepath.Rel(contract.Workdir, targetPath)
+		if targetPath, _, findErr := engine.FindBlockByUUID(ctx, contract.Workdirs[0].Path, newMeta.BlockUUID); findErr == nil {
+			relPath, _ := filepath.Rel(contract.Workdirs[0].Path, targetPath)
 			return &ContractTestResult{
 				ContractInfoResult: ContractInfoResult{
 					UUID:        contract.UUID,
 					Status:      string(contract.Status),
 					Description: contract.Description,
-					Workdir:     contract.Workdir,
+					Workdir:     contract.Workdirs[0].Path,
 					CreatedAt:   contract.CreatedAt,
 					ExpiresAt:   contract.ExpiresAt,
 				},
@@ -342,7 +364,7 @@ func TestFile(contractUUID string, sourceFile string, sanitize bool) (*ContractT
 				UUID:        contract.UUID,
 				Status:      string(contract.Status),
 				Description: contract.Description,
-				Workdir:     contract.Workdir,
+				Workdir:     contract.Workdirs[0].Path,
 				CreatedAt:   contract.CreatedAt,
 				ExpiresAt:   contract.ExpiresAt,
 			},
@@ -355,14 +377,17 @@ func TestFile(contractUUID string, sourceFile string, sanitize bool) (*ContractT
 	}
 
 	// Update scenario: Find Parent
-	targetPath, _, err := engine.FindBlockByUUID(ctx, contract.Workdir, newMeta.ParentUUID)
+	if len(contract.Workdirs) == 0 {
+		return &ContractTestResult{ContractInfoResult: ContractInfoResult{UUID: contract.UUID, Status: string(contract.Status), Description: contract.Description, Workdir: "", CreatedAt: contract.CreatedAt, ExpiresAt: contract.ExpiresAt}, Success: false, ErrorCode: "NO_WORKDIRS", Message: "Contract has no working directories defined"}, nil
+	}
+	targetPath, _, err := engine.FindBlockByUUID(ctx, contract.Workdirs[0].Path, newMeta.ParentUUID)
 	if err != nil {
 		return &ContractTestResult{
 			ContractInfoResult: ContractInfoResult{
 				UUID:        contract.UUID,
 				Status:      string(contract.Status),
 				Description: contract.Description,
-				Workdir:     contract.Workdir,
+				Workdir:     contract.Workdirs[0].Path,
 				CreatedAt:   contract.CreatedAt,
 				ExpiresAt:   contract.ExpiresAt,
 			},
@@ -388,7 +413,7 @@ func TestFile(contractUUID string, sourceFile string, sanitize bool) (*ContractT
 				UUID:        contract.UUID,
 				Status:      string(contract.Status),
 				Description: contract.Description,
-				Workdir:     contract.Workdir,
+				Workdir:     contract.Workdirs[0].Path,
 				CreatedAt:   contract.CreatedAt,
 				ExpiresAt:   contract.ExpiresAt,
 			},
@@ -408,7 +433,7 @@ func TestFile(contractUUID string, sourceFile string, sanitize bool) (*ContractT
 				UUID:        contract.UUID,
 				Status:      string(contract.Status),
 				Description: contract.Description,
-				Workdir:     contract.Workdir,
+				Workdir:     contract.Workdirs[0].Path,
 				CreatedAt:   contract.CreatedAt,
 				ExpiresAt:   contract.ExpiresAt,
 			},
@@ -437,9 +462,12 @@ func TestFile(contractUUID string, sourceFile string, sanitize bool) (*ContractT
 	diffUnified := generateUnifiedDiff(string(oldContentBytes), string(newContentBytes))
 
 	// 7. Sanitize Paths
+	if len(contract.Workdirs) == 0 {
+		return &ContractTestResult{ContractInfoResult: ContractInfoResult{UUID: contract.UUID, Status: string(contract.Status), Description: contract.Description, Workdir: "", CreatedAt: contract.CreatedAt, ExpiresAt: contract.ExpiresAt}, Success: false, ErrorCode: "NO_WORKDIRS", Message: "Contract has no working directories defined"}, nil
+	}
 	relPath := targetPath
 	if sanitize {
-		relPath, _ = filepath.Rel(contract.Workdir, targetPath)
+		relPath, _ = filepath.Rel(contract.Workdirs[0].Path, targetPath)
 	}
 
 	return &ContractTestResult{
@@ -447,7 +475,7 @@ func TestFile(contractUUID string, sourceFile string, sanitize bool) (*ContractT
 			UUID:        contract.UUID,
 			Status:      string(contract.Status),
 			Description: contract.Description,
-			Workdir:     contract.Workdir,
+			Workdir:     contract.Workdirs[0].Path,
 			CreatedAt:   contract.CreatedAt,
 			ExpiresAt:   contract.ExpiresAt,
 		},
@@ -521,10 +549,10 @@ func logProvenance(entry ProvenanceEntry, baseDir string) error {
 
 // isContractActive checks if a contract is currently active (not expired or cancelled).
 func isContractActive(c *ContractMetadata) bool {
-	if c.Status == ContractCancelled {
+	if c.Status == typescontract.ContractCancelled {
 		return false
 	}
-	if c.Status == ContractExpired {
+	if c.Status == typescontract.ContractExpired {
 		return false
 	}
 	if time.Now().After(c.ExpiresAt) {
