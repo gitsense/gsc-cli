@@ -1,12 +1,12 @@
 /**
  * Component: Scout Session Manager
- * Block-UUID: fed193b3-3655-4459-b7c6-fc5b55691d57
- * Parent-UUID: a3839915-fa21-4f3f-a7b4-4451ce013278
- * Version: 1.0.4
+ * Block-UUID: 2363cb2d-83dc-4003-b769-215be914016e
+ * Parent-UUID: b30fe060-677a-41a3-a3d4-51dd1dee30f4
+ * Version: 1.0.8
  * Description: Orchestrates Scout discovery and verification phases, manages subprocess execution
  * Language: Go
- * Created-at: 2026-03-27T17:02:15.034Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4)
+ * Created-at: 2026-03-27T17:30:14.832Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), GLM-4.7 (v1.0.8)
  */
 
 
@@ -103,6 +103,11 @@ func (m *Manager) StartTurn1Discovery() error {
 	m.currentTurn = 1
 	m.session.Status = "discovery"
 
+	// Close previous eventWriter if it exists to prevent resource leaks
+	if m.eventWriter != nil {
+		m.eventWriter.Close()
+	}
+
 	// Create log file for this turn
 	logFilename := fmt.Sprintf("raw-stream-%d.ndjson", time.Now().Unix())
 	logPath := m.config.GetTurnLogFile(m.currentTurn, logFilename)
@@ -148,6 +153,11 @@ func (m *Manager) StartTurn2Verification(selectedCandidates *SelectedCandidates)
 
 	m.currentTurn = 2
 	m.session.Status = "verification"
+
+	// Close previous eventWriter if it exists to prevent resource leaks
+	if m.eventWriter != nil {
+		m.eventWriter.Close()
+	}
 
 	// Create log file for Turn 2
 	logFilename := fmt.Sprintf("raw-stream-%d.ndjson", time.Now().Unix())
@@ -369,9 +379,15 @@ func (m *Manager) CloseEventWriter() error {
 func (m *Manager) writeSessionState() error {
 	statusPath := m.config.GetStatusFile()
 
-	data, err := json.MarshalIndent(m.session, "", "  ")
+	// Get full status data including candidates, process info, etc.
+	status, err := m.GetSessionStatus()
 	if err != nil {
 		return fmt.Errorf("failed to marshal session: %w", err)
+	}
+
+	data, err := json.MarshalIndent(status, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal status: %w", err)
 	}
 
 	if err := os.WriteFile(statusPath, data, 0644); err != nil {
@@ -403,11 +419,17 @@ func LoadSession(sessionID string) (*Manager, error) {
 		return nil, fmt.Errorf("failed to parse session state: %w", err)
 	}
 
+	// Infer currentTurn from session status
+	currentTurn := 1
+	if session.Status == "verification" || session.Status == "verification_complete" {
+		currentTurn = 2
+	}
+
 	mgr := &Manager{
 		config:      config,
 		session:     &session,
 		processor:   NewProcessorHelper(config),
-		currentTurn: 1,
+		currentTurn: currentTurn,
 	}
 
 	return mgr, nil
