@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Scout Setup and Configuration Validator
- * Block-UUID: 8c4d7f2b-91e3-4a6c-b3d9-2f5e8a1c6d9b
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: ee3df130-8a93-4725-ac0e-f51c00efd257
+ * Parent-UUID: 2239f8a8-f0ff-4946-a84c-33def25f5158
+ * Version: 1.0.2
  * Description: Validates scout session prerequisites (contract, brain, working directories)
  * Language: Go
- * Created-at: 2026-03-27T00:00:00.000Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0)
+ * Created-at: 2026-03-27T19:09:14.734Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2)
  */
 
 
@@ -32,8 +32,8 @@ func ValidateSetup(workdirs []WorkingDirectory, refFiles []ReferenceFile) ([]Val
 
 	// Validate working directories
 	for _, wd := range workdirs {
-		if err := ValidateWorkdir(wd); err != nil {
-			errors = append(errors, err...)
+		if errs, _ := ValidateWorkdir(wd); len(errs) > 0 {
+			errors = append(errors, errs...)
 		}
 	}
 

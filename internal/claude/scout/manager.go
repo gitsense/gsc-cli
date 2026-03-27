@@ -1,12 +1,12 @@
 /**
  * Component: Scout Session Manager
- * Block-UUID: b30fe060-677a-41a3-a3d4-51dd1dee30f4
- * Parent-UUID: c71bb1d9-9d11-4789-86fa-c82ed2c4d736
- * Version: 1.0.7
+ * Block-UUID: 5e78dfd1-f908-4e46-a77d-771911611342
+ * Parent-UUID: 3fec54ab-ddbb-4e05-8484-47f78501c79c
+ * Version: 1.0.10
  * Description: Orchestrates Scout discovery and verification phases, manages subprocess execution
  * Language: Go
- * Created-at: 2026-03-27T17:27:17.467Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7)
+ * Created-at: 2026-03-27T19:08:32.993Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), claude-haiku-4-5-20251001 (v1.0.8), GLM-4.7 (v1.0.9), GLM-4.7 (v1.0.10)
  */
 
 
@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"syscall"
 	"time"
 
 	"github.com/gitsense/gsc-cli/pkg/settings"
@@ -27,12 +28,12 @@ import (
 
 // Manager orchestrates a scout session
 type Manager struct {
-	config            *SessionConfig
-	session           *Session
-	processor         *ProcessorHelper
-	eventWriter       *EventWriter
-	currentTurn       int
-	processInfo       *ProcessInfo
+	config      *SessionConfig
+	session     *Session
+	processor   *ProcessorHelper
+	eventWriter *EventWriter
+	currentTurn int
+	processInfo *ProcessInfo
 }
 
 // NewManager creates a new scout manager
@@ -100,6 +101,10 @@ func (m *Manager) StartTurn1Discovery() error {
 		return fmt.Errorf("session not initialized")
 	}
 
+	if m.session.Status != "discovery" && m.session.Status != "error" {
+		return fmt.Errorf("cannot start discovery: session status is %s", m.session.Status)
+	}
+
 	m.currentTurn = 1
 	m.session.Status = "discovery"
 
@@ -115,6 +120,7 @@ func (m *Manager) StartTurn1Discovery() error {
 	var err error
 	m.eventWriter, err = NewEventWriter(logPath)
 	if err != nil {
+		m.markAsStopped("INIT_FAILED", fmt.Sprintf("Failed to create event writer: %v", err))
 		return err
 	}
 
@@ -135,6 +141,7 @@ func (m *Manager) StartTurn1Discovery() error {
 
 	// Spawn subprocess for Turn 1
 	if err := m.spawnClaudeSubprocess(m.currentTurn); err != nil {
+		m.markAsStopped("SPAWN_FAILED", fmt.Sprintf("Failed to spawn subprocess: %v", err))
 		return err
 	}
 
@@ -154,6 +161,11 @@ func (m *Manager) StartTurn2Verification(selectedCandidates *SelectedCandidates)
 	m.currentTurn = 2
 	m.session.Status = "verification"
 
+	// Close previous eventWriter if it exists to prevent resource leaks
+	if m.eventWriter != nil {
+		m.eventWriter.Close()
+	}
+
 	// Create log file for Turn 2
 	logFilename := fmt.Sprintf("raw-stream-%d.ndjson", time.Now().Unix())
 	logPath := m.config.GetTurnLogFile(m.currentTurn, logFilename)
@@ -161,6 +173,7 @@ func (m *Manager) StartTurn2Verification(selectedCandidates *SelectedCandidates)
 	var err error
 	m.eventWriter, err = NewEventWriter(logPath)
 	if err != nil {
+		m.markAsStopped("INIT_FAILED", fmt.Sprintf("Failed to create event writer: %v", err))
 		return err
 	}
 
@@ -188,6 +201,7 @@ func (m *Manager) StartTurn2Verification(selectedCandidates *SelectedCandidates)
 
 	// Spawn subprocess for Turn 2
 	if err := m.spawnClaudeSubprocess(m.currentTurn); err != nil {
+		m.markAsStopped("SPAWN_FAILED", fmt.Sprintf("Failed to spawn subprocess: %v", err))
 		return err
 	}
 
@@ -217,6 +231,7 @@ func (m *Manager) spawnClaudeSubprocess(turn int) error {
 	promptPath := filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", templateName)
 	promptData, err := os.ReadFile(promptPath)
 	if err != nil {
+		m.markAsStopped("TEMPLATE_FAILED", fmt.Sprintf("Failed to read prompt template: %v", err))
 		return fmt.Errorf("failed to read prompt template: %w", err)
 	}
 
@@ -246,6 +261,7 @@ func (m *Manager) spawnClaudeSubprocess(turn int) error {
 	// Start the process
 	if err := cmd.Start(); err != nil {
 		// Close stdout pipe on error
+		m.markAsStopped("START_FAILED", fmt.Sprintf("Failed to start subprocess: %v", err))
 		stdout.Close()
 		return fmt.Errorf("failed to start subprocess: %w", err)
 	}
@@ -306,7 +322,7 @@ func (m *Manager) CheckProcessStatus() (bool, error) {
 	}
 
 	// Send signal 0 to check if process exists
-	if err := process.Signal(os.Signal(nil)); err != nil {
+	if err := process.Signal(syscall.Signal(0)); err != nil {
 		m.processInfo.Running = false
 		return false, nil
 	}
@@ -316,35 +332,119 @@ func (m *Manager) CheckProcessStatus() (bool, error) {
 }
 
 // StopSession stops the current scout session and cleanup
+// Implements graceful shutdown with SIGTERM → wait 5s → SIGKILL pattern
 func (m *Manager) StopSession() error {
-	if m.processInfo != nil && m.processInfo.Running {
-		process, err := os.FindProcess(m.processInfo.PID)
-		if err == nil {
-			process.Kill()
-		}
-		m.processInfo.Running = false
+	// Phase 1: Pre-Shutdown Validation
+	if m.processInfo == nil || !m.processInfo.Running {
+		// Already stopped, nothing to do
+		return nil
 	}
 
+	// Validate session state
+	if m.session.Status == "stopped" || m.session.Status == "error" {
+		return nil // Already stopped
+	}
+
+	// Get process handle
+	process, err := os.FindProcess(m.processInfo.PID)
+	if err != nil {
+		// Process doesn't exist, mark as stopped
+		m.markAsStopped("PROCESS_NOT_FOUND", "Process no longer exists")
+		return nil
+	}
+
+	// Phase 2: Graceful Shutdown (SIGTERM)
+	err = process.Signal(syscall.SIGTERM)
+	if err != nil {
+		// Can't send signal, try force kill
+		return m.forceKillProcess(process)
+	}
+
+	// Wait for graceful exit (5 second timeout)
+	gracefulExit := make(chan error, 1)
+	go func() {
+		_, err := process.Wait()
+		gracefulExit <- err
+	}()
+
+	select {
+	case <-gracefulExit:
+		// Process exited gracefully
+		m.markAsStopped("USER_STOPPED", "Scout session stopped by user")
+		return nil
+
+	case <-time.After(5 * time.Second):
+		// Phase 3: Force Kill (timeout exceeded)
+		return m.forceKillProcess(process)
+	}
+}
+
+// forceKillProcess sends SIGKILL to a process
+func (m *Manager) forceKillProcess(process *os.Process) error {
+	// Send SIGKILL
+	err := process.Signal(syscall.SIGKILL)
+	if err != nil {
+		m.markAsStopped("KILL_FAILED", "Failed to send SIGKILL")
+		return err
+	}
+
+	// Wait for process to die (1 second timeout)
+	killExit := make(chan error, 1)
+	go func() {
+		_, err := process.Wait()
+		killExit <- err
+	}()
+
+	select {
+	case <-killExit:
+		// Process killed
+		m.markAsStopped("FORCE_STOPPED", "Force stopped after timeout")
+		return nil
+
+	case <-time.After(1 * time.Second):
+		// Process still running after SIGKILL
+		m.markAsStopped("ZOMBIE_PROCESS", "Process still running after SIGKILL")
+		return fmt.Errorf("process became zombie after SIGKILL")
+	}
+}
+
+// markAsStopped updates session state and writes error event
+func (m *Manager) markAsStopped(errorCode, message string) {
+	if m.session == nil {
+		return
+	}
+
+	// Update session status
 	m.session.Status = "stopped"
 	m.session.CompletedAt = &[]time.Time{time.Now()}[0]
 
+	// Write error event
 	if m.eventWriter != nil {
 		m.eventWriter.WriteErrorEvent(ErrorEvent{
 			Phase:     fmt.Sprintf("turn-%d", m.currentTurn),
-			ErrorCode: "USER_STOPPED",
-			Message:   "Scout session stopped by user",
+			ErrorCode: errorCode,
+			Message:   message,
 		})
 		m.eventWriter.Close()
 		m.eventWriter = nil
 	}
 
-	return m.writeSessionState()
+	// Update process info
+	if m.processInfo != nil {
+		m.processInfo.Running = false
+	}
+
+	// Persist state
+	if err := m.writeSessionState(); err != nil {
+		// Log error but don't fail - state update is best-effort
+		fmt.Fprintf(os.Stderr, "failed to persist session state: %v\n", err)
+	}
 }
 
 // MarkDiscoveryComplete transitions to discovery_complete state
 func (m *Manager) MarkDiscoveryComplete() error {
 	if m.session.Status != "discovery" {
-		return fmt.Errorf("cannot mark complete: not in discovery state")
+		return fmt.Errorf("cannot mark complete: not in discovery state, current status: %s", m.session.Status)
 	}
 
 	m.session.Status = "discovery_complete"
@@ -354,7 +454,7 @@ func (m *Manager) MarkDiscoveryComplete() error {
 // MarkVerificationComplete transitions to verification_complete state
 func (m *Manager) MarkVerificationComplete() error {
 	if m.session.Status != "verification" {
-		return fmt.Errorf("cannot mark complete: not in verification state")
+		return fmt.Errorf("cannot mark complete: not in verification state, current status: %s", m.session.Status)
 	}
 
 	m.session.Status = "verification_complete"
@@ -446,7 +546,6 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 	var cost float64
 	var duration int64
 	var claudeSessionID string
-	startTime := time.Now()
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -595,6 +694,3 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 		m.writeSessionState()
 	}
 }
-
-// maxTokenSize defines the maximum size for a single JSONL event (10MB)
-const maxTokenSize = 10 * 1024 * 1024

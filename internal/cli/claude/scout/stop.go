@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Scout CLI Stop Command
- * Block-UUID: 6c4e9f3d-5a7b-4d2c-8e1f-7a3c9f5e2b8d
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: fffc4355-8cdf-4540-82ef-02f90f460065
+ * Parent-UUID: 6c4e9f3d-5a7b-4d2c-8e1f-7a3c9f5e2b8d
+ * Version: 1.0.1
  * Description: Implements 'gsc claude scout stop' command for terminating Scout sessions
  * Language: Go
- * Created-at: 2026-03-27T00:00:00.000Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0)
+ * Created-at: 2026-03-27T18:28:52.418Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), claude-haiku-4-5-20251001 (v1.0.1)
  */
 
 
@@ -14,6 +14,7 @@ package scout
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -77,21 +78,72 @@ func runStopCommand(cmd *cobra.Command, flags *StopFlags) error {
 	}
 
 	// Display confirmation
-	fmt.Fprintf(cmd.OutOrStdout(), "Scout session stopped\n")
-	fmt.Fprintf(cmd.OutOrStdout(), "Session ID: %s\n", flags.SessionID)
-	fmt.Fprintf(cmd.OutOrStdout(), "Status: stopped\n")
+	fmt.Fprintf(cmd.OutOrStdout(), "✓ Scout session stopped\n")
+	fmt.Fprintf(cmd.OutOrStdout(), "  Session ID: %s\n", flags.SessionID)
+	fmt.Fprintf(cmd.OutOrStdout(), "  Status: %s\n", status.Status)
+
+	// Show shutdown method
+	if status.Error != nil {
+		// Extract error code from error message
+		errorMsg := *status.Error
+		shutdownMethod := "unknown"
+		if len(errorMsg) > 0 {
+			// Error format is "CODE: message"
+			if idx := findColonIndex(errorMsg); idx > 0 {
+				errorCode := errorMsg[:idx]
+				switch errorCode {
+				case "USER_STOPPED":
+					shutdownMethod = "Graceful (SIGTERM)"
+				case "FORCE_STOPPED":
+					shutdownMethod = "Forced (SIGKILL)"
+				case "PROCESS_NOT_FOUND":
+					shutdownMethod = "Process already exited"
+				case "KILL_FAILED":
+					shutdownMethod = "Kill failed"
+				case "ZOMBIE_PROCESS":
+					shutdownMethod = "Zombie process"
+				default:
+					shutdownMethod = errorCode
+				}
+			}
+		}
+		fmt.Fprintf(cmd.OutOrStdout(), "  Shutdown: %s\n", shutdownMethod)
+	}
+
+	// Show session duration
+	if status.CompletedAt != nil {
+		duration := status.CompletedAt.Sub(status.StartedAt)
+		fmt.Fprintf(cmd.OutOrStdout(), "  Duration: %v\n", duration.Round(time.Second))
+	}
 
 	if status.TotalFound > 0 {
-		fmt.Fprintf(cmd.OutOrStdout(), "Candidates discovered: %d\n", status.TotalFound)
+		fmt.Fprintf(cmd.OutOrStdout(), "  Candidates discovered: %d\n", status.TotalFound)
 		fmt.Fprintf(cmd.OutOrStdout(), "\nView results with:\n")
 		fmt.Fprintf(cmd.OutOrStdout(), "  gsc claude scout status -s %s\n", flags.SessionID)
+	} else {
+		fmt.Fprintf(cmd.OutOrStdout(), "\nNo candidates discovered yet.\n")
+	}
+
+	// Show error if applicable
+	if status.Error != nil {
+		fmt.Fprintf(cmd.OutOrStdout(), "\n⚠ Warning: %s\n", *status.Error)
 	}
 
 	return nil
 }
 
+// findColonIndex finds the first colon in a string
+func findColonIndex(s string) int {
+	for i, c := range s {
+		if c == ':' {
+			return i
+		}
+	}
+	return -1
+}
+
 // CanStopSession checks if a session can be stopped
-func CanStopSession(sessionID string) (bool, error) {
+func (m *Manager) CanStopSession(sessionID string) (bool, error) {
 	manager, err := LoadSession(sessionID)
 	if err != nil {
 		return false, err
@@ -106,7 +158,7 @@ func CanStopSession(sessionID string) (bool, error) {
 }
 
 // GetSessionProcessInfo retrieves process information for a session
-func GetSessionProcessInfo(sessionID string) (*ProcessInfo, error) {
+func (m *Manager) GetSessionProcessInfo(sessionID string) (*ProcessInfo, error) {
 	manager, err := LoadSession(sessionID)
 	if err != nil {
 		return nil, err

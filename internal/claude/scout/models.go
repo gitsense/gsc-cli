@@ -1,12 +1,12 @@
 /**
  * Component: Scout Models
- * Block-UUID: 67cbc0c5-403f-40a8-9ef3-97599cb6cd21
- * Parent-UUID: 66d666f6-ab04-4c1e-ae7b-2c6c62de4e2e
- * Version: 1.0.1
+ * Block-UUID: c3c6846d-5235-4936-815e-55b3f12db21e
+ * Parent-UUID: 67cbc0c5-403f-40a8-9ef3-97599cb6cd21
+ * Version: 1.0.2
  * Description: Data structures for Scout feature (candidate discovery and verification)
  * Language: Go
- * Created-at: 2026-03-27T17:01:02.446Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1)
+ * Created-at: 2026-03-27T18:22:33.693Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2)
  */
 
 
@@ -89,6 +89,8 @@ type StatusData struct {
 	Cost                 *float64             `json:"cost,omitempty"`
 	Duration             *int64               `json:"duration,omitempty"`
 	ClaudeSessionID      *string              `json:"claude_session_id,omitempty"`
+	ShutdownInitiated    bool                 `json:"shutdown_initiated,omitempty"`
+	ShutdownCompleted    bool                 `json:"shutdown_completed,omitempty"`
 }
 
 // ProcessInfo contains process-level information
@@ -191,6 +193,8 @@ type ErrorEvent struct {
 	ErrorCode   string `json:"error_code"`
 	Message     string `json:"message"`
 	Details     string `json:"details"`
+	ShutdownInitiated bool `json:"shutdown_initiated,omitempty"`
+	ShutdownCompleted bool `json:"shutdown_completed,omitempty"`
 }
 
 // SelectedCandidates represents user-selected candidates for manual review

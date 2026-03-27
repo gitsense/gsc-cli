@@ -1,12 +1,12 @@
 /**
  * Component: Scout Stream Event Processor
- * Block-UUID: 3fd2aa46-b2c8-4b74-8fca-564438ade8ca
- * Parent-UUID: d37b632a-124e-47de-b158-8de80558e7d4
- * Version: 1.0.2
+ * Block-UUID: 9df5633b-6e78-4202-9700-040837001480
+ * Parent-UUID: 3fd2aa46-b2c8-4b74-8fca-564438ade8ca
+ * Version: 1.0.3
  * Description: JSONL event streaming, parsing, and file I/O for Scout sessions
  * Language: Go
- * Created-at: 2026-03-27T15:31:32.752Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2)
+ * Created-at: 2026-03-27T19:05:30.896Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3)
  */
 
 
@@ -19,11 +19,6 @@ import (
 	"os"
 	"path/filepath"
 	"time"
-)
-
-const (
-	// maxTokenSize defines the maximum size for a single JSONL event (10MB)
-	maxTokenSize = 10 * 1024 * 1024
 )
 
 // EventWriter writes JSONL events to a stream file
@@ -323,8 +318,6 @@ func (ph *ProcessorHelper) ReadSessionStatusFromEvents(turn int) (*StatusData, e
 
 // CopyReferenceFile copies a reference file into the session references directory
 func (ph *ProcessorHelper) CopyReferenceFile(sourceFile string, refType string) error {
-	refDir := ph.sessionConfig.GetReferencesDir()
-
 	data, err := os.ReadFile(sourceFile)
 	if err != nil {
 		return fmt.Errorf("failed to read reference file: %w", err)
