@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Scout Stream Event Processor
- * Block-UUID: 9f7e4c8a-2b6d-4e3f-a1c9-5d8e6f7a2b9c
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: d37b632a-124e-47de-b158-8de80558e7d4
+ * Parent-UUID: 9f7e4c8a-2b6d-4e3f-a1c9-5d8e6f7a2b9c
+ * Version: 1.0.1
  * Description: JSONL event streaming, parsing, and file I/O for Scout sessions
  * Language: Go
- * Created-at: 2026-03-27T00:00:00.000Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0)
+ * Created-at: 2026-03-27T15:26:38.939Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1)
  */
 
 
@@ -236,7 +236,15 @@ func (ph *ProcessorHelper) ReadSessionStatusFromEvents(turn int) (*StatusData, e
 		Candidates: []Candidate{},
 	}
 
-	for _, event := range events {
+	for i, event := range events {
+		// Capture start time from first event
+		if i == 0 {
+			if parsedTime, err := time.Parse(time.RFC3339Nano, event.Timestamp); err == nil {
+				status.StartedAt = parsedTime
+				status.ElapsedSeconds = int64(time.Since(parsedTime).Seconds())
+			}
+		}
+
 		switch event.Type {
 		case "init":
 			var init InitEvent
