@@ -1,12 +1,12 @@
 /**
  * Component: Settings and Configuration Manager
- * Block-UUID: fee33255-45b9-4596-8c0b-2c3b81925f7f
- * Parent-UUID: 8cbe51be-bfa0-449f-b296-8916f5487e62
- * Version: 3.20.0
+ * Block-UUID: 4adf1be7-cd09-4656-ae82-eb4db38b421f
+ * Parent-UUID: fee33255-45b9-4596-8c0b-2c3b81925f7f
+ * Version: 3.21.0
  * Description: Exported TemplateFS to allow other packages to access embedded templates, resolving embed path restrictions.
  * Language: Go
- * Created-at: 2026-03-26T22:18:34.562Z
- * Authors: GLM-4.7 (v3.5.0), ..., GLM-4.7 (v3.19.0), claude-haiku-4-5-20251001 (v3.20.0)
+ * Created-at: 2026-03-27T04:37:18.189Z
+ * Authors: GLM-4.7 (v3.5.0), claude-haiku-4-5-20251001 (v3.20.0), claude-haiku-4-5-20251001 (v3.21.0)
  */
 
 
@@ -102,6 +102,12 @@ const DefaultClaudeModel = "haiku"
 const ClaudeSettingsFileName = "settings.json"
 const ClaudeContextsDirRelPath = "contexts"
 const ClaudeContextsMapFileName = "contexts.map"
+
+// Scout Feature Constants
+const ScoutSessionsDirRelPath = "data/claude-code/scout"
+const ScoutStatusFileName = "status.json"
+const ScoutIntentFileName = "intent.md"
+const ScoutReferenceDirName = "references"
 
 // Sort Modes for the 'merged' dump type
 const SortRecency = "recency"
@@ -313,4 +319,40 @@ func GetReviewStagingDir() (string, error) {
 		return "", fmt.Errorf("failed to resolve GSC_HOME for review staging: %w", err)
 	}
 	return filepath.Join(gscHome, ReviewStagingRelPath), nil
+}
+
+// GetScoutSessionDir returns the absolute path to a specific scout session directory.
+func GetScoutSessionDir(sessionID string) (string, error) {
+	gscHome, err := GetGSCHome(false)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve GSC_HOME for scout session: %w", err)
+	}
+	return filepath.Join(gscHome, ScoutSessionsDirRelPath, sessionID), nil
+}
+
+// GetScoutLogPath returns the absolute path to a scout session's status file.
+func GetScoutLogPath(sessionID string) (string, error) {
+	sessionDir, err := GetScoutSessionDir(sessionID)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(sessionDir, ScoutStatusFileName), nil
+}
+
+// GetScoutTurnDir returns the absolute path to a specific turn directory within a scout session.
+func GetScoutTurnDir(sessionID string, turnNum int) (string, error) {
+	sessionDir, err := GetScoutSessionDir(sessionID)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(sessionDir, fmt.Sprintf("turn-%d", turnNum)), nil
+}
+
+// GetScoutReferencesDir returns the absolute path to the references directory for a scout session.
+func GetScoutReferencesDir(sessionID string) (string, error) {
+	turnDir, err := GetScoutTurnDir(sessionID, 1)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(turnDir, ScoutReferenceDirName), nil
 }

@@ -1,12 +1,12 @@
-/**
- * Component: Claude Code CLI Root
- * Block-UUID: 62d42d24-1521-465a-b965-6396da96287f
- * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: Defines the root 'claude' command group for managing the Claude Code CLI integration, including initialization and chat execution.
+/*
+ * Component: Claude Root Command
+ * Block-UUID: 8b2f4e9a-5c7d-4a3b-9e1f-6d7c8a5b3e2f
+ * Parent-UUID: 62d42d24-1521-465a-b965-6396da96287f
+ * Version: 1.0.1
+ * Description: Root command for Claude Code CLI integration with Scout support
  * Language: Go
  * Created-at: 2026-03-22T03:37:45.123Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Authors: Gemini 3 Flash (v1.0.0), claude-haiku-4-5-20251001 (v1.0.1)
  */
 
 
@@ -15,6 +15,7 @@ package claude
 import (
 	"github.com/spf13/cobra"
 	"github.com/gitsense/gsc-cli/pkg/logger"
+	claudescout "github.com/gitsense/gsc-cli/internal/cli/claude/scout"
 )
 
 // Global flags
@@ -44,6 +45,7 @@ func init() {
 	// Register subcommands
 	claudeCmd.AddCommand(initCmd)
 	claudeCmd.AddCommand(chatCmd)
+	claudeCmd.AddCommand(claudescout.RootCmd())
 
 	logger.Debug("Claude root command initialized")
 }
