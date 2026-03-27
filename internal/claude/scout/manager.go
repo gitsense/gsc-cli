@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Scout Session Manager
- * Block-UUID: 7a3c9f5d-4e2b-4c1a-8d6f-3e5c7a9b1d4e
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: df0be517-cf9c-4056-b7f9-18fe4962a3fc
+ * Parent-UUID: 7a3c9f5d-4e2b-4c1a-8d6f-3e5c7a9b1d4e
+ * Version: 1.0.1
  * Description: Orchestrates Scout discovery and verification phases, manages subprocess execution
  * Language: Go
- * Created-at: 2026-03-27T00:00:00.000Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0)
+ * Created-at: 2026-03-27T14:57:19.917Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1)
  */
 
 
@@ -60,6 +60,12 @@ func (m *Manager) InitializeSession(intent string, workdirs []WorkingDirectory, 
 	// Initialize directories
 	if err := m.config.InitializeSessionDirs(); err != nil {
 		return err
+	}
+
+	// Write intent to turn-1/intent.md
+	intentPath := m.config.GetIntentFile(1)
+	if err := os.WriteFile(intentPath, []byte(intent), 0644); err != nil {
+		return fmt.Errorf("failed to write intent file: %w", err)
 	}
 
 	// Create session struct

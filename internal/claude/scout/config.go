@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Scout Session Configuration Helper
- * Block-UUID: 6e2c8f1a-37b2-4d5b-9c8b-5f7e3a9b2c1d
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 1d92d9e1-abe3-4652-9159-d2e58f4a1bde
+ * Parent-UUID: 4c19406b-0011-4234-b8ad-1644f2b3d92e
+ * Version: 1.0.2
  * Description: Path resolution and session directory helpers for Scout operations
  * Language: Go
- * Created-at: 2026-03-27T00:00:00.000Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0)
+ * Created-at: 2026-03-27T14:56:26.897Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2)
  */
 
 
@@ -50,8 +50,8 @@ func (sc *SessionConfig) GetStatusFile() string {
 }
 
 // GetIntentFile returns the absolute path to the intent.json file
-func (sc *SessionConfig) GetIntentFile() string {
-	return filepath.Join(sc.GetSessionDir(), settings.ScoutIntentFileName)
+func (sc *SessionConfig) GetIntentFile(turn int) string {
+	return filepath.Join(sc.GetTurnDir(turn), settings.ScoutIntentFileName)
 }
 
 // GetReferencesDir returns the absolute path to the references directory
