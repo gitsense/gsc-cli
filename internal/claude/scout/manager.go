@@ -1,20 +1,22 @@
 /**
  * Component: Scout Session Manager
- * Block-UUID: a3839915-fa21-4f3f-a7b4-4451ce013278
- * Parent-UUID: e815e9d4-df92-4d1f-a99e-e50fa0ff206f
- * Version: 1.0.3
+ * Block-UUID: fed193b3-3655-4459-b7c6-fc5b55691d57
+ * Parent-UUID: a3839915-fa21-4f3f-a7b4-4451ce013278
+ * Version: 1.0.4
  * Description: Orchestrates Scout discovery and verification phases, manages subprocess execution
  * Language: Go
- * Created-at: 2026-03-27T16:15:50.025Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3)
+ * Created-at: 2026-03-27T17:02:15.034Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4)
  */
 
 
 package scout
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -230,8 +232,16 @@ func (m *Manager) spawnClaudeSubprocess(turn int) error {
 	cmd := exec.Command("claude", flags...)
 	cmd.Dir = m.config.GetTurnDir(turn)
 
+	// Create stdout pipe for stream processing
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("failed to create stdout pipe: %w", err)
+	}
+
 	// Start the process
 	if err := cmd.Start(); err != nil {
+		// Close stdout pipe on error
+		stdout.Close()
 		return fmt.Errorf("failed to start subprocess: %w", err)
 	}
 
@@ -240,6 +250,9 @@ func (m *Manager) spawnClaudeSubprocess(turn int) error {
 		Command: cmd.String(),
 		Running: true,
 	}
+
+	// Start background goroutine to process stream
+	go m.processStream(stdout, turn)
 
 	// Don't wait for process - fire and forget
 	// Caller can monitor progress via log file
@@ -399,3 +412,172 @@ func LoadSession(sessionID string) (*Manager, error) {
 
 	return mgr, nil
 }
+
+// processStream reads Claude's stdout and processes events
+func (m *Manager) processStream(stdout io.Reader, turn int) {
+	defer func() {
+		// Close event writer when done
+		if m.eventWriter != nil {
+			m.eventWriter.Close()
+		}
+	}()
+
+	scanner := bufio.NewScanner(stdout)
+	scanner.Buffer(make([]byte, 0, 64*1024), maxTokenSize)
+
+	var usage Usage
+	var cost float64
+	var duration int64
+	var claudeSessionID string
+	startTime := time.Now()
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if line == "" {
+			continue
+		}
+
+		// Parse as generic map
+		var result map[string]interface{}
+		if err := json.Unmarshal([]byte(line), &result); err != nil {
+			// Not valid JSON, skip
+			continue
+		}
+
+		// Check event type
+		eventType, _ := result["type"].(string)
+
+		switch eventType {
+		case "usage":
+			// Parse usage event
+			if usageData, ok := result["usage"].(map[string]interface{}); ok {
+				usage = Usage{
+					InputTokens:        int(usageData["input_tokens"].(float64)),
+					OutputTokens:       int(usageData["output_tokens"].(float64)),
+					CacheCreationTokens: int(usageData["cache_creation_input_tokens"].(float64)),
+					CacheReadTokens:    int(usageData["cache_read_input_tokens"].(float64)),
+				}
+				if c, ok := result["cost"].(float64); ok {
+					cost = c
+				}
+			}
+
+		case "result":
+			// Parse result event
+			if resultContent, ok := result["result"].(string); ok {
+				// Extract usage/cost from outer event
+				if usageData, ok := result["usage"].(map[string]interface{}); ok {
+					usage = Usage{
+						InputTokens:        int(usageData["input_tokens"].(float64)),
+						OutputTokens:       int(usageData["output_tokens"].(float64)),
+						CacheCreationTokens: int(usageData["cache_creation_input_tokens"].(float64)),
+						CacheReadTokens:    int(usageData["cache_read_input_tokens"].(float64)),
+					}
+				}
+				if c, ok := result["total_cost_usd"].(float64); ok {
+					cost = c
+				}
+				if d, ok := result["duration_ms"].(float64); ok {
+					duration = int64(d)
+				}
+				if sid, ok := result["session_id"].(string); ok {
+					claudeSessionID = sid
+				}
+
+				// Parse Scout's JSON from result field
+				// Try Turn 1 format first
+				var turn1Result struct {
+					Candidates []Candidate `json:"candidates"`
+					TotalFound int         `json:"total_found"`
+					Coverage   string      `json:"coverage"`
+				}
+				if err := json.Unmarshal([]byte(resultContent), &turn1Result); err == nil {
+					// Write candidates event
+					totalFound := turn1Result.TotalFound
+					if totalFound == 0 {
+						totalFound = 0 // Explicitly 0
+					}
+
+					m.eventWriter.WriteCandidatesEvent(CandidatesEvent{
+						Phase:      "discovery",
+						TotalFound: totalFound,
+						Candidates: turn1Result.Candidates,
+					})
+
+					// Write done event with usage/cost
+					m.eventWriter.WriteDoneEvent(DoneEvent{
+						Status:           "success",
+						TotalCandidates:  totalFound,
+						PhaseCompleted:   "discovery",
+						Summary: CompletionSummary{
+							FilesFound: totalFound,
+						},
+						Usage:           &usage,
+						Cost:            &cost,
+						Duration:        &duration,
+						ClaudeSessionID: &claudeSessionID,
+					})
+
+					// Update session status
+					m.session.Status = "discovery_complete"
+					m.writeSessionState()
+					break
+				}
+
+				// Try Turn 2 format
+				var turn2Result struct {
+					VerifiedCandidates []VerificationUpdate `json:"verified_candidates"`
+					Summary           struct {
+						TotalVerified      int `json:"total_verified"`
+						CandidatesPromoted int `json:"candidates_promoted"`
+						CandidatesDemoted  int `json:"candidates_demoted"`
+						CandidatesRemoved  int `json:"candidates_removed"`
+						AverageVerifiedScore float64 `json:"average_verified_score"`
+						TopCandidatesCount int `json:"top_candidates_count"`
+					} `json:"summary"`
+				}
+				if err := json.Unmarshal([]byte(resultContent), &turn2Result); err == nil {
+					// Write verified event
+					m.eventWriter.WriteVerifiedEvent(VerifiedEvent{
+						Phase:             "verification",
+						TotalVerified:     turn2Result.Summary.TotalVerified,
+						UpdatedCandidates: turn2Result.VerifiedCandidates,
+					})
+
+					// Write done event with usage/cost
+					m.eventWriter.WriteDoneEvent(DoneEvent{
+						Status:           "success",
+						TotalCandidates:  turn2Result.Summary.TotalVerified,
+						PhaseCompleted:   "verification",
+						Summary: CompletionSummary{
+							FilesFound: turn2Result.Summary.TotalVerified,
+						},
+						Usage:           &usage,
+						Cost:            &cost,
+						Duration:        &duration,
+						ClaudeSessionID: &claudeSessionID,
+					})
+
+					// Update session status
+					m.session.Status = "verification_complete"
+					m.writeSessionState()
+					break
+				}
+			}
+		}
+	}
+
+	// Handle scanner errors
+	if err := scanner.Err(); err != nil {
+		m.eventWriter.WriteErrorEvent(ErrorEvent{
+			Phase:     fmt.Sprintf("turn-%d", turn),
+			ErrorCode: "STREAM_ERROR",
+			Message:   fmt.Sprintf("Error reading stream: %v", err),
+		})
+		m.session.Status = "error"
+		m.writeSessionState()
+	}
+}
+
+// maxTokenSize defines the maximum size for a single JSONL event (10MB)
+const maxTokenSize = 10 * 1024 * 1024

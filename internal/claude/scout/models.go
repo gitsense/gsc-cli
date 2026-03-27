@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Scout Models
- * Block-UUID: 66d666f6-ab04-4c1e-ae7b-2c6c62de4e2e
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 67cbc0c5-403f-40a8-9ef3-97599cb6cd21
+ * Parent-UUID: 66d666f6-ab04-4c1e-ae7b-2c6c62de4e2e
+ * Version: 1.0.1
  * Description: Data structures for Scout feature (candidate discovery and verification)
  * Language: Go
- * Created-at: 2026-03-27T04:20:00.000Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0)
+ * Created-at: 2026-03-27T17:01:02.446Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1)
  */
 
 
@@ -54,6 +54,14 @@ type Candidate struct {
 	MatchedKeyword string              `json:"matched_keyword,omitempty"` // From gsc grep
 }
 
+// Usage represents token usage metrics from Claude
+type Usage struct {
+	InputTokens        int `json:"input_tokens"`
+	OutputTokens       int `json:"output_tokens"`
+	CacheCreationTokens int `json:"cache_creation_input_tokens"`
+	CacheReadTokens    int `json:"cache_read_input_tokens"`
+}
+
 // CandidateMetadata represents metadata from the Tiny Overview brain
 type CandidateMetadata struct {
 	Purpose        string   `json:"purpose"`
@@ -77,6 +85,10 @@ type StatusData struct {
 	ProcessInfo          ProcessInfo          `json:"process"`
 	NextAction           *NextAction          `json:"next_action,omitempty"`
 	Error                *string              `json:"error,omitempty"`
+	Usage                *Usage               `json:"usage,omitempty"`
+	Cost                 *float64             `json:"cost,omitempty"`
+	Duration             *int64               `json:"duration,omitempty"`
+	ClaudeSessionID      *string              `json:"claude_session_id,omitempty"`
 }
 
 // ProcessInfo contains process-level information
@@ -159,6 +171,10 @@ type DoneEvent struct {
 	TotalCandidates  int                       `json:"total_candidates"`
 	PhaseCompleted   string                    `json:"phase_completed"`
 	Summary          CompletionSummary         `json:"summary"`
+	Usage            *Usage                    `json:"usage,omitempty"`
+	Cost             *float64                  `json:"cost,omitempty"`
+	Duration         *int64                    `json:"duration,omitempty"`
+	ClaudeSessionID  *string                   `json:"claude_session_id,omitempty"`
 }
 
 // CompletionSummary provides statistics about the completed scout session
