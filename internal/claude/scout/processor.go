@@ -12,11 +12,6 @@
 
 package scout
 
-const (
-	// maxTokenSize defines the maximum size for a single JSONL event (10MB)
-	maxTokenSize = 10 * 1024 * 1024
-)
-
 import (
 	"bufio"
 	"encoding/json"
@@ -24,6 +19,11 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+)
+
+const (
+	// maxTokenSize defines the maximum size for a single JSONL event (10MB)
+	maxTokenSize = 10 * 1024 * 1024
 )
 
 // EventWriter writes JSONL events to a stream file

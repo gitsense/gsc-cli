@@ -1,12 +1,12 @@
 /**
  * Component: Scout Session Manager
- * Block-UUID: 2363cb2d-83dc-4003-b769-215be914016e
- * Parent-UUID: b30fe060-677a-41a3-a3d4-51dd1dee30f4
- * Version: 1.0.8
+ * Block-UUID: b30fe060-677a-41a3-a3d4-51dd1dee30f4
+ * Parent-UUID: c71bb1d9-9d11-4789-86fa-c82ed2c4d736
+ * Version: 1.0.7
  * Description: Orchestrates Scout discovery and verification phases, manages subprocess execution
  * Language: Go
- * Created-at: 2026-03-27T17:30:14.832Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), GLM-4.7 (v1.0.8)
+ * Created-at: 2026-03-27T17:27:17.467Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7)
  */
 
 
@@ -22,7 +22,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/gs-devtools/gsc/pkg/settings"
+	"github.com/gitsense/gsc-cli/pkg/settings"
 )
 
 // Manager orchestrates a scout session
@@ -153,11 +153,6 @@ func (m *Manager) StartTurn2Verification(selectedCandidates *SelectedCandidates)
 
 	m.currentTurn = 2
 	m.session.Status = "verification"
-
-	// Close previous eventWriter if it exists to prevent resource leaks
-	if m.eventWriter != nil {
-		m.eventWriter.Close()
-	}
 
 	// Create log file for Turn 2
 	logFilename := fmt.Sprintf("raw-stream-%d.ndjson", time.Now().Unix())

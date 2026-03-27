@@ -1,18 +1,19 @@
-/*
+/**
  * Component: Scout CLI Start Command
- * Block-UUID: 5e3d8f2a-6c9b-4a2f-8e1d-7f4c3a9b5e2d
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 716bb8da-1cbf-4a6d-b336-6d00f1a7c295
+ * Parent-UUID: 5e3d8f2a-6c9b-4a2f-8e1d-7f4c3a9b5e2d
+ * Version: 1.0.1
  * Description: Implements 'gsc claude scout start' command for initiating new Scout sessions
  * Language: Go
- * Created-at: 2026-03-27T00:00:00.000Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0)
+ * Created-at: 2026-03-27T17:44:15.836Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1)
  */
 
 
 package scout
 
 import (
+	claudescout "github.com/gitsense/gsc-cli/internal/claude/scout"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -58,14 +59,14 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 	sessionID := uuid.New().String()[:12]
 
 	// Convert working directory paths to absolute paths
-	workdirs := make([]WorkingDirectory, len(flags.WorkingDirectories))
+	workdirs := make([]claudescout.WorkingDirectory, len(flags.WorkingDirectories))
 	for i, wd := range flags.WorkingDirectories {
 		absPath, err := filepath.Abs(wd)
 		if err != nil {
 			return fmt.Errorf("failed to resolve working directory path %s: %w", wd, err)
 		}
 
-		workdirs[i] = WorkingDirectory{
+		workdirs[i] = claudescout.WorkingDirectory{
 			ID:   i + 1,
 			Name: filepath.Base(absPath),
 			Path: absPath,
@@ -73,14 +74,14 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 	}
 
 	// Convert reference file paths to absolute paths
-	refFiles := make([]ReferenceFile, len(flags.ReferenceFiles))
+	refFiles := make([]claudescout.ReferenceFile, len(flags.ReferenceFiles))
 	for i, rf := range flags.ReferenceFiles {
 		absPath, err := filepath.Abs(rf)
 		if err != nil {
 			return fmt.Errorf("failed to resolve reference file path %s: %w", rf, err)
 		}
 
-		refFiles[i] = ReferenceFile{
+		refFiles[i] = claudescout.ReferenceFile{
 			OriginalPath: absPath,
 			LocalPath:    filepath.Base(absPath),
 		}
@@ -121,8 +122,8 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 }
 
 // ParseWorkdirs converts working directory strings to WorkingDirectory structs
-func ParseWorkdirs(paths []string) ([]WorkingDirectory, error) {
-	workdirs := make([]WorkingDirectory, len(paths))
+func ParseWorkdirs(paths []string) ([]claudescout.WorkingDirectory, error) {
+	workdirs := make([]claudescout.WorkingDirectory, len(paths))
 
 	for i, path := range paths {
 		absPath, err := filepath.Abs(path)
@@ -130,7 +131,7 @@ func ParseWorkdirs(paths []string) ([]WorkingDirectory, error) {
 			return nil, fmt.Errorf("failed to resolve working directory path %s: %w", path, err)
 		}
 
-		workdirs[i] = WorkingDirectory{
+		workdirs[i] = claudescout.WorkingDirectory{
 			ID:   i + 1,
 			Name: filepath.Base(absPath),
 			Path: absPath,
@@ -141,8 +142,8 @@ func ParseWorkdirs(paths []string) ([]WorkingDirectory, error) {
 }
 
 // ParseRefFiles converts reference file strings to ReferenceFile structs
-func ParseRefFiles(paths []string) ([]ReferenceFile, error) {
-	refFiles := make([]ReferenceFile, len(paths))
+func ParseRefFiles(paths []string) ([]claudescout.ReferenceFile, error) {
+	refFiles := make([]claudescout.ReferenceFile, len(paths))
 
 	for i, path := range paths {
 		absPath, err := filepath.Abs(path)
@@ -150,7 +151,7 @@ func ParseRefFiles(paths []string) ([]ReferenceFile, error) {
 			return nil, fmt.Errorf("failed to resolve reference file path %s: %w", path, err)
 		}
 
-		refFiles[i] = ReferenceFile{
+		refFiles[i] = claudescout.ReferenceFile{
 			OriginalPath: absPath,
 			LocalPath:    filepath.Base(absPath),
 		}
