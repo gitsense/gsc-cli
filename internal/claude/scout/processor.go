@@ -1,16 +1,21 @@
 /**
  * Component: Scout Stream Event Processor
- * Block-UUID: d37b632a-124e-47de-b158-8de80558e7d4
- * Parent-UUID: 9f7e4c8a-2b6d-4e3f-a1c9-5d8e6f7a2b9c
- * Version: 1.0.1
+ * Block-UUID: 3fd2aa46-b2c8-4b74-8fca-564438ade8ca
+ * Parent-UUID: d37b632a-124e-47de-b158-8de80558e7d4
+ * Version: 1.0.2
  * Description: JSONL event streaming, parsing, and file I/O for Scout sessions
  * Language: Go
- * Created-at: 2026-03-27T15:26:38.939Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1)
+ * Created-at: 2026-03-27T15:31:32.752Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2)
  */
 
 
 package scout
+
+const (
+	// maxTokenSize defines the maximum size for a single JSONL event (10MB)
+	maxTokenSize = 10 * 1024 * 1024
+)
 
 import (
 	"bufio"
@@ -96,15 +101,20 @@ func (ew *EventWriter) WriteErrorEvent(errEvent ErrorEvent) error {
 
 // Close closes the event writer
 func (ew *EventWriter) Close() error {
+	var flushErr error
 	if ew.writer != nil {
-		if err := ew.writer.Flush(); err != nil {
-			return err
-		}
+		flushErr = ew.writer.Flush()
 	}
+
+	var closeErr error
 	if ew.file != nil {
-		return ew.file.Close()
+		closeErr = ew.file.Close()
 	}
-	return nil
+
+	if flushErr != nil {
+		return flushErr
+	}
+	return closeErr
 }
 
 // EventReader reads JSONL events from a stream file
@@ -122,7 +132,11 @@ func NewEventReader(logFilePath string) (*EventReader, error) {
 
 	return &EventReader{
 		file:    file,
-		scanner: bufio.NewScanner(file),
+		scanner: func() *bufio.Scanner {
+			s := bufio.NewScanner(file)
+			s.Buffer(make([]byte, 0, 64*1024), maxTokenSize)
+			return s
+		}(),
 	}, nil
 }
 
@@ -269,11 +283,29 @@ func (ph *ProcessorHelper) ReadSessionStatusFromEvents(turn int) (*StatusData, e
 				status.TotalFound = candEvent.TotalFound
 			}
 
+		case "verified":
+			var verifiedEvent VerifiedEvent
+			if data, err := json.Marshal(event.Data); err == nil {
+				json.Unmarshal(data, &verifiedEvent)
+				// Update candidates with verified scores and reasoning
+				for _, update := range verifiedEvent.UpdatedCandidates {
+					for j, cand := range status.Candidates {
+						if cand.FilePath == update.FilePath && cand.WorkdirID == update.WorkdirID {
+							status.Candidates[j].Score = update.VerifiedScore
+							status.Candidates[j].Reasoning = update.Reason
+						}
+					}
+				}
+			}
+
 		case "done":
 			var doneEvent DoneEvent
 			if data, err := json.Marshal(event.Data); err == nil {
 				json.Unmarshal(data, &doneEvent)
 				status.Status = doneEvent.Status
+				if parsedTime, err := time.Parse(time.RFC3339Nano, event.Timestamp); err == nil {
+					status.CompletedAt = &parsedTime
+				}
 			}
 
 		case "error":

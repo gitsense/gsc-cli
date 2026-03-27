@@ -1,12 +1,12 @@
 /**
  * Component: Scout Session Manager
- * Block-UUID: df0be517-cf9c-4056-b7f9-18fe4962a3fc
- * Parent-UUID: 7a3c9f5d-4e2b-4c1a-8d6f-3e5c7a9b1d4e
- * Version: 1.0.1
+ * Block-UUID: a3839915-fa21-4f3f-a7b4-4451ce013278
+ * Parent-UUID: e815e9d4-df92-4d1f-a99e-e50fa0ff206f
+ * Version: 1.0.3
  * Description: Orchestrates Scout discovery and verification phases, manages subprocess execution
  * Language: Go
- * Created-at: 2026-03-27T14:57:19.917Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1)
+ * Created-at: 2026-03-27T16:15:50.025Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3)
  */
 
 
@@ -19,6 +19,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"time"
+
+	"github.com/gs-devtools/gsc/pkg/settings"
 )
 
 // Manager orchestrates a scout session
@@ -187,30 +189,46 @@ func (m *Manager) StartTurn2Verification(selectedCandidates *SelectedCandidates)
 
 // spawnClaudeSubprocess spawns the claude subprocess for a turn
 func (m *Manager) spawnClaudeSubprocess(turn int) error {
-	// Get the Claude prompt template
-	promptPath := fmt.Sprintf("pkg/settings/templates/scout/turn-%d-discovery.md", turn)
-	if turn == 2 {
-		promptPath = "pkg/settings/templates/scout/turn-2-verification.md"
+	// Write Scout permissions to restrict Bash to gsc commands only
+	if err := WriteScoutPermissions(m.config.GetTurnDir(turn)); err != nil {
+		return fmt.Errorf("failed to write permissions: %w", err)
 	}
 
+	// Get the Claude prompt template using absolute path
+	gscHome, err := settings.GetGSCHome(false)
+	if err != nil {
+		return fmt.Errorf("failed to resolve GSC_HOME: %w", err)
+	}
+
+	var templateName string
+	if turn == 1 {
+		templateName = "turn-1-discovery.md"
+	} else {
+		templateName = "turn-2-verification.md"
+	}
+
+	promptPath := filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", templateName)
 	promptData, err := os.ReadFile(promptPath)
 	if err != nil {
 		return fmt.Errorf("failed to read prompt template: %w", err)
 	}
 
-	// Build the command
-	// gsc claude scout run -p <prompt> --session-id <sessionID> --turn <turn>
-	cmd := exec.Command(
-		"gsc", "claude", "scout", "run",
-		"-p", string(promptData),
-		"--session-id", m.session.SessionID,
-		"--turn", fmt.Sprintf("%d", turn),
-	)
-
-	// Add working directories to the command context
-	for _, wd := range m.session.WorkingDirectories {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("SCOUT_WORKDIR_%d=%s", wd.ID, wd.Path))
+	// Build the command to invoke claude CLI directly
+	flags := []string{
+		"-p", fmt.Sprintf("%q", string(promptData)),
+		"--allowedTools", "Read,Bash",
+		"--verbose",
+		"--include-partial-messages",
+		"--output-format", "stream-json",
 	}
+
+	// Add working directories as --add-dir flags
+	for _, wd := range m.session.WorkingDirectories {
+		flags = append(flags, "--add-dir", wd.Path)
+	}
+
+	cmd := exec.Command("claude", flags...)
+	cmd.Dir = m.config.GetTurnDir(turn)
 
 	// Start the process
 	if err := cmd.Start(); err != nil {
@@ -237,7 +255,12 @@ func (m *Manager) GetSessionStatus() (*StatusData, error) {
 	// Read status from latest turn's log file
 	status, err := m.processor.ReadSessionStatusFromEvents(m.currentTurn)
 	if err != nil {
-		// If no events yet, construct minimal status
+		// If no events yet, construct minimal status with safe ProcessInfo
+		processInfo := ProcessInfo{}
+		if m.processInfo != nil {
+			processInfo = *m.processInfo
+		}
+
 		status = &StatusData{
 			SessionID:          m.session.SessionID,
 			Status:             m.session.Status,
@@ -245,7 +268,7 @@ func (m *Manager) GetSessionStatus() (*StatusData, error) {
 			StartedAt:          m.session.StartedAt,
 			WorkingDirectories: m.session.WorkingDirectories,
 			Candidates:         []Candidate{},
-			ProcessInfo:        *m.processInfo,
+			ProcessInfo:        processInfo,
 		}
 	}
 
