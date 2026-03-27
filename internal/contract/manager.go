@@ -1,12 +1,12 @@
 /**
  * Component: Contract Manager
- * Block-UUID: bdc7389f-e364-47fa-9f87-197f853418eb
- * Parent-UUID: 98c87d6f-04c8-4390-a691-0b09e8948caa
- * Version: 1.24.0
+ * Block-UUID: f045d8e0-703a-4cab-ac8f-672b6519e208
+ * Parent-UUID: bdc7389f-e364-47fa-9f87-197f853418eb
+ * Version: 1.24.1
  * Description: Add workdir management methods (AddWorkdir, RemoveWorkdir, SetPrimaryWorkdir) with conflict validation and event notifications.
  * Language: Go
- * Created-at: 2026-03-26T21:20:26.777Z
- * Authors: GLM-4.7 (v1.23.0), claude-haiku-4-5-20251001 (v1.24.0)
+ * Created-at: 2026-03-26T22:59:34.609Z
+ * Authors: GLM-4.7 (v1.24.0), GLM-4.7 (v1.24.1)
  */
 
 
@@ -54,7 +54,7 @@ func CreateContract(code string, description string, authcode string, workdir st
 	}
 
 	if _, err := git.FindGitRootFrom(absWorkdir); err != nil {
-		return nil, fmt.Errorf("invalid workdir: %w", err)
+		return nil, fmt.Errorf("invalid workdir: not a git repository (directory must contain a .git folder)")
 	}
 
 	// Check if an active contract already exists for this workspace

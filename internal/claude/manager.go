@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Execution Manager
- * Block-UUID: 7e503cc3-40d8-4567-92bd-77565018e5df
- * Parent-UUID: b613af12-716c-4e49-b32c-3aac3a2c00dd
- * Version: 1.53.2
+ * Block-UUID: 3247a534-8a8a-486b-8271-0defbeda9455
+ * Parent-UUID: 7e503cc3-40d8-4567-92bd-77565018e5df
+ * Version: 1.53.3
  * Description: Strengthen context reading protocol prompt to ensure LLM always reads messages.map, user-message.md, and messages-active.json at every turn for proper context reconstruction
  * Language: Go
- * Created-at: 2026-03-25T15:18:18.206Z
- * Authors: claude-haiku-4-5-20251001 (v1.53.1), claude-haiku-4-5-20251001 (v1.53.2)
+ * Created-at: 2026-03-26T22:11:59.607Z
+ * Authors: claude-haiku-4-5-20251001 (v1.53.2), claude-haiku-4-5-20251001 (v1.53.3)
  */
 
 
@@ -358,24 +358,32 @@ func executeCommand(
 	// Build the prompt
 	prompt := "CRITICAL: At every turn, follow these steps in order:\n\n" +
 		"## Step 1: Read messages/messages.map (ALWAYS)\n" +
-		"This is your entry point. It contains metadata for all available files:\n" +
+		"This is your entry point. It contains metadata for dialogue:\n" +
 		"- read_sequence: Ordered list of files for this request\n" +
-		"- context_files: Metadata for source code archive files\n" +
 		"- messages: Metadata for dialogue files\n\n" +
 		"## Step 2: Read messages/user-message.md (ALWAYS)\n" +
 		"This contains the current user's request. Read immediately after messages.map.\n\n" +
 		"## Step 3: Read messages-active.json (ALWAYS)\n" +
-		"This contains the recent conversation window (last 5 messages).\n" +
+		"This contains the recent conversation window.\n" +
 		"This is current context, not history. Always read it.\n\n" +
-		"## Step 4: Read Historical/Archive Files (AS NEEDED)\n" +
+		"## Step 4: Read Context Files (CONDITIONAL)\n" +
+		"ONLY if the user asks about code, references files, or mentions the codebase:\n" +
+		"- First read contexts/contexts.map to see available source files\n" +
+		"- Then read only the specific context-range-*.md files you need from contexts/ directory\n" +
+		"- context-range files are located in contexts/, NOT messages/\n\n" +
+		"## Step 5: Read Historical/Archive Files (AS NEEDED)\n" +
 		"Use messages.map to find relevant files:\n" +
 		"- messages-archive-*.json: Older conversation chunks (read if context requires it)\n" +
-		"- context-range-*.md: Source code archives (read only the files needed to answer the request)\n" +
 		"- cli-output-*.md: CLI output (read only if relevant)\n\n" +
+		"## CRITICAL: Two-Directory Structure\n" +
+		"There are TWO separate directories:\n" +
+		"- messages/: Contains dialogue history and messages.map\n" +
+		"- contexts/: Contains source code context-range files and contexts.map\n" +
+		"contexts.map is NOT automatically read-only read it when the user mentions code.\n\n" +
 		"## CRITICAL: Do Not Emit Analysis Until After Step 3\n" +
 		"Emit ONLY Read tool calls for messages.map, user-message.md, and messages-active.json in your first response.\n" +
 		"Do not attempt to analyze the request or provide a partial answer until you have read all three.\n" +
-		"After reading these three files, you may selectively read additional archives as needed.\n\n" +
+		"After reading these three files, you may selectively read additional archives or context files as needed.\n\n" +
 		"## Optimize for Cache Hit Rate\n" +
 		"The read_sequence in messages.map is pre-ordered for cache optimization.\n" +
 		"Only read additional files that are actually relevant to the current request.\n" +

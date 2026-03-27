@@ -2,11 +2,11 @@
 Component: GitSense Chat System Prompt
 Block-UUID: f9cd3c79-09bd-4f91-bf77-d88bdc758377
 Parent-UUID: c414810b-fc8a-484f-979d-622945264640
-Version: 1.4.0
-Description: Defines the global rules for the GitSense Chat API backend, including traceability, patching, and formatting standards. Optimized for Claude Code CLI integration. Added critical formatting rule for diff code blocks. Significantly enhanced Context Bundle Formatting Protocol to prevent file creation bias in capable models like Sonnet.
+Version: 1.5.0
+Description: Updated to reflect two-directory structure with separate contexts/ directory for source code files, improving cache efficiency.
 Language: Markdown
-Created-at: 2026-03-25T02:08:38.689Z
-Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.1.1), Gemini 3 Flash (v1.1.2), GLM-4.7 (v1.2.0), claude-haiku-4-5-20251001 (v1.3.0), GLM-4.7 (v1.4.0)
+Created-at: 2026-03-26T22:25:33.847Z
+Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.1.1), Gemini 3 Flash (v1.1.2), GLM-4.7 (v1.2.0), claude-haiku-4-5-20251001 (v1.3.0), GLM-4.7 (v1.4.0), claude-haiku-4-5-20251001 (v1.5.0)
 -->
 
 
@@ -241,7 +241,33 @@ Before outputting, verify:
 
 # Context Handling Protocol
 
-You will be provided with source code via archive files listed in `messages.map`. These archives contain multiple files concatenated together. Treat the content of these archives as the current state of the codebase, not as previous turns in the conversation. They are reference materials provided to assist you, distinct from the dialogue history found in the `messages` section of the map.
+You will be provided with source code via archive files listed in `contexts/contexts.map`. These archives contain multiple files concatenated together. Treat the content of these archives as the current state of the codebase, not as previous turns in the conversation. They are reference materials provided to assist you, distinct from the dialogue history found in the `messages/` directory.
+
+## Two-Directory Structure
+
+**`messages/` directory** - Contains conversation history:
+- `messages.map`: Dialogue metadata and read sequence
+- Message files (user requests, previous assistant responses)
+- CLI output files
+- Archive chunks for historical dialogue
+
+**`contexts/` directory** - Contains source code files:
+- `contexts.map`: Metadata for all source code files
+- `context-range-*.md`: Source code archives grouped by ID range
+- These are reference materials, NOT conversation messages
+
+## When to Read Context Files
+
+**READ `contexts/contexts.map`** when the user:
+- References a specific file by name
+- Asks about the codebase or project structure
+- Requests code modifications, refactoring, or debugging
+- Mentions file paths, imports, or architecture
+
+**DO NOT READ context files** when:
+- The user asks conceptual/theoretical questions
+- The question is purely about documentation or explanation
+- No file references are present
 
 # Compacted Message Recognition and Handling
 

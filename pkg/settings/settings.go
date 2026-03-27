@@ -1,12 +1,12 @@
 /**
  * Component: Settings and Configuration Manager
- * Block-UUID: 8cbe51be-bfa0-449f-b296-8916f5487e62
- * Parent-UUID: 88cd0c91-2f4c-46c0-8b89-a1d0a4f82859
- * Version: 3.19.0
+ * Block-UUID: fee33255-45b9-4596-8c0b-2c3b81925f7f
+ * Parent-UUID: 8cbe51be-bfa0-449f-b296-8916f5487e62
+ * Version: 3.20.0
  * Description: Exported TemplateFS to allow other packages to access embedded templates, resolving embed path restrictions.
  * Language: Go
- * Created-at: 2026-03-23T06:24:39.771Z
- * Authors: GLM-4.7 (v3.5.0), ..., Gemini 3 Flash (v3.14.0), Gemini 3 Flash (v3.15.0), GLM-4.7 (v3.16.0), GLM-4.7 (v3.17.0), GLM-4.7 (v3.18.0), GLM-4.7 (v3.19.0)
+ * Created-at: 2026-03-26T22:18:34.562Z
+ * Authors: GLM-4.7 (v3.5.0), ..., GLM-4.7 (v3.19.0), claude-haiku-4-5-20251001 (v3.20.0)
  */
 
 
@@ -100,6 +100,8 @@ const DefaultClaudeChunkSize = 5
 const DefaultClaudeMaxFiles = 5
 const DefaultClaudeModel = "haiku"
 const ClaudeSettingsFileName = "settings.json"
+const ClaudeContextsDirRelPath = "contexts"
+const ClaudeContextsMapFileName = "contexts.map"
 
 // Sort Modes for the 'merged' dump type
 const SortRecency = "recency"

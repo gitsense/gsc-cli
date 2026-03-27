@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Archive Manager
- * Block-UUID: de40f4c2-01b2-4e75-9d82-9c3a7f75fb4b
- * Parent-UUID: 1c8a8bda-a4fb-4fe1-a73b-f7d9f87ae748
- * Version: 1.10.0
+ * Block-UUID: b5431ed6-76b5-4c97-959e-48a35cec5067
+ * Parent-UUID: de40f4c2-01b2-4e75-9d82-9c3a7f75fb4b
+ * Version: 1.11.0
  * Description: Integrated context parser and bucketer for cache-optimized context file construction. Implemented zombie cleanup for orphaned context files and updated messages.map generation with proper bucket metadata.
  * Language: Go
- * Created-at: 2026-03-25T02:29:05.596Z
- * Authors: GLM-4.7 (v1.8.0), claude-haiku-4-5-20251001 (v1.8.1), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0)
+ * Created-at: 2026-03-26T22:13:22.659Z
+ * Authors: GLM-4.7 (v1.8.0), claude-haiku-4-5-20251001 (v1.8.1), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), claude-haiku-4-5-20251001 (v1.11.0)
  */
 
 
@@ -34,6 +34,12 @@ func SyncArchive(chatDir string, messages []db.Message, settings Settings) ([]Ar
 	messagesDir := filepath.Join(chatDir, "messages")
 	if err := os.MkdirAll(messagesDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create messages directory: %w", err)
+	}
+
+	// Create contexts directory
+	contextsDir := filepath.Join(chatDir, "contexts")
+	if err := os.MkdirAll(contextsDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create contexts directory: %w", err)
 	}
 
 	// 1. Filter and Separate Messages
@@ -66,7 +72,7 @@ func SyncArchive(chatDir string, messages []db.Message, settings Settings) ([]Ar
 	}
 
 	// 2. Write Context Files using bucket-based organization
-	if err := writeContextFiles(messagesDir, contextMessages); err != nil {
+	if err := writeContextFiles(contextsDir, contextMessages); err != nil {
 		return nil, fmt.Errorf("failed to write context files: %w", err)
 	}
 
@@ -116,8 +122,13 @@ func SyncArchive(chatDir string, messages []db.Message, settings Settings) ([]Ar
 	// 7. Generate or Update messages.map
 	// Extract context files for messages.map generation
 	contextFiles := context.ExtractContextFiles(contextMessages)
-	if err := writeMessagesMap(messagesDir, contextFiles, cliOutputMessages, archiveFiles); err != nil {
+	if err := writeMessagesMap(messagesDir, cliOutputMessages, archiveFiles); err != nil {
 		return nil, fmt.Errorf("failed to write messages.map: %w", err)
+	}
+
+	// 8. Generate or Update contexts.map
+	if err := writeContextsMap(contextsDir, contextFiles); err != nil {
+		return nil, fmt.Errorf("failed to write contexts.map: %w", err)
 	}
 
 	return archiveFiles, nil
@@ -138,15 +149,15 @@ func writeContextFiles(dir string, messages []db.Message) error {
 		return nil
 	}
 
-	// 2. Load existing messages.map if it exists
-	mapPath := filepath.Join(dir, "messages.map")
+	// 2. Load existing contexts.map if it exists
+	mapPath := filepath.Join(dir, "contexts.map")
 	var existingMap *MapFile
 
 	if _, err := os.Stat(mapPath); err == nil {
 		// Map file exists, load it
 		existingMap, err = loadMessagesMap(mapPath)
 		if err != nil {
-			logger.Warning("Failed to load existing messages.map, using greedy bucketing", "error", err)
+			logger.Warning("Failed to load existing contexts.map, using greedy bucketing", "error", err)
 			existingMap = nil
 		}
 	}
@@ -319,14 +330,115 @@ func writeCliOutputFiles(dir string, messages []db.Message) error {
 
 // writeMessagesMap generates or updates the messages.map file.
 // Creates a stable-to-volatile read sequence and includes file metadata.
-func writeMessagesMap(dir string, contextFiles []context.ContextFile, cliOutputMessages []db.Message, archiveFiles []ArchiveFile) error {
+func writeMessagesMap(dir string, cliOutputMessages []db.Message, archiveFiles []ArchiveFile) error {
 	mapPath := filepath.Join(dir, "messages.map")
+
+	// Build CLI output file metadata
+	var cliOutputFiles []FileMeta
+	for _, msg := range cliOutputMessages {
+		filename := fmt.Sprintf("cli-output-%d.md", msg.ID)
+		path := filepath.Join(dir, filename)
+
+		// Get file size
+		info, err := os.Stat(path)
+		if err != nil {
+			logger.Warning("Failed to get CLI output file info", "file", filename, "error", err)
+			continue
+		}
+
+		// Determine lifecycle based on message metadata
+		// In a real implementation, you'd parse the message meta field
+		// For now, default to "volatile"
+		lifecycle := "volatile"
+
+		cliOutputFiles = append(cliOutputFiles, FileMeta{
+			ID:        fmt.Sprintf("cli-output-%d", msg.ID),
+			File:      filename,
+			DBID:      msg.ID,
+			Size:      int(info.Size()),
+			Stability: "low",
+			Lifecycle: lifecycle,
+		})
+	}
+
+	// Sort CLI output files by DBID
+	sort.Slice(cliOutputFiles, func(i, j int) bool {
+		return cliOutputFiles[i].DBID < cliOutputFiles[j].DBID
+	})
+
+	// Build archive file list
+	var archives []string
+	for _, archive := range archiveFiles {
+		archives = append(archives, archive.Name)
+	}
+
+	// Build read sequence (stable-to-volatile order)
+	var readSequence []string
+
+	// 2. CLI output files (moderately volatile)
+	for _, cof := range cliOutputFiles {
+		readSequence = append(readSequence, cof.File)
+	}
+
+	// 3. Archive files (less volatile)
+	for _, archive := range archives {
+		readSequence = append(readSequence, archive)
+	}
+
+	// 4. Active window (most volatile)
+	readSequence = append(readSequence, "messages-active.json")
+
+	// Create map file structure
+	mapFile := MapFile{
+		Version:        "1.0",
+		ReadSequence:   readSequence,
+		ContextFiles:   []FileMeta{}, // Empty - context files moved to contexts.map
+		CliOutputFiles: cliOutputFiles,
+		Messages: MessagesMeta{
+			Active:   "messages-active.json",
+			Archives: archives,
+		},
+	}
+
+	// Marshal to JSON
+	data, err := json.MarshalIndent(mapFile, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal messages.map: %w", err)
+	}
+
+	// Write file
+	if err := os.WriteFile(mapPath, data, 0644); err != nil {
+		return fmt.Errorf("failed to write messages.map: %w", err)
+	}
+
+	logger.Debug("Wrote messages.map", "cli_output_files", len(cliOutputFiles))
+	return nil
+}
+
+// loadMessagesMap loads an existing messages.map file.
+func loadMessagesMap(path string) (*MapFile, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read messages.map: %w", err)
+	}
+
+	var mapFile MapFile
+	if err := json.Unmarshal(data, &mapFile); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal messages.map: %w", err)
+	}
+
+	return &mapFile, nil
+}
+
+// writeContextsMap generates the contexts.map file with all context file metadata.
+func writeContextsMap(dir string, contextFiles []context.ContextFile) error {
+	mapPath := filepath.Join(dir, "contexts.map")
 
 	// Build context file metadata from actual files on disk
 	var contextFileMetas []FileMeta
 	contextDir, err := os.ReadDir(dir)
 	if err != nil {
-		return fmt.Errorf("failed to read messages directory: %w", err)
+		return fmt.Errorf("failed to read contexts directory: %w", err)
 	}
 
 	for _, entry := range contextDir {
@@ -386,104 +498,31 @@ func writeMessagesMap(dir string, contextFiles []context.ContextFile, cliOutputM
 		return contextFileMetas[i].MinID < contextFileMetas[j].MinID
 	})
 
-	// Build CLI output file metadata
-	var cliOutputFiles []FileMeta
-	for _, msg := range cliOutputMessages {
-		filename := fmt.Sprintf("cli-output-%d.md", msg.ID)
-		path := filepath.Join(dir, filename)
-
-		// Get file size
-		info, err := os.Stat(path)
-		if err != nil {
-			logger.Warning("Failed to get CLI output file info", "file", filename, "error", err)
-			continue
-		}
-
-		// Determine lifecycle based on message metadata
-		// In a real implementation, you'd parse the message meta field
-		// For now, default to "volatile"
-		lifecycle := "volatile"
-
-		cliOutputFiles = append(cliOutputFiles, FileMeta{
-			ID:        fmt.Sprintf("cli-output-%d", msg.ID),
-			File:      filename,
-			DBID:      msg.ID,
-			Size:      int(info.Size()),
-			Stability: "low",
-			Lifecycle: lifecycle,
-		})
-	}
-
-	// Sort CLI output files by DBID
-	sort.Slice(cliOutputFiles, func(i, j int) bool {
-		return cliOutputFiles[i].DBID < cliOutputFiles[j].DBID
-	})
-
-	// Build archive file list
-	var archives []string
-	for _, archive := range archiveFiles {
-		archives = append(archives, archive.Name)
-	}
-
-	// Build read sequence (stable-to-volatile order)
-	var readSequence []string
-
-	// Context files are excluded from read_sequence to implement lazy loading.
-	// They are available via metadata in context_files but not auto-loaded.
-
-	// 2. CLI output files (moderately volatile)
-	for _, cof := range cliOutputFiles {
-		readSequence = append(readSequence, cof.File)
-	}
-
-	// 3. Archive files (less volatile)
-	for _, archive := range archives {
-		readSequence = append(readSequence, archive)
-	}
-
-	// 4. Active window (most volatile)
-	readSequence = append(readSequence, "messages-active.json")
-
-	// Create map file structure
-	mapFile := MapFile{
+	// Create contexts map file structure
+	contextsMapFile := MapFile{
 		Version:        "1.0",
-		ReadSequence:   readSequence,
+		ReadSequence:   []string{}, // Empty - AI reads selectively
 		ContextFiles:   contextFileMetas,
-		CliOutputFiles: cliOutputFiles,
+		CliOutputFiles: []FileMeta{},
 		Messages: MessagesMeta{
-			Active:   "messages-active.json",
-			Archives: archives,
+			Active:   "",
+			Archives: []string{},
 		},
 	}
 
 	// Marshal to JSON
-	data, err := json.MarshalIndent(mapFile, "", "  ")
+	data, err := json.MarshalIndent(contextsMapFile, "", "  ")
 	if err != nil {
-		return fmt.Errorf("failed to marshal messages.map: %w", err)
+		return fmt.Errorf("failed to marshal contexts.map: %w", err)
 	}
 
 	// Write file
 	if err := os.WriteFile(mapPath, data, 0644); err != nil {
-		return fmt.Errorf("failed to write messages.map: %w", err)
+		return fmt.Errorf("failed to write contexts.map: %w", err)
 	}
 
-	logger.Debug("Wrote messages.map", "context_files", len(contextFileMetas), "cli_output_files", len(cliOutputFiles))
+	logger.Debug("Wrote contexts.map", "context_files", len(contextFileMetas))
 	return nil
-}
-
-// loadMessagesMap loads an existing messages.map file.
-func loadMessagesMap(path string) (*MapFile, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read messages.map: %w", err)
-	}
-
-	var mapFile MapFile
-	if err := json.Unmarshal(data, &mapFile); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal messages.map: %w", err)
-	}
-
-	return &mapFile, nil
 }
 
 // writeArchiveChunks chunks the historical messages and writes them to JSON files.
