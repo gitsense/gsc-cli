@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Start Command
- * Block-UUID: 62aaec2a-f9af-4e4b-a7d5-cc03a07d8737
- * Parent-UUID: 62afa9b6-3970-4d6c-ab91-1ad8945821af
- * Version: 1.0.3
+ * Block-UUID: 5e7c0bb1-9079-46ef-a9ba-fd631968601d
+ * Parent-UUID: 62aaec2a-f9af-4e4b-a7d5-cc03a07d8737
+ * Version: 1.0.4
  * Description: Implements 'gsc claude scout start' command for initiating new Scout sessions
  * Language: Go
- * Created-at: 2026-03-27T22:58:30.292Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3)
+ * Created-at: 2026-03-28T01:50:30.432Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4)
  */
 
 
@@ -58,33 +58,15 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 	// Generate a unique session ID
 	sessionID := uuid.New().String()[:12]
 
-	// Convert working directory paths to absolute paths
-	workdirs := make([]claudescout.WorkingDirectory, len(flags.WorkingDirectories))
-	for i, wd := range flags.WorkingDirectories {
-		absPath, err := filepath.Abs(wd)
-		if err != nil {
-			return fmt.Errorf("failed to resolve working directory path %s: %w", wd, err)
-		}
-
-		workdirs[i] = claudescout.WorkingDirectory{
-			ID:   i + 1,
-			Name: filepath.Base(absPath),
-			Path: absPath,
-		}
+	// Parse working directories and reference files
+	workdirs, err := ParseWorkdirs(flags.WorkingDirectories)
+	if err != nil {
+		return fmt.Errorf("failed to parse working directories: %w", err)
 	}
 
-	// Convert reference file paths to absolute paths
-	refFiles := make([]claudescout.ReferenceFile, len(flags.ReferenceFiles))
-	for i, rf := range flags.ReferenceFiles {
-		absPath, err := filepath.Abs(rf)
-		if err != nil {
-			return fmt.Errorf("failed to resolve reference file path %s: %w", rf, err)
-		}
-
-		refFiles[i] = claudescout.ReferenceFile{
-			OriginalPath: absPath,
-			LocalPath:    filepath.Base(absPath),
-		}
+	refFiles, err := ParseRefFiles(flags.ReferenceFiles)
+	if err != nil {
+		return fmt.Errorf("failed to parse reference files: %w", err)
 	}
 
 	// Create a new scout manager
@@ -110,7 +92,7 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 
 	// Output session information
 	fmt.Fprintf(cmd.OutOrStdout(), "Scout session started\n")
-	fmt.Fprintf(cmd.OutOrStdout(), "Session ID: %s\n", sessionID)
+	fmt.Fprintf(cmd.OutOrStdout(), "Session ID: %s\n", FormatSessionPath(sessionID))
 	fmt.Fprintf(cmd.OutOrStdout(), "\nMonitor progress with:\n")
 	fmt.Fprintf(cmd.OutOrStdout(), "  gsc claude scout status -s %s\n", sessionID)
 	fmt.Fprintf(cmd.OutOrStdout(), "\nFollow in real-time with:\n")
