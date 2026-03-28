@@ -1,12 +1,12 @@
 /**
  * Component: Scout Stream Event Processor
- * Block-UUID: f930b1b1-82ca-459c-844c-ba6786ea85d3
- * Parent-UUID: 9df5633b-6e78-4202-9700-040837001480
- * Version: 1.0.4
+ * Block-UUID: f7600274-6d3a-4083-8445-9522a4cc18a2
+ * Parent-UUID: f930b1b1-82ca-459c-844c-ba6786ea85d3
+ * Version: 1.0.5
  * Description: JSONL event streaming, parsing, and file I/O for Scout sessions
  * Language: Go
- * Created-at: 2026-03-28T00:29:07.060Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4)
+ * Created-at: 2026-03-28T02:28:31.671Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5)
  */
 
 
@@ -230,6 +230,43 @@ func (ph *ProcessorHelper) GetLatestTurnLogFile(turn int) (string, error) {
 	}
 
 	return latestFile, nil
+}
+
+// GetLatestLogFile returns the most recent log file across all turns
+// Returns: (filePath, turnNumber, error)
+func (ph *ProcessorHelper) GetLatestLogFile() (string, int, error) {
+	var latestFile string
+	var latestTime time.Time
+	var latestTurn int
+
+	// Check both turn directories
+	for turn := 1; turn <= 2; turn++ {
+		turnDir := ph.sessionConfig.GetTurnDir(turn)
+		entries, err := os.ReadDir(turnDir)
+		if err != nil {
+			continue // Skip if directory doesn't exist
+		}
+
+		for _, entry := range entries {
+			if !entry.IsDir() && filepath.Ext(entry.Name()) == ".ndjson" {
+				info, err := entry.Info()
+				if err != nil {
+					continue
+				}
+				if info.ModTime().After(latestTime) {
+					latestTime = info.ModTime()
+					latestFile = filepath.Join(turnDir, entry.Name())
+					latestTurn = turn
+				}
+			}
+		}
+	}
+
+	if latestFile == "" {
+		return "", 0, fmt.Errorf("no log files found in any turn directory")
+	}
+
+	return latestFile, latestTurn, nil
 }
 
 // ReadSessionStatusFromEvents reconstructs status data from events

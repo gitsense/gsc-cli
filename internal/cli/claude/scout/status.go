@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Status Command
- * Block-UUID: 7758fcd5-7a89-41d5-b735-a1e089278469
- * Parent-UUID: da471aeb-513e-4358-ad44-f7a124bb8b1a
- * Version: 1.0.6
+ * Block-UUID: d8069e6b-eb38-4460-a3ea-5475befb4f28
+ * Parent-UUID: e30f8d5b-5b07-49d3-a911-4f09abe61179
+ * Version: 1.0.8
  * Description: Implements 'gsc claude scout status' command for monitoring Scout sessions
  * Language: Go
- * Created-at: 2026-03-28T02:13:58.913Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6)
+ * Created-at: 2026-03-28T02:31:09.286Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), GLM-4.7 (v1.0.8)
  */
 
 
@@ -243,7 +243,7 @@ func followSessionEvents(cmd *cobra.Command, config *claudescout.SessionConfig) 
 			}
 
 			// Try to read the latest log file
-			logFile, err := claudescout.NewProcessorHelper(config).GetLatestTurnLogFile(1)
+			logFile, _, err := claudescout.NewProcessorHelper(config).GetLatestLogFile()
 			if err != nil {
 				// Log file not yet created
 				continue
