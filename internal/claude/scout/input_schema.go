@@ -1,12 +1,12 @@
 /**
  * Component: Scout Input Schema Builder
- * Block-UUID: 2acaa82d-93cf-4c2a-a128-3250ed81fdf2
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: e1c65f76-f9f1-4a1e-b487-9168f9efdbf0
+ * Parent-UUID: 2acaa82d-93cf-4c2a-a128-3250ed81fdf2
+ * Version: 1.0.1
  * Description: Generates input schema for Scout Turn 1 by running gsc brains and gsc insights commands
  * Language: Go
- * Created-at: 2026-03-28T21:46:45.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Created-at: 2026-03-28T21:59:16.171Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1)
  */
 
 
@@ -16,7 +16,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -152,7 +151,7 @@ func analyzeWorkdir(wd WorkingDirectory) (*WorkdirAnalysis, error) {
 	}
 
 	// Check brain availability
-	brainsResponse, err := runGSCBrains(wd.Path)
+	_, err := runGSCBrains(wd.Path)
 	if err != nil {
 		// Brain not available
 		if brainErr, ok := err.(*BrainUnavailableError); ok {
