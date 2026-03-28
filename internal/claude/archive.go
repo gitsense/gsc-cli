@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Archive Manager
- * Block-UUID: 67ad426e-9efa-4b18-825a-e8d691e2b846
- * Parent-UUID: 4b9057f6-2449-4c16-b197-967fa38c47fd
- * Version: 1.12.1
+ * Block-UUID: ee051126-9bb2-48cc-bd84-b6ce59ead743
+ * Parent-UUID: 96bdc1f8-c4af-4fbc-9857-39052d2d8fe6
+ * Version: 1.13.1
  * Description: Updated writeContextsMap to extract repository information, build repositories array, and use settings constant for filename. Enhanced FileEntry with repo_id and full path.
  * Language: Go
- * Created-at: 2026-03-28T03:51:51.210Z
- * Authors: GLM-4.7 (v1.8.0), claude-haiku-4-5-20251001 (v1.8.1), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), claude-haiku-4-5-20251001 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.12.1)
+ * Created-at: 2026-03-28T04:08:01.588Z
+ * Authors: GLM-4.7 (v1.8.0), claude-haiku-4-5-20251001 (v1.8.1), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), claude-haiku-4-5-20251001 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.12.1), GLM-4.7 (v1.13.0), GLM-4.7 (v1.13.1)
  */
 
 
@@ -445,6 +445,7 @@ func writeContextsMap(dir string, contextFiles []context.ContextFile) error {
 	// Build unique repositories map
 	repositories := make(map[string]*Repository)
 	repoCounter := 0
+	repoIDMap := make(map[string]*Repository) // Map repo ID to Repository for O(1) lookup
 
 	for _, entry := range contextDir {
 		if strings.HasPrefix(entry.Name(), "context-range-") && strings.HasSuffix(entry.Name(), ".md") {
@@ -478,41 +479,44 @@ func writeContextsMap(dir string, contextFiles []context.ContextFile) error {
 				if file.ChatID >= minID && file.ChatID <= maxID {
 					// Build repository information
 					var repo *Repository
+					var repoID string
 					if file.Repo != "" {
 						if existingRepo, ok := repositories[file.Repo]; ok {
 							repo = existingRepo
+							repoID = existingRepo.ID
 						} else {
 							repoCounter++
-							repoID := fmt.Sprintf("repo-%d", repoCounter)
+							repoID = fmt.Sprintf("repo-%d", repoCounter)
 							repo = &Repository{
 								ID:   repoID,
 								Name: file.Repo,
 								URL:  "", // Could be enhanced to include URL if available
 							}
 							repositories[file.Repo] = repo
+							repoIDMap[repoID] = repo
 						}
 					}
 
 					fileEntries = append(fileEntries, FileEntry{
 						ChatID: file.ChatID,
-						Name:   file.Path, // Use full relative path for better context
-						Repository: repo,
+						Path:   file.Path, // Use full relative path for better context
+						RepoID: repoID,
 					})
 				}
 			}
 
 			// Add repository to FileMeta if all files in this bucket are from the same repo
 			var bucketRepo *Repository
-			if len(fileEntries) > 0 && fileEntries[0].Repository != nil {
+			if len(fileEntries) > 0 && fileEntries[0].RepoID != "" {
 				allSameRepo := true
 				for _, fe := range fileEntries {
-					if fe.Repository == nil || fe.Repository.ID != fileEntries[0].Repository.ID {
+					if fe.RepoID != fileEntries[0].RepoID {
 						allSameRepo = false
 						break
 					}
 				}
 				if allSameRepo {
-					bucketRepo = fileEntries[0].Repository
+					bucketRepo = repoIDMap[fileEntries[0].RepoID]
 				}
 			}
 
@@ -525,7 +529,7 @@ func writeContextsMap(dir string, contextFiles []context.ContextFile) error {
 				Size:      int(info.Size()),
 				Stability: stability,
 				FileCount: fileCount,
-				Repository: bucketRepo,
+				Repository: bucketRepo, // Keep full repository object at bucket level for convenience
 				Files:     fileEntries,
 			})
 		}

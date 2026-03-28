@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Claude Context Bucketer
- * Block-UUID: 6507b69c-f11f-436e-acb5-b86be909bdc4
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 69492bc0-3061-4bee-8053-3f5b7bd89ed0
+ * Parent-UUID: 6507b69c-f11f-436e-acb5-b86be909bdc4
+ * Version: 1.1.0
  * Description: Implements the bucket building strategy for Claude context files. Supports Greedy bucketing for new/changed file sets and Leaware bucketing for stable sets to maximize cache hits.
  * Language: Go
- * Created-at: 2026-03-24T03:21:16.959Z
- * Authors: Gemini 3 Flash (v1.0.0)
+ * Created-at: 2026-03-28T04:07:08.158Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0)
  */
 
 
@@ -77,7 +77,7 @@ func greedyBucketing(files []context.ContextFile) []Bucket {
 	for _, f := range files {
 		entry := FileEntry{
 			ChatID: f.ChatID,
-			Name:   f.Name,
+			Path:   f.Path,
 			Size:   f.Size,
 		}
 
@@ -149,7 +149,7 @@ func mapToExistingBuckets(current []context.ContextFile, existingMap *MapFile) [
 			if currFile, ok := fileLookup[exFile.ChatID]; ok {
 				newBucket.Files = append(newBucket.Files, FileEntry{
 					ChatID: currFile.ChatID,
-					Name:   currFile.Name,
+					Path:   currFile.Path,
 					Size:   currFile.Size,
 				})
 				newBucket.TotalSize += currFile.Size

@@ -1,12 +1,12 @@
 <!--
 Component: Claude Code API Protocol
-Block-UUID: ef07e2e7-210f-4b45-b960-48637edaab03
-Parent-UUID: 4d4929de-9445-45b9-bf6b-7965c79a3f7d
-Version: 1.4.0
-Description: Updated to reflect two-directory structure with separate contexts/ directory for source code files, improving cache efficiency.
+Block-UUID: cd53e488-5392-41bb-a8d4-2a84e92c451e
+Parent-UUID: ef07e2e7-210f-4b45-b960-48637edaab03
+Version: 1.5.0
+Description: Updated to document the new optimized contexts.map format with repositories array, path field, and repo_id references for token efficiency.
 Language: Markdown
-Created-at: 2026-03-26T22:20:19.772Z
-Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.1.1), GLM-4.7 (v1.1.2), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), claude-haiku-4-5-20251001 (v1.4.0)
+Created-at: 2026-03-28T04:10:45.123Z
+Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.1.1), GLM-4.7 (v1.1.2), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), claude-haiku-4-5-20251001 (v1.4.0), GLM-4.7 (v1.5.0)
 -->
 
 
@@ -101,29 +101,40 @@ The `contexts/` directory contains source code files that are **NOT** part of th
 When you need to locate a specific file in the context:
 
 1. **Check `contexts.map` metadata**: Look at the `context_files` array to find which bucket contains the file you need
-2. **Use the file list**: Each context bucket has a `files` array with `chat_id`, `name`, and `size` for each file
+2. **Use the file list**: Each context bucket has a `files` array with `chat_id`, `path`, `repo_id`, and `size` for each file
 3. **Query by extension**: You can scan the `files` arrays to answer questions like "what Ruby files are in context?"
+4. **Look up repository details**: Use the `repo_id` to find repository information in the top-level `repositories` array
 
 **Note:** Context files are explicitly marked with `type: "source_code_archive"` in the map metadata to distinguish them from dialogue messages.
 
 **Example:**
 ```json
 {
+  "repositories": [
+    {
+      "id": "repo-1",
+      "name": "gitsense/gsc-cli",
+      "url": "https://github.com/gitsense/gsc-cli"
+    }
+  ],
   "context_files": [
     {
       "id": "context-range-2600-2699",
       "file": "context-range-2600-2699.md",
       "files": [
-        {"chat_id": 2601, "name": "README.md", "size": 2048},
-        {"chat_id": 2642, "name": "src/index.js", "size": 4096}
+        {"chat_id": 2601, "path": "README.md", "repo_id": "repo-1", "size": 2048},
+        {"chat_id": 2642, "path": "src/index.js", "repo_id": "repo-1", "size": 4096}
       ]
     }
   ]
 }
 
+
 ```
 
-To find all JavaScript files, scan the `files` arrays and look for `.js` extensions.
+To find all JavaScript files, scan the `files` arrays and look for `.js` extensions in the `path` field.
+
+To get repository information for a file, use its `repo_id` to look up the corresponding entry in the `repositories` array.
 
 ## 5. The Sandbox Rule
 

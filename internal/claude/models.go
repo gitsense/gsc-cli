@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Data Models
- * Block-UUID: 06194d0f-7979-4b62-8b52-b19119581655
- * Parent-UUID: f5cd823c-5202-4355-95f1-c77941f176aa
- * Version: 1.11.0
+ * Block-UUID: df720f1e-5a45-46d6-8bd3-99ec47129ef3
+ * Parent-UUID: 06194d0f-7979-4b62-8b52-b19119581655
+ * Version: 1.12.0
  * Description: Updated to support cache-optimized context file construction with bucket-based organization. Added ContextFile struct reference and ensured compatibility with context parser and bucketer.
  * Language: Go
- * Created-at: 2026-03-28T03:46:17.610Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), ..., GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), claude-haiku-4-5-20251001 (v1.10.0), GLM-4.7 (v1.11.0)
+ * Created-at: 2026-03-28T04:02:25.885Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), ..., GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), claude-haiku-4-5-20251001 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0)
  */
 
 
@@ -184,9 +184,9 @@ type FileMeta struct {
 // FileEntry represents a single file entry within a context bucket.
 type FileEntry struct {
 	ChatID int64  `json:"chat_id"` // Database message ID
-	Name   string `json:"name"`    // File path (e.g., "src/index.js")
+	Path   string `json:"path"`    // Full relative file path (e.g., "src/index.js")
 	Size   int    `json:"size"`    // File size in bytes
-	Repository *Repository `json:"repository"` // Repository information (optional)
+	RepoID string `json:"repo_id"` // Repository ID reference (e.g., "repo-1")
 }
 
 // MessagesMeta represents metadata for active and archive message files.
