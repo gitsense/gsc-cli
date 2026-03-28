@@ -1,21 +1,22 @@
 /**
  * Component: Scout CLI Stop Command
- * Block-UUID: fffc4355-8cdf-4540-82ef-02f90f460065
- * Parent-UUID: 6c4e9f3d-5a7b-4d2c-8e1f-7a3c9f5e2b8d
- * Version: 1.0.1
+ * Block-UUID: 15424924-bc38-4cf9-82c0-a62b4b4121f8
+ * Parent-UUID: 223a6b7f-9cbe-4905-8351-2d242d21d8b2
+ * Version: 1.0.3
  * Description: Implements 'gsc claude scout stop' command for terminating Scout sessions
  * Language: Go
- * Created-at: 2026-03-27T18:28:52.418Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), claude-haiku-4-5-20251001 (v1.0.1)
+ * Created-at: 2026-03-27T23:47:43.818Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), claude-haiku-4-5-20251001 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3)
  */
 
 
-package scout
+package scoutcli
 
 import (
 	"fmt"
 	"time"
 
+	claudescout "github.com/gitsense/gsc-cli/internal/claude/scout"
 	"github.com/spf13/cobra"
 )
 
@@ -53,7 +54,7 @@ func runStopCommand(cmd *cobra.Command, flags *StopFlags) error {
 	}
 
 	// Load the session
-	manager, err := LoadSession(flags.SessionID)
+	manager, err := claudescout.LoadSession(flags.SessionID)
 	if err != nil {
 		return fmt.Errorf("failed to load session: %w", err)
 	}
@@ -143,8 +144,8 @@ func findColonIndex(s string) int {
 }
 
 // CanStopSession checks if a session can be stopped
-func (m *Manager) CanStopSession(sessionID string) (bool, error) {
-	manager, err := LoadSession(sessionID)
+func CanStopSession(sessionID string) (bool, error) {
+	manager, err := claudescout.LoadSession(sessionID)
 	if err != nil {
 		return false, err
 	}
@@ -158,8 +159,8 @@ func (m *Manager) CanStopSession(sessionID string) (bool, error) {
 }
 
 // GetSessionProcessInfo retrieves process information for a session
-func (m *Manager) GetSessionProcessInfo(sessionID string) (*ProcessInfo, error) {
-	manager, err := LoadSession(sessionID)
+func GetSessionProcessInfo(sessionID string) (*claudescout.ProcessInfo, error) {
+	manager, err := claudescout.LoadSession(sessionID)
 	if err != nil {
 		return nil, err
 	}

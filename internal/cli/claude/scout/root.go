@@ -1,16 +1,16 @@
-/*
+/**
  * Component: Scout CLI Root Command
- * Block-UUID: 9e5f4a3b-7d2c-4e8f-a1b9-6c5e8f7a2d3b
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 41df1421-1aef-4ab6-b67b-75be7376604c
+ * Parent-UUID: 9e5f4a3b-7d2c-4e8f-a1b9-6c5e8f7a2d3b
+ * Version: 1.0.1
  * Description: Parent command for Scout CLI (start, status, stop subcommands)
  * Language: Go
- * Created-at: 2026-03-27T00:00:00.000Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0)
+ * Created-at: 2026-03-27T22:53:59.361Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1)
  */
 
 
-package scout
+package scoutcli
 
 import (
 	"github.com/spf13/cobra"

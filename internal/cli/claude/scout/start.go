@@ -1,23 +1,23 @@
 /**
  * Component: Scout CLI Start Command
- * Block-UUID: 716bb8da-1cbf-4a6d-b336-6d00f1a7c295
- * Parent-UUID: 5e3d8f2a-6c9b-4a2f-8e1d-7f4c3a9b5e2d
- * Version: 1.0.1
+ * Block-UUID: 62aaec2a-f9af-4e4b-a7d5-cc03a07d8737
+ * Parent-UUID: 62afa9b6-3970-4d6c-ab91-1ad8945821af
+ * Version: 1.0.3
  * Description: Implements 'gsc claude scout start' command for initiating new Scout sessions
  * Language: Go
- * Created-at: 2026-03-27T17:44:15.836Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1)
+ * Created-at: 2026-03-27T22:58:30.292Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3)
  */
 
 
-package scout
+package scoutcli
 
 import (
-	claudescout "github.com/gitsense/gsc-cli/internal/claude/scout"
 	"fmt"
 	"path/filepath"
 	"strings"
 
+	claudescout "github.com/gitsense/gsc-cli/internal/claude/scout"
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 )
@@ -88,7 +88,7 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 	}
 
 	// Create a new scout manager
-	manager, err := NewManager(sessionID)
+	manager, err := claudescout.NewManager(sessionID)
 	if err != nil {
 		return fmt.Errorf("failed to create scout manager: %w", err)
 	}

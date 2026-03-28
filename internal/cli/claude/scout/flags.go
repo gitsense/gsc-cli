@@ -1,16 +1,16 @@
-/*
+/**
  * Component: Scout CLI Flags and Options
- * Block-UUID: 4d2c9e5f-3a7b-4e1c-9d5a-2c8f7e6d4b3a
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 8d1971aa-900b-44b6-bb19-2e482682f3f3
+ * Parent-UUID: 4d2c9e5f-3a7b-4e1c-9d5a-2c8f7e6d4b3a
+ * Version: 1.0.1
  * Description: Shared flag definitions for Scout CLI commands (start, status, stop)
  * Language: Go
- * Created-at: 2026-03-27T00:00:00.000Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0)
+ * Created-at: 2026-03-27T22:55:19.009Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1)
  */
 
 
-package scout
+package scoutcli
 
 import (
 	"github.com/spf13/cobra"

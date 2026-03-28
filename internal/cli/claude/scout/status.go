@@ -1,23 +1,23 @@
-/*
+/**
  * Component: Scout CLI Status Command
- * Block-UUID: 8f5d3c2a-7e9b-4b1f-9a2c-6e4f8d7c5b3a
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 36c29f75-7785-4efa-92d6-513dfd316408
+ * Parent-UUID: e37cbfad-cb42-4492-b742-0e349dde2714
+ * Version: 1.0.2
  * Description: Implements 'gsc claude scout status' command for monitoring Scout sessions
  * Language: Go
- * Created-at: 2026-03-27T00:00:00.000Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0)
+ * Created-at: 2026-03-27T23:43:04.711Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.0.2)
  */
 
 
-package scout
+package scoutcli
 
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"time"
 
+	claudescout "github.com/gitsense/gsc-cli/internal/claude/scout"
 	"github.com/spf13/cobra"
 )
 
@@ -50,7 +50,7 @@ func runStatusCommand(cmd *cobra.Command, flags *StatusFlags) error {
 	}
 
 	// Load the session
-	manager, err := LoadSession(flags.SessionID)
+	manager, err := claudescout.LoadSession(flags.SessionID)
 	if err != nil {
 		return fmt.Errorf("failed to load session: %w", err)
 	}
@@ -68,14 +68,14 @@ func runStatusCommand(cmd *cobra.Command, flags *StatusFlags) error {
 
 	// If follow mode, stream events in real-time
 	if flags.Follow {
-		return followSessionEvents(cmd, manager.config)
+		return followSessionEvents(cmd, manager.GetConfig())
 	}
 
 	return nil
 }
 
 // displayStatus outputs status in the requested format
-func displayStatus(cmd *cobra.Command, status *StatusData, format string) error {
+func displayStatus(cmd *cobra.Command, status *claudescout.StatusData, format string) error {
 	switch format {
 	case "json":
 		return displayStatusJSON(cmd, status)
@@ -89,7 +89,7 @@ func displayStatus(cmd *cobra.Command, status *StatusData, format string) error 
 }
 
 // displayStatusJSON outputs status as JSON
-func displayStatusJSON(cmd *cobra.Command, status *StatusData) error {
+func displayStatusJSON(cmd *cobra.Command, status *claudescout.StatusData) error {
 	data, err := json.MarshalIndent(status, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal status: %w", err)
@@ -100,7 +100,7 @@ func displayStatusJSON(cmd *cobra.Command, status *StatusData) error {
 }
 
 // displayStatusTable outputs status in table format
-func displayStatusTable(cmd *cobra.Command, status *StatusData) error {
+func displayStatusTable(cmd *cobra.Command, status *claudescout.StatusData) error {
 	fmt.Fprintf(cmd.OutOrStdout(), "Session: %s\n", status.SessionID)
 	fmt.Fprintf(cmd.OutOrStdout(), "Status: %s\n", status.Status)
 	fmt.Fprintf(cmd.OutOrStdout(), "Phase: %s\n", status.Phase)
@@ -146,7 +146,7 @@ func displayStatusTable(cmd *cobra.Command, status *StatusData) error {
 }
 
 // displayStatusPretty outputs status in a user-friendly format
-func displayStatusPretty(cmd *cobra.Command, status *StatusData) error {
+func displayStatusPretty(cmd *cobra.Command, status *claudescout.StatusData) error {
 	fmt.Fprintf(cmd.OutOrStdout(), "\n  Scout Session: %s\n", status.SessionID)
 	fmt.Fprintf(cmd.OutOrStdout(), "  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
 	fmt.Fprintf(cmd.OutOrStdout(), "  Status: %s\n", colorizeStatus(status.Status))
@@ -206,7 +206,7 @@ func colorizeStatus(status string) string {
 }
 
 // followSessionEvents streams events from the log file as they arrive
-func followSessionEvents(cmd *cobra.Command, config *SessionConfig) error {
+func followSessionEvents(cmd *cobra.Command, config *claudescout.SessionConfig) error {
 	fmt.Fprintf(cmd.OutOrStdout(), "Following session events (Ctrl+C to stop)...\n\n")
 
 	ticker := time.NewTicker(1 * time.Second)
@@ -218,13 +218,13 @@ func followSessionEvents(cmd *cobra.Command, config *SessionConfig) error {
 		select {
 		case <-ticker.C:
 			// Try to read the latest log file
-			logFile, err := NewProcessorHelper(config).GetLatestTurnLogFile(1)
+			logFile, err := claudescout.NewProcessorHelper(config).GetLatestTurnLogFile(1)
 			if err != nil {
 				// Log file not yet created
 				continue
 			}
 
-			reader, err := NewEventReader(logFile)
+			reader, err := claudescout.NewEventReader(logFile)
 			if err != nil {
 				continue
 			}
@@ -255,7 +255,7 @@ func followSessionEvents(cmd *cobra.Command, config *SessionConfig) error {
 }
 
 // displayEvent displays a single event in the stream
-func displayEvent(cmd *cobra.Command, event *StreamEvent) {
+func displayEvent(cmd *cobra.Command, event *claudescout.StreamEvent) {
 	timestamp := event.Timestamp
 	if len(timestamp) > 19 {
 		timestamp = timestamp[:19]
@@ -295,7 +295,7 @@ func displayEvent(cmd *cobra.Command, event *StreamEvent) {
 }
 
 // GetSessionRunTime returns how long a session has been running
-func GetSessionRunTime(status *StatusData) string {
+func GetSessionRunTime(status *claudescout.StatusData) string {
 	elapsed := time.Since(status.StartedAt)
 	return elapsed.String()
 }

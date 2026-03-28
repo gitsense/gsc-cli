@@ -1,12 +1,12 @@
 /**
  * Component: Scout Session Manager
- * Block-UUID: 5e78dfd1-f908-4e46-a77d-771911611342
- * Parent-UUID: 3fec54ab-ddbb-4e05-8484-47f78501c79c
- * Version: 1.0.10
+ * Block-UUID: 97bdc505-698e-46c0-b224-eb8f995226e9
+ * Parent-UUID: 5e78dfd1-f908-4e46-a77d-771911611342
+ * Version: 1.0.11
  * Description: Orchestrates Scout discovery and verification phases, manages subprocess execution
  * Language: Go
- * Created-at: 2026-03-27T19:08:32.993Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), claude-haiku-4-5-20251001 (v1.0.8), GLM-4.7 (v1.0.9), GLM-4.7 (v1.0.10)
+ * Created-at: 2026-03-27T23:41:22.146Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), claude-haiku-4-5-20251001 (v1.0.8), GLM-4.7 (v1.0.9), GLM-4.7 (v1.0.10), GLM-4.7 (v1.0.11)
  */
 
 
@@ -48,6 +48,11 @@ func NewManager(sessionID string) (*Manager, error) {
 		processor: NewProcessorHelper(config),
 		currentTurn: 1,
 	}, nil
+}
+
+// GetConfig returns the session configuration
+func (m *Manager) GetConfig() *SessionConfig {
+	return m.config
 }
 
 // InitializeSession sets up the session directory and writes initial state
