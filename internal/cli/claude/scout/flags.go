@@ -1,18 +1,20 @@
 /**
  * Component: Scout CLI Flags and Options
- * Block-UUID: 8d1971aa-900b-44b6-bb19-2e482682f3f3
- * Parent-UUID: 4d2c9e5f-3a7b-4e1c-9d5a-2c8f7e6d4b3a
- * Version: 1.0.1
+ * Block-UUID: f10f8e67-beac-4166-81d8-81ca4acdd50c
+ * Parent-UUID: 8d1971aa-900b-44b6-bb19-2e482682f3f3
+ * Version: 1.0.2
  * Description: Shared flag definitions for Scout CLI commands (start, status, stop)
  * Language: Go
- * Created-at: 2026-03-27T22:55:19.009Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1)
+ * Created-at: 2026-03-28T01:45:38.679Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2)
  */
 
 
 package scoutcli
 
 import (
+	"fmt"
+	"os"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -36,11 +38,6 @@ type StatusFlags struct {
 type StopFlags struct {
 	SessionID string
 	Force     bool
-}
-
-// CommonFlags contains flags common to multiple commands
-type CommonFlags struct {
-	SessionID string
 }
 
 // RegisterStartFlags registers flags for the start command
@@ -118,17 +115,6 @@ func RegisterStopFlags(cmd *cobra.Command, flags *StopFlags) {
 	)
 }
 
-// RegisterCommonFlags registers flags common to multiple commands
-func RegisterCommonFlags(cmd *cobra.Command, flags *CommonFlags) {
-	cmd.Flags().StringVarP(
-		&flags.SessionID,
-		"session", "s",
-		"",
-		"Scout session ID",
-	)
-	cmd.MarkFlagRequired("session")
-}
-
 // ValidateStartFlags validates the start command flags
 func ValidateStartFlags(flags *StartFlags) error {
 	if flags.Intent == "" {
@@ -137,6 +123,20 @@ func ValidateStartFlags(flags *StartFlags) error {
 
 	if len(flags.WorkingDirectories) == 0 {
 		return &FlagError{Flag: "workdir", Message: "at least one working directory is required"}
+	}
+
+	// Validate working directories exist
+	for _, wd := range flags.WorkingDirectories {
+		if _, err := os.Stat(wd); err != nil {
+			return &FlagError{Flag: "workdir", Message: fmt.Sprintf("working directory not found: %s", wd)}
+		}
+	}
+
+	// Validate reference files exist (if provided)
+	for _, rf := range flags.ReferenceFiles {
+		if _, err := os.Stat(rf); err != nil {
+			return &FlagError{Flag: "reference", Message: fmt.Sprintf("reference file not found: %s", rf)}
+		}
 	}
 
 	return nil
@@ -242,8 +242,7 @@ func ParseReferenceFiles(flags *pflag.FlagSet) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	return refs, nil // Reference files are optional
+	return refs, nil // Reference files are optional; validation happens in ValidateStartFlags
 }
 
 // ParseAutoReview extracts auto-review flag
