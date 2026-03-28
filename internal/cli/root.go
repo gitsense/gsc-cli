@@ -1,12 +1,12 @@
 /**
  * Component: Root CLI Command
- * Block-UUID: ee4b9d43-dc49-4abd-88ec-2118b81c7120
- * Parent-UUID: 024fef31-9013-45fe-a8dd-214afed013e8
- * Version: 1.40.0
- * Description: Registered the 'claude' command group and added it to the excluded commands list to support the Claude Code CLI integration.
+ * Block-UUID: 633174c8-7a34-497e-8151-a9089843f809
+ * Parent-UUID: 6d278caa-67c8-43f6-87fe-905b01d36aa8
+ * Version: 1.41.0
+ * Description: Add debug output in PersistentPreRunE to verify flag parsing is working correctly.
  * Language: Go
- * Created-at: 2026-03-22T04:39:43.440Z
- * Authors: GLM-4.7 (v1.34.0), Gemini 3 Flash (v1.35.0), Gemini 3 Flash (v1.36.0), GLM-4.7 (v1.37.0), Gemini 3 Flash (v1.38.0), Gemini 3 Flash (v1.39.0), Gemini 3 Flash (v1.40.0)
+ * Created-at: 2026-03-28T17:19:09.693Z
+ * Authors: GLM-4.7 (v1.34.0), Gemini 3 Flash (v1.35.0), Gemini 3 Flash (v1.36.0), GLM-4.7 (v1.37.0), Gemini 3 Flash (v1.38.0), Gemini 3 Flash (v1.39.0), Gemini 3 Flash (v1.40.0), claude-haiku-4-5-20251001 (v1.40.1), GLM-4.7 (v1.41.0)
  */
 
 
@@ -16,7 +16,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -24,13 +23,12 @@ import (
 	"github.com/gitsense/gsc-cli/internal/cli/contract"
 	"github.com/gitsense/gsc-cli/internal/cli/app"
 	"github.com/gitsense/gsc-cli/internal/cli/manifest"
+	manifestpkg "github.com/gitsense/gsc-cli/internal/manifest"
 	"github.com/gitsense/gsc-cli/internal/cli/claude"
-	"github.com/gitsense/gsc-cli/internal/git"
 	"github.com/gitsense/gsc-cli/internal/cli/ws"
 	"github.com/gitsense/gsc-cli/internal/cli/docker"
 	docker_internal "github.com/gitsense/gsc-cli/internal/docker"
 	"github.com/gitsense/gsc-cli/pkg/logger"
-	"github.com/gitsense/gsc-cli/pkg/settings"
 )
 
 // Global flags
@@ -62,8 +60,10 @@ AI ASSISTANT DISCOVERY:
 		quiet, _ := cmd.Flags().GetBool("quiet")
 		if quiet {
 			logger.SetLogLevel(logger.LevelError)
+			logger.Debug("Log level set to ERROR (quiet mode)")
 		} else {
 			verbose, _ := cmd.Flags().GetCount("verbose")
+			logger.Debug("Verbose count detected", "count", verbose)
 			switch verbose {
 			case 0:
 				logger.SetLogLevel(logger.LevelWarning)
@@ -71,6 +71,7 @@ AI ASSISTANT DISCOVERY:
 				logger.SetLogLevel(logger.LevelInfo)
 			default:
 				logger.SetLogLevel(logger.LevelDebug)
+				logger.Debug("Log level set to DEBUG")
 			}
 		}
 
@@ -97,16 +98,9 @@ AI ASSISTANT DISCOVERY:
 		// 3. Pre-flight Check: Ensure .gitsense directory exists
 		// Skip for excluded commands (init, doctor, exec, ws, contract) and examples
 		if cmd.Name() != "gsc" && !isExcludedCommand(cmd) && !showExamples {
-			root, err := git.FindProjectRoot()
-			if err != nil {
+			if err := manifestpkg.ValidateWorkspace(); err != nil {
 				cmd.SilenceUsage = true
 				return err
-			}
-
-			gitsenseDir := filepath.Join(root, settings.GitSenseDir)
-			if _, err := os.Stat(gitsenseDir); os.IsNotExist(err) {
-				cmd.SilenceUsage = true
-				return fmt.Errorf("GitSense workspace not found. Run 'gsc manifest init' to initialize")
 			}
 		}
 		return nil

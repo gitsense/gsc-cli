@@ -1,12 +1,12 @@
 /**
  * Component: Contract Manager
- * Block-UUID: f045d8e0-703a-4cab-ac8f-672b6519e208
- * Parent-UUID: bdc7389f-e364-47fa-9f87-197f853418eb
- * Version: 1.24.1
+ * Block-UUID: f8f9b4cf-51c6-4b44-b563-766dd0ccf11b
+ * Parent-UUID: 8edc98d0-beec-47aa-bb62-74a7d55c0994
+ * Version: 1.24.5
  * Description: Add workdir management methods (AddWorkdir, RemoveWorkdir, SetPrimaryWorkdir) with conflict validation and event notifications.
  * Language: Go
- * Created-at: 2026-03-26T22:59:34.609Z
- * Authors: GLM-4.7 (v1.24.0), GLM-4.7 (v1.24.1)
+ * Created-at: 2026-03-28T16:24:31.160Z
+ * Authors: GLM-4.7 (v1.24.0), GLM-4.7 (v1.24.1), GLM-4.7 (v1.24.2), GLM-4.7 (v1.24.3), GLM-4.7 (v1.24.4), GLM-4.7 (v1.24.5)
  */
 
 
@@ -70,6 +70,14 @@ func CreateContract(code string, description string, authcode string, workdir st
 	// 3. Generate Metadata
 	now := time.Now()
 	
+	expiresAt := now.Add(time.Duration(settings.DefaultContractTTL) * time.Hour)
+
+	// Apply DefaultSafeSet if no whitelist is provided and restrictions are enabled
+	effectiveWhitelist := whitelist
+	if (effectiveWhitelist == nil || len(effectiveWhitelist) == 0) && !noWhitelist {
+		effectiveWhitelist = settings.DefaultSafeSet
+	}
+	
 	meta := &ContractMetadata{
 		ContractData: typescontract.ContractData{
 			UUID:        uuid.New().String(),
@@ -79,8 +87,8 @@ func CreateContract(code string, description string, authcode string, workdir st
 			Authcode:    authcode,
 			Description: description,
 			Status:      typescontract.ContractActive,
-			ExpiresAt:   now.Add(time.Duration(settings.DefaultContractTTL) * time.Hour),
-			Whitelist:   whitelist,
+			ExpiresAt:   expiresAt,
+			Whitelist:   effectiveWhitelist,
 			NoWhitelist: noWhitelist,
 			ExecTimeout: execTimeout,
 			PreferredEditor:   preferredEditor,
@@ -196,6 +204,7 @@ func ListContracts() ([]ContractMetadata, error) {
 		// Lazy Expiration Check
 		if meta.Status == typescontract.ContractActive && now.After(meta.ExpiresAt) {
 			meta.Status = typescontract.ContractExpired
+			logger.Debug("Contract marked as expired due to time", "uuid", meta.UUID, "expires_at", meta.ExpiresAt)
 		}
 
 		contracts = append(contracts, *meta)
@@ -217,6 +226,7 @@ func GetContractByWorkdir(workdir string) (*ContractMetadata, error) {
 		return nil, fmt.Errorf("failed to resolve absolute path: %w", err)
 	}
 
+	logger.Debug("GetContractByWorkdir called", "target_workdir", absWorkdir)
 	contracts, err := ListContracts()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list contracts: %w", err)
@@ -224,19 +234,42 @@ func GetContractByWorkdir(workdir string) (*ContractMetadata, error) {
 
 	var matches []ContractMetadata
 	for _, c := range contracts {
-		if c.Status == typescontract.ContractActive && len(c.Workdirs) > 0 && c.Workdirs[0].Path == absWorkdir {
-			matches = append(matches, c)
+		logger.Debug("Evaluating contract", "uuid", c.UUID, "status", c.Status)
+		if c.Status == typescontract.ContractActive {
+			logger.Debug("Contract is active, checking workdirs", "uuid", c.UUID, "workdir_count", len(c.Workdirs))
+			// Check if the current directory is inside or equal to any of the contract's workdirs
+			for _, w := range c.Workdirs {
+				logger.Debug("Comparing against workdir", "contract_uuid", c.UUID, "workdir_path", w.Path)
+				rel, err := filepath.Rel(w.Path, absWorkdir)
+				if err != nil {
+					// Paths are on different drives or invalid, skip this workdir
+					logger.Debug("Path comparison error (different drives?)", "error", err)
+					continue
+				}
+				logger.Debug("Relative path calculated", "contract_uuid", c.UUID, "workdir_path", w.Path, "relative_path", rel)
+				// If the relative path does not start with "..", we are inside the workdir
+				if !strings.HasPrefix(rel, "..") {
+					logger.Debug("Match found!", "contract_uuid", c.UUID, "workdir_path", w.Path)
+					matches = append(matches, c)
+					break // Found a match for this contract, stop checking other workdirs
+				}
+			}
+		} else {
+			logger.Debug("Contract skipped (not active)", "uuid", c.UUID, "status", c.Status)
 		}
 	}
 
 	if len(matches) == 0 {
+		logger.Debug("No matches found", "target_workdir", absWorkdir)
 		return nil, fmt.Errorf("no active contract found for directory: %s", absWorkdir)
 	}
 
 	if len(matches) > 1 {
+		logger.Debug("Multiple matches found", "target_workdir", absWorkdir, "count", len(matches))
 		return nil, fmt.Errorf("multiple active contracts found for directory: %s. Please specify a UUID", absWorkdir)
 	}
 
+	logger.Debug("Returning single match", "uuid", matches[0].UUID)
 	return &matches[0], nil
 }
 

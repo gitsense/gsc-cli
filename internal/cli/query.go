@@ -1,12 +1,12 @@
 /**
  * Component: Query Command
- * Block-UUID: edb5aa42-8b16-45e7-9cb5-d420c3db14e2
- * Parent-UUID: 3a029d35-546d-4e45-b016-151a935d0d0c
- * Version: 3.12.0
+ * Block-UUID: 1db313bd-fdb4-4912-8dc6-400c425f95ad
+ * Parent-UUID: edb5aa42-8b16-45e7-9cb5-d420c3db14e2
+ * Version: 3.13.0
  * Description: Added the 'DatabasesCmd' as a root-level convenience command. It supports listing all databases, inspecting a specific database schema via positional argument, or dumping all schemas using the --schema flag. Updated bridge.Execute calls to include the new exitCode argument.
  * Language: Go
- * Created-at: 2026-02-14T04:28:58.816Z
- * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.9.0), Gemini 3 Flash (v3.10.0), GLM-4.7 (v3.11.0), Gemini 3 Flash (v3.12.0)
+ * Created-at: 2026-03-28T17:44:36.701Z
+ * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.9.0), Gemini 3 Flash (v3.10.0), GLM-4.7 (v3.11.0), Gemini 3 Flash (v3.12.0), GLM-4.7 (v3.13.0)
  */
 
 
@@ -325,6 +325,9 @@ var BrainsCmd = &cobra.Command{
 
 		outputStr, resolvedDB, err := handleBrains(cmd.Context(), args, brainsSchema, queryFormat, queryQuiet)
 		if err != nil {
+			if strings.Contains(err.Error(), "not found") {
+				cmd.SilenceUsage = true
+			}
 			return err
 		}
 
@@ -401,6 +404,10 @@ func handleBrains(ctx context.Context, args []string, showSchema bool, format st
 	if len(args) > 0 {
 		resolvedDB, err := registry.ResolveDatabase(args[0])
 		if err != nil {
+			// Provide a more helpful error message for "not found" cases
+			if strings.Contains(err.Error(), "not found in registry") {
+				return "", "", fmt.Errorf("Brain '%s' not found. Run 'gsc brains' to list available brains.", args[0])
+			}
 			return "", "", err
 		}
 		schema, err := manifest.GetSchema(ctx, resolvedDB)

@@ -1,12 +1,12 @@
 /**
  * Component: Contract CLI Root
- * Block-UUID: efd7900d-ffd5-46f6-a5bb-61bcbf2489eb
- * Parent-UUID: f323efa6-40d0-4b78-88e1-9b9bc4de2a7b
- * Version: 1.8.0
+ * Block-UUID: 8e2cec45-408c-4f7b-b39e-3a113a3e6ce5
+ * Parent-UUID: 82e60ec5-41ea-45d8-8dbb-6612c74dfc1f
+ * Version: 1.10.0
  * Description: Integrated IsInContainer check into PersistentPreRunE to prevent recursive proxy loops for contract commands.
  * Language: Go
- * Created-at: 2026-03-26T17:00:18.817Z
- * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0)
+ * Created-at: 2026-03-28T16:18:28.019Z
+ * Authors: Gemini 3 Flash (v1.0.0), ..., GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0)
  */
 
 
@@ -144,6 +144,28 @@ GitSense Chat session, enabling secure and traceable code updates.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// 1. Smart Proxy Interceptor
 		// If a Docker context is active and the command is proxyable, redirect to the container.
+		
+		// 0. Handle Logging Flags (Inherited from rootCmd)
+		// We must duplicate this logic here because defining a PersistentPreRunE on a child command
+		// overrides the parent's PersistentPreRunE in Cobra.
+		quiet, _ := cmd.Flags().GetBool("quiet")
+		if quiet {
+			logger.SetLogLevel(logger.LevelError)
+			logger.Debug("Log level set to ERROR (quiet mode)")
+		} else {
+			verbose, _ := cmd.Flags().GetCount("verbose")
+			logger.Debug("Verbose count detected", "count", verbose)
+			switch verbose {
+			case 0:
+				logger.SetLogLevel(logger.LevelWarning)
+			case 1:
+				logger.SetLogLevel(logger.LevelInfo)
+			default:
+				logger.SetLogLevel(logger.LevelDebug)
+				logger.Debug("Log level set to DEBUG")
+			}
+		}
+
 		// This is duplicated here because contractCmd defines its own PersistentPreRunE,
 		// which overrides the one in the root command.
 		// Check if we are already inside a container to prevent recursive loops.
@@ -264,6 +286,7 @@ func findContractUUIDByWorkdir() (string, error) {
 	}
 
 	var matches []string
+	var expiredMatches []string
 	for _, c := range contracts {
 		logger.Debug("Inspecting contract", "uuid", c.UUID, "status", c.Status, "workdirs_count", len(c.Workdirs))
 
@@ -273,10 +296,16 @@ func findContractUUIDByWorkdir() (string, error) {
 			logger.Debug("Path comparison result", "uuid", c.UUID, "primary_path", primaryPath, "target_cwd", absCwd, "is_match", isMatch)
 
 			matches = append(matches, c.UUID)
+		} else if c.Status == typescontract.ContractExpired && len(c.Workdirs) > 0 && c.Workdirs[0].Path == absCwd {
+			// Track expired contracts that match the path for a better error message
+			expiredMatches = append(expiredMatches, c.UUID)
 		}
 	}
 
 	if len(matches) == 0 {
+		if len(expiredMatches) > 0 {
+			return "", fmt.Errorf("no active contract found. Found expired contract(s): %s. Run 'gsc contract renew <uuid>' to reactivate.", strings.Join(expiredMatches, ", "))
+		}
 		logger.Debug("No contracts found matching CWD", "abs_cwd", absCwd)
 		return "", fmt.Errorf("no active contracts found in this directory")
 	}
