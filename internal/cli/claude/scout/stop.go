@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Stop Command
- * Block-UUID: 15424924-bc38-4cf9-82c0-a62b4b4121f8
- * Parent-UUID: 223a6b7f-9cbe-4905-8351-2d242d21d8b2
- * Version: 1.0.3
+ * Block-UUID: d4c1d171-4a3f-4aa1-b050-f42067e9583e
+ * Parent-UUID: 15424924-bc38-4cf9-82c0-a62b4b4121f8
+ * Version: 1.0.4
  * Description: Implements 'gsc claude scout stop' command for terminating Scout sessions
  * Language: Go
- * Created-at: 2026-03-27T23:47:43.818Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), claude-haiku-4-5-20251001 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3)
+ * Created-at: 2026-03-28T21:51:12.197Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), claude-haiku-4-5-20251001 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4)
  */
 
 
@@ -48,6 +48,11 @@ Use --force to forcefully kill the process without cleanup.`,
 
 // runStopCommand executes the stop command logic
 func runStopCommand(cmd *cobra.Command, flags *StopFlags) error {
+	// Validate that unsupported flags are not set
+	if err := ValidateScoutFlags(cmd); err != nil {
+		return err
+	}
+
 	// Validate flags
 	if err := ValidateStopFlags(flags); err != nil {
 		return fmt.Errorf("invalid flags: %w", err)

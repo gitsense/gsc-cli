@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Start Command
- * Block-UUID: 5e7c0bb1-9079-46ef-a9ba-fd631968601d
- * Parent-UUID: 62aaec2a-f9af-4e4b-a7d5-cc03a07d8737
- * Version: 1.0.4
+ * Block-UUID: 11f34608-580f-4a29-a247-2ed1d4038749
+ * Parent-UUID: 5e7c0bb1-9079-46ef-a9ba-fd631968601d
+ * Version: 1.0.5
  * Description: Implements 'gsc claude scout start' command for initiating new Scout sessions
  * Language: Go
- * Created-at: 2026-03-28T01:50:30.432Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4)
+ * Created-at: 2026-03-28T21:49:05.783Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5)
  */
 
 
@@ -50,13 +50,35 @@ The session runs as a background subprocess and can be monitored with 'gsc claud
 
 // runStartCommand executes the start command logic
 func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
+	// Validate that unsupported flags are not set
+	if err := ValidateScoutFlags(cmd); err != nil {
+		return err
+	}
+
 	// Validate flags
 	if err := ValidateStartFlags(flags); err != nil {
 		return fmt.Errorf("invalid flags: %w", err)
 	}
 
 	// Generate a unique session ID
-	sessionID := uuid.New().String()[:12]
+	sessionID := flags.SessionID
+	if sessionID == "" {
+		// Auto-generate if not provided
+		sessionID = uuid.New().String()[:12]
+	} else {
+		// Validate session ID format (already done in ValidateStartFlags)
+		// Check if session already exists
+		config, _ := claudescout.NewSessionConfig(sessionID)
+		if config.SessionExists() {
+			if !flags.Force {
+				return fmt.Errorf("session '%s' already exists. Use --force to overwrite", sessionID)
+			}
+			// Delete existing session
+			if err := config.CleanupSessionDir(); err != nil {
+				return fmt.Errorf("failed to cleanup existing session: %w", err)
+			}
+		}
+	}
 
 	// Parse working directories and reference files
 	workdirs, err := ParseWorkdirs(flags.WorkingDirectories)
@@ -80,9 +102,18 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 		return fmt.Errorf("failed to initialize session: %w", err)
 	}
 
-	// Start Turn 1 discovery
-	if err := manager.StartTurn1Discovery(); err != nil {
-		return fmt.Errorf("failed to start discovery: %w", err)
+	// Execute based on turn
+	switch flags.Turn {
+	case 1:
+		if err := manager.StartTurn1Discovery(); err != nil {
+			return fmt.Errorf("failed to start discovery: %w", err)
+		}
+	case 2:
+		// For Turn 2, we need to load existing session
+		// This requires additional logic to handle selected candidates
+		return fmt.Errorf("Turn 2 verification requires existing session with discovery_complete status. Use 'gsc claude scout verify' command instead")
+	default:
+		return fmt.Errorf("invalid turn: %d (must be 1 or 2)", flags.Turn)
 	}
 
 	// Close the event writer
@@ -93,6 +124,7 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 	// Output session information
 	fmt.Fprintf(cmd.OutOrStdout(), "Scout session started\n")
 	fmt.Fprintf(cmd.OutOrStdout(), "Session ID: %s\n", FormatSessionPath(sessionID))
+	fmt.Fprintf(cmd.OutOrStdout(), "Turn: %d\n", flags.Turn)
 	fmt.Fprintf(cmd.OutOrStdout(), "\nMonitor progress with:\n")
 	fmt.Fprintf(cmd.OutOrStdout(), "  gsc claude scout status -s %s\n", sessionID)
 	fmt.Fprintf(cmd.OutOrStdout(), "\nFollow in real-time with:\n")
@@ -144,7 +176,7 @@ func ParseRefFiles(paths []string) ([]claudescout.ReferenceFile, error) {
 
 // FormatSessionPath returns a user-friendly session path for display
 func FormatSessionPath(sessionID string) string {
-	return strings.TrimSpace(fmt.Sprintf("scout:%s", sessionID))
+	return fmt.Sprintf("scout:%s", strings.TrimSpace(sessionID))
 }
 
 // GetSessionShortID returns a shortened session ID for display

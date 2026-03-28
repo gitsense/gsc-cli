@@ -1,12 +1,12 @@
 /**
  * Component: Scout Session Manager
- * Block-UUID: bbee377d-5aec-4708-bf4b-3b9bd5dd5afb
- * Parent-UUID: 072d4053-ca55-4bed-8c75-6a142b626c7f
- * Version: 1.0.14
+ * Block-UUID: 5bb0eab5-c492-4378-a138-6636ae0bff81
+ * Parent-UUID: bbee377d-5aec-4708-bf4b-3b9bd5dd5afb
+ * Version: 1.0.15
  * Description: Orchestrates Scout discovery and verification phases, manages subprocess execution
  * Language: Go
- * Created-at: 2026-03-28T01:41:23.479Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), claude-haiku-4-5-20251001 (v1.0.8), GLM-4.7 (v1.0.9), GLM-4.7 (v1.0.10), GLM-4.7 (v1.0.11), GLM-4.7 (v1.0.12), GLM-4.7 (v1.0.13), GLM-4.7 (v1.0.14)
+ * Created-at: 2026-03-28T21:52:23.654Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), claude-haiku-4-5-20251001 (v1.0.8), GLM-4.7 (v1.0.9), GLM-4.7 (v1.0.10), GLM-4.7 (v1.0.11), GLM-4.7 (v1.0.12), GLM-4.7 (v1.0.13), GLM-4.7 (v1.0.14), GLM-4.7 (v1.0.15)
  */
 
 
@@ -100,6 +100,63 @@ func (m *Manager) InitializeSession(intent string, workdirs []WorkingDirectory, 
 	return m.writeSessionState()
 }
 
+// PrepareTurn1 generates input schema and handles no-brains case
+func (m *Manager) PrepareTurn1() error {
+	// 1. Build input schema
+	schema, err := BuildInputSchema(m.session.SessionID, m.session.WorkingDirectories)
+	if err != nil {
+		return err
+	}
+
+	// 2. Write input schema to file
+	schemaPath := m.config.GetInputSchemaFile()
+	schemaJSON, err := json.MarshalIndent(schema, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal input schema: %w", err)
+	}
+	if err := os.WriteFile(schemaPath, schemaJSON, 0644); err != nil {
+		return fmt.Errorf("failed to write input schema: %w", err)
+	}
+
+	// 3. Check if all brains unavailable
+	if checkAllBrainsUnavailable(schema.WorkingDirectories) {
+		// Write error event to log
+		if err := m.writeNoBrainsError(); err != nil {
+			return fmt.Errorf("failed to write no-brains error: %w", err)
+		}
+
+		// Update session status
+		m.session.Status = "error"
+		errMsg := "NO_BRAINS_AVAILABLE: No brains available in any working directory"
+		m.session.Error = &errMsg
+		completedAt := time.Now()
+		m.session.CompletedAt = &completedAt
+
+		// Write status
+		return m.writeSessionState()
+	}
+
+	return nil
+}
+
+// writeNoBrainsError writes error event to log when no brains available
+func (m *Manager) writeNoBrainsError() error {
+	logFilename := fmt.Sprintf("raw-stream-%d.ndjson", time.Now().Unix())
+	logPath := m.config.GetTurnLogFile(1, logFilename)
+
+	writer, err := NewEventWriter(logPath)
+	if err != nil {
+		return err
+	}
+	defer writer.Close()
+
+	return writer.WriteErrorEvent(ErrorEvent{
+		Phase:     "turn-1",
+		ErrorCode: "NO_BRAINS_AVAILABLE",
+		Message:   "No brains available in any working directory",
+	})
+}
+
 // StartTurn1Discovery initiates the discovery phase and spawns subprocess
 func (m *Manager) StartTurn1Discovery() error {
 	if m.session == nil {
@@ -108,6 +165,16 @@ func (m *Manager) StartTurn1Discovery() error {
 
 	if m.session.Status != "discovery" && m.session.Status != "error" {
 		return fmt.Errorf("cannot start discovery: session status is %s", m.session.Status)
+	}
+
+	// Prepare Turn 1 (generate input schema)
+	if err := m.PrepareTurn1(); err != nil {
+		return err
+	}
+
+	// Check if session already errored out (no brains)
+	if m.session.Status == "error" {
+		return nil // Don't spawn Claude, already handled
 	}
 
 	m.currentTurn = 1

@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Status Command
- * Block-UUID: d8069e6b-eb38-4460-a3ea-5475befb4f28
- * Parent-UUID: e30f8d5b-5b07-49d3-a911-4f09abe61179
- * Version: 1.0.8
+ * Block-UUID: 29d8f91f-6dbc-4fe1-895a-ac84c5833e1c
+ * Parent-UUID: d8069e6b-eb38-4460-a3ea-5475befb4f28
+ * Version: 1.0.9
  * Description: Implements 'gsc claude scout status' command for monitoring Scout sessions
  * Language: Go
- * Created-at: 2026-03-28T02:31:09.286Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), GLM-4.7 (v1.0.8)
+ * Created-at: 2026-03-28T21:50:35.374Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), GLM-4.7 (v1.0.8), GLM-4.7 (v1.0.9)
  */
 
 
@@ -44,6 +44,11 @@ Use --format to control output format (json, table, pretty).`,
 
 // runStatusCommand executes the status command logic
 func runStatusCommand(cmd *cobra.Command, flags *StatusFlags) error {
+	// Validate that unsupported flags are not set
+	if err := ValidateScoutFlags(cmd); err != nil {
+		return err
+	}
+
 	// Validate flags
 	if err := ValidateStatusFlags(flags); err != nil {
 		return fmt.Errorf("invalid flags: %w", err)

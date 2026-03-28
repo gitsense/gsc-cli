@@ -2,11 +2,11 @@
  * Component: Scout CLI Flags and Options
  * Block-UUID: f10f8e67-beac-4166-81d8-81ca4acdd50c
  * Parent-UUID: 8d1971aa-900b-44b6-bb19-2e482682f3f3
- * Version: 1.0.2
- * Description: Shared flag definitions for Scout CLI commands (start, status, stop)
+ * Version: 1.1.0
+ * Description: Shared flag definitions for Scout CLI commands (start, status, stop) with turn and force support
  * Language: Go
  * Created-at: 2026-03-28T01:45:38.679Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2)
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.1.0)
  */
 
 
@@ -15,6 +15,8 @@ package scoutcli
 import (
 	"fmt"
 	"os"
+	"regexp"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -25,6 +27,9 @@ type StartFlags struct {
 	AutoReview         bool
 	WorkingDirectories []string
 	ReferenceFiles     []string
+	SessionID          string // Optional session ID
+	Turn               int    // Required: 1 or 2
+	Force              bool   // Force overwrite existing session
 }
 
 // StatusFlags contains flags for the scout status command
@@ -69,6 +74,28 @@ func RegisterStartFlags(cmd *cobra.Command, flags *StartFlags) {
 		"reference", "r",
 		[]string{},
 		"Reference files to guide discovery (can be specified multiple times)",
+	)
+
+	cmd.Flags().StringVar(
+		&flags.SessionID,
+		"session-id",
+		"",
+		"Optional session ID (auto-generated if not provided)",
+	)
+
+	cmd.Flags().IntVar(
+		&flags.Turn,
+		"turn",
+		0,
+		"Turn to execute (1=discovery, 2=verification)",
+	)
+	cmd.MarkFlagRequired("turn")
+
+	cmd.Flags().BoolVar(
+		&flags.Force,
+		"force",
+		false,
+		"Overwrite existing session if it exists",
 	)
 }
 
@@ -121,6 +148,10 @@ func ValidateStartFlags(flags *StartFlags) error {
 		return &FlagError{Flag: "intent", Message: "intent is required"}
 	}
 
+	if flags.Turn != 1 && flags.Turn != 2 {
+		return &FlagError{Flag: "turn", Message: "turn must be 1 or 2"}
+	}
+
 	if len(flags.WorkingDirectories) == 0 {
 		return &FlagError{Flag: "workdir", Message: "at least one working directory is required"}
 	}
@@ -136,6 +167,13 @@ func ValidateStartFlags(flags *StartFlags) error {
 	for _, rf := range flags.ReferenceFiles {
 		if _, err := os.Stat(rf); err != nil {
 			return &FlagError{Flag: "reference", Message: fmt.Sprintf("reference file not found: %s", rf)}
+		}
+	}
+
+	// Validate session ID format if provided
+	if flags.SessionID != "" {
+		if err := ValidateSessionID(flags.SessionID); err != nil {
+			return &FlagError{Flag: "session-id", Message: err.Error()}
 		}
 	}
 
@@ -164,6 +202,46 @@ func ValidateStatusFlags(flags *StatusFlags) error {
 func ValidateStopFlags(flags *StopFlags) error {
 	if flags.SessionID == "" {
 		return &FlagError{Flag: "session", Message: "session ID is required"}
+	}
+
+	return nil
+}
+
+// ValidateScoutFlags checks that unsupported flags are not set
+func ValidateScoutFlags(cmd *cobra.Command) error {
+	// Check --code flag (from root gsc command)
+	if code, _ := cmd.Flags().GetString("code"); code != "" {
+		return &FlagError{Flag: "code", Message: "--code flag is not supported for scout commands"}
+	}
+
+	// Check --uuid flag (from gsc claude command)
+	if uuid, _ := cmd.Flags().GetString("uuid"); uuid != "" {
+		return &FlagError{Flag: "uuid", Message: "--uuid flag is not supported for scout commands"}
+	}
+
+	// Check --parent-id flag (from gsc claude command)
+	if parentID, _ := cmd.Flags().GetInt64("parent-id"); parentID != 0 {
+		return &FlagError{Flag: "parent-id", Message: "--parent-id flag is not supported for scout commands"}
+	}
+
+	return nil
+}
+
+// ValidateSessionID validates the session ID format
+func ValidateSessionID(sessionID string) error {
+	if sessionID == "" {
+		return fmt.Errorf("session ID cannot be empty")
+	}
+
+	// Check for invalid characters (only allow alphanumeric, hyphens, underscores)
+	matched, _ := regexp.MatchString(`^[a-zA-Z0-9_-]+$`, sessionID)
+	if !matched {
+		return fmt.Errorf("session ID can only contain letters, numbers, hyphens, and underscores")
+	}
+
+	// Check length (reasonable limit)
+	if len(sessionID) > 64 {
+		return fmt.Errorf("session ID too long (max 64 characters)")
 	}
 
 	return nil
