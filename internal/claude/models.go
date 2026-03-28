@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Data Models
- * Block-UUID: f5cd823c-5202-4355-95f1-c77941f176aa
- * Parent-UUID: 928885b3-b03c-47b1-9bb7-75724f85882f
- * Version: 1.10.0
+ * Block-UUID: 06194d0f-7979-4b62-8b52-b19119581655
+ * Parent-UUID: f5cd823c-5202-4355-95f1-c77941f176aa
+ * Version: 1.11.0
  * Description: Updated to support cache-optimized context file construction with bucket-based organization. Added ContextFile struct reference and ensured compatibility with context parser and bucketer.
  * Language: Go
- * Created-at: 2026-03-25T03:47:11.844Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), ..., GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), claude-haiku-4-5-20251001 (v1.10.0)
+ * Created-at: 2026-03-28T03:46:17.610Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), ..., GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), claude-haiku-4-5-20251001 (v1.10.0), GLM-4.7 (v1.11.0)
  */
 
 
@@ -162,6 +162,7 @@ type MapFile struct {
 	ContextFiles   []FileMeta  `json:"context_files"`   // Metadata for context bucket files
 	CliOutputFiles []FileMeta  `json:"cli_output_files"` // Metadata for CLI output files
 	Messages       MessagesMeta `json:"messages"`       // Metadata for active/archive message files
+	Repositories   []Repository `json:"repositories"`   // List of repositories in context
 }
 
 // FileMeta represents metadata for a single file in the messages directory.
@@ -175,6 +176,7 @@ type FileMeta struct {
 	Stability string       `json:"stability"` // "high", "medium", "low"
 	FileCount int          `json:"file_count"` // Number of files in bucket
 	Files     []FileEntry  `json:"files"`     // List of files in this bucket (for context files)
+	Repository *Repository `json:"repository"` // Repository information (optional)
 	Lifecycle string       `json:"lifecycle"` // "long-lived" or "volatile" (for CLI output files)
 	Type      string       `json:"type"`
 }
@@ -184,6 +186,7 @@ type FileEntry struct {
 	ChatID int64  `json:"chat_id"` // Database message ID
 	Name   string `json:"name"`    // File path (e.g., "src/index.js")
 	Size   int    `json:"size"`    // File size in bytes
+	Repository *Repository `json:"repository"` // Repository information (optional)
 }
 
 // MessagesMeta represents metadata for active and archive message files.
@@ -214,3 +217,10 @@ const (
 	MaxFileSizeBytes   = MaxFileSizeKB * 1024
 	LeewayBytes       = LeewayKB * 1024
 )
+
+// Repository represents metadata for a repository in the context
+type Repository struct {
+	ID   string `json:"id"`   // Unique repository identifier (e.g., "repo-1")
+	Name string `json:"name"` // Repository name (e.g., "gitsense/gsc-cli")
+	URL  string `json:"url"`  // Repository URL (optional)
+}

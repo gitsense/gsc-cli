@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Archive Manager
- * Block-UUID: b5431ed6-76b5-4c97-959e-48a35cec5067
- * Parent-UUID: de40f4c2-01b2-4e75-9d82-9c3a7f75fb4b
- * Version: 1.11.0
- * Description: Integrated context parser and bucketer for cache-optimized context file construction. Implemented zombie cleanup for orphaned context files and updated messages.map generation with proper bucket metadata.
+ * Block-UUID: 67ad426e-9efa-4b18-825a-e8d691e2b846
+ * Parent-UUID: 4b9057f6-2449-4c16-b197-967fa38c47fd
+ * Version: 1.12.1
+ * Description: Updated writeContextsMap to extract repository information, build repositories array, and use settings constant for filename. Enhanced FileEntry with repo_id and full path.
  * Language: Go
- * Created-at: 2026-03-26T22:13:22.659Z
- * Authors: GLM-4.7 (v1.8.0), claude-haiku-4-5-20251001 (v1.8.1), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), claude-haiku-4-5-20251001 (v1.11.0)
+ * Created-at: 2026-03-28T03:51:51.210Z
+ * Authors: GLM-4.7 (v1.8.0), claude-haiku-4-5-20251001 (v1.8.1), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), claude-haiku-4-5-20251001 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.12.1)
  */
 
 
@@ -25,6 +25,7 @@ import (
 	"github.com/gitsense/gsc-cli/internal/context"
 	"github.com/gitsense/gsc-cli/internal/db"
 	"github.com/gitsense/gsc-cli/pkg/logger"
+	"github.com/gitsense/gsc-cli/pkg/settings"
 )
 
 // SyncArchive reconstructs the file-based state for a chat session.
@@ -150,7 +151,7 @@ func writeContextFiles(dir string, messages []db.Message) error {
 	}
 
 	// 2. Load existing contexts.map if it exists
-	mapPath := filepath.Join(dir, "contexts.map")
+	mapPath := filepath.Join(dir, settings.ClaudeContextsMapFileName)
 	var existingMap *MapFile
 
 	if _, err := os.Stat(mapPath); err == nil {
@@ -432,7 +433,7 @@ func loadMessagesMap(path string) (*MapFile, error) {
 
 // writeContextsMap generates the contexts.map file with all context file metadata.
 func writeContextsMap(dir string, contextFiles []context.ContextFile) error {
-	mapPath := filepath.Join(dir, "contexts.map")
+	mapPath := filepath.Join(dir, settings.ClaudeContextsMapFileName)
 
 	// Build context file metadata from actual files on disk
 	var contextFileMetas []FileMeta
@@ -440,6 +441,10 @@ func writeContextsMap(dir string, contextFiles []context.ContextFile) error {
 	if err != nil {
 		return fmt.Errorf("failed to read contexts directory: %w", err)
 	}
+
+	// Build unique repositories map
+	repositories := make(map[string]*Repository)
+	repoCounter := 0
 
 	for _, entry := range contextDir {
 		if strings.HasPrefix(entry.Name(), "context-range-") && strings.HasSuffix(entry.Name(), ".md") {
@@ -471,11 +476,43 @@ func writeContextsMap(dir string, contextFiles []context.ContextFile) error {
 			var fileEntries []FileEntry
 			for _, file := range contextFiles {
 				if file.ChatID >= minID && file.ChatID <= maxID {
+					// Build repository information
+					var repo *Repository
+					if file.Repo != "" {
+						if existingRepo, ok := repositories[file.Repo]; ok {
+							repo = existingRepo
+						} else {
+							repoCounter++
+							repoID := fmt.Sprintf("repo-%d", repoCounter)
+							repo = &Repository{
+								ID:   repoID,
+								Name: file.Repo,
+								URL:  "", // Could be enhanced to include URL if available
+							}
+							repositories[file.Repo] = repo
+						}
+					}
+
 					fileEntries = append(fileEntries, FileEntry{
 						ChatID: file.ChatID,
-						Name:   file.Name,
-						Size:   file.Size,
+						Name:   file.Path, // Use full relative path for better context
+						Repository: repo,
 					})
+				}
+			}
+
+			// Add repository to FileMeta if all files in this bucket are from the same repo
+			var bucketRepo *Repository
+			if len(fileEntries) > 0 && fileEntries[0].Repository != nil {
+				allSameRepo := true
+				for _, fe := range fileEntries {
+					if fe.Repository == nil || fe.Repository.ID != fileEntries[0].Repository.ID {
+						allSameRepo = false
+						break
+					}
+				}
+				if allSameRepo {
+					bucketRepo = fileEntries[0].Repository
 				}
 			}
 
@@ -488,6 +525,7 @@ func writeContextsMap(dir string, contextFiles []context.ContextFile) error {
 				Size:      int(info.Size()),
 				Stability: stability,
 				FileCount: fileCount,
+				Repository: bucketRepo,
 				Files:     fileEntries,
 			})
 		}
@@ -501,6 +539,7 @@ func writeContextsMap(dir string, contextFiles []context.ContextFile) error {
 	// Create contexts map file structure
 	contextsMapFile := MapFile{
 		Version:        "1.0",
+		Repositories:   buildRepositoryList(repositories),
 		ReadSequence:   []string{}, // Empty - AI reads selectively
 		ContextFiles:   contextFileMetas,
 		CliOutputFiles: []FileMeta{},
@@ -523,6 +562,19 @@ func writeContextsMap(dir string, contextFiles []context.ContextFile) error {
 
 	logger.Debug("Wrote contexts.map", "context_files", len(contextFileMetas))
 	return nil
+}
+
+// buildRepositoryList converts the repositories map to a sorted slice
+func buildRepositoryList(repos map[string]*Repository) []Repository {
+	var result []Repository
+	for _, repo := range repos {
+		result = append(result, *repo)
+	}
+	// Sort by ID for consistent ordering
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].ID < result[j].ID
+	})
+	return result
 }
 
 // writeArchiveChunks chunks the historical messages and writes them to JSON files.
