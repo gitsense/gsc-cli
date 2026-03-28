@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Status Command
- * Block-UUID: 36c29f75-7785-4efa-92d6-513dfd316408
- * Parent-UUID: e37cbfad-cb42-4492-b742-0e349dde2714
- * Version: 1.0.2
+ * Block-UUID: 7758fcd5-7a89-41d5-b735-a1e089278469
+ * Parent-UUID: da471aeb-513e-4358-ad44-f7a124bb8b1a
+ * Version: 1.0.6
  * Description: Implements 'gsc claude scout status' command for monitoring Scout sessions
  * Language: Go
- * Created-at: 2026-03-27T23:43:04.711Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.0.2)
+ * Created-at: 2026-03-28T02:13:58.913Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6)
  */
 
 
@@ -200,23 +200,48 @@ func displayStatusPretty(cmd *cobra.Command, status *claudescout.StatusData) err
 	return nil
 }
 
-// colorizeStatus returns a colorized status string (without ANSI codes for simplicity)
+// colorizeStatus returns a colorized status string using ANSI codes
 func colorizeStatus(status string) string {
-	return status
+	switch status {
+	case "discovery", "discovery_complete", "verification", "verification_complete":
+		// Green for active/completed states
+		return fmt.Sprintf("\033[32m%s\033[0m", status)
+	case "stopped":
+		// Yellow for stopped state
+		return fmt.Sprintf("\033[33m%s\033[0m", status)
+	case "error":
+		// Red for error state
+		return fmt.Sprintf("\033[31m%s\033[0m", status)
+	default:
+		// No color for unknown states
+		return status
+	}
 }
 
 // followSessionEvents streams events from the log file as they arrive
 func followSessionEvents(cmd *cobra.Command, config *claudescout.SessionConfig) error {
 	fmt.Fprintf(cmd.OutOrStdout(), "Following session events (Ctrl+C to stop)...\n\n")
 
+	startTime := time.Now()
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
+
+	// Define completion events that signal session end
+	completionEvents := map[string]bool{"done": true, "error": true, "stopped": true}
+
+	// Add timeout (30 minutes max follow time)
+	timeout := time.After(30 * time.Minute)
 
 	lastEventCount := 0
 
 	for {
 		select {
 		case <-ticker.C:
+			// Print progress indicator every 5 seconds if no new events
+			if lastEventCount == 0 && time.Since(startTime) > 5*time.Second {
+				fmt.Fprintf(cmd.OutOrStdout(), ".")
+			}
+
 			// Try to read the latest log file
 			logFile, err := claudescout.NewProcessorHelper(config).GetLatestTurnLogFile(1)
 			if err != nil {
@@ -246,24 +271,38 @@ func followSessionEvents(cmd *cobra.Command, config *claudescout.SessionConfig) 
 			// Check if session is complete
 			if lastEventCount > 0 {
 				lastEvent := events[len(events)-1]
-				if lastEvent.Type == "done" || lastEvent.Type == "error" {
+				if completionEvents[lastEvent.Type] {
+					fmt.Fprintf(cmd.OutOrStdout(), "\n")
 					return nil
 				}
 			}
+
+		case <-timeout:
+			fmt.Fprintf(cmd.OutOrStdout(), "\n\nTimeout: Session did not complete within 30 minutes\n")
+			return fmt.Errorf("follow timeout exceeded")
 		}
 	}
 }
 
+// truncateTimestamp truncates a timestamp string to 19 characters (YYYY-MM-DDTHH:MM:SS)
+func truncateTimestamp(ts string) string {
+	if len(ts) > 19 {
+		return ts[:19]
+	}
+	return ts
+}
+
 // displayEvent displays a single event in the stream
 func displayEvent(cmd *cobra.Command, event *claudescout.StreamEvent) {
-	timestamp := event.Timestamp
-	if len(timestamp) > 19 {
-		timestamp = timestamp[:19]
-	}
+	timestamp := truncateTimestamp(event.Timestamp)
 
 	fmt.Fprintf(cmd.OutOrStdout(), "[%s] %s\n", timestamp, event.Type)
 
 	switch event.Type {
+	case "init":
+		// Init events are handled during session initialization, not displayed in follow mode
+		return
+
 	case "status":
 		if statusEvent, ok := event.Data.(map[string]interface{}); ok {
 			if msg, exists := statusEvent["message"]; exists {
@@ -292,10 +331,4 @@ func displayEvent(cmd *cobra.Command, event *claudescout.StreamEvent) {
 			}
 		}
 	}
-}
-
-// GetSessionRunTime returns how long a session has been running
-func GetSessionRunTime(status *claudescout.StatusData) string {
-	elapsed := time.Since(status.StartedAt)
-	return elapsed.String()
 }
