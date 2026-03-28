@@ -1,12 +1,12 @@
 /**
  * Component: Scout Stream Event Processor
- * Block-UUID: 9df5633b-6e78-4202-9700-040837001480
- * Parent-UUID: 3fd2aa46-b2c8-4b74-8fca-564438ade8ca
- * Version: 1.0.3
+ * Block-UUID: f930b1b1-82ca-459c-844c-ba6786ea85d3
+ * Parent-UUID: 9df5633b-6e78-4202-9700-040837001480
+ * Version: 1.0.4
  * Description: JSONL event streaming, parsing, and file I/O for Scout sessions
  * Language: Go
- * Created-at: 2026-03-27T19:05:30.896Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3)
+ * Created-at: 2026-03-28T00:29:07.060Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4)
  */
 
 
@@ -92,6 +92,17 @@ func (ew *EventWriter) WriteDoneEvent(done DoneEvent) error {
 // WriteErrorEvent writes error event
 func (ew *EventWriter) WriteErrorEvent(errEvent ErrorEvent) error {
 	return ew.WriteEvent("error", errEvent)
+}
+
+// WriteRawEvent writes a raw JSON line to the stream (for debugging/audit trail)
+func (ew *EventWriter) WriteRawEvent(line string) error {
+	if _, err := ew.writer.WriteString(line); err != nil {
+		return fmt.Errorf("failed to write raw event: %w", err)
+	}
+	if err := ew.writer.WriteByte('\n'); err != nil {
+		return fmt.Errorf("failed to write newline: %w", err)
+	}
+	return ew.writer.Flush()
 }
 
 // Close closes the event writer

@@ -1,12 +1,12 @@
 /**
  * Component: Scout Session Manager
- * Block-UUID: 97bdc505-698e-46c0-b224-eb8f995226e9
- * Parent-UUID: 5e78dfd1-f908-4e46-a77d-771911611342
- * Version: 1.0.11
+ * Block-UUID: bbee377d-5aec-4708-bf4b-3b9bd5dd5afb
+ * Parent-UUID: 072d4053-ca55-4bed-8c75-6a142b626c7f
+ * Version: 1.0.14
  * Description: Orchestrates Scout discovery and verification phases, manages subprocess execution
  * Language: Go
- * Created-at: 2026-03-27T23:41:22.146Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), claude-haiku-4-5-20251001 (v1.0.8), GLM-4.7 (v1.0.9), GLM-4.7 (v1.0.10), GLM-4.7 (v1.0.11)
+ * Created-at: 2026-03-28T01:41:23.479Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), claude-haiku-4-5-20251001 (v1.0.8), GLM-4.7 (v1.0.9), GLM-4.7 (v1.0.10), GLM-4.7 (v1.0.11), GLM-4.7 (v1.0.12), GLM-4.7 (v1.0.13), GLM-4.7 (v1.0.14)
  */
 
 
@@ -280,6 +280,11 @@ func (m *Manager) spawnClaudeSubprocess(turn int) error {
 	// Start background goroutine to process stream
 	go m.processStream(stdout, turn)
 
+	// Start background goroutine to reap zombie process
+	go func() {
+		cmd.Wait()
+	}()
+
 	// Don't wait for process - fire and forget
 	// Caller can monitor progress via log file
 	return nil
@@ -511,12 +516,30 @@ func LoadSession(sessionID string) (*Manager, error) {
 	statusPath := config.GetStatusFile()
 	data, err := os.ReadFile(statusPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read session state: %w", err)
+		return nil, fmt.Errorf("failed to read status file: %w", err)
 	}
 
 	var session Session
 	if err := json.Unmarshal(data, &session); err != nil {
 		return nil, fmt.Errorf("failed to parse session state: %w", err)
+	}
+
+	// Reconstruct Session from StatusData
+	// Note: status.json contains StatusData, not Session
+	var statusData StatusData
+	if err := json.Unmarshal(data, &statusData); err != nil {
+		return nil, fmt.Errorf("failed to parse status data: %w", err)
+	}
+
+	// Reconstruct Session from StatusData
+	session = Session{
+		SessionID:          statusData.SessionID,
+		Status:             statusData.Status,
+		StartedAt:          statusData.StartedAt,
+		CompletedAt:        statusData.CompletedAt,
+		Error:              statusData.Error,
+		// WorkingDirectories, ReferenceFiles, Intent, AutoReview are not in StatusData
+		// These are only available during initial session creation
 	}
 
 	// Infer currentTurn from session status
@@ -531,6 +554,9 @@ func LoadSession(sessionID string) (*Manager, error) {
 		processor:   NewProcessorHelper(config),
 		currentTurn: currentTurn,
 	}
+
+	// Initialize ProcessInfo from loaded status
+	mgr.processInfo = &statusData.ProcessInfo
 
 	return mgr, nil
 }
@@ -555,6 +581,7 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 	for scanner.Scan() {
 		line := scanner.Text()
 		if line == "" {
+			// Skip empty lines
 			continue
 		}
 
@@ -562,6 +589,8 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 		var result map[string]interface{}
 		if err := json.Unmarshal([]byte(line), &result); err != nil {
 			// Not valid JSON, skip
+			// Log as raw event for debugging
+			m.eventWriter.WriteRawEvent(line)
 			continue
 		}
 
@@ -569,6 +598,10 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 		eventType, _ := result["type"].(string)
 
 		switch eventType {
+		case "ping":
+			// Skip keep-alive events
+			continue
+
 		case "usage":
 			// Parse usage event
 			if usageData, ok := result["usage"].(map[string]interface{}); ok {
@@ -583,9 +616,43 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 				}
 			}
 
+		case "error":
+			// Handle error events from Claude CLI
+			if errorData, ok := result["error"].(map[string]interface{}); ok {
+				errorType, _ := errorData["type"].(string)
+				errorMsg, _ := errorData["message"].(string)
+				m.eventWriter.WriteErrorEvent(ErrorEvent{
+					Phase:     fmt.Sprintf("turn-%d", turn),
+					ErrorCode: errorType,
+					Message:   errorMsg,
+					Details:   line,
+				})
+				m.session.Status = "error"
+				m.writeSessionState()
+			}
+			continue
+
+		case "system":
+			// Handle system events (API retries, etc.)
+			// Log but don't fail - these are informational
+			continue
+
 		case "result":
 			// Parse result event
 			if resultContent, ok := result["result"].(string); ok {
+				// Check for error in result event
+				if isError, ok := result["is_error"].(bool); ok && isError {
+					m.eventWriter.WriteErrorEvent(ErrorEvent{
+						Phase:     fmt.Sprintf("turn-%d", turn),
+						ErrorCode: "RESULT_ERROR",
+						Message:   fmt.Sprintf("Claude returned error: %v", result),
+						Details:   line,
+					})
+					m.session.Status = "error"
+					m.writeSessionState()
+					continue
+				}
+
 				// Extract usage/cost from outer event
 				if usageData, ok := result["usage"].(map[string]interface{}); ok {
 					usage = Usage{
@@ -685,6 +752,9 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 					break
 				}
 			}
+		default:
+			// Log unknown event types for debugging
+			m.eventWriter.WriteRawEvent(line)
 		}
 	}
 
