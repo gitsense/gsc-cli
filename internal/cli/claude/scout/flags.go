@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Flags and Options
- * Block-UUID: f10f8e67-beac-4166-81d8-81ca4acdd50c
- * Parent-UUID: 8d1971aa-900b-44b6-bb19-2e482682f3f3
- * Version: 1.1.0
+ * Block-UUID: a027dc93-0162-4fe3-9394-548d78fb456e
+ * Parent-UUID: f10f8e67-beac-4166-81d8-81ca4acdd50c
+ * Version: 1.2.0
  * Description: Shared flag definitions for Scout CLI commands (start, status, stop) with turn and force support
  * Language: Go
- * Created-at: 2026-03-28T01:45:38.679Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.1.0)
+ * Created-at: 2026-03-28T23:11:04.163Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -24,6 +24,7 @@ import (
 // StartFlags contains flags for the scout start command
 type StartFlags struct {
 	Intent             string
+	IntentFile         string
 	AutoReview         bool
 	WorkingDirectories []string
 	ReferenceFiles     []string
@@ -54,6 +55,13 @@ func RegisterStartFlags(cmd *cobra.Command, flags *StartFlags) {
 		"The intent/question for Scout to discover relevant files",
 	)
 	cmd.MarkFlagRequired("intent")
+
+	cmd.Flags().StringVarP(
+		&flags.IntentFile,
+		"intent-file", "f",
+		"",
+		"Read intent from a file (alternative to --intent)",
+	)
 
 	cmd.Flags().BoolVar(
 		&flags.AutoReview,
@@ -144,8 +152,19 @@ func RegisterStopFlags(cmd *cobra.Command, flags *StopFlags) {
 
 // ValidateStartFlags validates the start command flags
 func ValidateStartFlags(flags *StartFlags) error {
-	if flags.Intent == "" {
-		return &FlagError{Flag: "intent", Message: "intent is required"}
+	// Ensure either --intent or --intent-file is provided (but not both)
+	if flags.Intent == "" && flags.IntentFile == "" {
+		return &FlagError{Flag: "intent", Message: "either --intent or --intent-file is required"}
+	}
+	if flags.Intent != "" && flags.IntentFile != "" {
+		return &FlagError{Flag: "intent", Message: "cannot specify both --intent and --intent-file"}
+	}
+
+	// Validate intent file exists if provided
+	if flags.IntentFile != "" {
+		if _, err := os.Stat(flags.IntentFile); err != nil {
+			return &FlagError{Flag: "intent-file", Message: fmt.Sprintf("intent file not found: %s", flags.IntentFile)}
+		}
 	}
 
 	if flags.Turn != 1 && flags.Turn != 2 {

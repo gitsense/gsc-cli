@@ -1,12 +1,12 @@
 /**
  * Component: Scout Session Manager
- * Block-UUID: 5bb0eab5-c492-4378-a138-6636ae0bff81
- * Parent-UUID: bbee377d-5aec-4708-bf4b-3b9bd5dd5afb
- * Version: 1.0.15
+ * Block-UUID: 08e6e03d-2152-4090-b7d1-7e677fb042b4
+ * Parent-UUID: 5bb0eab5-c492-4378-a138-6636ae0bff81
+ * Version: 1.0.17
  * Description: Orchestrates Scout discovery and verification phases, manages subprocess execution
  * Language: Go
- * Created-at: 2026-03-28T21:52:23.654Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), claude-haiku-4-5-20251001 (v1.0.8), GLM-4.7 (v1.0.9), GLM-4.7 (v1.0.10), GLM-4.7 (v1.0.11), GLM-4.7 (v1.0.12), GLM-4.7 (v1.0.13), GLM-4.7 (v1.0.14), GLM-4.7 (v1.0.15)
+ * Created-at: 2026-03-28T23:35:41.843Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), GLM-4.7 (v1.0.8), GLM-4.7 (v1.0.9), GLM-4.7 (v1.0.10), GLM-4.7 (v1.0.11), GLM-4.7 (v1.0.12), GLM-4.7 (v1.0.13), GLM-4.7 (v1.0.14), GLM-4.7 (v1.0.15), claude-haiku-4-5-20251001 (v1.0.17)
  */
 
 
@@ -384,6 +384,55 @@ func (m *Manager) GetSessionStatus() (*StatusData, error) {
 	}
 
 	return status, nil
+}
+
+// GetLastCompletedTurn returns the highest turn number that has completed successfully
+// Returns 0 if no turn has completed (new session)
+func (m *Manager) GetLastCompletedTurn() (int, error) {
+	if m.session == nil {
+		// Load status to check completion
+		status, err := m.GetSessionStatus()
+		if err != nil {
+			return 0, err
+		}
+		if status == nil {
+			return 0, nil
+		}
+
+		// Check what turn is currently referenced
+		if status.Phase == "discovery" && (status.Status == "discovery_complete" || status.Status == "discovery_in_progress") {
+			return 1, nil
+		}
+		if status.Phase == "verification" {
+			return 2, nil
+		}
+		return 0, nil
+	}
+
+	// Based on session status, determine completed turn
+	switch m.session.Status {
+	case "discovery_complete", "verification", "verification_complete":
+		return 1, nil
+	case "stopped", "error":
+		// Check log file to see which turn actually completed
+		lastLogFile, lastTurn, err := m.processor.GetLatestLogFile()
+		if err == nil && lastLogFile != "" {
+			// Check if the last turn's log has a "done" event
+			reader, _ := NewEventReader(lastLogFile)
+			if reader != nil {
+				defer reader.Close()
+				events, _ := reader.ReadAllEvents()
+				for _, event := range events {
+					if event.Type == "done" {
+						return lastTurn, nil
+					}
+				}
+			}
+		}
+		return 0, nil
+	default:
+		return 0, nil
+	}
 }
 
 // CheckProcessStatus checks if the subprocess is still running
