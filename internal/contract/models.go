@@ -1,18 +1,19 @@
 /**
  * Component: Contract Models
- * Block-UUID: 80ba47b9-0768-4317-8c98-4f22d94b0a5b
- * Parent-UUID: 66933633-4307-4e2c-8196-9a449ae13f78
- * Version: 1.32.0
+ * Block-UUID: 8b01a39a-9fcf-45c0-9cf3-2b7ab6069d02
+ * Parent-UUID: e05694aa-0fb5-4ced-9ea6-9b7ef82a2689
+ * Version: 1.34.0
  * Description: Added GenFileName field to MappedFileEntry to provide the generated filename for frontend URI construction.
  * Language: Go
- * Created-at: 2026-03-26T17:11:36.716Z
- * Authors: GLM-4.7 (v1.28.0), GLM-4.7 (v1.29.0), GLM-4.7 (v1.30.0), GLM-4.7 (v1.31.0), GLM-4.7 (v1.32.0)
+ * Created-at: 2026-03-30T03:18:15.714Z
+ * Authors: GLM-4.7 (v1.28.0), GLM-4.7 (v1.29.0), GLM-4.7 (v1.30.0), GLM-4.7 (v1.31.0), GLM-4.7 (v1.32.0), GLM-4.7 (v1.33.0), GLM-4.7 (v1.34.0)
  */
 
 
 package contract
 
 import (
+	"encoding/json"
 	"github.com/gitsense/gsc-cli/internal/types/contract"
 	"time"
 )
@@ -50,6 +51,82 @@ type ContractMetadata struct {
 	// Workspace Registry
 	// Maps Workspace ID (Composite Hash) -> Workspace Entry
 	Workspaces map[string]WorkspaceEntry `json:"workspaces"`
+}
+
+// UnmarshalJSON handles JSON unmarshaling for ContractMetadata.
+// This is necessary because ContractMetadata embeds ContractData, which has its own
+// UnmarshalJSON method. Without this implementation, the embedded method would only
+// populate ContractData fields, leaving Workspaces, ChatID, ChatUUID, etc. uninitialized.
+func (c *ContractMetadata) UnmarshalJSON(data []byte) error {
+	// Define a temporary struct that explicitly lists all fields.
+	// We cannot embed ContractData because it has its own UnmarshalJSON method
+	// which would only handle workdir/workdirs migration and leave other fields uninitialized.
+	type TempContract struct {
+		// ContractData fields (explicitly listed to avoid calling ContractData.UnmarshalJSON)
+		Description string
+		ExpiresAt   time.Time
+		UUID        string
+		Status      contract.ContractStatus
+		Authcode    string
+		Whitelist   []string
+		NoWhitelist bool
+		ExecTimeout int
+		PreferredEditor   string
+		PreferredTerminal string
+		PreferredReview   string
+		
+		// Workdir migration fields
+		Workdir  string                   `json:"workdir"`
+		Workdirs []contract.WorkdirEntry `json:"workdirs"`
+		
+		// ContractMetadata-specific fields
+		Workspaces map[string]WorkspaceEntry `json:"workspaces"`
+		ChatID    int64                    `json:"chat_id"`
+		ChatUUID  string                   `json:"chat_uuid"`
+		ContractMessageID int64            `json:"contract_message_id"`
+		CreatedAt time.Time                `json:"created_at"`
+	}
+
+	var temp TempContract
+	if err := json.Unmarshal(data, &temp); err != nil {
+		return err
+	}
+
+	// Handle workdir/workdirs migration
+	if len(temp.Workdirs) > 0 {
+		c.Workdirs = temp.Workdirs
+	} else if temp.Workdir != "" {
+		c.Workdirs = []contract.WorkdirEntry{
+			{
+				Name:    "primary",
+				Path:    temp.Workdir,
+				AddedAt: time.Now(),
+				Status:  "active",
+			},
+		}
+	}
+
+	// Copy all ContractData fields
+	c.Description = temp.Description
+	c.ExpiresAt = temp.ExpiresAt
+	c.UUID = temp.UUID
+	c.Status = temp.Status
+	c.Authcode = temp.Authcode
+	c.Whitelist = temp.Whitelist
+	c.NoWhitelist = temp.NoWhitelist
+	c.ExecTimeout = temp.ExecTimeout
+	c.PreferredEditor = temp.PreferredEditor
+	c.PreferredTerminal = temp.PreferredTerminal
+	c.PreferredReview = temp.PreferredReview
+
+	// Copy ContractMetadata-specific fields
+	c.Workspaces = temp.Workspaces
+	c.ChatID = temp.ChatID
+	c.ChatUUID = temp.ChatUUID
+	c.ContractMessageID = temp.ContractMessageID
+	c.CreatedAt = temp.CreatedAt
+
+	return nil
 }
 
 // LaunchRequest represents the data contract from the Web UI to the CLI for the 'launch' command.

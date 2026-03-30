@@ -1,12 +1,12 @@
 /**
  * Component: Workspace Root Command
- * Block-UUID: 08772585-03e6-4bfc-be9a-6d614ad70fd2
- * Parent-UUID: 365d4d66-7345-4e6b-8108-581281427b97
- * Version: 1.15.0
+ * Block-UUID: 8af4c3a1-234c-444b-a20f-f6f2a59059ed
+ * Parent-UUID: bd0fa52f-646b-4a08-a6f2-6c9a708cf8c9
+ * Version: 1.18.1
  * Description: Silenced usage output on error to improve user experience when workspace lookup fails.
  * Language: Go
- * Created-at: 2026-03-30T01:16:38.888Z
- * Authors: GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0)
+ * Created-at: 2026-03-30T02:13:07.015Z
+ * Authors: GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.18.1)
  */
 
 
@@ -27,12 +27,14 @@ import (
 	"github.com/gitsense/gsc-cli/internal/contract"
 	"github.com/gitsense/gsc-cli/internal/manifest"
 	"github.com/gitsense/gsc-cli/pkg/settings"
+	"github.com/gitsense/gsc-cli/pkg/logger"
 	"github.com/spf13/cobra"
 )
 
 var (
 	wsID    string
 	wsShell bool
+	verbose int
 )
 
 // wsCmd represents the base command for workspace management
@@ -55,6 +57,16 @@ It supports a "Shortcut" mode for quick entry and subcommands for specific actio
 		return cmd.Help()
 	},
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		// Initialize logger based on verbose flag
+		// We must do this here because this PreRun overrides the parent's
+		if verbose >= 2 {
+			logger.SetLogLevel(logger.LevelDebug)
+		} else if verbose == 1 {
+			logger.SetLogLevel(logger.LevelInfo)
+		} else {
+			logger.SetLogLevel(logger.LevelError)
+		}
+
 		// Enforce GSC_HOME requirement
 		if _, err := settings.GetGSCHome(false); err != nil {
 			cmd.SilenceUsage = true
@@ -68,6 +80,7 @@ It supports a "Shortcut" mode for quick entry and subcommands for specific actio
 func RegisterCommand(root *cobra.Command) {
 	wsCmd.PersistentFlags().StringVar(&wsID, "id", "", "Workspace hash-position context")
 	wsCmd.PersistentFlags().BoolVar(&wsShell, "shell", false, "Keep shell open after action")
+	wsCmd.PersistentFlags().CountVarP(&verbose, "verbose", "c", "Increase verbosity")
 
 	wsCmd.AddCommand(sendCmd)
 	wsCmd.AddCommand(ffpCmd)
@@ -151,28 +164,36 @@ func findWorkspaceByID(workspaceID string) (*contract.ContractMetadata, contract
 	if err != nil {
 		return nil, contract.WorkspaceEntry{}, fmt.Errorf("failed to resolve contract directory: %w", err)
 	}
+	logger.Debug("Scanning for workspace", "workspace_id", workspaceID, "contract_dir", contractDir)
 
 	files, err := filepath.Glob(filepath.Join(contractDir, "*.json"))
 	if err != nil {
 		return nil, contract.WorkspaceEntry{}, fmt.Errorf("failed to scan contracts directory: %w", err)
 	}
+	logger.Debug("Found contract files", "count", len(files))
 
 	for _, file := range files {
 		// Extract UUID from filename
 		uuid := filepath.Base(file)
 		uuid = strings.TrimSuffix(uuid, ".json")
-		
+		logger.Debug("Checking contract", "uuid", uuid)
+
 		meta, err := contract.GetContract(uuid)
 		if err != nil {
 			// Skip corrupt/unreadable contracts
+			logger.Debug("Failed to load contract", "uuid", uuid, "error", err)
 			continue
 		}
 
 		// Check Workspaces map
 		if meta.Workspaces != nil {
+			logger.Debug("Contract workspaces", "uuid", uuid, "count", len(meta.Workspaces))
 			if entry, exists := meta.Workspaces[workspaceID]; exists {
+				logger.Info("Workspace found", "workspace_id", workspaceID, "contract_uuid", uuid)
 				return meta, entry, nil
 			}
+		} else {
+			logger.Debug("Contract has no workspaces map", "uuid", uuid)
 		}
 	}
 
