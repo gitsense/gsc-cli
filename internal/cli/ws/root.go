@@ -2,11 +2,11 @@
  * Component: Workspace Root Command
  * Block-UUID: 08772585-03e6-4bfc-be9a-6d614ad70fd2
  * Parent-UUID: 365d4d66-7345-4e6b-8108-581281427b97
- * Version: 1.14.0
- * Description: Added GSC_CONTRACT_MAPPED_ROOT environment variable to shell initialization to support cross-workspace mapping and navigation.
+ * Version: 1.15.0
+ * Description: Silenced usage output on error to improve user experience when workspace lookup fails.
  * Language: Go
- * Created-at: 2026-03-26T16:07:34.607Z
- * Authors: GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0)
+ * Created-at: 2026-03-30T01:16:38.888Z
+ * Authors: GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0)
  */
 
 
@@ -46,7 +46,11 @@ It supports a "Shortcut" mode for quick entry and subcommands for specific actio
 		if len(args) > 0 {
 			// Shortcut Mode: gsc ws <workspace-id>
 			// Implies --shell is true
-			return handleWorkspaceEntry(args[0], true, "")
+			err := handleWorkspaceEntry(args[0], true, "")
+			if err != nil {
+				cmd.SilenceUsage = true
+			}
+			return err
 		}
 		return cmd.Help()
 	},
