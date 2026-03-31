@@ -1,18 +1,19 @@
 /**
  * Component: Scout CLI Start Command
- * Block-UUID: 82fe7af5-fd9a-4eab-a490-d155201b45a1
- * Parent-UUID: f7b69aa2-6b58-4e2b-925b-cca47fe064b5
- * Version: 1.0.9
+ * Block-UUID: 7f3ee052-27b8-4da4-900d-d1b8631fb44b
+ * Parent-UUID: 82fe7af5-fd9a-4eab-a490-d155201b45a1
+ * Version: 1.1.0
  * Description: Implements 'gsc claude scout start' command with turn-aware session handling
  * Language: Go
- * Created-at: 2026-03-28T23:12:57.555Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), claude-haiku-4-5-20251001 (v1.0.9)
+ * Created-at: 2026-03-31T00:26:10.713Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), claude-haiku-4-5-20251001 (v1.0.9), GLM-4.7 (v1.1.0)
  */
 
 
 package scoutcli
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -22,6 +23,16 @@ import (
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 )
+
+// StartResponse represents the JSON response for the start command
+type StartResponse struct {
+	SessionID  string `json:"session_id"`
+	Turn       int    `json:"turn"`
+	Status     string `json:"status"`
+	ProcessPID int    `json:"process_pid,omitempty"`
+	Message    string `json:"message"`
+	Error      string `json:"error,omitempty"`
+}
 
 // StartCmd creates the "scout start" subcommand
 func StartCmd() *cobra.Command {
@@ -189,27 +200,53 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 		return fmt.Errorf("failed to close event writer: %w", err)
 	}
 
-	// Output session information
-	fmt.Fprintf(cmd.OutOrStdout(), "Scout session started\n")
-	fmt.Fprintf(cmd.OutOrStdout(), "Session ID: %s\n", FormatSessionPath(sessionID))
-	fmt.Fprintf(cmd.OutOrStdout(), "Turn: %d\n", flags.Turn)
-
-	if flags.Turn == 1 {
-		fmt.Fprintf(cmd.OutOrStdout(), "\nMonitor progress with:\n")
-		fmt.Fprintf(cmd.OutOrStdout(), "  gsc claude scout status -s %s\n", sessionID)
-		fmt.Fprintf(cmd.OutOrStdout(), "\nFollow in real-time with:\n")
-		fmt.Fprintf(cmd.OutOrStdout(), "  gsc claude scout status -s %s -f\n", sessionID)
-		fmt.Fprintf(cmd.OutOrStdout(), "\nWhen discovery completes, proceed to verification with:\n")
-		fmt.Fprintf(cmd.OutOrStdout(), "  gsc claude scout start --session-id %s --turn 2\n", sessionID)
-	} else if flags.Turn == 2 {
-		fmt.Fprintf(cmd.OutOrStdout(), "\nMonitor verification progress with:\n")
-		fmt.Fprintf(cmd.OutOrStdout(), "  gsc claude scout status -s %s\n", sessionID)
-		fmt.Fprintf(cmd.OutOrStdout(), "\nFollow in real-time with:\n")
-		fmt.Fprintf(cmd.OutOrStdout(), "  gsc claude scout status -s %s -f\n", sessionID)
+	// Get process info for JSON output
+	var processPID int
+	if flags.Format == "json" {
+		status, err := manager.GetSessionStatus()
+		if err == nil && status.ProcessInfo.Running {
+			processPID = status.ProcessInfo.PID
+		}
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "\nStop the session with:\n")
-	fmt.Fprintf(cmd.OutOrStdout(), "  gsc claude scout stop -s %s\n", sessionID)
+	// Output based on format
+	if flags.Format == "json" {
+		response := StartResponse{
+			SessionID:  sessionID,
+			Turn:       flags.Turn,
+			Status:     "in_progress",
+			ProcessPID: processPID,
+			Message:    "Scout session started successfully",
+		}
+
+		data, err := json.MarshalIndent(response, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal JSON response: %w", err)
+		}
+		fmt.Fprintln(cmd.OutOrStdout(), string(data))
+	} else {
+		// Existing text output
+		fmt.Fprintf(cmd.OutOrStdout(), "Scout session started\n")
+		fmt.Fprintf(cmd.OutOrStdout(), "Session ID: %s\n", FormatSessionPath(sessionID))
+		fmt.Fprintf(cmd.OutOrStdout(), "Turn: %d\n", flags.Turn)
+
+		if flags.Turn == 1 {
+			fmt.Fprintf(cmd.OutOrStdout(), "\nMonitor progress with:\n")
+			fmt.Fprintf(cmd.OutOrStdout(), "  gsc claude scout status -s %s\n", sessionID)
+			fmt.Fprintf(cmd.OutOrStdout(), "\nFollow in real-time with:\n")
+			fmt.Fprintf(cmd.OutOrStdout(), "  gsc claude scout status -s %s -f\n", sessionID)
+			fmt.Fprintf(cmd.OutOrStdout(), "\nWhen discovery completes, proceed to verification with:\n")
+			fmt.Fprintf(cmd.OutOrStdout(), "  gsc claude scout start --session-id %s --turn 2\n", sessionID)
+		} else if flags.Turn == 2 {
+			fmt.Fprintf(cmd.OutOrStdout(), "\nMonitor verification progress with:\n")
+			fmt.Fprintf(cmd.OutOrStdout(), "  gsc claude scout status -s %s\n", sessionID)
+			fmt.Fprintf(cmd.OutOrStdout(), "\nFollow in real-time with:\n")
+			fmt.Fprintf(cmd.OutOrStdout(), "  gsc claude scout status -s %s -f\n", sessionID)
+		}
+
+		fmt.Fprintf(cmd.OutOrStdout(), "\nStop the session with:\n")
+		fmt.Fprintf(cmd.OutOrStdout(), "  gsc claude scout stop -s %s\n", sessionID)
+	}
 
 	return nil
 }

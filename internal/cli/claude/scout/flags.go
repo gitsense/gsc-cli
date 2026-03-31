@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Flags and Options
- * Block-UUID: a027dc93-0162-4fe3-9394-548d78fb456e
- * Parent-UUID: f10f8e67-beac-4166-81d8-81ca4acdd50c
- * Version: 1.2.0
+ * Block-UUID: 79c1162b-0371-44ca-985d-e09eb7beabc1
+ * Parent-UUID: a027dc93-0162-4fe3-9394-548d78fb456e
+ * Version: 1.3.0
  * Description: Shared flag definitions for Scout CLI commands (start, status, stop) with turn and force support
  * Language: Go
- * Created-at: 2026-03-28T23:11:04.163Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
+ * Created-at: 2026-03-31T00:25:38.215Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
  */
 
 
@@ -31,6 +31,7 @@ type StartFlags struct {
 	SessionID          string // Optional session ID
 	Turn               int    // Required: 1 or 2
 	Force              bool   // Force overwrite existing session
+	Format             string // Output format: text or json
 }
 
 // StatusFlags contains flags for the scout status command
@@ -104,6 +105,13 @@ func RegisterStartFlags(cmd *cobra.Command, flags *StartFlags) {
 		"force",
 		false,
 		"Overwrite existing session if it exists",
+	)
+
+	cmd.Flags().StringVar(
+		&flags.Format,
+		"format",
+		"text",
+		"Output format: text or json",
 	)
 }
 
@@ -194,6 +202,15 @@ func ValidateStartFlags(flags *StartFlags) error {
 		if err := ValidateSessionID(flags.SessionID); err != nil {
 			return &FlagError{Flag: "session-id", Message: err.Error()}
 		}
+	}
+
+	// Validate format
+	validFormats := map[string]bool{
+		"text": true,
+		"json": true,
+	}
+	if !validFormats[flags.Format] {
+		return &FlagError{Flag: "format", Message: "format must be 'text' or 'json'"}
 	}
 
 	return nil
