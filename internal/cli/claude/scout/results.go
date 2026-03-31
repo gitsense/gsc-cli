@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Results Command
- * Block-UUID: 467e59e3-80ad-46c3-b6fa-1b15b1e9adf6
- * Parent-UUID: N/A
- * Version: 1.0.0
+ * Block-UUID: 5d30c452-0b3c-42b2-b7cb-3a6bb41b553e
+ * Parent-UUID: 467e59e3-80ad-46c3-b6fa-1b15b1e9adf6
+ * Version: 1.0.1
  * Description: Implements 'gsc claude scout results' command for retrieving finalized turn results
  * Language: Go
- * Created-at: 2026-03-31T02:10:00.000Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0)
+ * Created-at: 2026-03-31T02:27:12.973Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), claude-haiku-4-5-20251001 (v1.0.1)
  */
 
 
@@ -99,7 +99,7 @@ func outputResultsJSON(cmd *cobra.Command, results *claudescout.FinalizedTurnRes
 // outputResultsText outputs results in human-readable text format
 func outputResultsText(cmd *cobra.Command, results *claudescout.FinalizedTurnResults) error {
 	fmt.Fprintf(cmd.OutOrStdout(), "Scout Results\n")
-	fmt.Fprintf(cmd.OutOrStdout(), "═════════════════════════════════════\n")
+	fmt.Fprintf(cmd.OutOrStdout(), "=======================================\n")
 	fmt.Fprintf(cmd.OutOrStdout(), "Session: %s\n", results.SessionID)
 	fmt.Fprintf(cmd.OutOrStdout(), "Turn: %d\n", results.Turn)
 	fmt.Fprintf(cmd.OutOrStdout(), "Status: %s\n", results.Status)
@@ -107,7 +107,7 @@ func outputResultsText(cmd *cobra.Command, results *claudescout.FinalizedTurnRes
 
 	// Display candidates
 	fmt.Fprintf(cmd.OutOrStdout(), "Candidates (%d total):\n", results.TotalFound)
-	fmt.Fprintf(cmd.OutOrStdout(), "─────────────────────────────────────\n")
+	fmt.Fprintf(cmd.OutOrStdout(), "---------------------------------------\n")
 
 	if len(results.Candidates) == 0 {
 		fmt.Fprintf(cmd.OutOrStdout(), "  (no candidates)\n")
@@ -119,7 +119,7 @@ func outputResultsText(cmd *cobra.Command, results *claudescout.FinalizedTurnRes
 			}
 			fmt.Fprintf(cmd.OutOrStdout(), "  %d. %s (score: %.2f)\n", i+1, candidate.FilePath, candidate.Score)
 			if candidate.Reasoning != "" {
-				fmt.Fprintf(cmd.OutOrStdout(), "     → %s\n", candidate.Reasoning)
+				fmt.Fprintf(cmd.OutOrStdout(), "     -> %s\n", candidate.Reasoning)
 			}
 		}
 	}
@@ -128,7 +128,7 @@ func outputResultsText(cmd *cobra.Command, results *claudescout.FinalizedTurnRes
 	// For Turn 2, display original candidates section
 	if results.Turn == 2 && len(results.OriginalCandidates) > 0 {
 		fmt.Fprintf(cmd.OutOrStdout(), "Original Unvalidated Candidates (Turn 1):\n")
-		fmt.Fprintf(cmd.OutOrStdout(), "─────────────────────────────────────\n")
+		fmt.Fprintf(cmd.OutOrStdout(), "---------------------------------------\n")
 		fmt.Fprintf(cmd.OutOrStdout(), "Note: These are from discovery before verification\n\n")
 
 		for i, candidate := range results.OriginalCandidates {

@@ -1,12 +1,12 @@
 /**
  * Component: Scout Session Manager
- * Block-UUID: 447efeff-02fa-4e10-bee9-fc68d2127121
- * Parent-UUID: 08e6e03d-2152-4090-b7d1-7e677fb042b4
- * Version: 1.0.18
+ * Block-UUID: 4ef1c472-7b6b-44d1-b7ca-f98f5707f39a
+ * Parent-UUID: 447efeff-02fa-4e10-bee9-fc68d2127121
+ * Version: 1.0.19
  * Description: Orchestrates Scout discovery and verification phases, manages subprocess execution
  * Language: Go
- * Created-at: 2026-03-31T02:07:31.817Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.17), GLM-4.7 (v1.0.18)
+ * Created-at: 2026-03-31T02:36:45.543Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.17), GLM-4.7 (v1.0.18), claude-haiku-4-5-20251001 (v1.0.19)
  */
 
 
@@ -284,7 +284,10 @@ func (m *Manager) StartTurn2Verification(selectedCandidates *SelectedCandidates)
 	if selectedCandidates != nil {
 		candData, _ := json.MarshalIndent(selectedCandidates, "", "  ")
 		candPath := filepath.Join(m.config.GetTurnDir(m.currentTurn), "selected-candidates.json")
-		os.WriteFile(candPath, candData, 0644)
+		if err := os.WriteFile(candPath, candData, 0644); err != nil {
+			m.markAsStopped("CANDIDATE_SAVE_FAILED", fmt.Sprintf("Failed to save selected candidates: %v", err))
+			return err
+		}
 	}
 
 	// Spawn subprocess for Turn 2
@@ -448,7 +451,10 @@ func (m *Manager) GetFinalizedTurnResults(turn int) (*FinalizedTurnResults, erro
 		switch event.Type {
 		case "candidates":
 			// Parse candidates event (Turn 1)
-			data, _ := json.Marshal(event.Data)
+			data, err := json.Marshal(event.Data)
+			if err != nil {
+				continue // Skip malformed events
+			}
 			var candEvent CandidatesEvent
 			if err := json.Unmarshal(data, &candEvent); err == nil {
 				candidates = candEvent.Candidates
@@ -457,7 +463,10 @@ func (m *Manager) GetFinalizedTurnResults(turn int) (*FinalizedTurnResults, erro
 
 		case "verified":
 			// Parse verified event (Turn 2)
-			data, _ := json.Marshal(event.Data)
+			data, err := json.Marshal(event.Data)
+			if err != nil {
+				continue // Skip malformed events
+			}
 			var verEvent VerifiedEvent
 			if err := json.Unmarshal(data, &verEvent); err == nil {
 				verificationUpdates = verEvent.UpdatedCandidates
@@ -512,7 +521,10 @@ func (m *Manager) GetFinalizedTurnResults(turn int) (*FinalizedTurnResults, erro
 		var originalCandidates []Candidate
 		for _, event := range originalEvents {
 			if event.Type == "candidates" {
-				data, _ := json.Marshal(event.Data)
+				data, err := json.Marshal(event.Data)
+				if err != nil {
+					continue // Skip malformed events
+				}
 				var candEvent CandidatesEvent
 				if err := json.Unmarshal(data, &candEvent); err == nil {
 					originalCandidates = candEvent.Candidates
@@ -579,8 +591,12 @@ func (m *Manager) GetLastCompletedTurn() (int, error) {
 		// Check log file to see which turn actually completed
 		lastLogFile, lastTurn, err := m.processor.GetLatestLogFile()
 		if err == nil && lastLogFile != "" {
-			// Check if the last turn's log has a "done" event
-			reader, _ := NewEventReader(lastLogFile)
+			reader, err := NewEventReader(lastLogFile)
+			if err != nil {
+				// Log error but continue - if we can't read the log file,
+				// we can't determine if the turn completed
+				return 0, nil
+			}
 			if reader != nil {
 				defer reader.Close()
 				events, _ := reader.ReadAllEvents()

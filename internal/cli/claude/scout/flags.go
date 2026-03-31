@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Flags and Options
- * Block-UUID: 76d0cc95-7def-4f8f-8327-14656c55cd7d
- * Parent-UUID: 79c1162b-0371-44ca-985d-e09eb7beabc1
- * Version: 1.4.0
+ * Block-UUID: b0c8b419-06a3-45ca-b65b-4fa711acf85e
+ * Parent-UUID: 76d0cc95-7def-4f8f-8327-14656c55cd7d
+ * Version: 1.5.0
  * Description: Shared flag definitions for Scout CLI commands (start, status, stop) with turn and force support
  * Language: Go
- * Created-at: 2026-03-31T01:53:14.040Z
- * Authors: GLM-4.7 (v1.3.0), claude-haiku-4-5-20251001 (v1.4.0)
+ * Created-at: 2026-03-31T02:30:08.318Z
+ * Authors: GLM-4.7 (v1.3.0), claude-haiku-4-5-20251001 (v1.4.0), claude-haiku-4-5-20251001 (v1.5.0)
  */
 
 
@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -194,10 +195,11 @@ func RegisterResultsFlags(cmd *cobra.Command, flags *ResultsFlags) {
 // ValidateStartFlags validates the start command flags
 func ValidateStartFlags(flags *StartFlags) error {
 	// Ensure either --intent or --intent-file is provided (but not both)
-	if flags.Intent == "" && flags.IntentFile == "" {
+	intent := strings.TrimSpace(flags.Intent)
+	if intent == "" && flags.IntentFile == "" {
 		return &FlagError{Flag: "intent", Message: "either --intent or --intent-file is required"}
 	}
-	if flags.Intent != "" && flags.IntentFile != "" {
+	if intent != "" && flags.IntentFile != "" {
 		return &FlagError{Flag: "intent", Message: "cannot specify both --intent and --intent-file"}
 	}
 
@@ -212,7 +214,8 @@ func ValidateStartFlags(flags *StartFlags) error {
 		return &FlagError{Flag: "turn", Message: "turn must be 1 or 2"}
 	}
 
-	if len(flags.WorkingDirectories) == 0 {
+	// For Turn 1, workdirs are required; for Turn 2, they're loaded from existing session
+	if flags.Turn == 1 && len(flags.WorkingDirectories) == 0 {
 		return &FlagError{Flag: "workdir", Message: "at least one working directory is required"}
 	}
 
@@ -325,7 +328,8 @@ func ValidateSessionID(sessionID string) error {
 	}
 
 	// Check for invalid characters (only allow alphanumeric, hyphens, underscores)
-	matched, _ := regexp.MatchString(`^[a-zA-Z0-9_-]+$`, sessionID)
+	sessionIDPattern := regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
+	matched := sessionIDPattern.MatchString(sessionID)
 	if !matched {
 		return fmt.Errorf("session ID can only contain letters, numbers, hyphens, and underscores")
 	}
@@ -427,6 +431,11 @@ func ParseFollow(flags *pflag.FlagSet) (bool, error) {
 // ParseFormat extracts the format flag for output
 func ParseFormat(flags *pflag.FlagSet) (string, error) {
 	return flags.GetString("format")
+}
+
+// ParseTurn extracts the turn number from flags
+func ParseTurn(flags *pflag.FlagSet) (int, error) {
+	return flags.GetInt("turn")
 }
 
 // ParseForce extracts the force flag for stop command
