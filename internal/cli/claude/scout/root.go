@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Root Command
- * Block-UUID: 41df1421-1aef-4ab6-b67b-75be7376604c
- * Parent-UUID: 9e5f4a3b-7d2c-4e8f-a1b9-6c5e8f7a2d3b
- * Version: 1.0.1
+ * Block-UUID: 98666b7f-80b0-4f02-b476-09435f24046d
+ * Parent-UUID: 41df1421-1aef-4ab6-b67b-75be7376604c
+ * Version: 1.0.2
  * Description: Parent command for Scout CLI (start, status, stop subcommands)
  * Language: Go
- * Created-at: 2026-03-27T22:53:59.361Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1)
+ * Created-at: 2026-03-31T02:09:02.329Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), claude-haiku-4-5-20251001 (v1.0.2)
  */
 
 
@@ -36,6 +36,7 @@ Sessions run as background subprocesses and can be monitored independently of th
 	// Register subcommands
 	cmd.AddCommand(StartCmd())
 	cmd.AddCommand(StatusCmd())
+	cmd.AddCommand(ResultsCmd())
 	cmd.AddCommand(StopCmd())
 
 	return cmd
@@ -46,6 +47,7 @@ func GetAllScoutCommands() []*cobra.Command {
 	return []*cobra.Command{
 		StartCmd(),
 		StatusCmd(),
+		ResultsCmd(),
 		StopCmd(),
 	}
 }

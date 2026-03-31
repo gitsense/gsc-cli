@@ -1,12 +1,12 @@
 /**
  * Component: Scout Session Manager
- * Block-UUID: 08e6e03d-2152-4090-b7d1-7e677fb042b4
- * Parent-UUID: 5bb0eab5-c492-4378-a138-6636ae0bff81
- * Version: 1.0.17
+ * Block-UUID: 447efeff-02fa-4e10-bee9-fc68d2127121
+ * Parent-UUID: 08e6e03d-2152-4090-b7d1-7e677fb042b4
+ * Version: 1.0.18
  * Description: Orchestrates Scout discovery and verification phases, manages subprocess execution
  * Language: Go
- * Created-at: 2026-03-28T23:35:41.843Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), GLM-4.7 (v1.0.8), GLM-4.7 (v1.0.9), GLM-4.7 (v1.0.10), GLM-4.7 (v1.0.11), GLM-4.7 (v1.0.12), GLM-4.7 (v1.0.13), GLM-4.7 (v1.0.14), GLM-4.7 (v1.0.15), claude-haiku-4-5-20251001 (v1.0.17)
+ * Created-at: 2026-03-31T02:07:31.817Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.17), GLM-4.7 (v1.0.18)
  */
 
 
@@ -25,6 +25,22 @@ import (
 
 	"github.com/gitsense/gsc-cli/pkg/settings"
 )
+
+// FinalizedTurnResults represents the lightweight results for a completed turn
+// For Turn 2, Candidates contains only verified/relevant candidates (score > 0.0)
+// OriginalCandidates contains all Turn 1 discovery results for comparison
+type FinalizedTurnResults struct {
+	SessionID          string      `json:"session_id"`
+	Turn               int         `json:"turn"`
+	Status             string      `json:"status"`
+	Candidates         []Candidate `json:"candidates"`
+	OriginalCandidates []Candidate `json:"original_candidates,omitempty"`
+	TotalFound         int         `json:"total_found"`
+	TotalDiscovered    int         `json:"total_discovered,omitempty"`
+}
+
+// ErrTurnNotComplete is returned when a turn has not yet completed
+var ErrTurnNotComplete = fmt.Errorf("turn has not yet completed")
 
 // Manager orchestrates a scout session
 type Manager struct {
@@ -384,6 +400,152 @@ func (m *Manager) GetSessionStatus() (*StatusData, error) {
 	}
 
 	return status, nil
+}
+
+// GetFinalizedTurnResults retrieves the finalized results for a specific turn
+// For Turn 2, merges verification updates with original candidates and filters out irrelevant ones
+// Returns ErrTurnNotComplete if the turn has not yet finished
+func (m *Manager) GetFinalizedTurnResults(turn int) (*FinalizedTurnResults, error) {
+	if turn != 1 && turn != 2 {
+		return nil, fmt.Errorf("turn must be 1 or 2")
+	}
+
+	// Check if the session exists
+	if !m.config.SessionExists() {
+		return nil, fmt.Errorf("session does not exist: %s", m.config.SessionID)
+	}
+
+	// Get the latest log file for the requested turn
+	logFile, err := m.processor.GetLatestTurnLogFile(turn)
+	if err != nil {
+		return nil, fmt.Errorf("no results found for turn %d", turn)
+	}
+
+	// Read events from the log file
+	reader, err := NewEventReader(logFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read turn results: %w", err)
+	}
+	defer reader.Close()
+
+	events, err := reader.ReadAllEvents()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read events: %w", err)
+	}
+
+	if len(events) == 0 {
+		return nil, fmt.Errorf("no events found for turn %d", turn)
+	}
+
+	// Find the candidates, verified, and done events
+	var candidates []Candidate
+	var verificationUpdates []VerificationUpdate
+	var totalFound int
+	var statusValue string
+	var foundDone bool
+
+	for _, event := range events {
+		switch event.Type {
+		case "candidates":
+			// Parse candidates event (Turn 1)
+			data, _ := json.Marshal(event.Data)
+			var candEvent CandidatesEvent
+			if err := json.Unmarshal(data, &candEvent); err == nil {
+				candidates = candEvent.Candidates
+				totalFound = candEvent.TotalFound
+			}
+
+		case "verified":
+			// Parse verified event (Turn 2)
+			data, _ := json.Marshal(event.Data)
+			var verEvent VerifiedEvent
+			if err := json.Unmarshal(data, &verEvent); err == nil {
+				verificationUpdates = verEvent.UpdatedCandidates
+				totalFound = verEvent.TotalVerified
+			}
+
+		case "done":
+			// Found the completion marker
+			foundDone = true
+		}
+	}
+
+	// Verify that the turn actually completed
+	if !foundDone {
+		return nil, ErrTurnNotComplete
+	}
+
+	// Determine the status based on turn
+	if turn == 1 {
+		statusValue = "discovery_complete"
+	} else {
+		statusValue = "verification_complete"
+	}
+
+	results := &FinalizedTurnResults{
+		SessionID:  m.config.SessionID,
+		Turn:       turn,
+		Status:     statusValue,
+		Candidates: candidates,
+		TotalFound: totalFound,
+	}
+
+	// For Turn 2, merge verification updates with original candidates
+	if turn == 2 {
+		// Read Turn 1 candidates
+		originalLogFile, err := m.processor.GetLatestTurnLogFile(1)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read Turn 1 log file: %w", err)
+		}
+
+		reader, err := NewEventReader(originalLogFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open Turn 1 log file: %w", err)
+		}
+		defer reader.Close()
+
+		originalEvents, err := reader.ReadAllEvents()
+		if err != nil {
+			return nil, fmt.Errorf("failed to read Turn 1 events: %w", err)
+		}
+
+		var originalCandidates []Candidate
+		for _, event := range originalEvents {
+			if event.Type == "candidates" {
+				data, _ := json.Marshal(event.Data)
+				var candEvent CandidatesEvent
+				if err := json.Unmarshal(data, &candEvent); err == nil {
+					originalCandidates = candEvent.Candidates
+					break
+				}
+			}
+		}
+
+		// Merge verification updates with original candidates
+		verifiedCandidates := make([]Candidate, 0, len(originalCandidates))
+		for _, orig := range originalCandidates {
+			updated := orig
+			// Find matching verification update
+			for _, update := range verificationUpdates {
+				if update.FilePath == orig.FilePath && update.WorkdirID == orig.WorkdirID {
+					updated.Score = update.VerifiedScore
+					updated.Reasoning = update.Reason
+					break
+				}
+			}
+			// Only include candidates with verified score > 0.0
+			if updated.Score > 0.0 {
+				verifiedCandidates = append(verifiedCandidates, updated)
+			}
+		}
+
+		results.Candidates = verifiedCandidates
+		results.OriginalCandidates = originalCandidates
+		results.TotalFound = len(verifiedCandidates)
+		results.TotalDiscovered = len(originalCandidates)
+	}
+
+	return results, nil
 }
 
 // GetLastCompletedTurn returns the highest turn number that has completed successfully

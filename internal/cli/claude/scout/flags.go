@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Flags and Options
- * Block-UUID: 79c1162b-0371-44ca-985d-e09eb7beabc1
- * Parent-UUID: a027dc93-0162-4fe3-9394-548d78fb456e
- * Version: 1.3.0
+ * Block-UUID: 76d0cc95-7def-4f8f-8327-14656c55cd7d
+ * Parent-UUID: 79c1162b-0371-44ca-985d-e09eb7beabc1
+ * Version: 1.4.0
  * Description: Shared flag definitions for Scout CLI commands (start, status, stop) with turn and force support
  * Language: Go
- * Created-at: 2026-03-31T00:25:38.215Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
+ * Created-at: 2026-03-31T01:53:14.040Z
+ * Authors: GLM-4.7 (v1.3.0), claude-haiku-4-5-20251001 (v1.4.0)
  */
 
 
@@ -45,6 +45,13 @@ type StatusFlags struct {
 type StopFlags struct {
 	SessionID string
 	Force     bool
+}
+
+// ResultsFlags contains flags for the scout results command
+type ResultsFlags struct {
+	SessionID string
+	Turn      int
+	Format    string // json, text
 }
 
 // RegisterStartFlags registers flags for the start command
@@ -158,6 +165,32 @@ func RegisterStopFlags(cmd *cobra.Command, flags *StopFlags) {
 	)
 }
 
+// RegisterResultsFlags registers flags for the results command
+func RegisterResultsFlags(cmd *cobra.Command, flags *ResultsFlags) {
+	cmd.Flags().StringVarP(
+		&flags.SessionID,
+		"session", "s",
+		"",
+		"Scout session ID to retrieve results for",
+	)
+	cmd.MarkFlagRequired("session")
+
+	cmd.Flags().IntVar(
+		&flags.Turn,
+		"turn",
+		0,
+		"Turn number to retrieve results for (1=discovery, 2=verification)",
+	)
+	cmd.MarkFlagRequired("turn")
+
+	cmd.Flags().StringVar(
+		&flags.Format,
+		"format",
+		"json",
+		"Output format: json or text",
+	)
+}
+
 // ValidateStartFlags validates the start command flags
 func ValidateStartFlags(flags *StartFlags) error {
 	// Ensure either --intent or --intent-file is provided (but not both)
@@ -241,6 +274,28 @@ func ValidateStopFlags(flags *StopFlags) error {
 	}
 
 	return nil
+}
+
+// ValidateResultsFlags validates the results command flags
+func ValidateResultsFlags(flags *ResultsFlags) error {
+	if flags.SessionID == "" {
+		return &FlagError{Flag: "session", Message: "session ID is required"}
+	}
+
+	if flags.Turn != 1 && flags.Turn != 2 {
+		return &FlagError{Flag: "turn", Message: "turn must be 1 or 2"}
+	}
+
+	validFormats := map[string]bool{
+		"json": true,
+		"text": true,
+	}
+	if !validFormats[flags.Format] {
+		return &FlagError{Flag: "format", Message: "format must be json or text"}
+	}
+
+	// Validate session ID format
+	return ValidateSessionID(flags.SessionID)
 }
 
 // ValidateScoutFlags checks that unsupported flags are not set
