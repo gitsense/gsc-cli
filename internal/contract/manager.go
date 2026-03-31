@@ -1,12 +1,12 @@
 /**
  * Component: Contract Manager
- * Block-UUID: f8f9b4cf-51c6-4b44-b563-766dd0ccf11b
- * Parent-UUID: 8edc98d0-beec-47aa-bb62-74a7d55c0994
- * Version: 1.24.5
+ * Block-UUID: 993b747d-3208-4145-9292-07088c31ac1f
+ * Parent-UUID: f8f9b4cf-51c6-4b44-b563-766dd0ccf11b
+ * Version: 1.24.6
  * Description: Add workdir management methods (AddWorkdir, RemoveWorkdir, SetPrimaryWorkdir) with conflict validation and event notifications.
  * Language: Go
- * Created-at: 2026-03-28T16:24:31.160Z
- * Authors: GLM-4.7 (v1.24.0), GLM-4.7 (v1.24.1), GLM-4.7 (v1.24.2), GLM-4.7 (v1.24.3), GLM-4.7 (v1.24.4), GLM-4.7 (v1.24.5)
+ * Created-at: 2026-03-30T03:34:46.573Z
+ * Authors: GLM-4.7 (v1.24.0), GLM-4.7 (v1.24.1), GLM-4.7 (v1.24.2), GLM-4.7 (v1.24.3), GLM-4.7 (v1.24.4), GLM-4.7 (v1.24.5), GLM-4.7 (v1.24.6)
  */
 
 
@@ -233,6 +233,16 @@ func GetContractByWorkdir(workdir string) (*ContractMetadata, error) {
 	}
 
 	var matches []ContractMetadata
+	
+	// Get the git root of the current directory to support nested git repositories
+	currentGitRoot, err := git.FindGitRootFrom(absWorkdir)
+	if err != nil {
+		// If not in a git repo, we can't match any contract
+		logger.Debug("Current directory is not in a git repository", "workdir", absWorkdir)
+		return nil, fmt.Errorf("no active contract found for directory: %s (not in a git repository)", absWorkdir)
+	}
+	logger.Debug("Current git root", "git_root", currentGitRoot)
+
 	for _, c := range contracts {
 		logger.Debug("Evaluating contract", "uuid", c.UUID, "status", c.Status)
 		if c.Status == typescontract.ContractActive {
@@ -240,15 +250,19 @@ func GetContractByWorkdir(workdir string) (*ContractMetadata, error) {
 			// Check if the current directory is inside or equal to any of the contract's workdirs
 			for _, w := range c.Workdirs {
 				logger.Debug("Comparing against workdir", "contract_uuid", c.UUID, "workdir_path", w.Path)
-				rel, err := filepath.Rel(w.Path, absWorkdir)
+				
+				// Get the git root of the contract's workdir
+				workdirGitRoot, err := git.FindGitRootFrom(w.Path)
 				if err != nil {
-					// Paths are on different drives or invalid, skip this workdir
-					logger.Debug("Path comparison error (different drives?)", "error", err)
+					// Workdir is not a valid git repo, skip it
+					logger.Debug("Workdir is not a git repository", "workdir_path", w.Path, "error", err)
 					continue
 				}
-				logger.Debug("Relative path calculated", "contract_uuid", c.UUID, "workdir_path", w.Path, "relative_path", rel)
-				// If the relative path does not start with "..", we are inside the workdir
-				if !strings.HasPrefix(rel, "..") {
+				logger.Debug("Workdir git root", "contract_uuid", c.UUID, "workdir_path", w.Path, "git_root", workdirGitRoot)
+				
+				// Only match if the git roots are the same
+				// This supports nested git repositories by treating them as separate workspaces
+				if currentGitRoot == workdirGitRoot {
 					logger.Debug("Match found!", "contract_uuid", c.UUID, "workdir_path", w.Path)
 					matches = append(matches, c)
 					break // Found a match for this contract, stop checking other workdirs
