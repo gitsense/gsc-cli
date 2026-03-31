@@ -19,7 +19,8 @@ Review the candidates discovered in Turn 1 and re-score them with more detailed 
 **Working Directories**:
 {{WORKING_DIRECTORIES}}
 
-**Reference Files** (provided by user for guidance):
+**Reference Files** (optional, provided by user as supplementary context):
+If reference files are available below, you can use them to understand user context, but your primary focus is validating the discovered candidates.
 {{REFERENCE_FILES}}
 
 **User Selection** (optional - if provided, focus verification on these):

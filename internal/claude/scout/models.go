@@ -1,12 +1,12 @@
 /**
  * Component: Scout Models
- * Block-UUID: c3c6846d-5235-4936-815e-55b3f12db21e
- * Parent-UUID: 67cbc0c5-403f-40a8-9ef3-97599cb6cd21
- * Version: 1.0.2
+ * Block-UUID: 8c7162f9-d7aa-4ad8-b3aa-a8490d461d30
+ * Parent-UUID: c3c6846d-5235-4936-815e-55b3f12db21e
+ * Version: 1.0.3
  * Description: Data structures for Scout feature (candidate discovery and verification)
  * Language: Go
- * Created-at: 2026-03-27T18:22:33.693Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2)
+ * Created-at: 2026-03-31T14:51:33.456Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), claude-haiku-4-5-20251001 (v1.0.3)
  */
 
 
@@ -18,15 +18,15 @@ import (
 
 // Session represents a Scout discovery/verification session
 type Session struct {
-	SessionID            string
-	Intent               string
-	WorkingDirectories   []WorkingDirectory
-	ReferenceFiles       []ReferenceFile
-	AutoReview           bool
-	Status               string // "discovery", "discovery_complete", "verification", "verification_complete", "stopped", "error"
-	StartedAt            time.Time
-	CompletedAt          *time.Time
-	Error                *string
+	SessionID             string
+	Intent                string
+	WorkingDirectories    []WorkingDirectory
+	ReferenceFilesContext []ReferenceFileContext
+	AutoReview            bool
+	Status                string // "discovery", "discovery_complete", "verification", "verification_complete", "stopped", "error"
+	StartedAt             time.Time
+	CompletedAt           *time.Time
+	Error                 *string
 }
 
 // WorkingDirectory represents a directory in the contract being searched
@@ -40,6 +40,14 @@ type WorkingDirectory struct {
 type ReferenceFile struct {
 	OriginalPath string
 	LocalPath    string // Path in scout session directory
+}
+
+// ReferenceFileContext represents a reference file from the NDJSON input with chat metadata
+type ReferenceFileContext struct {
+	ChatID       int    `json:"chat_id"`
+	Repository   string `json:"repository"`
+	RelativePath string `json:"relative_path"`
+	Content      string `json:"content"`
 }
 
 // Candidate represents a discovered file that may be relevant to the intent
@@ -121,7 +129,7 @@ type InitEvent struct {
 	SessionID              string             `json:"session_id"`
 	Intent                 string             `json:"intent"`
 	WorkingDirectories     []WorkingDirectory `json:"working_directories"`
-	ReferenceFiles         []ReferenceFile    `json:"reference_files"`
+	ReferenceFilesContext  []ReferenceFileContext `json:"reference_files_context"`
 	Options                InitOptions        `json:"options"`
 }
 

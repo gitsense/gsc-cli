@@ -1,12 +1,12 @@
 /**
  * Component: Scout Session Manager
- * Block-UUID: 4ef1c472-7b6b-44d1-b7ca-f98f5707f39a
- * Parent-UUID: 447efeff-02fa-4e10-bee9-fc68d2127121
- * Version: 1.0.19
+ * Block-UUID: 6a0f2d47-2131-4303-9945-3d7e415f252c
+ * Parent-UUID: 151e7f40-0ac8-492c-96cb-dbeae1b90249
+ * Version: 1.2.0
  * Description: Orchestrates Scout discovery and verification phases, manages subprocess execution
  * Language: Go
- * Created-at: 2026-03-31T02:36:45.543Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.17), GLM-4.7 (v1.0.18), claude-haiku-4-5-20251001 (v1.0.19)
+ * Created-at: 2026-03-31T15:19:58.403Z
+ * Authors: claude-haiku-4-5-20251001 (v1.1.0), claude-haiku-4-5-20251001 (v1.2.0)
  */
 
 
@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -72,13 +73,13 @@ func (m *Manager) GetConfig() *SessionConfig {
 }
 
 // InitializeSession sets up the session directory and writes initial state
-func (m *Manager) InitializeSession(intent string, workdirs []WorkingDirectory, refFiles []ReferenceFile, autoReview bool) error {
+func (m *Manager) InitializeSession(intent string, workdirs []WorkingDirectory, refFilesContext []ReferenceFileContext, autoReview bool) error {
 	// Validate inputs
 	if err := ValidateIntent(intent); err != nil {
 		return err
 	}
 
-	if errs, _ := ValidateSetup(workdirs, refFiles); len(errs) > 0 {
+	if errs, _ := ValidateSetup(workdirs, refFilesContext); len(errs) > 0 {
 		errMsg := fmt.Sprintf("validation failed: %d errors", len(errs))
 		return fmt.Errorf(errMsg)
 	}
@@ -99,19 +100,13 @@ func (m *Manager) InitializeSession(intent string, workdirs []WorkingDirectory, 
 		SessionID:          m.config.SessionID,
 		Intent:             intent,
 		WorkingDirectories: workdirs,
-		ReferenceFiles:     refFiles,
+		ReferenceFilesContext: refFilesContext,
 		AutoReview:         autoReview,
 		Status:             "discovery",
 		StartedAt:          time.Now(),
 	}
 
-	// Copy reference files
-	for i, rf := range refFiles {
-		refType := fmt.Sprintf("reference-%d", i)
-		if err := m.processor.CopyReferenceFile(rf.OriginalPath, refType); err != nil {
-			return fmt.Errorf("failed to copy reference file: %w", err)
-		}
-	}
+	// Reference files from NDJSON already have content embedded, no need to copy
 
 	return m.writeSessionState()
 }
@@ -217,7 +212,7 @@ func (m *Manager) StartTurn1Discovery() error {
 		SessionID:          m.session.SessionID,
 		Intent:             m.session.Intent,
 		WorkingDirectories: m.session.WorkingDirectories,
-		ReferenceFiles:     m.session.ReferenceFiles,
+		ReferenceFilesContext: m.session.ReferenceFilesContext,
 		Options: InitOptions{
 			AutoReview: m.session.AutoReview,
 			Turn:       m.currentTurn,
@@ -270,7 +265,7 @@ func (m *Manager) StartTurn2Verification(selectedCandidates *SelectedCandidates)
 		SessionID:          m.session.SessionID,
 		Intent:             m.session.Intent,
 		WorkingDirectories: m.session.WorkingDirectories,
-		ReferenceFiles:     m.session.ReferenceFiles,
+		ReferenceFilesContext: m.session.ReferenceFilesContext,
 		Options: InitOptions{
 			AutoReview: m.session.AutoReview,
 			Turn:       m.currentTurn,
@@ -312,6 +307,11 @@ func (m *Manager) spawnClaudeSubprocess(turn int) error {
 		return fmt.Errorf("failed to resolve GSC_HOME: %w", err)
 	}
 
+	// Write reference files NDJSON to turn directory
+	if err := m.writeReferenceFilesNDJSON(); err != nil {
+		return fmt.Errorf("failed to write reference files: %w", err)
+	}
+
 	var templateName string
 	if turn == 1 {
 		templateName = "turn-1-discovery.md"
@@ -325,6 +325,16 @@ func (m *Manager) spawnClaudeSubprocess(turn int) error {
 		m.markAsStopped("TEMPLATE_FAILED", fmt.Sprintf("Failed to read prompt template: %v", err))
 		return fmt.Errorf("failed to read prompt template: %w", err)
 	}
+
+	// Format reference files metadata and replace placeholder
+	refFilesMarkdown := m.formatReferenceFilesMetadata()
+	promptStr := strings.ReplaceAll(string(promptData), "{{REFERENCE_FILES}}", refFilesMarkdown)
+	
+	// Replace other placeholders
+	promptStr = strings.ReplaceAll(promptStr, "{{INTENT}}", m.session.Intent)
+	// Add working directories formatting here if needed
+	
+	promptData = []byte(promptStr)
 
 	// Build the command to invoke claude CLI directly
 	flags := []string{
@@ -1062,4 +1072,53 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 		m.session.Status = "error"
 		m.writeSessionState()
 	}
+}
+
+// writeReferenceFilesNDJSON writes the reference files to an NDJSON file in the turn directory
+func (m *Manager) writeReferenceFilesNDJSON() error {
+	if len(m.session.ReferenceFilesContext) == 0 {
+		return nil // No reference files to write
+	}
+
+	turnDir := m.config.GetTurnDir(m.currentTurn)
+	refDir := filepath.Join(turnDir, "turn-data")
+	
+	if err := os.MkdirAll(refDir, 0755); err != nil {
+		return fmt.Errorf("failed to create turn-data directory: %w", err)
+	}
+
+	refPath := filepath.Join(refDir, "references.ndjson")
+	file, err := os.Create(refPath)
+	if err != nil {
+		return fmt.Errorf("failed to create references.ndjson: %w", err)
+	}
+	defer file.Close()
+
+	for _, ref := range m.session.ReferenceFilesContext {
+		data, err := json.Marshal(ref)
+		if err != nil {
+			return fmt.Errorf("failed to marshal reference file: %w", err)
+		}
+		if _, err := file.WriteString(string(data) + "\n"); err != nil {
+			return fmt.Errorf("failed to write reference file: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// formatReferenceFilesMetadata formats reference files for display in the prompt
+func (m *Manager) formatReferenceFilesMetadata() string {
+	if len(m.session.ReferenceFilesContext) == 0 {
+		return "No reference files provided."
+	}
+
+	var sb strings.Builder
+	sb.WriteString("The following reference files have been imported:\n")
+	for i, ref := range m.session.ReferenceFilesContext {
+		sb.WriteString(fmt.Sprintf("- reference-file-%03d: %s (chat-id: %d, repo: %s)\n", 
+			i+1, ref.RelativePath, ref.ChatID, ref.Repository))
+	}
+	sb.WriteString("\n**Note:** Complete reference file data is available in `turn-data/references.ndjson` if you need to examine raw content.\n")
+	return sb.String()
 }

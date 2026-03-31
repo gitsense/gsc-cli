@@ -1,18 +1,19 @@
 /**
  * Component: Scout CLI Start Command
- * Block-UUID: 7f3ee052-27b8-4da4-900d-d1b8631fb44b
- * Parent-UUID: 82fe7af5-fd9a-4eab-a490-d155201b45a1
- * Version: 1.1.0
+ * Block-UUID: 5ee0f5cd-65ab-48b6-b986-cd78c380f7f6
+ * Parent-UUID: 7f3ee052-27b8-4da4-900d-d1b8631fb44b
+ * Version: 1.2.0
  * Description: Implements 'gsc claude scout start' command with turn-aware session handling
  * Language: Go
- * Created-at: 2026-03-31T00:26:10.713Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), claude-haiku-4-5-20251001 (v1.0.9), GLM-4.7 (v1.1.0)
+ * Created-at: 2026-03-31T14:44:21.519Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), claude-haiku-4-5-20251001 (v1.0.9), GLM-4.7 (v1.1.0), claude-haiku-4-5-20251001 (v1.2.0)
  */
 
 
 package scoutcli
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -150,7 +151,7 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 		return fmt.Errorf("failed to parse working directories: %w", err)
 	}
 
-	refFiles, err := ParseRefFiles(flags.ReferenceFiles)
+	refFilesContext, err := ParseReferenceFilesNDJSON(flags.ReferenceFilesJSON)
 	if err != nil {
 		return fmt.Errorf("failed to parse reference files: %w", err)
 	}
@@ -166,7 +167,7 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 		}
 
 		// Initialize the session for Turn 1
-		if err := manager.InitializeSession(intent, workdirs, refFiles, flags.AutoReview); err != nil {
+		if err := manager.InitializeSession(intent, workdirs, refFilesContext, flags.AutoReview); err != nil {
 			return fmt.Errorf("failed to initialize session: %w", err)
 		}
 	} else if flags.Turn == 2 {
@@ -271,23 +272,36 @@ func ParseWorkdirs(paths []string) ([]claudescout.WorkingDirectory, error) {
 	return workdirs, nil
 }
 
-// ParseRefFiles converts reference file strings to ReferenceFile structs
-func ParseRefFiles(paths []string) ([]claudescout.ReferenceFile, error) {
-	refFiles := make([]claudescout.ReferenceFile, len(paths))
+// ParseReferenceFilesNDJSON reads and parses an NDJSON file containing reference files
+func ParseReferenceFilesNDJSON(filePath string) ([]claudescout.ReferenceFileContext, error) {
+	if filePath == "" {
+		return []claudescout.ReferenceFileContext{}, nil // Reference files are optional
+	}
 
-	for i, path := range paths {
-		absPath, err := filepath.Abs(path)
-		if err != nil {
-			return nil, fmt.Errorf("failed to resolve reference file path %s: %w", path, err)
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open reference files: %w", err)
+	}
+	defer file.Close()
+
+	var refFilesContext []claudescout.ReferenceFileContext
+	scanner := bufio.NewScanner(file)
+
+	for scanner.Scan() {
+		var ref claudescout.ReferenceFileContext
+		if err := json.Unmarshal(scanner.Bytes(), &ref); err != nil {
+			return nil, fmt.Errorf("invalid reference file line: %w", err)
 		}
+		refFilesContext = append(refFilesContext, ref)
+	}
 
-		refFiles[i] = claudescout.ReferenceFile{
-			OriginalPath: absPath,
-			LocalPath:    filepath.Base(absPath),
+	if err := scanner.Err(); err != nil {
+		if err != nil {
+			return nil, fmt.Errorf("error reading reference files: %w", err)
 		}
 	}
 
-	return refFiles, nil
+	return refFilesContext, nil
 }
 
 // FormatSessionPath returns a user-friendly session path for display

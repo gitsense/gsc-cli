@@ -1,12 +1,12 @@
 /**
  * Component: Scout Setup and Configuration Validator
- * Block-UUID: ee3df130-8a93-4725-ac0e-f51c00efd257
- * Parent-UUID: 2239f8a8-f0ff-4946-a84c-33def25f5158
- * Version: 1.0.2
+ * Block-UUID: 76f5d39b-3ce2-471f-9faa-4a5aa83b65e0
+ * Parent-UUID: 56cb9909-4469-4161-8d69-ea0d745a48a1
+ * Version: 1.2.0
  * Description: Validates scout session prerequisites (contract, brain, working directories)
  * Language: Go
- * Created-at: 2026-03-27T19:09:14.734Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2)
+ * Created-at: 2026-03-31T14:59:04.876Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), claude-haiku-4-5-20251001 (v1.2.0)
  */
 
 
@@ -14,6 +14,7 @@ package scout
 
 import (
 	"encoding/json"
+	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -27,20 +28,13 @@ type ValidationError struct {
 }
 
 // ValidateSetup checks all prerequisites for a scout session
-func ValidateSetup(workdirs []WorkingDirectory, refFiles []ReferenceFile) ([]ValidationError, error) {
+func ValidateSetup(workdirs []WorkingDirectory, refFilesContext []ReferenceFileContext) ([]ValidationError, error) {
 	var errors []ValidationError
 
 	// Validate working directories
 	for _, wd := range workdirs {
 		if errs, _ := ValidateWorkdir(wd); len(errs) > 0 {
 			errors = append(errors, errs...)
-		}
-	}
-
-	// Validate reference files
-	for _, rf := range refFiles {
-		if err := ValidateReferenceFile(rf); err != nil {
-			errors = append(errors, *err)
 		}
 	}
 
@@ -96,26 +90,52 @@ func ValidateWorkdir(wd WorkingDirectory) ([]ValidationError, error) {
 	return errors, nil
 }
 
-// ValidateReferenceFile checks that a reference file is readable
-func ValidateReferenceFile(rf ReferenceFile) *ValidationError {
-	if _, err := os.Stat(rf.OriginalPath); err != nil {
+// ValidateReferenceFilesJSON checks that a reference files JSON file is valid NDJSON format
+func ValidateReferenceFilesJSON(filePath string) *ValidationError {
+	if filePath == "" {
+		return nil // Reference files are optional
+	}
+
+	if _, err := os.Stat(filePath); err != nil {
 		return &ValidationError{
 			Type:    "invalid_reference",
-			Message: fmt.Sprintf("Reference file not found: %s", rf.OriginalPath),
+			Message: fmt.Sprintf("Reference files JSON not found: %s", filePath),
 			Details: err.Error(),
 		}
 	}
 
-	// Verify it's readable
-	file, err := os.Open(rf.OriginalPath)
+	// Verify it's readable and valid NDJSON
+	file, err := os.Open(filePath)
 	if err != nil {
 		return &ValidationError{
 			Type:    "invalid_reference",
-			Message: fmt.Sprintf("Cannot read reference file: %s", rf.OriginalPath),
+			Message: fmt.Sprintf("Cannot read reference files JSON: %s", filePath),
 			Details: err.Error(),
 		}
 	}
-	file.Close()
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	lineNum := 0
+	for scanner.Scan() {
+		lineNum++
+		var ref map[string]interface{}
+		if err := json.Unmarshal(scanner.Bytes(), &ref); err != nil {
+			return &ValidationError{
+				Type:    "invalid_reference",
+				Message: fmt.Sprintf("Invalid JSON at line %d: %v", lineNum, err),
+				Details: err.Error(),
+			}
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return &ValidationError{
+			Type:    "invalid_reference",
+			Message: "Error reading reference files JSON",
+			Details: err.Error(),
+		}
+	}
 
 	return nil
 }

@@ -1,18 +1,20 @@
 /**
  * Component: Scout CLI Flags and Options
- * Block-UUID: b0c8b419-06a3-45ca-b65b-4fa711acf85e
- * Parent-UUID: 76d0cc95-7def-4f8f-8327-14656c55cd7d
- * Version: 1.5.0
+ * Block-UUID: fb53d9fc-5740-4920-b8a6-aafdebe8849f
+ * Parent-UUID: 539496a6-3d59-4e8e-99b6-665a85990776
+ * Version: 1.7.0
  * Description: Shared flag definitions for Scout CLI commands (start, status, stop) with turn and force support
  * Language: Go
- * Created-at: 2026-03-31T02:30:08.318Z
- * Authors: GLM-4.7 (v1.3.0), claude-haiku-4-5-20251001 (v1.4.0), claude-haiku-4-5-20251001 (v1.5.0)
+ * Created-at: 2026-03-31T15:02:56.383Z
+ * Authors: GLM-4.7 (v1.3.0), claude-haiku-4-5-20251001 (v1.4.0), claude-haiku-4-5-20251001 (v1.5.0), claude-haiku-4-5-20251001 (v1.6.0), claude-haiku-4-5-20251001 (v1.7.0)
  */
 
 
 package scoutcli
 
 import (
+	"bufio"
+	"encoding/json"
 	"fmt"
 	"os"
 	"regexp"
@@ -20,6 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	claudescout "github.com/gitsense/gsc-cli/internal/claude/scout"
 )
 
 // StartFlags contains flags for the scout start command
@@ -28,7 +31,7 @@ type StartFlags struct {
 	IntentFile         string
 	AutoReview         bool
 	WorkingDirectories []string
-	ReferenceFiles     []string
+	ReferenceFilesJSON string
 	SessionID          string // Optional session ID
 	Turn               int    // Required: 1 or 2
 	Force              bool   // Force overwrite existing session
@@ -86,11 +89,11 @@ func RegisterStartFlags(cmd *cobra.Command, flags *StartFlags) {
 		"Working directories to search (can be specified multiple times)",
 	)
 
-	cmd.Flags().StringSliceVarP(
-		&flags.ReferenceFiles,
-		"reference", "r",
-		[]string{},
-		"Reference files to guide discovery (can be specified multiple times)",
+	cmd.Flags().StringVarP(
+		&flags.ReferenceFilesJSON,
+		"reference-files", "R",
+		"",
+		"Path to NDJSON file containing reference files from imported chat context",
 	)
 
 	cmd.Flags().StringVar(
@@ -226,10 +229,17 @@ func ValidateStartFlags(flags *StartFlags) error {
 		}
 	}
 
-	// Validate reference files exist (if provided)
-	for _, rf := range flags.ReferenceFiles {
-		if _, err := os.Stat(rf); err != nil {
-			return &FlagError{Flag: "reference", Message: fmt.Sprintf("reference file not found: %s", rf)}
+	// Validate reference files JSON file exists (if provided)
+	if flags.ReferenceFilesJSON != "" {
+		if _, err := os.Stat(flags.ReferenceFilesJSON); err != nil {
+			return &FlagError{Flag: "reference-files", Message: fmt.Sprintf("reference files JSON not found: %s", flags.ReferenceFilesJSON)}
+		}
+	}
+
+	// Validate reference files JSON is valid NDJSON format (if provided)
+	if flags.ReferenceFilesJSON != "" {
+		if err := validateReferenceFilesJSON(flags.ReferenceFilesJSON); err != nil {
+			return &FlagError{Flag: "reference-files", Message: fmt.Sprintf("invalid reference files JSON: %v", err)}
 		}
 	}
 
@@ -409,13 +419,57 @@ func ParseWorkingDirectories(flags *pflag.FlagSet) ([]string, error) {
 	return workdirs, nil
 }
 
-// ParseReferenceFiles extracts reference files from flags
-func ParseReferenceFiles(flags *pflag.FlagSet) ([]string, error) {
-	refs, err := flags.GetStringSlice("reference")
+// ParseReferenceFilesJSON extracts and parses NDJSON reference files from flags
+func ParseReferenceFilesJSON(flags *pflag.FlagSet) ([]claudescout.ReferenceFileContext, error) {
+	filePath, err := flags.GetString("reference-files")
 	if err != nil {
 		return nil, err
 	}
-	return refs, nil // Reference files are optional; validation happens in ValidateStartFlags
+
+	if filePath == "" {
+		return []claudescout.ReferenceFileContext{}, nil // Reference files are optional
+	}
+
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open reference files: %w", err)
+	}
+	defer file.Close()
+
+	var refFiles []claudescout.ReferenceFileContext
+	scanner := bufio.NewScanner(file)
+
+	for scanner.Scan() {
+		var ref claudescout.ReferenceFileContext
+		if err := json.Unmarshal(scanner.Bytes(), &ref); err != nil {
+			return nil, fmt.Errorf("invalid reference file line: %w", err)
+		}
+		refFiles = append(refFiles, ref)
+	}
+
+	return refFiles, scanner.Err()
+}
+
+// validateReferenceFilesJSON validates that the reference files JSON is valid NDJSON format
+func validateReferenceFilesJSON(filePath string) error {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to open reference files: %w", err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	lineNum := 0
+
+	for scanner.Scan() {
+		lineNum++
+		var ref claudescout.ReferenceFileContext
+		if err := json.Unmarshal(scanner.Bytes(), &ref); err != nil {
+			return fmt.Errorf("line %d: %w", lineNum, err)
+		}
+	}
+
+	return scanner.Err()
 }
 
 // ParseAutoReview extracts auto-review flag
