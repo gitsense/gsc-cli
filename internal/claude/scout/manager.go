@@ -1,12 +1,12 @@
 /**
  * Component: Scout Session Manager
- * Block-UUID: 8211b556-ba81-49bc-866a-bba885c4ab60
- * Parent-UUID: 1c3a291e-5d66-4e23-bfd3-f8cfd8598097
- * Version: 1.2.2
+ * Block-UUID: 241bdaca-3510-4303-9b9b-5dcf4c1258f0
+ * Parent-UUID: 8211b556-ba81-49bc-866a-bba885c4ab60
+ * Version: 1.2.3
  * Description: Orchestrates Scout discovery and verification phases, manages subprocess execution
  * Language: Go
- * Created-at: 2026-03-31T22:36:47.121Z
- * Authors: claude-haiku-4-5-20251001 (v1.2.2)
+ * Created-at: 2026-04-01T01:15:39.805Z
+ * Authors: claude-haiku-4-5-20251001 (v1.2.2), GLM-4.7 (v1.2.3)
  */
 
 
@@ -80,7 +80,12 @@ func (m *Manager) InitializeSession(intent string, workdirs []WorkingDirectory, 
 	}
 
 	if errs, _ := ValidateSetup(workdirs, refFilesContext); len(errs) > 0 {
-		errMsg := fmt.Sprintf("validation failed: %d errors", len(errs))
+		// Build detailed error message
+		var errorDetails []string
+		for _, e := range errs {
+			errorDetails = append(errorDetails, fmt.Sprintf("  - %s: %s", e.Type, e.Message))
+		}
+		errMsg := fmt.Sprintf("validation failed with %d error(s):\n%s", len(errs), strings.Join(errorDetails, "\n"))
 		return fmt.Errorf(errMsg)
 	}
 

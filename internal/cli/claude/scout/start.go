@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Start Command
- * Block-UUID: 14ac5952-bd04-4575-a2fb-e881f43fe38e
- * Parent-UUID: 5ee0f5cd-65ab-48b6-b986-cd78c380f7f6
- * Version: 1.2.1
+ * Block-UUID: 4e720a06-fc2b-4113-ab18-1b039e24b4b7
+ * Parent-UUID: 14ac5952-bd04-4575-a2fb-e881f43fe38e
+ * Version: 1.2.2
  * Description: Implements 'gsc claude scout start' command with turn-aware session handling
  * Language: Go
- * Created-at: 2026-03-31T22:31:09.476Z
- * Authors: claude-haiku-4-5-20251001 (v1.2.1)
+ * Created-at: 2026-04-01T01:17:46.600Z
+ * Authors: claude-haiku-4-5-20251001 (v1.2.1), GLM-4.7 (v1.2.2)
  */
 
 
@@ -65,16 +65,19 @@ The session runs as a background subprocess and can be monitored with 'gsc claud
 func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 	// Validate that unsupported flags are not set
 	if err := ValidateScoutFlags(cmd); err != nil {
+		cmd.SilenceUsage = true
 		return err
 	}
 
 	// Validate flags
 	if err := ValidateStartFlags(flags); err != nil {
+		cmd.SilenceUsage = true
 		return fmt.Errorf("invalid flags: %w", err)
 	}
 
 	// EARLY VALIDATION: Reject turns > 2 for now
 	if flags.Turn > 2 {
+		cmd.SilenceUsage = true
 		return fmt.Errorf(
 			"Turn %d is not yet supported. Currently only Turn 1 (discovery) and Turn 2 (verification) are implemented.\n"+
 				"Turn 1: gsc claude scout start --turn 1 ...\n"+
@@ -88,6 +91,7 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 	if flags.IntentFile != "" {
 		content, err := os.ReadFile(flags.IntentFile)
 		if err != nil {
+			cmd.SilenceUsage = true
 			return fmt.Errorf("failed to read intent file: %w", err)
 		}
 		intent = string(content)
@@ -108,16 +112,19 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 			// Turn 1: Error if session exists (unless --force)
 			if config.SessionExists() {
 				if !flags.Force {
+					cmd.SilenceUsage = true
 					return fmt.Errorf("session '%s' already exists. Use --force to overwrite", sessionID)
 				}
 				// Delete existing session only for Turn 1
 				if err := config.CleanupSessionDir(); err != nil {
+					cmd.SilenceUsage = true
 					return fmt.Errorf("failed to cleanup existing session: %w", err)
 				}
 			}
 		} else if flags.Turn == 2 {
 			// Turn 2: Session must exist (will load it)
 			if !config.SessionExists() {
+				cmd.SilenceUsage = true
 				return fmt.Errorf(
 					"session '%s' not found. Please run Turn 1 discovery first:\n"+
 						"  gsc claude scout start --session-id %s --turn 1 --intent-file <intent-file> --workdir <workdir>",
@@ -127,15 +134,18 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 			// For Turn 2, load existing session instead of creating new
 			tempManager, err := claudescout.LoadSession(sessionID)
 			if err != nil {
+				cmd.SilenceUsage = true
 				return fmt.Errorf("failed to load existing session: %w", err)
 			}
 
 			// Validate Turn 1 is complete
 			lastCompleted, err := tempManager.GetLastCompletedTurn()
 			if err != nil {
+				cmd.SilenceUsage = true
 				return fmt.Errorf("failed to check session status: %w", err)
 			}
 			if lastCompleted < 1 {
+				cmd.SilenceUsage = true
 				return fmt.Errorf(
 					"Turn 1 discovery has not completed yet. Check status with:\n"+
 						"  gsc claude scout status -s %s",
@@ -148,11 +158,13 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 	// Parse working directories and reference files
 	workdirs, err := ParseWorkdirs(flags.WorkingDirectories)
 	if err != nil {
+		cmd.SilenceUsage = true
 		return fmt.Errorf("failed to parse working directories: %w", err)
 	}
 
 	refFilesContext, err := ParseReferenceFilesNDJSON(flags.ReferenceFilesJSON)
 	if err != nil {
+		cmd.SilenceUsage = true
 		return fmt.Errorf("failed to parse reference files: %w", err)
 	}
 
@@ -163,11 +175,13 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 		var err error
 		manager, err = claudescout.NewManager(sessionID)
 		if err != nil {
+			cmd.SilenceUsage = true
 			return fmt.Errorf("failed to create scout manager: %w", err)
 		}
 
 		// Initialize the session for Turn 1
 		if err := manager.InitializeSession(intent, workdirs, refFilesContext, flags.AutoReview, flags.Model); err != nil {
+			cmd.SilenceUsage = true
 			return fmt.Errorf("failed to initialize session: %w", err)
 		}
 	} else if flags.Turn == 2 {
@@ -175,6 +189,7 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 		var err error
 		manager, err = claudescout.LoadSession(sessionID)
 		if err != nil {
+			cmd.SilenceUsage = true
 			return fmt.Errorf("failed to load session: %w", err)
 		}
 		// Turn 2 will use existing session data from Turn 1
@@ -184,20 +199,24 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 	switch flags.Turn {
 	case 1:
 		if err := manager.StartTurn1Discovery(); err != nil {
+			cmd.SilenceUsage = true
 			return fmt.Errorf("failed to start discovery: %w", err)
 		}
 	case 2:
 		// For Turn 2, start verification with existing session
 		if err := manager.StartTurn2Verification(nil); err != nil {
+			cmd.SilenceUsage = true
 			return fmt.Errorf("failed to start verification: %w", err)
 		}
 	default:
 		// Should not reach here due to early validation, but keep as safety net
+		cmd.SilenceUsage = true
 		return fmt.Errorf("invalid turn: %d (must be 1 or 2)", flags.Turn)
 	}
 
 	// Close the event writer
 	if err := manager.CloseEventWriter(); err != nil {
+		cmd.SilenceUsage = true
 		return fmt.Errorf("failed to close event writer: %w", err)
 	}
 
@@ -222,6 +241,7 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 
 		data, err := json.MarshalIndent(response, "", "  ")
 		if err != nil {
+			cmd.SilenceUsage = true
 			return fmt.Errorf("failed to marshal JSON response: %w", err)
 		}
 		fmt.Fprintln(cmd.OutOrStdout(), string(data))

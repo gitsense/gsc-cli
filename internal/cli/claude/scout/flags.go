@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Flags and Options
- * Block-UUID: af333178-cbd8-4e05-861f-22849f382e9b
- * Parent-UUID: fb53d9fc-5740-4920-b8a6-aafdebe8849f
- * Version: 1.8.0
- * Description: Shared flag definitions for Scout CLI commands (start, status, stop) with turn and force support
+ * Block-UUID: ebe96a57-6e66-4d1b-879b-175aec543497
+ * Parent-UUID: af333178-cbd8-4e05-861f-22849f382e9b
+ * Version: 1.8.1
+ * Description: Shared flag definitions for Scout CLI commands (start, status, stop) with turn and force support. Removed MarkFlagRequired("intent") to allow --intent-file as alternative.
  * Language: Go
  * Created-at: 2026-03-31T22:21:02.632Z
- * Authors: claude-haiku-4-5-20251001 (v1.8.0)
+ * Authors: claude-haiku-4-5-20251001 (v1.8.0), GLM-4.7 (v1.8.1)
  */
 
 
@@ -67,7 +67,6 @@ func RegisterStartFlags(cmd *cobra.Command, flags *StartFlags) {
 		"",
 		"The intent/question for Scout to discover relevant files",
 	)
-	cmd.MarkFlagRequired("intent")
 
 	cmd.Flags().StringVarP(
 		&flags.IntentFile,
