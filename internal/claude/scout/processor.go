@@ -1,12 +1,12 @@
 /**
  * Component: Scout Stream Event Processor
- * Block-UUID: f7600274-6d3a-4083-8445-9522a4cc18a2
- * Parent-UUID: f930b1b1-82ca-459c-844c-ba6786ea85d3
- * Version: 1.0.5
+ * Block-UUID: ca2a8482-3106-4458-870a-46affc2fc652
+ * Parent-UUID: f7600274-6d3a-4083-8445-9522a4cc18a2
+ * Version: 1.0.6
  * Description: JSONL event streaming, parsing, and file I/O for Scout sessions
  * Language: Go
- * Created-at: 2026-03-28T02:28:31.671Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5)
+ * Created-at: 2026-04-01T02:47:34.146Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6)
  */
 
 
@@ -357,6 +357,8 @@ func (ph *ProcessorHelper) ReadSessionStatusFromEvents(turn int) (*StatusData, e
 				json.Unmarshal(data, &errEvent)
 				errMsg := fmt.Sprintf("%s: %s", errEvent.ErrorCode, errEvent.Message)
 				status.Error = &errMsg
+				// Set status to "error" when an error event is encountered
+				status.Status = "error"
 			}
 		}
 	}

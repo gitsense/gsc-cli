@@ -1,12 +1,12 @@
 /**
  * Component: Scout Session Manager
- * Block-UUID: 241bdaca-3510-4303-9b9b-5dcf4c1258f0
- * Parent-UUID: 8211b556-ba81-49bc-866a-bba885c4ab60
- * Version: 1.2.3
+ * Block-UUID: ab211ad6-0801-43a1-b106-6aa78d756527
+ * Parent-UUID: d4c05e1c-0f2b-4e31-bc6d-92cbe03f7fa5
+ * Version: 1.2.5
  * Description: Orchestrates Scout discovery and verification phases, manages subprocess execution
  * Language: Go
- * Created-at: 2026-04-01T01:15:39.805Z
- * Authors: claude-haiku-4-5-20251001 (v1.2.2), GLM-4.7 (v1.2.3)
+ * Created-at: 2026-04-01T02:49:58.333Z
+ * Authors: claude-haiku-4-5-20251001 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.2.5)
  */
 
 
@@ -751,6 +751,12 @@ func (m *Manager) markAsStopped(errorCode, message string) {
 			ErrorCode: errorCode,
 			Message:   message,
 		})
+		// Also write a status event to ensure Phase is set in StatusData
+		phase := "discovery"
+		if m.currentTurn == 2 {
+			phase = "verification"
+		}
+		m.eventWriter.WriteStatusEvent(StatusEvent{Phase: phase, Message: message})
 		m.eventWriter.Close()
 		m.eventWriter = nil
 	}

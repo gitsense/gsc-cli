@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Status Command
- * Block-UUID: 29d8f91f-6dbc-4fe1-895a-ac84c5833e1c
- * Parent-UUID: d8069e6b-eb38-4460-a3ea-5475befb4f28
- * Version: 1.0.9
+ * Block-UUID: 0495fda9-b537-4e27-8ff0-492059e43daf
+ * Parent-UUID: 29d8f91f-6dbc-4fe1-895a-ac84c5833e1c
+ * Version: 1.1.0
  * Description: Implements 'gsc claude scout status' command for monitoring Scout sessions
  * Language: Go
- * Created-at: 2026-03-28T21:50:35.374Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), GLM-4.7 (v1.0.8), GLM-4.7 (v1.0.9)
+ * Created-at: 2026-04-01T02:45:33.250Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), GLM-4.7 (v1.0.8), GLM-4.7 (v1.0.9), GLM-4.7 (v1.1.0)
  */
 
 
@@ -153,9 +153,9 @@ func displayStatusTable(cmd *cobra.Command, status *claudescout.StatusData) erro
 // displayStatusPretty outputs status in a user-friendly format
 func displayStatusPretty(cmd *cobra.Command, status *claudescout.StatusData) error {
 	fmt.Fprintf(cmd.OutOrStdout(), "\n  Scout Session: %s\n", status.SessionID)
-	fmt.Fprintf(cmd.OutOrStdout(), "  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
-	fmt.Fprintf(cmd.OutOrStdout(), "  Status: %s\n", colorizeStatus(status.Status))
-	fmt.Fprintf(cmd.OutOrStdout(), "  Phase: %s\n", status.Phase)
+	fmt.Fprintf(cmd.OutOrStdout(), "  ===================================================\n")
+	fmt.Fprintf(cmd.OutOrStdout(), "  Status: %s\n", colorizeStatus(getDisplayStatus(status)))
+	fmt.Fprintf(cmd.OutOrStdout(), "  Turn: %s\n", getTurnDisplayName(status.Phase))
 	fmt.Fprintf(cmd.OutOrStdout(), "  Process: PID %d", status.ProcessInfo.PID)
 
 	if status.ProcessInfo.Running {
@@ -165,7 +165,12 @@ func displayStatusPretty(cmd *cobra.Command, status *claudescout.StatusData) err
 	}
 	fmt.Fprintln(cmd.OutOrStdout())
 
-	elapsed := time.Since(status.StartedAt)
+	var elapsed time.Duration
+	if status.CompletedAt != nil {
+		elapsed = status.CompletedAt.Sub(status.StartedAt)
+	} else {
+		elapsed = time.Since(status.StartedAt)
+	}
 	fmt.Fprintf(cmd.OutOrStdout(), "  Elapsed: %v\n", elapsed)
 
 	if len(status.WorkingDirectories) > 0 {
@@ -220,6 +225,31 @@ func colorizeStatus(status string) string {
 	default:
 		// No color for unknown states
 		return status
+	}
+}
+
+// getDisplayStatus returns the appropriate status string for display
+// If status is empty but error is present, returns "Error"
+func getDisplayStatus(status *claudescout.StatusData) string {
+	if status.Status == "" && status.Error != nil {
+		return "Error"
+	}
+	if status.Status == "stopped" && status.Error != nil {
+		return "Error"
+	}
+	return status.Status
+}
+
+// getTurnDisplayName returns a friendly name for the turn/phase
+// Maps "discovery" -> "Discovery", "verification" -> "Verification"
+func getTurnDisplayName(phase string) string {
+	switch phase {
+	case "discovery":
+		return "Discovery"
+	case "verification":
+		return "Verification"
+	default:
+		return phase
 	}
 }
 
