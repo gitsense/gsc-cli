@@ -1,12 +1,12 @@
 /**
  * Component: Scout Session Manager
- * Block-UUID: 78248308-99b9-49ec-88d3-7e3e674c3363
- * Parent-UUID: ab211ad6-0801-43a1-b106-6aa78d756527
- * Version: 1.2.6
+ * Block-UUID: 5cc91a7a-e174-44b1-887b-49e8a94df794
+ * Parent-UUID: d3ad9685-3f48-4f0c-b17b-0126386b1cd8
+ * Version: 1.3.1
  * Description: Orchestrates Scout discovery and verification phases, manages subprocess execution
  * Language: Go
- * Created-at: 2026-04-01T03:17:23.209Z
- * Authors: claude-haiku-4-5-20251001 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.2.5), GLM-4.7 (v1.2.6)
+ * Created-at: 2026-04-01T04:01:50.806Z
+ * Authors: claude-haiku-4-5-20251001 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.2.5), GLM-4.7 (v1.2.6), GLM-4.7 (v1.2.7), GLM-4.7 (v1.2.8), GLM-4.7 (v1.2.9), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1)
  */
 
 
@@ -14,6 +14,7 @@ package scout
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -21,6 +22,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -52,6 +54,9 @@ type Manager struct {
 	eventWriter *EventWriter
 	currentTurn int
 	processInfo *ProcessInfo
+	wg          sync.WaitGroup
+	loggerMu    sync.Mutex
+	loggerClosed bool
 }
 
 // NewManager creates a new scout manager
@@ -75,6 +80,33 @@ func NewManager(sessionID string) (*Manager, error) {
 	}, nil
 }
 
+// NewManagerWithDebug creates a new scout manager with debug logging enabled
+func NewManagerWithDebug(sessionID string, debugEnabled bool) (*Manager, error) {
+	config, err := NewSessionConfig(sessionID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Ensure session directory exists before creating debug log
+	sessionDir := config.GetSessionDir()
+	if err := os.MkdirAll(sessionDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create session directory: %w", err)
+	}
+
+	// Create debug logger with specified enabled state
+	debugLogger, err := NewDebugLogger(sessionDir, debugEnabled)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Manager{
+		config:      config,
+		processor:   NewProcessorHelper(config),
+		debugLogger: debugLogger,
+		currentTurn: 1,
+	}, nil
+}
+
 // GetConfig returns the session configuration
 func (m *Manager) GetConfig() *SessionConfig {
 	return m.config
@@ -83,7 +115,7 @@ func (m *Manager) GetConfig() *SessionConfig {
 // InitializeSession sets up the session directory and writes initial state
 func (m *Manager) InitializeSession(intent string, workdirs []WorkingDirectory, refFilesContext []ReferenceFileContext, autoReview bool, model string) error {
 	m.debugLogger.Log("DEBUG", "Initializing session")
-	m.debugLogger.Log("DEBUG", fmt.Sprintf("Intent: %s", truncateForLog(intent, 100)))
+	m.debugLogger.Log("DEBUG", fmt.Sprintf("Intent: %s", m.truncateForLog(intent, 100)))
 	m.debugLogger.Log("DEBUG", fmt.Sprintf("Working directories: %d", len(workdirs)))
 	m.debugLogger.Log("DEBUG", fmt.Sprintf("Reference files: %d", len(refFilesContext)))
 	m.debugLogger.Log("DEBUG", fmt.Sprintf("Auto review: %v", autoReview))
@@ -215,7 +247,6 @@ func (m *Manager) StartTurn1Discovery() error {
 	m.debugLogger.Log("DEBUG", "Starting Turn 1 discovery")
 	m.debugLogger.Log("DEBUG", fmt.Sprintf("Session status: %s", m.session.Status))
 	m.debugLogger.Log("DEBUG", fmt.Sprintf("Working directories: %d", len(m.session.WorkingDirectories)))
-	defer m.debugLogger.Close()
 
 	if m.session.Status != "discovery" && m.session.Status != "error" {
 		return fmt.Errorf("cannot start discovery: session status is %s", m.session.Status)
@@ -291,7 +322,6 @@ func (m *Manager) StartTurn2Verification(selectedCandidates *SelectedCandidates)
 
 	m.debugLogger.Log("DEBUG", "Starting Turn 2 verification")
 	m.debugLogger.Log("DEBUG", fmt.Sprintf("Session status: %s", m.session.Status))
-	defer m.debugLogger.Close()
 
 	if m.session.Status != "discovery_complete" {
 		return fmt.Errorf("cannot start verification: discovery not complete")
@@ -406,7 +436,10 @@ func (m *Manager) spawnClaudeSubprocess(turn int) error {
 
 	// Replace other placeholders
 	promptStr = strings.ReplaceAll(promptStr, "{{INTENT}}", m.session.Intent)
-	// Add working directories formatting here if needed
+
+	// Format working directories and replace placeholder
+	workdirsMarkdown := m.formatWorkingDirectories()
+	promptStr = strings.ReplaceAll(promptStr, "{{WORKING_DIRECTORIES}}", workdirsMarkdown)
 
 	promptData = []byte(promptStr)
 
@@ -434,6 +467,7 @@ func (m *Manager) spawnClaudeSubprocess(turn int) error {
 	cmd.Dir = m.config.GetTurnDir(turn)
 	m.debugLogger.Log("DEBUG", fmt.Sprintf("Working directory: %s", cmd.Dir))
 
+	// Create stderr pipe for error capture
 	// Create stdout pipe for stream processing
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -442,12 +476,20 @@ func (m *Manager) spawnClaudeSubprocess(turn int) error {
 	}
 	m.debugLogger.Log("DEBUG", "Stdout pipe created successfully")
 
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		m.debugLogger.LogError("Failed to create stderr pipe", err)
+		return fmt.Errorf("failed to create stderr pipe: %w", err)
+	}
+	m.debugLogger.Log("DEBUG", "Stderr pipe created successfully")
+
 	// Start the process
 	if err := cmd.Start(); err != nil {
 		m.debugLogger.LogError("Failed to start subprocess", err)
 		// Close stdout pipe on error
 		m.markAsStopped("START_FAILED", fmt.Sprintf("Failed to start subprocess: %v", err))
 		stdout.Close()
+		stderr.Close()
 		return fmt.Errorf("failed to start subprocess: %w", err)
 	}
 
@@ -460,10 +502,12 @@ func (m *Manager) spawnClaudeSubprocess(turn int) error {
 
 	// Start background goroutine to process stream
 	m.debugLogger.Log("DEBUG", "Starting stream processing goroutine")
+	m.wg.Add(1)
 	go m.processStream(stdout, turn)
 
 	// Start background goroutine to reap zombie process
 	m.debugLogger.Log("DEBUG", "Starting process reaper goroutine")
+	m.wg.Add(1)
 	go func() {
 		m.debugLogger.Log("DEBUG", "Process reaper: waiting for process to exit")
 		err := cmd.Wait()
@@ -471,13 +515,21 @@ func (m *Manager) spawnClaudeSubprocess(turn int) error {
 		if err != nil {
 			if exitErr, ok := err.(*exec.ExitError); ok {
 				exitCode = exitErr.ExitCode()
+				m.debugLogger.Log("DEBUG", fmt.Sprintf("Process reaper: process exited with code %d", exitCode))
 			}
 		}
 		m.debugLogger.LogProcessExit(cmd.Process.Pid, exitCode, err)
+		// Close debug logger when process exits naturally
+		m.closeDebugLogger()
+		m.wg.Done()
 	}()
 
 	// Don't wait for process - fire and forget
 	// Caller can monitor progress via log file
+	
+	// Start background goroutine to capture stderr
+	m.wg.Add(1)
+	go m.captureStderr(stderr)
 	return nil
 }
 
@@ -760,6 +812,7 @@ func (m *Manager) StopSession() error {
 	if m.processInfo == nil || !m.processInfo.Running {
 		// Already stopped, nothing to do
 		m.debugLogger.Log("DEBUG", "Process not running, nothing to stop")
+		m.closeDebugLogger()
 		return nil
 	}
 
@@ -775,6 +828,7 @@ func (m *Manager) StopSession() error {
 		// Process doesn't exist, mark as stopped
 		m.debugLogger.LogError("Process not found", err)
 		m.markAsStopped("PROCESS_NOT_FOUND", "Process no longer exists")
+		m.closeDebugLogger()
 		return nil
 	}
 
@@ -784,6 +838,7 @@ func (m *Manager) StopSession() error {
 	if err != nil {
 		// Can't send signal, try force kill
 		m.debugLogger.LogError("Failed to send SIGTERM", err)
+		m.closeDebugLogger()
 		return m.forceKillProcess(process)
 	}
 
@@ -799,6 +854,7 @@ func (m *Manager) StopSession() error {
 		// Process exited gracefully
 		m.debugLogger.Log("DEBUG", "Process exited gracefully")
 		m.markAsStopped("USER_STOPPED", "Scout session stopped by user")
+		m.closeDebugLogger()
 		return nil
 
 	case <-time.After(5 * time.Second):
@@ -816,6 +872,7 @@ func (m *Manager) forceKillProcess(process *os.Process) error {
 	if err != nil {
 		m.debugLogger.LogError("Failed to send SIGKILL", err)
 		m.markAsStopped("KILL_FAILED", "Failed to send SIGKILL")
+		m.closeDebugLogger()
 		return err
 	}
 
@@ -831,12 +888,14 @@ func (m *Manager) forceKillProcess(process *os.Process) error {
 		// Process killed
 		m.debugLogger.Log("DEBUG", "Process killed successfully")
 		m.markAsStopped("FORCE_STOPPED", "Force stopped after timeout")
+		m.closeDebugLogger()
 		return nil
 
 	case <-time.After(1 * time.Second):
 		// Process still running after SIGKILL
 		m.debugLogger.Log("ERROR", "Process became zombie after SIGKILL")
 		m.markAsStopped("ZOMBIE_PROCESS", "Process still running after SIGKILL")
+		m.closeDebugLogger()
 		return fmt.Errorf("process became zombie after SIGKILL")
 	}
 }
@@ -949,7 +1008,7 @@ func LoadSession(sessionID string) (*Manager, error) {
 	}
 
 	// Create debug logger (disabled by default)
-	debugLogger, err := NewDebugLogger(config.GetSessionDir(), false)
+	debugLogger, err := NewDebugLogger(config.GetSessionDir(), false) // Keep disabled for loaded sessions
 	if err != nil {
 		return nil, err
 	}
@@ -1008,6 +1067,7 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 	m.debugLogger.Log("STREAM", "Stream processing started")
 	defer func() {
 		m.debugLogger.Log("STREAM", "Stream processing ended")
+		m.wg.Done()
 	}()
 
 	defer func() {
@@ -1037,7 +1097,7 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 			continue
 		}
 
-		m.debugLogger.LogStreamEvent("LINE_READ", fmt.Sprintf("line %d: %s", lineCount, truncateForLog(line, 200)))
+		m.debugLogger.LogStreamEvent("LINE_READ", fmt.Sprintf("line %d: %s", lineCount, m.truncateForLog(line, 200)))
 
 		// Parse as generic map
 		var result map[string]interface{}
@@ -1229,6 +1289,7 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 	// Handle scanner errors
 	if err := scanner.Err(); err != nil {
 		m.debugLogger.LogError("Scanner error", err)
+		m.debugLogger.Log("STREAM", fmt.Sprintf("Scanner error details: %v", err))
 		m.eventWriter.WriteErrorEvent(ErrorEvent{
 			Phase:     fmt.Sprintf("turn-%d", turn),
 			ErrorCode: "STREAM_ERROR",
@@ -1293,10 +1354,92 @@ func (m *Manager) formatReferenceFilesMetadata() string {
 	return sb.String()
 }
 
+// formatWorkingDirectories formats working directories for display in the prompt
+func (m *Manager) formatWorkingDirectories() string {
+	if len(m.session.WorkingDirectories) == 0 {
+		return "No working directories provided."
+	}
+
+	var sb strings.Builder
+	sb.WriteString("The following working directories will be searched:\n")
+	for i, wd := range m.session.WorkingDirectories {
+		sb.WriteString(fmt.Sprintf("- workdir-%03d: %s (path: %s)\n",
+			i+1, wd.Name, wd.Path))
+	}
+	return sb.String()
+}
+
 // truncateForLog truncates a string for logging purposes
-func truncateForLog(s string, maxLen int) string {
+func (m *Manager) truncateForLog(s string, maxLen int) string {
 	if len(s) <= maxLen {
 		return s
 	}
 	return s[:maxLen] + "..."
+}
+
+// captureStderr reads and logs stderr from the subprocess
+func (m *Manager) captureStderr(stderr io.Reader) {
+	m.debugLogger.Log("DEBUG", "Stderr capture started")
+	defer func() {
+		m.debugLogger.Log("DEBUG", "Stderr capture ended")
+		m.wg.Done()
+	}()
+
+	scanner := bufio.NewScanner(stderr)
+	lineCount := 0
+
+	for scanner.Scan() {
+		lineCount++
+		line := scanner.Text()
+		m.debugLogger.Log("STDERR", fmt.Sprintf("line %d: %s", lineCount, line))
+	}
+
+	if err := scanner.Err(); err != nil {
+		m.debugLogger.LogError("Stderr scanner error", err)
+		m.debugLogger.Log("STDERR", fmt.Sprintf("Stderr scanner error: %v", err))
+	}
+
+	if lineCount > 0 {
+		m.debugLogger.Log("STDERR", fmt.Sprintf("Stderr capture complete: %d lines captured", lineCount))
+	} else {
+		m.debugLogger.Log("STDERR", "Stderr capture complete: no output")
+	}
+}
+
+// closeDebugLogger safely closes the debug logger (idempotent)
+func (m *Manager) closeDebugLogger() {
+	m.loggerMu.Lock()
+	defer m.loggerMu.Unlock()
+
+	if m.loggerClosed {
+		m.debugLogger.Log("DEBUG", "Debug logger already closed, skipping")
+		return
+	}
+
+	m.debugLogger.Log("DEBUG", "Closing debug logger")
+	m.loggerClosed = true
+
+	// Wait for all goroutines to finish before closing
+	// This ensures all pending log messages are written
+	go func() {
+		m.wg.Wait()
+		m.debugLogger.Log("DEBUG", "All goroutines finished, closing logger file")
+		m.debugLogger.Close()
+	}()
+}
+
+// waitForGoroutines waits for all background goroutines to complete
+func (m *Manager) waitForGoroutines(ctx context.Context) error {
+	done := make(chan struct{})
+	go func() {
+		m.wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }

@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Start Command
- * Block-UUID: f106610a-ad69-45a4-b691-4e1e12bf399f
- * Parent-UUID: 4e720a06-fc2b-4113-ab18-1b039e24b4b7
- * Version: 1.2.3
+ * Block-UUID: 5c4f9f85-7b15-4827-b298-9b7fb39d8c0a
+ * Parent-UUID: f106610a-ad69-45a4-b691-4e1e12bf399f
+ * Version: 1.2.4
  * Description: Implements 'gsc claude scout start' command with turn-aware session handling
  * Language: Go
- * Created-at: 2026-04-01T03:11:32.095Z
- * Authors: claude-haiku-4-5-20251001 (v1.2.1), GLM-4.7 (v1.2.2), GLM-4.7 (v1.2.3)
+ * Created-at: 2026-04-01T03:30:03.185Z
+ * Authors: claude-haiku-4-5-20251001 (v1.2.1), GLM-4.7 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4)
  */
 
 
@@ -171,9 +171,9 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 	// Create or load scout manager based on turn
 	var manager *claudescout.Manager
 	if flags.Turn == 1 {
-		// Turn 1: Create new manager
+		// Turn 1: Create new manager with debug logging enabled if requested
 		var err error
-		manager, err = claudescout.NewManager(sessionID)
+		manager, err = claudescout.NewManagerWithDebug(sessionID, flags.Debug)
 		if err != nil {
 			cmd.SilenceUsage = true
 			return fmt.Errorf("failed to create scout manager: %w", err)

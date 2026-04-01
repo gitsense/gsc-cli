@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Flags and Options
- * Block-UUID: ebe96a57-6e66-4d1b-879b-175aec543497
- * Parent-UUID: af333178-cbd8-4e05-861f-22849f382e9b
- * Version: 1.8.1
+ * Block-UUID: 35f54e7f-f149-4dd3-8403-a797462ce180
+ * Parent-UUID: ebe96a57-6e66-4d1b-879b-175aec543497
+ * Version: 1.8.2
  * Description: Shared flag definitions for Scout CLI commands (start, status, stop) with turn and force support. Removed MarkFlagRequired("intent") to allow --intent-file as alternative.
  * Language: Go
- * Created-at: 2026-03-31T22:21:02.632Z
- * Authors: claude-haiku-4-5-20251001 (v1.8.0), GLM-4.7 (v1.8.1)
+ * Created-at: 2026-04-01T03:29:38.112Z
+ * Authors: claude-haiku-4-5-20251001 (v1.8.0), GLM-4.7 (v1.8.1), GLM-4.7 (v1.8.2)
  */
 
 
@@ -29,6 +29,7 @@ import (
 type StartFlags struct {
 	Intent             string
 	IntentFile         string
+	Debug              bool   // Enable debug logging
 	AutoReview         bool
 	WorkingDirectories []string
 	ReferenceFilesJSON string
@@ -130,6 +131,13 @@ func RegisterStartFlags(cmd *cobra.Command, flags *StartFlags) {
 		"model",
 		"",
 		"Claude model family: haiku, sonnet, or opus",
+	)
+
+	cmd.Flags().BoolVar(
+		&flags.Debug,
+		"debug",
+		false,
+		"Enable debug logging to session directory",
 	)
 }
 
