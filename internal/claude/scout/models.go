@@ -1,12 +1,12 @@
 /**
  * Component: Scout Models
- * Block-UUID: 8c7162f9-d7aa-4ad8-b3aa-a8490d461d30
- * Parent-UUID: c3c6846d-5235-4936-815e-55b3f12db21e
- * Version: 1.0.3
+ * Block-UUID: 47866395-f525-4fea-8127-efecd21618dc
+ * Parent-UUID: 543a59d1-b0c9-4669-94de-430845933e0b
+ * Version: 1.0.6
  * Description: Data structures for Scout feature (candidate discovery and verification)
  * Language: Go
- * Created-at: 2026-03-31T14:51:33.456Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), claude-haiku-4-5-20251001 (v1.0.3)
+ * Created-at: 2026-03-31T22:37:51.027Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.6)
  */
 
 
@@ -20,6 +20,7 @@ import (
 type Session struct {
 	SessionID             string
 	Intent                string
+	Model                 string
 	WorkingDirectories    []WorkingDirectory
 	ReferenceFilesContext []ReferenceFileContext
 	AutoReview            bool
@@ -137,6 +138,7 @@ type InitEvent struct {
 type InitOptions struct {
 	AutoReview bool `json:"auto_review"`
 	Turn       int  `json:"turn"`
+	Model      string `json:"model"`
 }
 
 // StatusEvent indicates progress during discovery/verification

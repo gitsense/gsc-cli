@@ -1,12 +1,12 @@
 /**
  * Component: Scout Session Manager
- * Block-UUID: 6a0f2d47-2131-4303-9945-3d7e415f252c
- * Parent-UUID: 151e7f40-0ac8-492c-96cb-dbeae1b90249
- * Version: 1.2.0
+ * Block-UUID: 8211b556-ba81-49bc-866a-bba885c4ab60
+ * Parent-UUID: 1c3a291e-5d66-4e23-bfd3-f8cfd8598097
+ * Version: 1.2.2
  * Description: Orchestrates Scout discovery and verification phases, manages subprocess execution
  * Language: Go
- * Created-at: 2026-03-31T15:19:58.403Z
- * Authors: claude-haiku-4-5-20251001 (v1.1.0), claude-haiku-4-5-20251001 (v1.2.0)
+ * Created-at: 2026-03-31T22:36:47.121Z
+ * Authors: claude-haiku-4-5-20251001 (v1.2.2)
  */
 
 
@@ -73,7 +73,7 @@ func (m *Manager) GetConfig() *SessionConfig {
 }
 
 // InitializeSession sets up the session directory and writes initial state
-func (m *Manager) InitializeSession(intent string, workdirs []WorkingDirectory, refFilesContext []ReferenceFileContext, autoReview bool) error {
+func (m *Manager) InitializeSession(intent string, workdirs []WorkingDirectory, refFilesContext []ReferenceFileContext, autoReview bool, model string) error {
 	// Validate inputs
 	if err := ValidateIntent(intent); err != nil {
 		return err
@@ -99,6 +99,7 @@ func (m *Manager) InitializeSession(intent string, workdirs []WorkingDirectory, 
 	m.session = &Session{
 		SessionID:          m.config.SessionID,
 		Intent:             intent,
+		Model:              model,
 		WorkingDirectories: workdirs,
 		ReferenceFilesContext: refFilesContext,
 		AutoReview:         autoReview,
@@ -216,6 +217,7 @@ func (m *Manager) StartTurn1Discovery() error {
 		Options: InitOptions{
 			AutoReview: m.session.AutoReview,
 			Turn:       m.currentTurn,
+			Model:      m.session.Model,
 		},
 	}
 	if err := m.eventWriter.WriteInitEvent(initEvent); err != nil {
@@ -269,6 +271,7 @@ func (m *Manager) StartTurn2Verification(selectedCandidates *SelectedCandidates)
 		Options: InitOptions{
 			AutoReview: m.session.AutoReview,
 			Turn:       m.currentTurn,
+			Model:      m.session.Model,
 		},
 	}
 	if err := m.eventWriter.WriteInitEvent(initEvent); err != nil {
@@ -348,6 +351,10 @@ func (m *Manager) spawnClaudeSubprocess(turn int) error {
 	// Add working directories as --add-dir flags
 	for _, wd := range m.session.WorkingDirectories {
 		flags = append(flags, "--add-dir", wd.Path)
+	}
+
+	if m.session.Model != "" {
+		flags = append(flags, "--model", m.session.Model)
 	}
 
 	cmd := exec.Command("claude", flags...)

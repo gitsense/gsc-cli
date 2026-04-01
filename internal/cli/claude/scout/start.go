@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Start Command
- * Block-UUID: 5ee0f5cd-65ab-48b6-b986-cd78c380f7f6
- * Parent-UUID: 7f3ee052-27b8-4da4-900d-d1b8631fb44b
- * Version: 1.2.0
+ * Block-UUID: 14ac5952-bd04-4575-a2fb-e881f43fe38e
+ * Parent-UUID: 5ee0f5cd-65ab-48b6-b986-cd78c380f7f6
+ * Version: 1.2.1
  * Description: Implements 'gsc claude scout start' command with turn-aware session handling
  * Language: Go
- * Created-at: 2026-03-31T14:44:21.519Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), claude-haiku-4-5-20251001 (v1.0.9), GLM-4.7 (v1.1.0), claude-haiku-4-5-20251001 (v1.2.0)
+ * Created-at: 2026-03-31T22:31:09.476Z
+ * Authors: claude-haiku-4-5-20251001 (v1.2.1)
  */
 
 
@@ -167,7 +167,7 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 		}
 
 		// Initialize the session for Turn 1
-		if err := manager.InitializeSession(intent, workdirs, refFilesContext, flags.AutoReview); err != nil {
+		if err := manager.InitializeSession(intent, workdirs, refFilesContext, flags.AutoReview, flags.Model); err != nil {
 			return fmt.Errorf("failed to initialize session: %w", err)
 		}
 	} else if flags.Turn == 2 {

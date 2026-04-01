@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Flags and Options
- * Block-UUID: fb53d9fc-5740-4920-b8a6-aafdebe8849f
- * Parent-UUID: 539496a6-3d59-4e8e-99b6-665a85990776
- * Version: 1.7.0
+ * Block-UUID: af333178-cbd8-4e05-861f-22849f382e9b
+ * Parent-UUID: fb53d9fc-5740-4920-b8a6-aafdebe8849f
+ * Version: 1.8.0
  * Description: Shared flag definitions for Scout CLI commands (start, status, stop) with turn and force support
  * Language: Go
- * Created-at: 2026-03-31T15:02:56.383Z
- * Authors: GLM-4.7 (v1.3.0), claude-haiku-4-5-20251001 (v1.4.0), claude-haiku-4-5-20251001 (v1.5.0), claude-haiku-4-5-20251001 (v1.6.0), claude-haiku-4-5-20251001 (v1.7.0)
+ * Created-at: 2026-03-31T22:21:02.632Z
+ * Authors: claude-haiku-4-5-20251001 (v1.8.0)
  */
 
 
@@ -36,6 +36,7 @@ type StartFlags struct {
 	Turn               int    // Required: 1 or 2
 	Force              bool   // Force overwrite existing session
 	Format             string // Output format: text or json
+	Model              string // Claude model family: haiku, sonnet, opus
 }
 
 // StatusFlags contains flags for the scout status command
@@ -123,6 +124,13 @@ func RegisterStartFlags(cmd *cobra.Command, flags *StartFlags) {
 		"format",
 		"text",
 		"Output format: text or json",
+	)
+
+	cmd.Flags().StringVar(
+		&flags.Model,
+		"model",
+		"",
+		"Claude model family: haiku, sonnet, or opus",
 	)
 }
 
