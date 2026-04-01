@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Chat Execution Manager
- * Block-UUID: 3247a534-8a8a-486b-8271-0defbeda9455
- * Parent-UUID: 7e503cc3-40d8-4567-92bd-77565018e5df
- * Version: 1.53.3
- * Description: Strengthen context reading protocol prompt to ensure LLM always reads messages.map, user-message.md, and messages-active.json at every turn for proper context reconstruction
+ * Block-UUID: 13469a20-975e-4411-8480-e6e6ab1e27d7
+ * Parent-UUID: 3247a534-8a8a-486b-8271-0defbeda9455
+ * Version: 1.54.1
+ * Description: Strengthen context reading protocol prompt to ensure LLM always reads messages.map, user-message.md, and messages-active.json at every turn for proper context reconstruction. Moved constants and HistoryEntry to types.go.
  * Language: Go
- * Created-at: 2026-03-26T22:11:59.607Z
- * Authors: claude-haiku-4-5-20251001 (v1.53.2), claude-haiku-4-5-20251001 (v1.53.3)
+ * Created-at: 2026-04-01T15:40:55.407Z
+ * Authors: claude-haiku-4-5-20251001 (v1.53.2), claude-haiku-4-5-20251001 (v1.53.3), GLM-4.7 (v1.54.0), GLM-4.7 (v1.54.1)
  */
 
 
@@ -31,14 +31,6 @@ import (
 	"github.com/gitsense/gsc-cli/pkg/logger"
 	"github.com/gitsense/gsc-cli/pkg/settings"
 	"github.com/google/uuid"
-)
-
-// Constants for stream processing
-const (
-	maxTokenSize = 10 * 1024 * 1024 // 10MB max buffer
-	initialBufSize = 64 * 1024       // 64KB initial buffer
-	dirPermissions = 0755
-	filePermissions = 0644
 )
 
 // ExecuteChat is the main entry point for executing a Claude Code chat session.
@@ -93,31 +85,31 @@ func setupAndPrepare(
 	string,    // effectiveModel
 	string,    // storedSessionID
 	[]db.Message, // contextMessages
-	Settings,  // archiveSettings
+	claude.Settings,  // archiveSettings
 	error,
 ) {
 	// 1. Pre-flight Check: Ensure 'claude' binary is in PATH
 	if _, err := exec.LookPath("claude"); err != nil {
-		return nil, nil, "", "", "", "", "", nil, Settings{}, fmt.Errorf("claude CLI not found in PATH. Please install Claude Code CLI first")
+		return nil, nil, "", "", "", "", "", nil, claude.Settings{}, fmt.Errorf("claude CLI not found in PATH. Please install Claude Code CLI first")
 	}
 
 	// 2. Resolve GSC_HOME
 	gscHome, err := settings.GetGSCHome(false)
 	if err != nil {
-		return nil, nil, "", "", "", "", "", nil, Settings{}, fmt.Errorf("failed to resolve GSC_HOME: %w", err)
+		return nil, nil, "", "", "", "", "", nil, claude.Settings{}, fmt.Errorf("failed to resolve GSC_HOME: %w", err)
 	}
 
 	// 3. Open Databases
 	chatDBPath := settings.GetChatDatabasePath(gscHome)
 	chatDB, err := db.OpenDB(chatDBPath)
 	if err != nil {
-		return nil, nil, "", "", "", "", "", nil, Settings{}, fmt.Errorf("failed to open chat database: %w", err)
+		return nil, nil, "", "", "", "", "", nil, claude.Settings{}, fmt.Errorf("failed to open chat database: %w", err)
 	}
 
 	metricsDB, err := OpenMetricsDB()
 	if err != nil {
 		chatDB.Close()
-		return nil, nil, "", "", "", "", "", nil, Settings{}, fmt.Errorf("failed to open metrics database: %w", err)
+		return nil, nil, "", "", "", "", "", nil, claude.Settings{}, fmt.Errorf("failed to open metrics database: %w", err)
 	}
 
 	// 4. Retrieve Chat ID from UUID
@@ -125,12 +117,12 @@ func setupAndPrepare(
 	if err != nil {
 		chatDB.Close()
 		metricsDB.Close()
-		return nil, nil, "", "", "", "", "", nil, Settings{}, fmt.Errorf("failed to find chat: %w", err)
+		return nil, nil, "", "", "", "", "", nil, claude.Settings{}, fmt.Errorf("failed to find chat: %w", err)
 	}
 	if chat == nil {
 		chatDB.Close()
 		metricsDB.Close()
-		return nil, nil, "", "", "", "", "", nil, Settings{}, fmt.Errorf("chat not found")
+		return nil, nil, "", "", "", "", "", nil, claude.Settings{}, fmt.Errorf("chat not found")
 	}
 
 	// 5.5.1. Check if we have a stored session ID for this chat
@@ -148,7 +140,7 @@ func setupAndPrepare(
 		if err != nil {
 			chatDB.Close()
 			metricsDB.Close()
-			return nil, nil, "", "", "", "", "", nil, Settings{}, fmt.Errorf("failed to get last message ID for append: %w", err)
+			return nil, nil, "", "", "", "", "", nil, claude.Settings{}, fmt.Errorf("failed to get last message ID for append: %w", err)
 		}
 		assistantMessageID = lastID
 		logger.Info("Auto-appending to latest message", "assistant_message_id", assistantMessageID)
@@ -157,7 +149,7 @@ func setupAndPrepare(
 	if assistantMessageID == 0 {
 		chatDB.Close()
 		metricsDB.Close()
-		return nil, nil, "", "", "", "", "", nil, Settings{}, fmt.Errorf("no assistant-message-id specified and no append flag set")
+		return nil, nil, "", "", "", "", "", nil, claude.Settings{}, fmt.Errorf("no assistant-message-id specified and no append flag set")
 	}
 
 	// 5.6. Handle --append-save (Insert User Message)
@@ -181,7 +173,7 @@ func setupAndPrepare(
 		if err != nil {
 			chatDB.Close()
 			metricsDB.Close()
-			return nil, nil, "", "", "", "", "", nil, Settings{}, fmt.Errorf("failed to save user message to database: %w", err)
+			return nil, nil, "", "", "", "", "", nil, claude.Settings{}, fmt.Errorf("failed to save user message to database: %w", err)
 		}
 		logger.Success("User message saved", "id", newID)
 		assistantMessageID = newID
@@ -193,34 +185,34 @@ func setupAndPrepare(
 	if err != nil {
 		chatDB.Close()
 		metricsDB.Close()
-		return nil, nil, "", "", "", "", "", nil, Settings{}, fmt.Errorf("failed to retrieve messages: %w", err)
+		return nil, nil, "", "", "", "", "", nil, claude.Settings{}, fmt.Errorf("failed to retrieve messages: %w", err)
 	}
 
 	contextMessages, err := getAncestors(allMessages, assistantMessageID)
 	if err != nil {
 		chatDB.Close()
 		metricsDB.Close()
-		return nil, nil, "", "", "", "", "", nil, Settings{}, fmt.Errorf("failed to filter message ancestry: %w", err)
+		return nil, nil, "", "", "", "", "", nil, claude.Settings{}, fmt.Errorf("failed to filter message ancestry: %w", err)
 	}
 
 	// 6. Setup Chat Directory
 	chatDir := filepath.Join(gscHome, settings.ClaudeCodeDirRelPath, settings.ClaudeChatsDirRelPath, chatUUID)
-	if err := os.MkdirAll(chatDir, dirPermissions); err != nil {
+	if err := os.MkdirAll(chatDir, DirPermissions); err != nil {
 		chatDB.Close()
 		metricsDB.Close()
-		return nil, nil, "", "", "", "", "", nil, Settings{}, fmt.Errorf("failed to create chat directory: %w", err)
+		return nil, nil, "", "", "", "", "", nil, claude.Settings{}, fmt.Errorf("failed to create chat directory: %w", err)
 	}
 
 	// Setup Logs Directory early for checkpointing
 	logDir := filepath.Join(chatDir, "logs")
-	if err := os.MkdirAll(logDir, dirPermissions); err != nil {
+	if err := os.MkdirAll(logDir, DirPermissions); err != nil {
 		chatDB.Close()
 		metricsDB.Close()
-		return nil, nil, "", "", "", "", "", nil, Settings{}, fmt.Errorf("failed to create logs directory: %w", err)
+		return nil, nil, "", "", "", "", "", nil, claude.Settings{}, fmt.Errorf("failed to create logs directory: %w", err)
 	}
 
 	// 7. Reconstruct File-Based State
-	archiveSettings := Settings{
+	archiveSettings := claude.Settings{
 		ChunkSize: settings.DefaultClaudeChunkSize,
 		MaxFiles:  settings.DefaultClaudeMaxFiles,
 		Model:     settings.DefaultClaudeModel,
@@ -246,15 +238,15 @@ func setupAndPrepare(
 	if err != nil {
 		chatDB.Close()
 		metricsDB.Close()
-		return nil, nil, "", "", "", "", "", nil, Settings{}, fmt.Errorf("failed to sync archive: %w", err)
+		return nil, nil, "", "", "", "", "", nil, claude.Settings{}, fmt.Errorf("failed to sync archive: %w", err)
 	}
 
 	// 8. Write User Message
 	userMsgPath := filepath.Join(chatDir, "messages", "user-message.md")
-	if err := os.WriteFile(userMsgPath, []byte(userMessage), filePermissions); err != nil {
+	if err := os.WriteFile(userMsgPath, []byte(userMessage), FilePermissions); err != nil {
 		chatDB.Close()
 		metricsDB.Close()
-		return nil, nil, "", "", "", "", "", nil, Settings{}, fmt.Errorf("failed to write user message: %w", err)
+		return nil, nil, "", "", "", "", "", nil, claude.Settings{}, fmt.Errorf("failed to write user message: %w", err)
 	}
 
 	// 9. Prepare CLAUDE.md
@@ -275,10 +267,10 @@ func setupAndPrepare(
 	}
 
 	if _, err := os.Stat(systemPromptPath); os.IsNotExist(err) {
-		if err := os.WriteFile(systemPromptPath, []byte(defaultPrompt), filePermissions); err != nil {
+		if err := os.WriteFile(systemPromptPath, []byte(defaultPrompt), FilePermissions); err != nil {
 			chatDB.Close()
 			metricsDB.Close()
-			return nil, nil, "", "", "", "", "", nil, Settings{}, fmt.Errorf("failed to write system prompt: %w", err)
+			return nil, nil, "", "", "", "", "", nil, claude.Settings{}, fmt.Errorf("failed to write system prompt: %w", err)
 		}
 	}
 
@@ -352,7 +344,7 @@ func executeCommand(
 	storedSessionID string,
 	thinkingBudget int,
 	format string,
-	archiveSettings Settings,
+	archiveSettings claude.Settings,
 ) (StreamResult, error) {
 	emptyResult := StreamResult{}
 
@@ -475,7 +467,7 @@ func executeCommand(
 	// Open log file
 	logFileName := fmt.Sprintf("raw-stream-%s.ndjson", time.Now().Format("20060102-150405"))
 	logFilePath := filepath.Join(logDir, logFileName)
-	logFile, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, filePermissions)
+	logFile, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, FilePermissions)
 	if err != nil {
 		return emptyResult, fmt.Errorf("failed to create raw stream log file: %w", err)
 	}
@@ -640,7 +632,7 @@ func prepareClaudeMD(chatDir string, gscHome string) error {
 
 	// 4. Write to Chat Directory
 	destPath := filepath.Join(chatDir, "CLAUDE.md")
-	return os.WriteFile(destPath, []byte(finalContent), filePermissions)
+	return os.WriteFile(destPath, []byte(finalContent), FilePermissions)
 }
 
 // getAncestors retrieves the list of messages from the root up to the target ID.
@@ -677,27 +669,16 @@ func replacePlaceholders(text, modelName, utcTime string) string {
 	return text
 }
 
-// HistoryEntry represents a single execution record in history.jsonl
-type HistoryEntry struct {
-	Timestamp   string `json:"timestamp"`
-	ChatUUID    string `json:"chat_uuid"`
-	Command     string `json:"command"`
-	WorkingDir  string `json:"working_dir"`
-	ExitCode    int    `json:"exit_code"`
-	Stderr      string `json:"stderr"`
-	DurationMs  int64  `json:"duration_ms"`
-}
-
 // logExecutionHistory appends an execution record to history.jsonl
 func logExecutionHistory(gscHome string, entry HistoryEntry) error {
 	historyPath := filepath.Join(gscHome, settings.ClaudeCodeDirRelPath, "history.jsonl")
 
 	// Ensure directory exists
-	if err := os.MkdirAll(filepath.Dir(historyPath), dirPermissions); err != nil {
+	if err := os.MkdirAll(filepath.Dir(historyPath), DirPermissions); err != nil {
 		return err
 	}
 
-	f, err := os.OpenFile(historyPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, filePermissions)
+	f, err := os.OpenFile(historyPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, FilePermissions)
 	if err != nil {
 		return err
 	}

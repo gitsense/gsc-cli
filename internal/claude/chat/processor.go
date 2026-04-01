@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Claude Code Chat Stream Event Processor
  * Block-UUID: a4ffef85-9544-45d2-a8f9-149d415e44ab
  * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: Extract stream processing logic into dedicated processor module for improved separation of concerns and reusability
+ * Version: 1.1.0
+ * Description: Extract stream processing logic into dedicated processor module for improved separation of concerns and reusability. Moved StreamResult and StreamProcessor to types.go.
  * Language: Go
  * Created-at: 2026-03-25T14:59:14.364Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0)
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0)
  */
 
 
@@ -14,7 +14,6 @@ package chat
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -28,24 +27,76 @@ import (
 	"github.com/gitsense/gsc-cli/pkg/logger"
 )
 
-// StreamResult holds the output from stream processing
-type StreamResult struct {
-	FullResponse string
-	Usage        Usage
-	Cost         float64
-	SessionID    string
-	ExitCode     int
-	StderrOutput string
+// TextDeltaEvent represents a chunk of text content.
+type TextDeltaEvent struct {
+	Type  string `json:"type"`
+	Delta string `json:"delta"`
 }
 
-// StreamProcessor handles the stream event processing logic
-type StreamProcessor struct {
-	LogFile        *os.File
-	LogDir         string
-	Format         string
-	EffectiveModel string
-	CurrentTime    string
-	StderrBuf      *bytes.Buffer
+// AssistantMessageEvent represents the full assistant message event containing text content
+type AssistantMessageEvent struct {
+	Type    string `json:"type"`
+	Message struct {
+		Content []struct {
+			Type string `json:"type"`
+			Text string `json:"text"`
+		} `json:"content"`
+	} `json:"message"`
+}
+
+// ContentBlockDeltaEvent represents a streaming content block delta event with thinking or text
+type ContentBlockDeltaEvent struct {
+	Type  string `json:"type"`
+	Event struct {
+		Type  string `json:"type"`
+		Index int    `json:"index"`
+		Delta struct {
+			Type     string `json:"type"`
+			Thinking string `json:"thinking"`
+			Text     string `json:"text"`
+		} `json:"delta"`
+	} `json:"event"`
+}
+
+// StreamUsageEvent represents the final usage metrics.
+type StreamUsageEvent struct {
+	Type  string `json:"type"`
+	Usage claude.Usage `json:"usage"`
+	Cost  float64 `json:"cost"`
+}
+
+// StreamResultEvent represents the final result event containing usage stats and cost.
+type StreamResultEvent struct {
+	Type       string                 `json:"type"`
+	Result     string                 `json:"result"`
+	Subtype    string                 `json:"subtype"`
+	DurationMs int                    `json:"duration_ms"`
+	StopReason string                 `json:"stop_reason"`
+	Usage      claude.Usage           `json:"usage"`
+	ModelUsage map[string]ModelStats  `json:"modelUsage"`
+	TotalCost  float64                `json:"total_cost_usd"`
+}
+
+// ModelStats represents per-model usage details.
+type ModelStats struct {
+	InputTokens              int     `json:"inputTokens"`
+	OutputTokens             int     `json:"outputTokens"`
+	CacheReadInputTokens     int     `json:"cacheReadInputTokens"`
+	CacheCreationInputTokens int     `json:"cacheCreationInputTokens"`
+	CostUSD                  float64 `json:"costUSD"`
+	ContextWindow            int     `json:"contextWindow"`
+	MaxOutputTokens          int     `json:"maxOutputTokens"`
+}
+
+// SystemInitEvent represents the first event from Claude containing session info
+type SystemInitEvent struct {
+	Type              string `json:"type"`
+	Subtype           string `json:"subtype"`
+	Model             string `json:"model"`
+	SessionID         string `json:"session_id"`
+	CWD               string `json:"cwd"`
+	UUID              string `json:"uuid"`
+	ClaudeCodeVersion string `json:"claude_code_version"`
 }
 
 // processStream handles the stream event processing loop
@@ -55,8 +106,8 @@ func (sp *StreamProcessor) processStream(stdout io.Reader, logDir string) (Strea
 	}
 
 	scanner := bufio.NewScanner(stdout)
-	buf := make([]byte, 0, initialBufSize)
-	scanner.Buffer(buf, maxTokenSize)
+	buf := make([]byte, 0, InitialBufSize)
+	scanner.Buffer(buf, MaxTokenSize)
 
 	var fullResponse strings.Builder
 	var nonJSONOutput strings.Builder
@@ -69,7 +120,7 @@ func (sp *StreamProcessor) processStream(stdout io.Reader, logDir string) (Strea
 	defer func() {
 		if nonJSONOutput.Len() > 0 {
 			nonJSONPath := filepath.Join(logDir, "debug-stdout-non-json.txt")
-			if writeErr := os.WriteFile(nonJSONPath, []byte(nonJSONOutput.String()), filePermissions); writeErr != nil {
+			if writeErr := os.WriteFile(nonJSONPath, []byte(nonJSONOutput.String()), FilePermissions); writeErr != nil {
 				logger.Warning("Failed to write debug non-JSON stdout file", "error", writeErr)
 			}
 		}
@@ -78,7 +129,7 @@ func (sp *StreamProcessor) processStream(stdout io.Reader, logDir string) (Strea
 			stackTrace := debug.Stack()
 			errorMsg := fmt.Sprintf("processStream returned before completion.\n\nStack Trace:\n%s", string(stackTrace))
 			errorPath := filepath.Join(logDir, fmt.Sprintf("error-stream-%s.txt", time.Now().Format("20060102-150405")))
-			if writeErr := os.WriteFile(errorPath, []byte(errorMsg), filePermissions); writeErr != nil {
+			if writeErr := os.WriteFile(errorPath, []byte(errorMsg), FilePermissions); writeErr != nil {
 				fmt.Fprintf(os.Stderr, "CRITICAL: Failed to write error log: %v\n", writeErr)
 			}
 		}
@@ -96,7 +147,7 @@ func (sp *StreamProcessor) processStream(stdout io.Reader, logDir string) (Strea
 		}
 
 		// Parse event
-		var baseEvent StreamEvent
+		var baseEvent claude.StreamEvent
 		if err := json.Unmarshal([]byte(line), &baseEvent); err != nil {
 			logger.Warning("Failed to parse stream event line", "line", line, "error", err)
 			nonJSONOutput.WriteString(line + "\n")

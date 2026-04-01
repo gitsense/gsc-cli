@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Chat Archive Manager
- * Block-UUID: ee051126-9bb2-48cc-bd84-b6ce59ead743
- * Parent-UUID: 96bdc1f8-c4af-4fbc-9857-39052d2d8fe6
- * Version: 1.13.1
- * Description: Updated writeContextsMap to extract repository information, build repositories array, and use settings constant for filename. Enhanced FileEntry with repo_id and full path.
+ * Block-UUID: 5ec6ee72-20ce-4db3-8dba-cc80aa2fd26d
+ * Parent-UUID: ee051126-9bb2-48cc-bd84-b6ce59ead743
+ * Version: 1.13.2
+ * Description: Updated type references to use claude. prefix for shared types (Settings, ArchiveFile, MapFile, Repository) after moving chat code to separate package.
  * Language: Go
- * Created-at: 2026-03-28T04:08:01.588Z
- * Authors: GLM-4.7 (v1.8.0), claude-haiku-4-5-20251001 (v1.8.1), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), claude-haiku-4-5-20251001 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.12.1), GLM-4.7 (v1.13.0), GLM-4.7 (v1.13.1)
+ * Created-at: 2026-04-01T15:35:32.641Z
+ * Authors: GLM-4.7 (v1.8.0), claude-haiku-4-5-20251001 (v1.8.1), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), claude-haiku-4-5-20251001 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.12.1), GLM-4.7 (v1.13.1), GLM-4.7 (v1.13.2)
  */
 
 
@@ -32,7 +32,7 @@ import (
 // SyncArchive reconstructs the file-based state for a chat session.
 // It filters messages, writes context files using bucket-based organization,
 // isolates CLI outputs, chunks the dialogue history, and updates the messages.map.
-func SyncArchive(chatDir string, messages []db.Message, settings Settings) ([]ArchiveFile, error) {
+func SyncArchive(chatDir string, messages []db.Message, settings claude.Settings) ([]claude.ArchiveFile, error) {
 	messagesDir := filepath.Join(chatDir, "messages")
 	if err := os.MkdirAll(messagesDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create messages directory: %w", err)
@@ -153,7 +153,7 @@ func writeContextFiles(dir string, messages []db.Message) error {
 
 	// 2. Load existing contexts.map if it exists
 	mapPath := filepath.Join(dir, settings.ClaudeContextsMapFileName)
-	var existingMap *MapFile
+	var existingMap *claude.MapFile
 
 	if _, err := os.Stat(mapPath); err == nil {
 		// Map file exists, load it
@@ -332,11 +332,11 @@ func writeCliOutputFiles(dir string, messages []db.Message) error {
 
 // writeMessagesMap generates or updates the messages.map file.
 // Creates a stable-to-volatile read sequence and includes file metadata.
-func writeMessagesMap(dir string, cliOutputMessages []db.Message, archiveFiles []ArchiveFile) error {
+func writeMessagesMap(dir string, cliOutputMessages []db.Message, archiveFiles []claude.ArchiveFile) error {
 	mapPath := filepath.Join(dir, "messages.map")
 
 	// Build CLI output file metadata
-	var cliOutputFiles []FileMeta
+	var cliOutputFiles []claude.FileMeta
 	for _, msg := range cliOutputMessages {
 		filename := fmt.Sprintf("cli-output-%d.md", msg.ID)
 		path := filepath.Join(dir, filename)
@@ -353,7 +353,7 @@ func writeMessagesMap(dir string, cliOutputMessages []db.Message, archiveFiles [
 		// For now, default to "volatile"
 		lifecycle := "volatile"
 
-		cliOutputFiles = append(cliOutputFiles, FileMeta{
+		cliOutputFiles = append(cliOutputFiles, claude.FileMeta{
 			ID:        fmt.Sprintf("cli-output-%d", msg.ID),
 			File:      filename,
 			DBID:      msg.ID,
@@ -391,12 +391,12 @@ func writeMessagesMap(dir string, cliOutputMessages []db.Message, archiveFiles [
 	readSequence = append(readSequence, "messages-active.json")
 
 	// Create map file structure
-	mapFile := MapFile{
+	mapFile := claude.MapFile{
 		Version:        "1.0",
 		ReadSequence:   readSequence,
-		ContextFiles:   []FileMeta{}, // Empty - context files moved to contexts.map
+		ContextFiles:   []claude.FileMeta{}, // Empty - context files moved to contexts.map
 		CliOutputFiles: cliOutputFiles,
-		Messages: MessagesMeta{
+		Messages: claude.MessagesMeta{
 			Active:   "messages-active.json",
 			Archives: archives,
 		},
@@ -418,13 +418,13 @@ func writeMessagesMap(dir string, cliOutputMessages []db.Message, archiveFiles [
 }
 
 // loadMessagesMap loads an existing messages.map file.
-func loadMessagesMap(path string) (*MapFile, error) {
+func loadMessagesMap(path string) (*claude.MapFile, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read messages.map: %w", err)
 	}
 
-	var mapFile MapFile
+	var mapFile claude.MapFile
 	if err := json.Unmarshal(data, &mapFile); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal messages.map: %w", err)
 	}
@@ -437,16 +437,16 @@ func writeContextsMap(dir string, contextFiles []context.ContextFile) error {
 	mapPath := filepath.Join(dir, settings.ClaudeContextsMapFileName)
 
 	// Build context file metadata from actual files on disk
-	var contextFileMetas []FileMeta
+	var contextFileMetas []claude.FileMeta
 	contextDir, err := os.ReadDir(dir)
 	if err != nil {
 		return fmt.Errorf("failed to read contexts directory: %w", err)
 	}
 
 	// Build unique repositories map
-	repositories := make(map[string]*Repository)
+	repositories := make(map[string]*claude.Repository)
 	repoCounter := 0
-	repoIDMap := make(map[string]*Repository) // Map repo ID to Repository for O(1) lookup
+	repoIDMap := make(map[string]*claude.Repository) // Map repo ID to Repository for O(1) lookup
 
 	for _, entry := range contextDir {
 		if strings.HasPrefix(entry.Name(), "context-range-") && strings.HasSuffix(entry.Name(), ".md") {
@@ -475,11 +475,11 @@ func writeContextsMap(dir string, contextFiles []context.ContextFile) error {
 			}
 
 			// Extract file entries from contextFiles
-			var fileEntries []FileEntry
+			var fileEntries []claude.FileEntry
 			for _, file := range contextFiles {
 				if file.ChatID >= minID && file.ChatID <= maxID {
 					// Build repository information
-					var repo *Repository
+					var repo *claude.Repository
 					var repoID string
 					if file.Repo != "" {
 						if existingRepo, ok := repositories[file.Repo]; ok {
@@ -488,7 +488,7 @@ func writeContextsMap(dir string, contextFiles []context.ContextFile) error {
 						} else {
 							repoCounter++
 							repoID = fmt.Sprintf("repo-%d", repoCounter)
-							repo = &Repository{
+							repo = &claude.Repository{
 								ID:   repoID,
 								Name: file.Repo,
 								URL:  "", // Could be enhanced to include URL if available
@@ -498,7 +498,7 @@ func writeContextsMap(dir string, contextFiles []context.ContextFile) error {
 						}
 					}
 
-					fileEntries = append(fileEntries, FileEntry{
+					fileEntries = append(fileEntries, claude.FileEntry{
 						ChatID: file.ChatID,
 						Path:   file.Path, // Use full relative path for better context
 						RepoID: repoID,
@@ -507,7 +507,7 @@ func writeContextsMap(dir string, contextFiles []context.ContextFile) error {
 			}
 
 			// Add repository to FileMeta if all files in this bucket are from the same repo
-			var bucketRepo *Repository
+			var bucketRepo *claude.Repository
 			if len(fileEntries) > 0 && fileEntries[0].RepoID != "" {
 				allSameRepo := true
 				for _, fe := range fileEntries {
@@ -521,7 +521,7 @@ func writeContextsMap(dir string, contextFiles []context.ContextFile) error {
 				}
 			}
 
-			contextFileMetas = append(contextFileMetas, FileMeta{
+			contextFileMetas = append(contextFileMetas, claude.FileMeta{
 				ID:        fmt.Sprintf("context-range-%d-%d", minID, maxID),
 				File:      entry.Name(),
 				Type:      "source_code_archive",
@@ -542,13 +542,13 @@ func writeContextsMap(dir string, contextFiles []context.ContextFile) error {
 	})
 
 	// Create contexts map file structure
-	contextsMapFile := MapFile{
+	contextsMapFile := claude.MapFile{
 		Version:        "1.0",
 		Repositories:   buildRepositoryList(repositories),
 		ReadSequence:   []string{}, // Empty - AI reads selectively
 		ContextFiles:   contextFileMetas,
-		CliOutputFiles: []FileMeta{},
-		Messages: MessagesMeta{
+		CliOutputFiles: []claude.FileMeta{},
+		Messages: claude.MessagesMeta{
 			Active:   "",
 			Archives: []string{},
 		},
@@ -570,8 +570,8 @@ func writeContextsMap(dir string, contextFiles []context.ContextFile) error {
 }
 
 // buildRepositoryList converts the repositories map to a sorted slice
-func buildRepositoryList(repos map[string]*Repository) []Repository {
-	var result []Repository
+func buildRepositoryList(repos map[string]*claude.Repository) []claude.Repository {
+	var result []claude.Repository
 	for _, repo := range repos {
 		result = append(result, *repo)
 	}
@@ -583,8 +583,8 @@ func buildRepositoryList(repos map[string]*Repository) []Repository {
 }
 
 // writeArchiveChunks chunks the historical messages and writes them to JSON files.
-func writeArchiveChunks(dir string, messages []db.Message, settings Settings) ([]ArchiveFile, error) {
-	var archiveFiles []ArchiveFile
+func writeArchiveChunks(dir string, messages []db.Message, settings claude.Settings) ([]claude.ArchiveFile, error) {
+	var archiveFiles []claude.ArchiveFile
 
 	// Simple chunking strategy: split into chunks of ChunkSize
 	for i := 0; i < len(messages); i += settings.ChunkSize {
@@ -599,7 +599,7 @@ func writeArchiveChunks(dir string, messages []db.Message, settings Settings) ([
 		path := filepath.Join(dir, filename)
 
 		// Convert to MessageFile format
-		var msgFiles []MessageFile
+		var msgFiles []claude.MessageFile
 		for _, m := range chunk {
 			if m.Role == "system" {
 				continue
@@ -608,7 +608,7 @@ func writeArchiveChunks(dir string, messages []db.Message, settings Settings) ([
 			if m.Message.Valid {
 				content = m.Message.String
 			}
-			msgFiles = append(msgFiles, MessageFile{
+			msgFiles = append(msgFiles, claude.MessageFile{
 				Role:    m.Role,
 				Content: content,
 			})
@@ -625,7 +625,7 @@ func writeArchiveChunks(dir string, messages []db.Message, settings Settings) ([
 		if existingHash, err := getFileHash(path); err == nil && existingHash == currentHash {
 			// File exists and hasn't changed, just add to list
 			logger.Debug("Skipping archive chunk (hash match)", "file", filename)
-			archiveFiles = append(archiveFiles, ArchiveFile{
+			archiveFiles = append(archiveFiles, claude.ArchiveFile{
 				Name:     filename,
 				Hash:     currentHash,
 				Messages: len(chunk),
@@ -639,7 +639,7 @@ func writeArchiveChunks(dir string, messages []db.Message, settings Settings) ([
 		}
 		logger.Info("Wrote archive chunk", "file", filename, "messages", len(chunk))
 
-		archiveFiles = append(archiveFiles, ArchiveFile{
+		archiveFiles = append(archiveFiles, claude.ArchiveFile{
 			Name:     filename,
 			Hash:     currentHash,
 			Messages: len(chunk),
@@ -653,7 +653,7 @@ func writeArchiveChunks(dir string, messages []db.Message, settings Settings) ([
 		excess := len(archiveFiles) - settings.MaxFiles
 		filesToMergeCount := excess + 1 // Merging N files reduces count by N-1
 
-		var mergedMessages []MessageFile
+		var mergedMessages []claude.MessageFile
 		var filesToDelete []string
 
 		for i := 0; i < filesToMergeCount; i++ {
@@ -667,7 +667,7 @@ func writeArchiveChunks(dir string, messages []db.Message, settings Settings) ([
 				continue
 			}
 
-			var chunk []MessageFile
+			var chunk []claude.MessageFile
 			if err := json.Unmarshal(data, &chunk); err != nil {
 				logger.Warning("Failed to unmarshal archive file for merging", "file", file.Name, "error", err)
 				continue
@@ -703,7 +703,7 @@ func writeArchiveChunks(dir string, messages []db.Message, settings Settings) ([
 			}
 
 			// Reconstruct archiveFiles list: [Merged] + [Remaining]
-			newArchiveFiles := []ArchiveFile{
+			newArchiveFiles := []claude.ArchiveFile{
 				{
 					Name:     mergedFilename,
 					Hash:     mergedHash,
@@ -721,11 +721,11 @@ func writeArchiveChunks(dir string, messages []db.Message, settings Settings) ([
 }
 
 // writeActiveWindow writes the recent messages and the archive map to messages-active.json.
-func writeActiveWindow(dir string, messages []db.Message, archiveFiles []ArchiveFile) error {
+func writeActiveWindow(dir string, messages []db.Message, archiveFiles []claude.ArchiveFile) error {
 	path := filepath.Join(dir, "messages-active.json")
 
 	// Convert messages
-	var msgFiles []MessageFile
+	var msgFiles []claude.MessageFile
 	for _, m := range messages {
 		if m.Role == "system" {
 			continue
@@ -734,7 +734,7 @@ func writeActiveWindow(dir string, messages []db.Message, archiveFiles []Archive
 		if m.Message.Valid {
 			content = m.Message.String
 		}
-		msgFiles = append(msgFiles, MessageFile{
+		msgFiles = append(msgFiles, claude.MessageFile{
 			Role:    m.Role,
 			Content: content,
 		})
@@ -747,8 +747,8 @@ func writeActiveWindow(dir string, messages []db.Message, archiveFiles []Archive
 	}
 
 	// Construct Active Window
-	window := ActiveWindow{
-		ArchiveMap: ArchiveMap{Files: archiveFiles},
+	window := claude.ActiveWindow{
+		ArchiveMap: claude.ArchiveMap{Files: archiveFiles},
 		Messages:   msgFiles,
 	}
 

@@ -2,11 +2,11 @@
  * Component: Claude Code Chat Metrics Database
  * Block-UUID: 9222f7a0-bec7-4c4b-ac67-04b9cd6c9812
  * Parent-UUID: 50d6d90e-97cb-4dc3-83c0-001258e34a04
- * Version: 1.1.0
- * Description: Manages the SQLite database for storing Claude Code CLI usage metrics, including completions and session aggregations.
+ * Version: 1.1.2
+ * Description: Re-added import of parent claude package for Usage type. Usage is a shared type defined in internal/claude/models.go.
  * Language: Go
  * Created-at: 2026-03-24T15:54:35.067Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.1.0)
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.1.1), GLM-4.7 (v1.1.2)
  */
 
 
@@ -99,7 +99,7 @@ func initSchema(db *sql.DB) error {
 }
 
 // InsertCompletion saves a single completion record to the database.
-func InsertCompletion(db *sql.DB, chatUUID string, messageID int64, sessionID string, model string, usage Usage, cost float64, durationMs int, rawJSON string, exitCode int) error {
+func InsertCompletion(db *sql.DB, chatUUID string, messageID int64, sessionID string, model string, usage claude.Usage, cost float64, durationMs int, rawJSON string, exitCode int) error {
 	query := `
 	INSERT INTO completions (
 		chat_uuid, message_id, claude_session_id, model,
@@ -124,7 +124,7 @@ func InsertCompletion(db *sql.DB, chatUUID string, messageID int64, sessionID st
 }
 
 // UpsertSession updates or creates a session aggregate record.
-func UpsertSession(db *sql.DB, sessionID string, chatUUID string, usage Usage, cost float64) error {
+func UpsertSession(db *sql.DB, sessionID string, chatUUID string, usage claude.Usage, cost float64) error {
 	now := time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
 
 	query := `
