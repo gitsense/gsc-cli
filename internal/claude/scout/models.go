@@ -1,12 +1,12 @@
 /**
  * Component: Scout Models
- * Block-UUID: 47866395-f525-4fea-8127-efecd21618dc
- * Parent-UUID: 543a59d1-b0c9-4669-94de-430845933e0b
- * Version: 1.0.6
+ * Block-UUID: f71bcf94-e211-429e-b5e3-aeb026a21ae2
+ * Parent-UUID: 47866395-f525-4fea-8127-efecd21618dc
+ * Version: 1.1.0
  * Description: Data structures for Scout feature (candidate discovery and verification)
  * Language: Go
- * Created-at: 2026-03-31T22:37:51.027Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.6)
+ * Created-at: 2026-04-01T05:35:28.526Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.6), GLM-4.7 (v1.1.0)
  */
 
 
@@ -28,6 +28,7 @@ type Session struct {
 	StartedAt             time.Time
 	CompletedAt           *time.Time
 	Error                 *string
+	WatcherPID            *int `json:"watcher_pid,omitempty"`
 }
 
 // WorkingDirectory represents a directory in the contract being searched
@@ -100,6 +101,7 @@ type StatusData struct {
 	ClaudeSessionID      *string              `json:"claude_session_id,omitempty"`
 	ShutdownInitiated    bool                 `json:"shutdown_initiated,omitempty"`
 	ShutdownCompleted    bool                 `json:"shutdown_completed,omitempty"`
+	WatcherPID           *int                 `json:"watcher_pid,omitempty"`
 }
 
 // ProcessInfo contains process-level information

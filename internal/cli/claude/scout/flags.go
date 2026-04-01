@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Flags and Options
- * Block-UUID: 35f54e7f-f149-4dd3-8403-a797462ce180
- * Parent-UUID: ebe96a57-6e66-4d1b-879b-175aec543497
- * Version: 1.8.2
- * Description: Shared flag definitions for Scout CLI commands (start, status, stop) with turn and force support. Removed MarkFlagRequired("intent") to allow --intent-file as alternative.
+ * Block-UUID: db648b40-f87b-468f-ba45-461b5d7eeecd
+ * Parent-UUID: 35f54e7f-f149-4dd3-8403-a797462ce180
+ * Version: 1.9.0
+ * Description: Shared flag definitions for Scout CLI commands (start, status, stop) with turn and force support. Removed MarkFlagRequired("intent") to allow --intent-file as alternative. Added hidden WatchWorker flag for background worker process.
  * Language: Go
- * Created-at: 2026-04-01T03:29:38.112Z
- * Authors: claude-haiku-4-5-20251001 (v1.8.0), GLM-4.7 (v1.8.1), GLM-4.7 (v1.8.2)
+ * Created-at: 2026-04-01T05:29:54.928Z
+ * Authors: claude-haiku-4-5-20251001 (v1.8.0), GLM-4.7 (v1.8.1), GLM-4.7 (v1.8.2), GLM-4.7 (v1.9.0)
  */
 
 
@@ -38,6 +38,7 @@ type StartFlags struct {
 	Force              bool   // Force overwrite existing session
 	Format             string // Output format: text or json
 	Model              string // Claude model family: haiku, sonnet, opus
+	WatchWorker        bool   // Hidden: run as background worker process
 }
 
 // StatusFlags contains flags for the scout status command
@@ -139,6 +140,14 @@ func RegisterStartFlags(cmd *cobra.Command, flags *StartFlags) {
 		false,
 		"Enable debug logging to session directory",
 	)
+
+	cmd.Flags().BoolVar(
+		&flags.WatchWorker,
+		"watch-worker",
+		false,
+		"Run as background worker process",
+	)
+	cmd.Flags().MarkHidden("watch-worker")
 }
 
 // RegisterStatusFlags registers flags for the status command

@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Stop Command
- * Block-UUID: d4c1d171-4a3f-4aa1-b050-f42067e9583e
- * Parent-UUID: 15424924-bc38-4cf9-82c0-a62b4b4121f8
- * Version: 1.0.4
+ * Block-UUID: 89367aef-a915-4407-825e-ec9722608de8
+ * Parent-UUID: d4c1d171-4a3f-4aa1-b050-f42067e9583e
+ * Version: 1.1.0
  * Description: Implements 'gsc claude scout stop' command for terminating Scout sessions
  * Language: Go
- * Created-at: 2026-03-28T21:51:12.197Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), claude-haiku-4-5-20251001 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4)
+ * Created-at: 2026-04-01T05:37:15.179Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), claude-haiku-4-5-20251001 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.1.0)
  */
 
 
@@ -14,6 +14,8 @@ package scoutcli
 
 import (
 	"fmt"
+	"os"
+	"syscall"
 	"time"
 
 	claudescout "github.com/gitsense/gsc-cli/internal/claude/scout"
@@ -73,6 +75,19 @@ func runStopCommand(cmd *cobra.Command, flags *StopFlags) error {
 	if !status.ProcessInfo.Running {
 		fmt.Fprintf(cmd.OutOrStdout(), "Session %s is not running\n", flags.SessionID)
 		return nil
+	}
+
+	// Kill watcher process if running
+	if watcherPID := manager.GetWatcherPID(); watcherPID > 0 {
+		process, err := os.FindProcess(watcherPID)
+		if err == nil {
+			// Send SIGTERM to watcher process
+			process.Signal(syscall.SIGTERM)
+			// Give it a moment to clean up
+			time.Sleep(1 * time.Second)
+			// Force kill if still running
+			process.Signal(syscall.SIGKILL)
+		}
 	}
 
 	// Stop the session

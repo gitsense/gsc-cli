@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Start Command
- * Block-UUID: 5c4f9f85-7b15-4827-b298-9b7fb39d8c0a
- * Parent-UUID: f106610a-ad69-45a4-b691-4e1e12bf399f
- * Version: 1.2.4
+ * Block-UUID: 55eec20b-639c-41bc-a5b2-0285ffb2651b
+ * Parent-UUID: 51539f39-9175-4f8e-9d2b-10e0ca08d80a
+ * Version: 1.3.1
  * Description: Implements 'gsc claude scout start' command with turn-aware session handling
  * Language: Go
- * Created-at: 2026-04-01T03:30:03.185Z
- * Authors: claude-haiku-4-5-20251001 (v1.2.1), GLM-4.7 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4)
+ * Created-at: 2026-04-01T05:31:57.927Z
+ * Authors: claude-haiku-4-5-20251001 (v1.2.1), GLM-4.7 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1)
  */
 
 
@@ -17,8 +17,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	claudescout "github.com/gitsense/gsc-cli/internal/claude/scout"
 	"github.com/google/uuid"
@@ -63,6 +65,11 @@ The session runs as a background subprocess and can be monitored with 'gsc claud
 
 // runStartCommand executes the start command logic
 func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
+	// If --watch-worker flag is set, this is the background process
+	if flags.WatchWorker {
+		return runBackgroundWorker(cmd, flags)
+	}
+
 	// Validate that unsupported flags are not set
 	if err := ValidateScoutFlags(cmd); err != nil {
 		cmd.SilenceUsage = true
@@ -214,6 +221,12 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 		return fmt.Errorf("invalid turn: %d (must be 1 or 2)", flags.Turn)
 	}
 
+	// Spawn background worker with --watch-worker flag
+	if err := spawnBackgroundWorker(flags); err != nil {
+		cmd.SilenceUsage = true
+		return fmt.Errorf("failed to spawn background worker: %w", err)
+	}
+
 	// Get process info for JSON output
 	var processPID int
 	if flags.Format == "json" {
@@ -264,6 +277,53 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 	}
 
 	return nil
+}
+
+// spawnBackgroundWorker spawns a background worker process to handle the scout session
+func spawnBackgroundWorker(flags *StartFlags) error {
+	// Build args for worker
+	args := []string{"claude", "scout", "start"}
+	args = append(args, "--session-id", flags.SessionID)
+	args = append(args, "--watch-worker")
+	args = append(args, "--turn", fmt.Sprintf("%d", flags.Turn))
+
+	// Spawn worker in background
+	cmd := exec.Command(os.Args[0], args...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Setsid: true, // Detach from parent process
+	}
+
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to spawn worker: %w", err)
+	}
+
+	// Store worker PID in session state
+	manager, err := claudescout.LoadSession(flags.SessionID)
+	if err != nil {
+		return fmt.Errorf("failed to load session to store watcher PID: %w", err)
+	}
+	manager.SetWatcherPID(cmd.Process.Pid)
+	if err := manager.WriteSessionState(); err != nil {
+		return fmt.Errorf("failed to write session state: %w", err)
+	}
+
+	return nil
+}
+
+// runBackgroundWorker executes the scout session in the background worker process
+func runBackgroundWorker(cmd *cobra.Command, flags *StartFlags) error {
+	// Load existing session
+	manager, err := claudescout.LoadSession(flags.SessionID)
+	if err != nil {
+		return fmt.Errorf("failed to load session: %w", err)
+	}
+
+	// Execute the turn (this blocks until complete)
+	if flags.Turn == 1 {
+		return manager.StartTurn1Discovery()
+	} else {
+		return manager.StartTurn2Verification(nil)
+	}
 }
 
 // ParseWorkdirs converts working directory strings to WorkingDirectory structs
