@@ -1,12 +1,12 @@
 /**
  * Component: Scout Session Manager
- * Block-UUID: ab211ad6-0801-43a1-b106-6aa78d756527
- * Parent-UUID: d4c05e1c-0f2b-4e31-bc6d-92cbe03f7fa5
- * Version: 1.2.5
+ * Block-UUID: 78248308-99b9-49ec-88d3-7e3e674c3363
+ * Parent-UUID: ab211ad6-0801-43a1-b106-6aa78d756527
+ * Version: 1.2.6
  * Description: Orchestrates Scout discovery and verification phases, manages subprocess execution
  * Language: Go
- * Created-at: 2026-04-01T02:49:58.333Z
- * Authors: claude-haiku-4-5-20251001 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.2.5)
+ * Created-at: 2026-04-01T03:17:23.209Z
+ * Authors: claude-haiku-4-5-20251001 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.2.5), GLM-4.7 (v1.2.6)
  */
 
 
@@ -46,6 +46,7 @@ var ErrTurnNotComplete = fmt.Errorf("turn has not yet completed")
 // Manager orchestrates a scout session
 type Manager struct {
 	config      *SessionConfig
+	debugLogger *DebugLogger
 	session     *Session
 	processor   *ProcessorHelper
 	eventWriter *EventWriter
@@ -60,9 +61,16 @@ func NewManager(sessionID string) (*Manager, error) {
 		return nil, err
 	}
 
+	// Create debug logger (disabled by default)
+	debugLogger, err := NewDebugLogger(config.GetSessionDir(), false)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Manager{
-		config:    config,
-		processor: NewProcessorHelper(config),
+		config:      config,
+		processor:   NewProcessorHelper(config),
+		debugLogger: debugLogger,
 		currentTurn: 1,
 	}, nil
 }
@@ -74,8 +82,16 @@ func (m *Manager) GetConfig() *SessionConfig {
 
 // InitializeSession sets up the session directory and writes initial state
 func (m *Manager) InitializeSession(intent string, workdirs []WorkingDirectory, refFilesContext []ReferenceFileContext, autoReview bool, model string) error {
+	m.debugLogger.Log("DEBUG", "Initializing session")
+	m.debugLogger.Log("DEBUG", fmt.Sprintf("Intent: %s", truncateForLog(intent, 100)))
+	m.debugLogger.Log("DEBUG", fmt.Sprintf("Working directories: %d", len(workdirs)))
+	m.debugLogger.Log("DEBUG", fmt.Sprintf("Reference files: %d", len(refFilesContext)))
+	m.debugLogger.Log("DEBUG", fmt.Sprintf("Auto review: %v", autoReview))
+	m.debugLogger.Log("DEBUG", fmt.Sprintf("Model: %s", model))
+
 	// Validate inputs
 	if err := ValidateIntent(intent); err != nil {
+		m.debugLogger.LogError("Intent validation failed", err)
 		return err
 	}
 
@@ -86,31 +102,38 @@ func (m *Manager) InitializeSession(intent string, workdirs []WorkingDirectory, 
 			errorDetails = append(errorDetails, fmt.Sprintf("  - %s: %s", e.Type, e.Message))
 		}
 		errMsg := fmt.Sprintf("validation failed with %d error(s):\n%s", len(errs), strings.Join(errorDetails, "\n"))
+		m.debugLogger.LogError("Setup validation failed", fmt.Errorf(errMsg))
 		return fmt.Errorf(errMsg)
 	}
+	m.debugLogger.Log("DEBUG", "Validation passed")
 
 	// Initialize directories
 	if err := m.config.InitializeSessionDirs(); err != nil {
+		m.debugLogger.LogError("Failed to initialize session directories", err)
 		return err
 	}
+	m.debugLogger.Log("DEBUG", "Session directories initialized")
 
 	// Write intent to turn-1/intent.md
 	intentPath := m.config.GetIntentFile(1)
 	if err := os.WriteFile(intentPath, []byte(intent), 0644); err != nil {
+		m.debugLogger.LogError("Failed to write intent file", err)
 		return fmt.Errorf("failed to write intent file: %w", err)
 	}
+	m.debugLogger.Log("DEBUG", fmt.Sprintf("Intent written to: %s", intentPath))
 
 	// Create session struct
 	m.session = &Session{
-		SessionID:          m.config.SessionID,
-		Intent:             intent,
-		Model:              model,
-		WorkingDirectories: workdirs,
+		SessionID:             m.config.SessionID,
+		Intent:                intent,
+		Model:                 model,
+		WorkingDirectories:    workdirs,
 		ReferenceFilesContext: refFilesContext,
-		AutoReview:         autoReview,
-		Status:             "discovery",
-		StartedAt:          time.Now(),
+		AutoReview:            autoReview,
+		Status:                "discovery",
+		StartedAt:             time.Now(),
 	}
+	m.debugLogger.Log("DEBUG", "Session struct created")
 
 	// Reference files from NDJSON already have content embedded, no need to copy
 
@@ -119,24 +142,32 @@ func (m *Manager) InitializeSession(intent string, workdirs []WorkingDirectory, 
 
 // PrepareTurn1 generates input schema and handles no-brains case
 func (m *Manager) PrepareTurn1() error {
+	m.debugLogger.Log("DEBUG", "Preparing Turn 1")
+
 	// 1. Build input schema
 	schema, err := BuildInputSchema(m.session.SessionID, m.session.WorkingDirectories)
 	if err != nil {
+		m.debugLogger.LogError("Failed to build input schema", err)
 		return err
 	}
+	m.debugLogger.Log("DEBUG", "Input schema built successfully")
 
 	// 2. Write input schema to file
 	schemaPath := m.config.GetInputSchemaFile()
 	schemaJSON, err := json.MarshalIndent(schema, "", "  ")
 	if err != nil {
+		m.debugLogger.LogError("Failed to marshal input schema", err)
 		return fmt.Errorf("failed to marshal input schema: %w", err)
 	}
 	if err := os.WriteFile(schemaPath, schemaJSON, 0644); err != nil {
+		m.debugLogger.LogError("Failed to write input schema", err)
 		return fmt.Errorf("failed to write input schema: %w", err)
 	}
+	m.debugLogger.Log("DEBUG", fmt.Sprintf("Input schema written to: %s", schemaPath))
 
 	// 3. Check if all brains unavailable
 	if checkAllBrainsUnavailable(schema.WorkingDirectories) {
+		m.debugLogger.Log("DEBUG", "All brains unavailable, writing error event")
 		// Write error event to log
 		if err := m.writeNoBrainsError(); err != nil {
 			return fmt.Errorf("failed to write no-brains error: %w", err)
@@ -163,6 +194,7 @@ func (m *Manager) writeNoBrainsError() error {
 
 	writer, err := NewEventWriter(logPath)
 	if err != nil {
+		m.debugLogger.LogError("Failed to create event writer for no-brains error", err)
 		return err
 	}
 	defer writer.Close()
@@ -180,17 +212,24 @@ func (m *Manager) StartTurn1Discovery() error {
 		return fmt.Errorf("session not initialized")
 	}
 
+	m.debugLogger.Log("DEBUG", "Starting Turn 1 discovery")
+	m.debugLogger.Log("DEBUG", fmt.Sprintf("Session status: %s", m.session.Status))
+	m.debugLogger.Log("DEBUG", fmt.Sprintf("Working directories: %d", len(m.session.WorkingDirectories)))
+	defer m.debugLogger.Close()
+
 	if m.session.Status != "discovery" && m.session.Status != "error" {
 		return fmt.Errorf("cannot start discovery: session status is %s", m.session.Status)
 	}
 
 	// Prepare Turn 1 (generate input schema)
 	if err := m.PrepareTurn1(); err != nil {
+		m.debugLogger.LogError("PrepareTurn1 failed", err)
 		return err
 	}
 
 	// Check if session already errored out (no brains)
 	if m.session.Status == "error" {
+		m.debugLogger.Log("DEBUG", "Session already in error state, not spawning subprocess")
 		return nil // Don't spawn Claude, already handled
 	}
 
@@ -209,15 +248,17 @@ func (m *Manager) StartTurn1Discovery() error {
 	var err error
 	m.eventWriter, err = NewEventWriter(logPath)
 	if err != nil {
+		m.debugLogger.LogError("Failed to create event writer", err)
 		m.markAsStopped("INIT_FAILED", fmt.Sprintf("Failed to create event writer: %v", err))
 		return err
 	}
+	m.debugLogger.Log("DEBUG", fmt.Sprintf("Created event writer: %s", logPath))
 
 	// Write init event
 	initEvent := InitEvent{
-		SessionID:          m.session.SessionID,
-		Intent:             m.session.Intent,
-		WorkingDirectories: m.session.WorkingDirectories,
+		SessionID:             m.session.SessionID,
+		Intent:                m.session.Intent,
+		WorkingDirectories:    m.session.WorkingDirectories,
 		ReferenceFilesContext: m.session.ReferenceFilesContext,
 		Options: InitOptions{
 			AutoReview: m.session.AutoReview,
@@ -226,14 +267,18 @@ func (m *Manager) StartTurn1Discovery() error {
 		},
 	}
 	if err := m.eventWriter.WriteInitEvent(initEvent); err != nil {
+		m.debugLogger.LogEventWrite("init", false, err)
 		return err
 	}
+	m.debugLogger.LogEventWrite("init", true, nil)
 
 	// Spawn subprocess for Turn 1
 	if err := m.spawnClaudeSubprocess(m.currentTurn); err != nil {
+		m.debugLogger.LogError("Failed to spawn subprocess", err)
 		m.markAsStopped("SPAWN_FAILED", fmt.Sprintf("Failed to spawn subprocess: %v", err))
 		return err
 	}
+	m.debugLogger.Log("DEBUG", "Subprocess spawned successfully")
 
 	return m.writeSessionState()
 }
@@ -243,6 +288,10 @@ func (m *Manager) StartTurn2Verification(selectedCandidates *SelectedCandidates)
 	if m.session == nil {
 		return fmt.Errorf("session not initialized")
 	}
+
+	m.debugLogger.Log("DEBUG", "Starting Turn 2 verification")
+	m.debugLogger.Log("DEBUG", fmt.Sprintf("Session status: %s", m.session.Status))
+	defer m.debugLogger.Close()
 
 	if m.session.Status != "discovery_complete" {
 		return fmt.Errorf("cannot start verification: discovery not complete")
@@ -263,15 +312,17 @@ func (m *Manager) StartTurn2Verification(selectedCandidates *SelectedCandidates)
 	var err error
 	m.eventWriter, err = NewEventWriter(logPath)
 	if err != nil {
+		m.debugLogger.LogError("Failed to create event writer", err)
 		m.markAsStopped("INIT_FAILED", fmt.Sprintf("Failed to create event writer: %v", err))
 		return err
 	}
+	m.debugLogger.Log("DEBUG", fmt.Sprintf("Created event writer: %s", logPath))
 
 	// Write init event with selected candidates
 	initEvent := InitEvent{
-		SessionID:          m.session.SessionID,
-		Intent:             m.session.Intent,
-		WorkingDirectories: m.session.WorkingDirectories,
+		SessionID:             m.session.SessionID,
+		Intent:                m.session.Intent,
+		WorkingDirectories:    m.session.WorkingDirectories,
 		ReferenceFilesContext: m.session.ReferenceFilesContext,
 		Options: InitOptions{
 			AutoReview: m.session.AutoReview,
@@ -280,14 +331,17 @@ func (m *Manager) StartTurn2Verification(selectedCandidates *SelectedCandidates)
 		},
 	}
 	if err := m.eventWriter.WriteInitEvent(initEvent); err != nil {
+		m.debugLogger.LogEventWrite("init", false, err)
 		return err
 	}
+	m.debugLogger.LogEventWrite("init", true, nil)
 
 	// Save selected candidates for Claude to reference
 	if selectedCandidates != nil {
 		candData, _ := json.MarshalIndent(selectedCandidates, "", "  ")
 		candPath := filepath.Join(m.config.GetTurnDir(m.currentTurn), "selected-candidates.json")
 		if err := os.WriteFile(candPath, candData, 0644); err != nil {
+			m.debugLogger.LogError("Failed to save selected candidates", err)
 			m.markAsStopped("CANDIDATE_SAVE_FAILED", fmt.Sprintf("Failed to save selected candidates: %v", err))
 			return err
 		}
@@ -295,30 +349,40 @@ func (m *Manager) StartTurn2Verification(selectedCandidates *SelectedCandidates)
 
 	// Spawn subprocess for Turn 2
 	if err := m.spawnClaudeSubprocess(m.currentTurn); err != nil {
+		m.debugLogger.LogError("Failed to spawn subprocess", err)
 		m.markAsStopped("SPAWN_FAILED", fmt.Sprintf("Failed to spawn subprocess: %v", err))
 		return err
 	}
+	m.debugLogger.Log("DEBUG", "Subprocess spawned successfully")
 
 	return m.writeSessionState()
 }
 
 // spawnClaudeSubprocess spawns the claude subprocess for a turn
 func (m *Manager) spawnClaudeSubprocess(turn int) error {
+	m.debugLogger.Log("DEBUG", fmt.Sprintf("Spawning subprocess for turn %d", turn))
+
 	// Write Scout permissions to restrict Bash to gsc commands only
 	if err := WriteScoutPermissions(m.config.GetTurnDir(turn)); err != nil {
+		m.debugLogger.LogError("Failed to write permissions", err)
 		return fmt.Errorf("failed to write permissions: %w", err)
 	}
+	m.debugLogger.Log("DEBUG", "Permissions written successfully")
 
 	// Get the Claude prompt template using absolute path
 	gscHome, err := settings.GetGSCHome(false)
 	if err != nil {
+		m.debugLogger.LogError("Failed to get GSC_HOME", err)
 		return fmt.Errorf("failed to resolve GSC_HOME: %w", err)
 	}
+	m.debugLogger.Log("DEBUG", fmt.Sprintf("GSC_HOME: %s", gscHome))
 
 	// Write reference files NDJSON to turn directory
 	if err := m.writeReferenceFilesNDJSON(); err != nil {
+		m.debugLogger.LogError("Failed to write reference files", err)
 		return fmt.Errorf("failed to write reference files: %w", err)
 	}
+	m.debugLogger.Log("DEBUG", "Reference files written successfully")
 
 	var templateName string
 	if turn == 1 {
@@ -330,21 +394,24 @@ func (m *Manager) spawnClaudeSubprocess(turn int) error {
 	promptPath := filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", templateName)
 	promptData, err := os.ReadFile(promptPath)
 	if err != nil {
+		m.debugLogger.LogError("Failed to read prompt template", err)
 		m.markAsStopped("TEMPLATE_FAILED", fmt.Sprintf("Failed to read prompt template: %v", err))
 		return fmt.Errorf("failed to read prompt template: %w", err)
 	}
+	m.debugLogger.Log("DEBUG", fmt.Sprintf("Read prompt template: %s", promptPath))
 
 	// Format reference files metadata and replace placeholder
 	refFilesMarkdown := m.formatReferenceFilesMetadata()
 	promptStr := strings.ReplaceAll(string(promptData), "{{REFERENCE_FILES}}", refFilesMarkdown)
-	
+
 	// Replace other placeholders
 	promptStr = strings.ReplaceAll(promptStr, "{{INTENT}}", m.session.Intent)
 	// Add working directories formatting here if needed
-	
+
 	promptData = []byte(promptStr)
 
 	// Build the command to invoke claude CLI directly
+	m.debugLogger.Log("DEBUG", "Building claude command")
 	flags := []string{
 		"-p", fmt.Sprintf("%q", string(promptData)),
 		"--allowedTools", "Read,Bash",
@@ -361,18 +428,23 @@ func (m *Manager) spawnClaudeSubprocess(turn int) error {
 	if m.session.Model != "" {
 		flags = append(flags, "--model", m.session.Model)
 	}
+	m.debugLogger.Log("DEBUG", fmt.Sprintf("Command flags: %v", flags))
 
 	cmd := exec.Command("claude", flags...)
 	cmd.Dir = m.config.GetTurnDir(turn)
+	m.debugLogger.Log("DEBUG", fmt.Sprintf("Working directory: %s", cmd.Dir))
 
 	// Create stdout pipe for stream processing
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
+		m.debugLogger.LogError("Failed to create stdout pipe", err)
 		return fmt.Errorf("failed to create stdout pipe: %w", err)
 	}
+	m.debugLogger.Log("DEBUG", "Stdout pipe created successfully")
 
 	// Start the process
 	if err := cmd.Start(); err != nil {
+		m.debugLogger.LogError("Failed to start subprocess", err)
 		// Close stdout pipe on error
 		m.markAsStopped("START_FAILED", fmt.Sprintf("Failed to start subprocess: %v", err))
 		stdout.Close()
@@ -384,13 +456,24 @@ func (m *Manager) spawnClaudeSubprocess(turn int) error {
 		Command: cmd.String(),
 		Running: true,
 	}
+	m.debugLogger.LogProcessSpawn(cmd.Process.Pid, cmd.String(), cmd.Dir)
 
 	// Start background goroutine to process stream
+	m.debugLogger.Log("DEBUG", "Starting stream processing goroutine")
 	go m.processStream(stdout, turn)
 
 	// Start background goroutine to reap zombie process
+	m.debugLogger.Log("DEBUG", "Starting process reaper goroutine")
 	go func() {
-		cmd.Wait()
+		m.debugLogger.Log("DEBUG", "Process reaper: waiting for process to exit")
+		err := cmd.Wait()
+		exitCode := 0
+		if err != nil {
+			if exitErr, ok := err.(*exec.ExitError); ok {
+				exitCode = exitErr.ExitCode()
+			}
+		}
+		m.debugLogger.LogProcessExit(cmd.Process.Pid, exitCode, err)
 	}()
 
 	// Don't wait for process - fire and forget
@@ -407,6 +490,7 @@ func (m *Manager) GetSessionStatus() (*StatusData, error) {
 	// Read status from latest turn's log file
 	status, err := m.processor.ReadSessionStatusFromEvents(m.currentTurn)
 	if err != nil {
+		m.debugLogger.LogError("Failed to read status from events", err)
 		// If no events yet, construct minimal status with safe ProcessInfo
 		processInfo := ProcessInfo{}
 		if m.processInfo != nil {
@@ -443,22 +527,26 @@ func (m *Manager) GetFinalizedTurnResults(turn int) (*FinalizedTurnResults, erro
 	// Get the latest log file for the requested turn
 	logFile, err := m.processor.GetLatestTurnLogFile(turn)
 	if err != nil {
+		m.debugLogger.LogError("Failed to get latest turn log file", err)
 		return nil, fmt.Errorf("no results found for turn %d", turn)
 	}
 
 	// Read events from the log file
 	reader, err := NewEventReader(logFile)
 	if err != nil {
+		m.debugLogger.LogError("Failed to create event reader", err)
 		return nil, fmt.Errorf("failed to read turn results: %w", err)
 	}
 	defer reader.Close()
 
 	events, err := reader.ReadAllEvents()
 	if err != nil {
+		m.debugLogger.LogError("Failed to read all events", err)
 		return nil, fmt.Errorf("failed to read events: %w", err)
 	}
 
 	if len(events) == 0 {
+		m.debugLogger.Log("DEBUG", fmt.Sprintf("No events found for turn %d", turn))
 		return nil, fmt.Errorf("no events found for turn %d", turn)
 	}
 
@@ -503,6 +591,7 @@ func (m *Manager) GetFinalizedTurnResults(turn int) (*FinalizedTurnResults, erro
 
 	// Verify that the turn actually completed
 	if !foundDone {
+		m.debugLogger.Log("DEBUG", fmt.Sprintf("Turn %d not complete (no done event)", turn))
 		return nil, ErrTurnNotComplete
 	}
 
@@ -526,17 +615,20 @@ func (m *Manager) GetFinalizedTurnResults(turn int) (*FinalizedTurnResults, erro
 		// Read Turn 1 candidates
 		originalLogFile, err := m.processor.GetLatestTurnLogFile(1)
 		if err != nil {
+			m.debugLogger.LogError("Failed to read Turn 1 log file", err)
 			return nil, fmt.Errorf("failed to read Turn 1 log file: %w", err)
 		}
 
 		reader, err := NewEventReader(originalLogFile)
 		if err != nil {
+			m.debugLogger.LogError("Failed to open Turn 1 log file", err)
 			return nil, fmt.Errorf("failed to open Turn 1 log file: %w", err)
 		}
 		defer reader.Close()
 
 		originalEvents, err := reader.ReadAllEvents()
 		if err != nil {
+			m.debugLogger.LogError("Failed to read Turn 1 events", err)
 			return nil, fmt.Errorf("failed to read Turn 1 events: %w", err)
 		}
 
@@ -643,12 +735,14 @@ func (m *Manager) CheckProcessStatus() (bool, error) {
 
 	process, err := os.FindProcess(m.processInfo.PID)
 	if err != nil {
+		m.debugLogger.LogError("Process not found", err)
 		m.processInfo.Running = false
 		return false, nil
 	}
 
 	// Send signal 0 to check if process exists
 	if err := process.Signal(syscall.Signal(0)); err != nil {
+		m.debugLogger.LogError("Process signal failed", err)
 		m.processInfo.Running = false
 		return false, nil
 	}
@@ -660,14 +754,18 @@ func (m *Manager) CheckProcessStatus() (bool, error) {
 // StopSession stops the current scout session and cleanup
 // Implements graceful shutdown with SIGTERM → wait 5s → SIGKILL pattern
 func (m *Manager) StopSession() error {
+	m.debugLogger.Log("DEBUG", "StopSession called")
+
 	// Phase 1: Pre-Shutdown Validation
 	if m.processInfo == nil || !m.processInfo.Running {
 		// Already stopped, nothing to do
+		m.debugLogger.Log("DEBUG", "Process not running, nothing to stop")
 		return nil
 	}
 
 	// Validate session state
 	if m.session.Status == "stopped" || m.session.Status == "error" {
+		m.debugLogger.Log("DEBUG", "Session already stopped or in error state")
 		return nil // Already stopped
 	}
 
@@ -675,14 +773,17 @@ func (m *Manager) StopSession() error {
 	process, err := os.FindProcess(m.processInfo.PID)
 	if err != nil {
 		// Process doesn't exist, mark as stopped
+		m.debugLogger.LogError("Process not found", err)
 		m.markAsStopped("PROCESS_NOT_FOUND", "Process no longer exists")
 		return nil
 	}
 
 	// Phase 2: Graceful Shutdown (SIGTERM)
+	m.debugLogger.Log("DEBUG", fmt.Sprintf("Sending SIGTERM to PID %d", m.processInfo.PID))
 	err = process.Signal(syscall.SIGTERM)
 	if err != nil {
 		// Can't send signal, try force kill
+		m.debugLogger.LogError("Failed to send SIGTERM", err)
 		return m.forceKillProcess(process)
 	}
 
@@ -696,20 +797,24 @@ func (m *Manager) StopSession() error {
 	select {
 	case <-gracefulExit:
 		// Process exited gracefully
+		m.debugLogger.Log("DEBUG", "Process exited gracefully")
 		m.markAsStopped("USER_STOPPED", "Scout session stopped by user")
 		return nil
 
 	case <-time.After(5 * time.Second):
 		// Phase 3: Force Kill (timeout exceeded)
+		m.debugLogger.Log("DEBUG", "Graceful shutdown timeout, forcing kill")
 		return m.forceKillProcess(process)
 	}
 }
 
 // forceKillProcess sends SIGKILL to a process
 func (m *Manager) forceKillProcess(process *os.Process) error {
+	m.debugLogger.Log("DEBUG", fmt.Sprintf("Sending SIGKILL to PID %d", process.Pid))
 	// Send SIGKILL
 	err := process.Signal(syscall.SIGKILL)
 	if err != nil {
+		m.debugLogger.LogError("Failed to send SIGKILL", err)
 		m.markAsStopped("KILL_FAILED", "Failed to send SIGKILL")
 		return err
 	}
@@ -724,11 +829,13 @@ func (m *Manager) forceKillProcess(process *os.Process) error {
 	select {
 	case <-killExit:
 		// Process killed
+		m.debugLogger.Log("DEBUG", "Process killed successfully")
 		m.markAsStopped("FORCE_STOPPED", "Force stopped after timeout")
 		return nil
 
 	case <-time.After(1 * time.Second):
 		// Process still running after SIGKILL
+		m.debugLogger.Log("ERROR", "Process became zombie after SIGKILL")
 		m.markAsStopped("ZOMBIE_PROCESS", "Process still running after SIGKILL")
 		return fmt.Errorf("process became zombie after SIGKILL")
 	}
@@ -739,6 +846,8 @@ func (m *Manager) markAsStopped(errorCode, message string) {
 	if m.session == nil {
 		return
 	}
+
+	m.debugLogger.Log("ERROR", fmt.Sprintf("Marking session as stopped: %s - %s", errorCode, message))
 
 	// Update session status
 	m.session.Status = "stopped"
@@ -797,6 +906,7 @@ func (m *Manager) MarkVerificationComplete() error {
 // CloseEventWriter flushes and closes the current event writer
 func (m *Manager) CloseEventWriter() error {
 	if m.eventWriter != nil {
+		m.debugLogger.Log("DEBUG", "Closing event writer")
 		return m.eventWriter.Close()
 	}
 	return nil
@@ -809,15 +919,18 @@ func (m *Manager) writeSessionState() error {
 	// Get full status data including candidates, process info, etc.
 	status, err := m.GetSessionStatus()
 	if err != nil {
+		m.debugLogger.LogError("Failed to get session status for write", err)
 		return fmt.Errorf("failed to marshal session: %w", err)
 	}
 
 	data, err := json.MarshalIndent(status, "", "  ")
 	if err != nil {
+		m.debugLogger.LogError("Failed to marshal session status", err)
 		return fmt.Errorf("failed to marshal status: %w", err)
 	}
 
 	if err := os.WriteFile(statusPath, data, 0644); err != nil {
+		m.debugLogger.LogError("Failed to write status file", err)
 		return fmt.Errorf("failed to write status file: %w", err)
 	}
 
@@ -833,6 +946,12 @@ func LoadSession(sessionID string) (*Manager, error) {
 
 	if !config.SessionExists() {
 		return nil, fmt.Errorf("session does not exist: %s", sessionID)
+	}
+
+	// Create debug logger (disabled by default)
+	debugLogger, err := NewDebugLogger(config.GetSessionDir(), false)
+	if err != nil {
+		return nil, err
 	}
 
 	statusPath := config.GetStatusFile()
@@ -855,11 +974,11 @@ func LoadSession(sessionID string) (*Manager, error) {
 
 	// Reconstruct Session from StatusData
 	session = Session{
-		SessionID:          statusData.SessionID,
-		Status:             statusData.Status,
-		StartedAt:          statusData.StartedAt,
-		CompletedAt:        statusData.CompletedAt,
-		Error:              statusData.Error,
+		SessionID:   statusData.SessionID,
+		Status:      statusData.Status,
+		StartedAt:   statusData.StartedAt,
+		CompletedAt: statusData.CompletedAt,
+		Error:       statusData.Error,
 		// WorkingDirectories, ReferenceFiles, Intent, AutoReview are not in StatusData
 		// These are only available during initial session creation
 	}
@@ -874,6 +993,7 @@ func LoadSession(sessionID string) (*Manager, error) {
 		config:      config,
 		session:     &session,
 		processor:   NewProcessorHelper(config),
+		debugLogger: debugLogger,
 		currentTurn: currentTurn,
 	}
 
@@ -885,6 +1005,11 @@ func LoadSession(sessionID string) (*Manager, error) {
 
 // processStream reads Claude's stdout and processes events
 func (m *Manager) processStream(stdout io.Reader, turn int) {
+	m.debugLogger.Log("STREAM", "Stream processing started")
+	defer func() {
+		m.debugLogger.Log("STREAM", "Stream processing ended")
+	}()
+
 	defer func() {
 		// Close event writer when done
 		if m.eventWriter != nil {
@@ -895,48 +1020,60 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 	scanner := bufio.NewScanner(stdout)
 	scanner.Buffer(make([]byte, 0, 64*1024), maxTokenSize)
 
+	m.debugLogger.Log("STREAM", "Scanner initialized, starting to read lines")
 	var usage Usage
 	var cost float64
 	var duration int64
 	var claudeSessionID string
 
+	lineCount := 0
+
 	for scanner.Scan() {
+		lineCount++
 		line := scanner.Text()
 		if line == "" {
 			// Skip empty lines
+			m.debugLogger.LogStreamEvent("EMPTY_LINE", fmt.Sprintf("line %d", lineCount))
 			continue
 		}
+
+		m.debugLogger.LogStreamEvent("LINE_READ", fmt.Sprintf("line %d: %s", lineCount, truncateForLog(line, 200)))
 
 		// Parse as generic map
 		var result map[string]interface{}
 		if err := json.Unmarshal([]byte(line), &result); err != nil {
 			// Not valid JSON, skip
 			// Log as raw event for debugging
+			m.debugLogger.LogStreamEvent("JSON_PARSE_ERROR", fmt.Sprintf("line %d: %v", lineCount, err))
 			m.eventWriter.WriteRawEvent(line)
 			continue
 		}
+		m.debugLogger.LogStreamEvent("JSON_PARSED", fmt.Sprintf("line %d: valid JSON", lineCount))
 
 		// Check event type
 		eventType, _ := result["type"].(string)
+		m.debugLogger.LogStreamEvent("EVENT_TYPE", fmt.Sprintf("line %d: %s", lineCount, eventType))
 
 		switch eventType {
 		case "ping":
 			// Skip keep-alive events
+			m.debugLogger.LogStreamEvent("PING", fmt.Sprintf("line %d", lineCount))
 			continue
 
 		case "usage":
 			// Parse usage event
 			if usageData, ok := result["usage"].(map[string]interface{}); ok {
 				usage = Usage{
-					InputTokens:        int(usageData["input_tokens"].(float64)),
-					OutputTokens:       int(usageData["output_tokens"].(float64)),
+					InputTokens:         int(usageData["input_tokens"].(float64)),
+					OutputTokens:        int(usageData["output_tokens"].(float64)),
 					CacheCreationTokens: int(usageData["cache_creation_input_tokens"].(float64)),
-					CacheReadTokens:    int(usageData["cache_read_input_tokens"].(float64)),
+					CacheReadTokens:     int(usageData["cache_read_input_tokens"].(float64)),
 				}
 				if c, ok := result["cost"].(float64); ok {
 					cost = c
 				}
 			}
+			m.debugLogger.LogStreamEvent("USAGE", fmt.Sprintf("line %d: tokens=%d/%d", lineCount, usage.InputTokens, usage.OutputTokens))
 
 		case "error":
 			// Handle error events from Claude CLI
@@ -949,6 +1086,7 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 					Message:   errorMsg,
 					Details:   line,
 				})
+				m.debugLogger.LogError("Claude error event", fmt.Errorf("%s: %s", errorType, errorMsg))
 				m.session.Status = "error"
 				m.writeSessionState()
 			}
@@ -956,6 +1094,7 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 
 		case "system":
 			// Handle system events (API retries, etc.)
+			m.debugLogger.LogStreamEvent("SYSTEM", fmt.Sprintf("line %d", lineCount))
 			// Log but don't fail - these are informational
 			continue
 
@@ -964,6 +1103,7 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 			if resultContent, ok := result["result"].(string); ok {
 				// Check for error in result event
 				if isError, ok := result["is_error"].(bool); ok && isError {
+					m.debugLogger.LogError("Claude result error", fmt.Errorf("%v", result))
 					m.eventWriter.WriteErrorEvent(ErrorEvent{
 						Phase:     fmt.Sprintf("turn-%d", turn),
 						ErrorCode: "RESULT_ERROR",
@@ -978,10 +1118,10 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 				// Extract usage/cost from outer event
 				if usageData, ok := result["usage"].(map[string]interface{}); ok {
 					usage = Usage{
-						InputTokens:        int(usageData["input_tokens"].(float64)),
-						OutputTokens:       int(usageData["output_tokens"].(float64)),
+						InputTokens:         int(usageData["input_tokens"].(float64)),
+						OutputTokens:        int(usageData["output_tokens"].(float64)),
 						CacheCreationTokens: int(usageData["cache_creation_input_tokens"].(float64)),
-						CacheReadTokens:    int(usageData["cache_read_input_tokens"].(float64)),
+						CacheReadTokens:     int(usageData["cache_read_input_tokens"].(float64)),
 					}
 				}
 				if c, ok := result["total_cost_usd"].(float64); ok {
@@ -993,6 +1133,7 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 				if sid, ok := result["session_id"].(string); ok {
 					claudeSessionID = sid
 				}
+				m.debugLogger.LogStreamEvent("RESULT", fmt.Sprintf("line %d: result length=%d", lineCount, len(resultContent)))
 
 				// Parse Scout's JSON from result field
 				// Try Turn 1 format first
@@ -1014,11 +1155,12 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 						Candidates: turn1Result.Candidates,
 					})
 
+					m.debugLogger.LogEventWrite("candidates", true, nil)
 					// Write done event with usage/cost
 					m.eventWriter.WriteDoneEvent(DoneEvent{
-						Status:           "success",
-						TotalCandidates:  totalFound,
-						PhaseCompleted:   "discovery",
+						Status:         "success",
+						TotalCandidates: totalFound,
+						PhaseCompleted: "discovery",
 						Summary: CompletionSummary{
 							FilesFound: totalFound,
 						},
@@ -1028,6 +1170,7 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 						ClaudeSessionID: &claudeSessionID,
 					})
 
+					m.debugLogger.LogEventWrite("done", true, nil)
 					// Update session status
 					m.session.Status = "discovery_complete"
 					m.writeSessionState()
@@ -1038,12 +1181,12 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 				var turn2Result struct {
 					VerifiedCandidates []VerificationUpdate `json:"verified_candidates"`
 					Summary           struct {
-						TotalVerified      int `json:"total_verified"`
-						CandidatesPromoted int `json:"candidates_promoted"`
-						CandidatesDemoted  int `json:"candidates_demoted"`
-						CandidatesRemoved  int `json:"candidates_removed"`
+						TotalVerified        int     `json:"total_verified"`
+						CandidatesPromoted   int     `json:"candidates_promoted"`
+						CandidatesDemoted    int     `json:"candidates_demoted"`
+						CandidatesRemoved    int     `json:"candidates_removed"`
 						AverageVerifiedScore float64 `json:"average_verified_score"`
-						TopCandidatesCount int `json:"top_candidates_count"`
+						TopCandidatesCount   int     `json:"top_candidates_count"`
 					} `json:"summary"`
 				}
 				if err := json.Unmarshal([]byte(resultContent), &turn2Result); err == nil {
@@ -1054,11 +1197,12 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 						UpdatedCandidates: turn2Result.VerifiedCandidates,
 					})
 
+					m.debugLogger.LogEventWrite("verified", true, nil)
 					// Write done event with usage/cost
 					m.eventWriter.WriteDoneEvent(DoneEvent{
-						Status:           "success",
-						TotalCandidates:  turn2Result.Summary.TotalVerified,
-						PhaseCompleted:   "verification",
+						Status:         "success",
+						TotalCandidates: turn2Result.Summary.TotalVerified,
+						PhaseCompleted: "verification",
 						Summary: CompletionSummary{
 							FilesFound: turn2Result.Summary.TotalVerified,
 						},
@@ -1068,6 +1212,7 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 						ClaudeSessionID: &claudeSessionID,
 					})
 
+					m.debugLogger.LogEventWrite("done", true, nil)
 					// Update session status
 					m.session.Status = "verification_complete"
 					m.writeSessionState()
@@ -1076,12 +1221,14 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 			}
 		default:
 			// Log unknown event types for debugging
+			m.debugLogger.LogStreamEvent("UNKNOWN_EVENT", fmt.Sprintf("line %d: type=%s", lineCount, eventType))
 			m.eventWriter.WriteRawEvent(line)
 		}
 	}
 
 	// Handle scanner errors
 	if err := scanner.Err(); err != nil {
+		m.debugLogger.LogError("Scanner error", err)
 		m.eventWriter.WriteErrorEvent(ErrorEvent{
 			Phase:     fmt.Sprintf("turn-%d", turn),
 			ErrorCode: "STREAM_ERROR",
@@ -1090,6 +1237,7 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 		m.session.Status = "error"
 		m.writeSessionState()
 	}
+	m.debugLogger.Log("STREAM", fmt.Sprintf("Stream processing complete: %d lines processed", lineCount))
 }
 
 // writeReferenceFilesNDJSON writes the reference files to an NDJSON file in the turn directory
@@ -1100,14 +1248,16 @@ func (m *Manager) writeReferenceFilesNDJSON() error {
 
 	turnDir := m.config.GetTurnDir(m.currentTurn)
 	refDir := filepath.Join(turnDir, "turn-data")
-	
+
 	if err := os.MkdirAll(refDir, 0755); err != nil {
+		m.debugLogger.LogError("Failed to create turn-data directory", err)
 		return fmt.Errorf("failed to create turn-data directory: %w", err)
 	}
 
 	refPath := filepath.Join(refDir, "references.ndjson")
 	file, err := os.Create(refPath)
 	if err != nil {
+		m.debugLogger.LogError("Failed to create references.ndjson", err)
 		return fmt.Errorf("failed to create references.ndjson: %w", err)
 	}
 	defer file.Close()
@@ -1115,9 +1265,11 @@ func (m *Manager) writeReferenceFilesNDJSON() error {
 	for _, ref := range m.session.ReferenceFilesContext {
 		data, err := json.Marshal(ref)
 		if err != nil {
+			m.debugLogger.LogError("Failed to marshal reference file", err)
 			return fmt.Errorf("failed to marshal reference file: %w", err)
 		}
 		if _, err := file.WriteString(string(data) + "\n"); err != nil {
+			m.debugLogger.LogError("Failed to write reference file", err)
 			return fmt.Errorf("failed to write reference file: %w", err)
 		}
 	}
@@ -1134,9 +1286,17 @@ func (m *Manager) formatReferenceFilesMetadata() string {
 	var sb strings.Builder
 	sb.WriteString("The following reference files have been imported:\n")
 	for i, ref := range m.session.ReferenceFilesContext {
-		sb.WriteString(fmt.Sprintf("- reference-file-%03d: %s (chat-id: %d, repo: %s)\n", 
+		sb.WriteString(fmt.Sprintf("- reference-file-%03d: %s (chat-id: %d, repo: %s)\n",
 			i+1, ref.RelativePath, ref.ChatID, ref.Repository))
 	}
 	sb.WriteString("\n**Note:** Complete reference file data is available in `turn-data/references.ndjson` if you need to examine raw content.\n")
 	return sb.String()
+}
+
+// truncateForLog truncates a string for logging purposes
+func truncateForLog(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen] + "..."
 }

@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Start Command
- * Block-UUID: 4e720a06-fc2b-4113-ab18-1b039e24b4b7
- * Parent-UUID: 14ac5952-bd04-4575-a2fb-e881f43fe38e
- * Version: 1.2.2
+ * Block-UUID: f106610a-ad69-45a4-b691-4e1e12bf399f
+ * Parent-UUID: 4e720a06-fc2b-4113-ab18-1b039e24b4b7
+ * Version: 1.2.3
  * Description: Implements 'gsc claude scout start' command with turn-aware session handling
  * Language: Go
- * Created-at: 2026-04-01T01:17:46.600Z
- * Authors: claude-haiku-4-5-20251001 (v1.2.1), GLM-4.7 (v1.2.2)
+ * Created-at: 2026-04-01T03:11:32.095Z
+ * Authors: claude-haiku-4-5-20251001 (v1.2.1), GLM-4.7 (v1.2.2), GLM-4.7 (v1.2.3)
  */
 
 
@@ -212,12 +212,6 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 		// Should not reach here due to early validation, but keep as safety net
 		cmd.SilenceUsage = true
 		return fmt.Errorf("invalid turn: %d (must be 1 or 2)", flags.Turn)
-	}
-
-	// Close the event writer
-	if err := manager.CloseEventWriter(); err != nil {
-		cmd.SilenceUsage = true
-		return fmt.Errorf("failed to close event writer: %w", err)
 	}
 
 	// Get process info for JSON output
