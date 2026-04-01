@@ -1,5 +1,5 @@
 /**
- * Component: Claude Context Bucketer
+ * Component: Claude Code Chat Context Bucketer
  * Block-UUID: 69492bc0-3061-4bee-8053-3f5b7bd89ed0
  * Parent-UUID: 6507b69c-f11f-436e-acb5-b86be909bdc4
  * Version: 1.1.0
@@ -10,9 +10,10 @@
  */
 
 
-package claude
+package chat
 
 import (
+	"github.com/gitsense/gsc-cli/internal/claude"
 	"github.com/gitsense/gsc-cli/internal/context"
 )
 

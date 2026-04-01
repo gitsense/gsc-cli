@@ -10,7 +10,7 @@
  */
 
 
-package claude
+package chat
 
 import (
 	"fmt"
@@ -18,7 +18,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	claudeint "github.com/gitsense/gsc-cli/internal/claude"
+	chatint "github.com/gitsense/gsc-cli/internal/claude/chat"
 	"github.com/gitsense/gsc-cli/pkg/logger"
 )
 
@@ -33,7 +33,7 @@ var (
 	chatThinkingBudget int
 )
 
-var chatCmd = &cobra.Command{
+var ChatCmd = &cobra.Command{
 	Use:   "chat [message]",
 	Short: "Execute a chat completion using Claude Code CLI",
 	Long: `Executes a chat completion request using the Claude Code CLI as a backend API. 
@@ -81,7 +81,7 @@ file-based state, and streams the response back to stdout.`,
 
 		// 3. Execute Chat
 		logger.Info("Executing Claude Code chat", "uuid", chatUUID, "parent_id", chatParentID, "append", chatAppend, "save", chatSave, "append_save", chatAppendSave, "model", chatModel, "thinking", chatThinkingBudget)
-		if err := claudeint.ExecuteChat(chatUUID, chatParentID, userMessage, chatFormat, chatAppend, chatSave, chatAppendSave, chatModel, chatThinkingBudget); err != nil {
+		if err := chatint.ExecuteChat(chatUUID, chatParentID, userMessage, chatFormat, chatAppend, chatSave, chatAppendSave, chatModel, chatThinkingBudget); err != nil {
 			cmd.SilenceUsage = true
 			return fmt.Errorf("chat execution failed: %w", err)
 		}

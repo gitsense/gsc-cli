@@ -1,5 +1,5 @@
 /**
- * Component: Claude Code Execution Manager
+ * Component: Claude Code Chat Execution Manager
  * Block-UUID: 3247a534-8a8a-486b-8271-0defbeda9455
  * Parent-UUID: 7e503cc3-40d8-4567-92bd-77565018e5df
  * Version: 1.53.3
@@ -10,7 +10,7 @@
  */
 
 
-package claude
+package chat
 
 import (
 	"database/sql"
@@ -25,6 +25,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gitsense/gsc-cli/internal/claude"
 	"github.com/gitsense/gsc-cli/internal/db"
 	"github.com/gitsense/gsc-cli/internal/git"
 	"github.com/gitsense/gsc-cli/pkg/logger"

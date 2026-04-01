@@ -1,5 +1,5 @@
 /**
- * Component: Claude Code Archive Manager
+ * Component: Claude Code Chat Archive Manager
  * Block-UUID: ee051126-9bb2-48cc-bd84-b6ce59ead743
  * Parent-UUID: 96bdc1f8-c4af-4fbc-9857-39052d2d8fe6
  * Version: 1.13.1
@@ -10,7 +10,7 @@
  */
 
 
-package claude
+package chat
 
 import (
 	"crypto/sha256"
@@ -22,6 +22,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/gitsense/gsc-cli/internal/claude"
 	"github.com/gitsense/gsc-cli/internal/context"
 	"github.com/gitsense/gsc-cli/internal/db"
 	"github.com/gitsense/gsc-cli/pkg/logger"

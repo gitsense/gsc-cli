@@ -14,8 +14,10 @@ package claude
 
 import (
 	"github.com/spf13/cobra"
+
 	"github.com/gitsense/gsc-cli/pkg/logger"
 	claudescout "github.com/gitsense/gsc-cli/internal/cli/claude/scout"
+	claudechat "github.com/gitsense/gsc-cli/internal/cli/claude/chat"
 )
 
 // Global flags
@@ -44,7 +46,7 @@ func init() {
 
 	// Register subcommands
 	claudeCmd.AddCommand(initCmd)
-	claudeCmd.AddCommand(chatCmd)
+	claudeCmd.AddCommand(claudechat.ChatCmd())
 	claudeCmd.AddCommand(claudescout.RootCmd())
 
 	logger.Debug("Claude root command initialized")

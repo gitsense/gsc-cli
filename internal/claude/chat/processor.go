@@ -1,5 +1,5 @@
 /*
- * Component: Stream Event Processor
+ * Component: Claude Code Chat Stream Event Processor
  * Block-UUID: a4ffef85-9544-45d2-a8f9-149d415e44ab
  * Parent-UUID: N/A
  * Version: 1.0.0
@@ -10,7 +10,7 @@
  */
 
 
-package claude
+package chat
 
 import (
 	"bufio"
@@ -24,6 +24,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gitsense/gsc-cli/internal/claude"
 	"github.com/gitsense/gsc-cli/pkg/logger"
 )
 

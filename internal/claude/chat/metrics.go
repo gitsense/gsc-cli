@@ -1,5 +1,5 @@
 /**
- * Component: Claude Code Metrics Database
+ * Component: Claude Code Chat Metrics Database
  * Block-UUID: 9222f7a0-bec7-4c4b-ac67-04b9cd6c9812
  * Parent-UUID: 50d6d90e-97cb-4dc3-83c0-001258e34a04
  * Version: 1.1.0
@@ -10,7 +10,7 @@
  */
 
 
-package claude
+package chat
 
 import (
 	"database/sql"
@@ -21,6 +21,7 @@ import (
 
 	_ "modernc.org/sqlite" // Pure Go SQLite driver
 
+	"github.com/gitsense/gsc-cli/internal/claude"
 	"github.com/gitsense/gsc-cli/pkg/logger"
 	"github.com/gitsense/gsc-cli/pkg/settings"
 )
