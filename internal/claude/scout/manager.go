@@ -1,12 +1,12 @@
 /**
  * Component: Scout Session Manager
- * Block-UUID: 5cc91a7a-e174-44b1-887b-49e8a94df794
- * Parent-UUID: d3ad9685-3f48-4f0c-b17b-0126386b1cd8
- * Version: 1.3.1
+ * Block-UUID: f0eae849-3da7-4c89-be63-7f05325906e5
+ * Parent-UUID: 3eea6c34-9ac3-48e4-96f3-418c3b6965df
+ * Version: 1.3.3
  * Description: Orchestrates Scout discovery and verification phases, manages subprocess execution
  * Language: Go
- * Created-at: 2026-04-01T04:01:50.806Z
- * Authors: claude-haiku-4-5-20251001 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.2.5), GLM-4.7 (v1.2.6), GLM-4.7 (v1.2.7), GLM-4.7 (v1.2.8), GLM-4.7 (v1.2.9), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1)
+ * Created-at: 2026-04-01T04:38:11.138Z
+ * Authors: claude-haiku-4-5-20251001 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.2.5), GLM-4.7 (v1.2.6), GLM-4.7 (v1.2.7), GLM-4.7 (v1.2.8), GLM-4.7 (v1.2.9), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.3.3)
  */
 
 
@@ -430,6 +430,7 @@ func (m *Manager) spawnClaudeSubprocess(turn int) error {
 	}
 	m.debugLogger.Log("DEBUG", fmt.Sprintf("Read prompt template: %s", promptPath))
 
+	// Build the command flags for the bash script
 	// Format reference files metadata and replace placeholder
 	refFilesMarkdown := m.formatReferenceFilesMetadata()
 	promptStr := strings.ReplaceAll(string(promptData), "{{REFERENCE_FILES}}", refFilesMarkdown)
@@ -443,27 +444,60 @@ func (m *Manager) spawnClaudeSubprocess(turn int) error {
 
 	promptData = []byte(promptStr)
 
-	// Build the command to invoke claude CLI directly
-	m.debugLogger.Log("DEBUG", "Building claude command")
-	flags := []string{
-		"-p", fmt.Sprintf("%q", string(promptData)),
-		"--allowedTools", "Read,Bash",
-		"--verbose",
-		"--include-partial-messages",
-		"--output-format", "stream-json",
-	}
-
-	// Add working directories as --add-dir flags
+	// Build bash script with heredoc to safely pass the prompt
+	m.debugLogger.Log("DEBUG", "Building bash script with heredoc")
+	
+	// Build add-dir flags
+	var addDirFlags []string
 	for _, wd := range m.session.WorkingDirectories {
-		flags = append(flags, "--add-dir", wd.Path)
+		addDirFlags = append(addDirFlags, fmt.Sprintf("--add-dir %s", wd.Path))
 	}
-
+	addDirFlagsStr := strings.Join(addDirFlags, " ")
+	
+	// Build model flag if specified
+	modelFlag := ""
 	if m.session.Model != "" {
-		flags = append(flags, "--model", m.session.Model)
+		modelFlag = fmt.Sprintf("--model %s", m.session.Model)
 	}
-	m.debugLogger.Log("DEBUG", fmt.Sprintf("Command flags: %v", flags))
+	
+	// Create bash script content using heredoc
+	scriptContent := fmt.Sprintf(`#!/bin/bash
+set -e
 
-	cmd := exec.Command("claude", flags...)
+echo "=== Starting Claude Scout subprocess ==="
+echo "Working directory: $(pwd)"
+echo "Turn: %d"
+echo "Session ID: %s"
+echo "=== Executing Claude command ==="
+
+claude --allowedTools Read,Bash \
+--verbose \
+--include-partial-messages \
+--output-format stream-json \
+%s \
+%s \
+-p <<'ENDOFPROMPT'
+%s
+ENDOFPROMPT
+
+echo "=== Claude subprocess completed ==="
+exit_code=$?
+echo "Exit code: $exit_code"
+exit $exit_code
+`, turn, m.session.SessionID, addDirFlagsStr, modelFlag, promptStr)
+	
+	// Write bash script to turn directory
+	scriptPath := filepath.Join(m.config.GetTurnDir(turn), "run-claude.sh")
+	if err := os.WriteFile(scriptPath, []byte(scriptContent), 0755); err != nil {
+		m.debugLogger.LogError("Failed to write bash script", err)
+		m.markAsStopped("SCRIPT_FAILED", fmt.Sprintf("Failed to write bash script: %v", err))
+		return fmt.Errorf("failed to write bash script: %w", err)
+	}
+	m.debugLogger.Log("DEBUG", fmt.Sprintf("Bash script written to: %s", scriptPath))
+	
+	// Execute the bash script instead of claude directly
+	m.debugLogger.Log("DEBUG", "Building claude command")
+	cmd := exec.Command("/bin/bash", scriptPath)
 	cmd.Dir = m.config.GetTurnDir(turn)
 	m.debugLogger.Log("DEBUG", fmt.Sprintf("Working directory: %s", cmd.Dir))
 
