@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/gitsense/gsc-cli/internal/db"
 	"github.com/gitsense/gsc-cli/internal/manifest"
 	"github.com/gitsense/gsc-cli/internal/registry"
 )
@@ -114,7 +115,8 @@ func ValidateBrainDatabase(dbName string) []ValidationError {
 	}
 
 	// 2. Check if database file exists on disk
-	if err := manifest.ValidateDBExists(dbName); err != nil {
+	dbPath, err := db.ResolveManifestDBPath(dbName)
+	if err := db.ValidateDBExists(dbPath); err != nil {
 		return []ValidationError{
 			{
 				Type:    "missing_brain",

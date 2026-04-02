@@ -1,12 +1,12 @@
 /**
  * Component: Manifest Importer
- * Block-UUID: 65aefae6-66f7-4ce2-af33-0b05db5b5b38
- * Parent-UUID: 8a280a93-0560-4563-bd88-4a18559dc8bb
- * Version: 1.15.0
+ * Block-UUID: c5b4fe13-57b4-4e2b-9c0a-839fb519aff0
+ * Parent-UUID: 65aefae6-66f7-4ce2-af33-0b05db5b5b38
+ * Version: 1.16.0
  * Description: Logic to parse a JSON manifest file and import its data into a SQLite database. Updated to support importing from URIs (URLs or local paths). If a URL is provided, it downloads the manifest to a temporary file before processing.
  * Language: Go
- * Created-at: 2026-02-14T05:58:52.348Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.6.1), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), Gemini 3 Flash (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), Gemini 3 Flash (v1.14.0), GLM-4.7 (v1.15.0)
+ * Created-at: 2026-04-01T23:37:03.057Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.6.1), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), Gemini 3 Flash (v1.10.0), Gemini 3 Flash (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), Gemini 3 Flash (v1.14.0), GLM-4.7 (v1.15.0), claude-haiku-4-5-20251001 (v1.16.0)
  */
 
 
@@ -190,7 +190,7 @@ func ImportManifest(ctx context.Context, uri string, dbName string, force bool, 
 	db.CloseDB(database)
 
 	// 17. Backup Existing Database (if applicable)
-	finalPath, err := ResolveDBPath(dbName)
+	finalPath, err := db.ResolveManifestDBPath(dbName)
 	if err != nil {
 		return fmt.Errorf("failed to resolve final database path: %w", err)
 	}

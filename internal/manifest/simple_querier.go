@@ -1,12 +1,12 @@
 /**
  * Component: Simple Query Executor
- * Block-UUID: 0de5c5a0-21f2-4aca-af00-2a7185139326
- * Parent-UUID: cec62867-448b-4f54-acd4-f8a10af853fc
- * Version: 1.8.0
+ * Block-UUID: 6ef6e6bb-71f0-4c81-a14a-e5179e9c4c6f
+ * Parent-UUID: 54d64a3a-ac75-4bc9-8de6-6b59fe0e9aad
+ * Version: 1.8.4
  * Description: Executes simple value-matching queries and hierarchical list operations.
  * Language: Go
- * Created-at: 2026-02-11T07:35:30.010Z
- * Authors: GLM-4.7 (v1.0.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), GLM-4.7 (v1.7.1), GLM-4.7 (v1.7.2), Gemini 3 Flash (v1.8.0)
+ * Created-at: 2026-04-02T00:28:01.763Z
+ * Authors: GLM-4.7 (v1.0.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), GLM-4.7 (v1.7.1), GLM-4.7 (v1.7.2), Gemini 3 Flash (v1.8.0), claude-haiku-4-5-20251001 (v1.8.1), claude-haiku-4-5-20251001 (v1.8.2), claude-haiku-4-5-20251001 (v1.8.3), GLM-4.7 (v1.8.4)
  */
 
 
@@ -23,6 +23,7 @@ import (
 
 	"github.com/gitsense/gsc-cli/internal/db"
 	"github.com/gitsense/gsc-cli/internal/git"
+	"github.com/gitsense/gsc-cli/internal/search"
 	"github.com/gitsense/gsc-cli/pkg/logger"
 )
 
@@ -30,12 +31,12 @@ import (
 // It supports comma-separated values for OR logic.
 func ExecuteSimpleQuery(ctx context.Context, dbName string, fieldName string, value string) ([]QueryResult, error) {
 	// 1. Validate Database Exists
-	if err := ValidateDBExists(dbName); err != nil {
+	if err := db.ValidateDBExists(dbName); err != nil {
 		return nil, err
 	}
 
 	// 2. Resolve DB Path
-	dbPath, err := ResolveDBPath(dbName)
+	dbPath, err := db.ResolveManifestDBPath(dbName)
 	if err != nil {
 		return nil, err
 	}
@@ -216,12 +217,12 @@ func listAllDatabases(ctx context.Context) ([]ListItem, error) {
 // listFieldsInDatabase returns a list of all fields in the specified database.
 func listFieldsInDatabase(ctx context.Context, dbName string) ([]ListItem, error) {
 	// 1. Validate Database Exists
-	if err := ValidateDBExists(dbName); err != nil {
+	if err := db.ValidateDBExists(dbName); err != nil {
 		return nil, err
 	}
 
 	// 2. Resolve DB Path
-	dbPath, err := ResolveDBPath(dbName)
+	dbPath, err := db.ResolveManifestDBPath(dbName)
 	if err != nil {
 		return nil, err
 	}
@@ -269,12 +270,12 @@ func listFieldsInDatabase(ctx context.Context, dbName string) ([]ListItem, error
 // listValuesForField returns a list of unique values for the specified field in the database.
 func listValuesForField(ctx context.Context, dbName string, fieldName string) ([]ListItem, error) {
 	// 1. Validate Database Exists
-	if err := ValidateDBExists(dbName); err != nil {
+	if err := db.ValidateDBExists(dbName); err != nil {
 		return nil, err
 	}
 
 	// 2. Resolve DB Path
-	dbPath, err := ResolveDBPath(dbName)
+	dbPath, err := db.ResolveManifestDBPath(dbName)
 	if err != nil {
 		return nil, err
 	}
@@ -386,7 +387,7 @@ func ExecuteCoverageAnalysis(ctx context.Context, dbName string, scopeOverride s
 	}
 
 	// 2. Open Database
-	dbPath, err := ResolveDBPath(dbName)
+	dbPath, err := db.ResolveManifestDBPath(dbName)
 	if err != nil {
 		return nil, err
 	}
@@ -527,7 +528,7 @@ func ExecuteCoverageAnalysis(ctx context.Context, dbName string, scopeOverride s
 
 // ExecuteInsightsAnalysis performs metadata aggregation for the requested fields within the active Focus Scope.
 // It implements type-aware SQL aggregation (scalar vs array) and calculates summary statistics.
-func ExecuteInsightsAnalysis(ctx context.Context, dbName string, fields []string, limit int, scopeOverride string, repoRoot string, profileName string) (*InsightsReport, error) {
+func ExecuteInsightsAnalysis(ctx context.Context, dbName string, fields []string, limit int, scopeOverride string, repoRoot string, profileName string, filters []search.FilterCondition) (*InsightsReport, error) {
 	// 1. Resolve Scope
 	scope, err := ResolveScopeForQuery(ctx, profileName, scopeOverride)
 	if err != nil {
@@ -535,7 +536,7 @@ func ExecuteInsightsAnalysis(ctx context.Context, dbName string, fields []string
 	}
 
 	// 2. Open Database
-	dbPath, err := ResolveDBPath(dbName)
+	dbPath, err := db.ResolveManifestDBPath(dbName)
 	if err != nil {
 		return nil, err
 	}
@@ -590,7 +591,43 @@ func ExecuteInsightsAnalysis(ctx context.Context, dbName string, fields []string
 			return nil, fmt.Errorf("failed to query field info for '%s': %w", fieldName, err)
 		}
 
-		// 6b. Execute Aggregation Query based on type
+		// 6b. Build filter JOINs and WHERE conditions
+		var filterJoins []string
+		var filterWheres []string
+		var filterArgs []interface{}
+
+		for i, filter := range filters {
+			alias := fmt.Sprintf("fm_filter_%d", i)
+			mfAlias := fmt.Sprintf("mf_filter_%d", i)
+
+			// Build JOIN clause
+			filterJoins = append(filterJoins, fmt.Sprintf("JOIN file_metadata %s ON f.file_path = %s.file_path", alias, alias))
+			filterJoins = append(filterJoins, fmt.Sprintf("JOIN metadata_fields %s ON %s.field_id = %s.field_id", mfAlias, alias, alias))
+
+			// Build WHERE clause for this filter
+			filterWheres = append(filterWheres, fmt.Sprintf("%s.field_name = ?", mfAlias))
+			filterArgs = append(filterArgs, filter.Field)
+
+			// Build condition SQL based on operator
+			switch filter.Operator {
+			case "=":
+				filterWheres = append(filterWheres, fmt.Sprintf("LOWER(%s.field_value) = ?", alias))
+				filterArgs = append(filterArgs, strings.ToLower(filter.Value))
+			case "!=":
+				filterWheres = append(filterWheres, fmt.Sprintf("LOWER(%s.field_value) != ?", alias))
+				filterArgs = append(filterArgs, strings.ToLower(filter.Value))
+			case "in":
+				values := strings.Split(filter.Value, ",")
+				placeholders := make([]string, len(values))
+				for j, v := range values {
+					placeholders[j] = "?"
+					filterArgs = append(filterArgs, strings.ToLower(strings.TrimSpace(v)))
+				}
+				filterWheres = append(filterWheres, fmt.Sprintf("LOWER(%s.field_value) IN (%s)", alias, strings.Join(placeholders, ",")))
+			}
+		}
+
+		// 6c. Execute Aggregation Query based on type
 		var rows *sql.Rows
 		var queryErr error
 
@@ -602,13 +639,18 @@ func ExecuteInsightsAnalysis(ctx context.Context, dbName string, fields []string
 				JOIN metadata_fields mf ON fm.field_id = mf.field_id
 				JOIN files f ON fm.file_path = f.file_path
 				JOIN target_set ts ON f.file_path = ts.file_path
+				%s
 				JOIN json_each(fm.field_value)
 				WHERE mf.field_name = ?
+				%s
 				GROUP BY json_each.value
 				ORDER BY count DESC
 				LIMIT ?
 			`
-			rows, queryErr = database.QueryContext(ctx, query, fieldName, limit)
+			query = fmt.Sprintf(query, strings.Join(filterJoins, " "), strings.Join(filterWheres, " AND "))
+			args := append([]interface{}{fieldName}, filterArgs...)
+			args = append(args, limit)
+			rows, queryErr = database.QueryContext(ctx, query, args...)
 		} else {
 			// Scalar Type: Standard GROUP BY
 			query := `
@@ -617,12 +659,17 @@ func ExecuteInsightsAnalysis(ctx context.Context, dbName string, fields []string
 				JOIN metadata_fields mf ON fm.field_id = mf.field_id
 				JOIN files f ON fm.file_path = f.file_path
 				JOIN target_set ts ON f.file_path = ts.file_path
+				%s
 				WHERE mf.field_name = ?
+				%s
 				GROUP BY fm.field_value
 				ORDER BY count DESC
 				LIMIT ?
 			`
-			rows, queryErr = database.QueryContext(ctx, query, fieldName, limit)
+			query = fmt.Sprintf(query, strings.Join(filterJoins, " "), strings.Join(filterWheres, " AND "))
+			args := append([]interface{}{fieldName}, filterArgs...)
+			args = append(args, limit)
+			rows, queryErr = database.QueryContext(ctx, query, args...)
 		}
 
 		if queryErr != nil {
@@ -630,12 +677,12 @@ func ExecuteInsightsAnalysis(ctx context.Context, dbName string, fields []string
 		}
 		defer rows.Close()
 
-		// 6c. Parse Results
+		// 6d. Parse Results
 		var insights []FieldInsight
 		for rows.Next() {
 			var insight FieldInsight
 			if err := rows.Scan(&insight.Value, &insight.Count); err != nil {
-				return nil, fmt.Errorf("failed to scan insight row for field '%s': %w", fieldName, err)
+				return nil, fmt.Errorf("failed to scan insight row for field '%s': %w", fieldName, fieldName)
 			}
 			
 			// Calculate percentage
@@ -651,7 +698,7 @@ func ExecuteInsightsAnalysis(ctx context.Context, dbName string, fields []string
 
 		report.Insights[fieldName] = insights
 
-		// 6d. Calculate Summary Stats for this field
+		// 6e. Calculate Summary Stats for this field
 		// Count files with metadata (non-null values)
 		var filesWithMeta int
 		metaCountQuery := `
@@ -692,4 +739,3 @@ func ExecuteInsightsAnalysis(ctx context.Context, dbName string, fields []string
 
 	return report, nil
 }
-

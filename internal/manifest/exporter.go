@@ -1,12 +1,12 @@
 /**
  * Component: Manifest Exporter
- * Block-UUID: 9fc8182e-fb4c-4a34-8505-c9569a79df0d
- * Parent-UUID: 1485e780-f70f-4394-8d78-5547128e15e4
- * Version: 1.0.3
+ * Block-UUID: c8f425e9-6fc6-4fa0-b611-a07e9b4646b1
+ * Parent-UUID: 9fc8182e-fb4c-4a34-8505-c9569a79df0d
+ * Version: 1.0.4
  * Description: Logic to export manifest database content to Markdown or JSON format. Added validation to check if the database file exists before connecting to prevent creating empty artifacts. Reviewed for professional CLI output compliance: no logging changes required as it relies on the CLI layer for user feedback.
  * Language: Go
- * Created-at: 2026-02-02T08:33:44.702Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3)
+ * Created-at: 2026-04-01T23:15:55.137Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), claude-haiku-4-5-20251001 (v1.0.4)
  */
 
 
@@ -25,12 +25,12 @@ import (
 // ExportDatabase exports the database content to the specified format.
 func ExportDatabase(ctx context.Context, dbName string, format string) (string, error) {
 	// 1. Validate Database Exists (Prevents creating empty artifacts)
-	if err := ValidateDBExists(dbName); err != nil {
+	if err := db.ValidateDBExists(dbName); err != nil {
 		return "", err
 	}
 
 	// 2. Resolve DB Path
-	dbPath, err := ResolveDBPath(dbName)
+	dbPath, err := db.ResolveManifestDBPath(dbName)
 	if err != nil {
 		return "", err
 	}

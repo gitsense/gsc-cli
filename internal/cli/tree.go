@@ -21,6 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/gitsense/gsc-cli/internal/bridge"
+	"github.com/gitsense/gsc-cli/internal/db"
 	"github.com/gitsense/gsc-cli/internal/contract"
 	"github.com/gitsense/gsc-cli/internal/git"
 	"github.com/gitsense/gsc-cli/internal/manifest"
@@ -181,7 +182,7 @@ Filtering & Pruning:
 			}
 
 			// Resolve DB Path and Open
-			dbPath, err := manifest.ResolveDBPath(dbName)
+			dbPath, err := db.ResolveManifestDBPath(dbName)
 			if err != nil {
 				return err
 			}

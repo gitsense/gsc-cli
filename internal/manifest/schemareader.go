@@ -1,12 +1,12 @@
 /**
  * Component: Schema Reader
- * Block-UUID: dee3955b-6213-4e3f-a67e-d762702b5137
- * Parent-UUID: d602b4d4-3d46-4ca1-b758-66f79b320c17
- * Version: 1.5.0
+ * Block-UUID: e15cde1c-c0e9-4e7e-9ecf-0309a1b0684d
+ * Parent-UUID: afac07c0-306d-497a-9f01-d11a48bd9096
+ * Version: 1.7.0
  * Description: Logic to query the database and retrieve analyzer and field definitions. Added GetFieldTypes helper for filter parser to determine field types. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted routine Info logs to Debug level to enable quiet-by-default behavior.
  * Language: Go
- * Created-at: 2026-02-02T08:34:20.421Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
+ * Created-at: 2026-04-01T23:24:36.601Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), claude-haiku-4-5-20251001 (v1.6.0), claude-haiku-4-5-20251001 (v1.7.0)
  */
 
 
@@ -48,12 +48,12 @@ type FieldInfo struct {
 // It queries the analyzers and metadata_fields tables and groups fields by their analyzer.
 func GetSchema(ctx context.Context, dbName string) (*SchemaInfo, error) {
 	// 1. Validate Database Exists (Prevents creating empty artifacts)
-	if err := ValidateDBExists(dbName); err != nil {
+	if err := db.ValidateDBExists(dbName); err != nil {
 		return nil, err
 	}
 
 	// 2. Resolve Database Path
-	dbPath, err := ResolveDBPath(dbName)
+	dbPath, err := db.ResolveManifestDBPath(dbName)
 	if err != nil {
 		return nil, err
 	}
@@ -165,12 +165,12 @@ func GetSchema(ctx context.Context, dbName string) (*SchemaInfo, error) {
 // This is a helper function for interactive wizards to populate dropdown menus.
 func ListFieldNames(ctx context.Context, dbName string) ([]string, error) {
 	// 1. Validate Database Exists
-	if err := ValidateDBExists(dbName); err != nil {
+	if err := db.ValidateDBExists(dbName); err != nil {
 		return nil, err
 	}
 
 	// 2. Resolve Database Path
-	dbPath, err := ResolveDBPath(dbName)
+	dbPath, err := db.ResolveManifestDBPath(dbName)
 	if err != nil {
 		return nil, err
 	}
@@ -209,54 +209,4 @@ func ListFieldNames(ctx context.Context, dbName string) ([]string, error) {
 	}
 
 	return fieldNames, nil
-}
-
-// GetFieldTypes retrieves a map of field names to their types for the specified database.
-// This is used by the filter parser to determine how to handle operators (e.g., "=" for lists vs scalars).
-func GetFieldTypes(ctx context.Context, dbName string) (map[string]string, error) {
-	// 1. Validate Database Exists
-	if err := ValidateDBExists(dbName); err != nil {
-		return nil, err
-	}
-
-	// 2. Resolve Database Path
-	dbPath, err := ResolveDBPath(dbName)
-	if err != nil {
-		return nil, err
-	}
-
-	// 3. Open Database Connection
-	database, err := db.OpenDB(dbPath)
-	if err != nil {
-		return nil, err
-	}
-	defer db.CloseDB(database)
-
-	// 4. Query Field Names and Types
-	query := `
-		SELECT field_name, field_type
-		FROM metadata_fields
-		ORDER BY field_name
-	`
-
-	rows, err := database.QueryContext(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	fieldTypes := make(map[string]string)
-	for rows.Next() {
-		var name, fieldType string
-		if err := rows.Scan(&name, &fieldType); err != nil {
-			return nil, err
-		}
-		fieldTypes[name] = fieldType
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return fieldTypes, nil
 }

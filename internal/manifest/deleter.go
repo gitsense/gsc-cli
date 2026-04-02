@@ -1,12 +1,12 @@
 /**
  * Component: Manifest Deleter
- * Block-UUID: 3b9c1d2e-5f6a-4b7c-8d9e-0a1b2c3d4e5f
- * Parent-UUID: 125e1da2-e099-430d-a88e-5ec69d5a5166
- * Version: 1.1.0
+ * Block-UUID: 4432f900-aa3c-4bc4-85cc-084266f9951d
+ * Parent-UUID: 3b9c1d2e-5f6a-4b7c-8d9e-0a1b2c3d4e5f
+ * Version: 1.2.0
  * Description: Logic to delete a manifest database file and remove its entry from the registry.
  * Language: Go
- * Created-at: 2026-02-11T01:52:28.163Z
- * Authors: GLM-4.7 (v1.0.0), Gemini 3 Flash (v1.1.0)
+ * Created-at: 2026-04-01T23:37:34.352Z
+ * Authors: GLM-4.7 (v1.0.0), Gemini 3 Flash (v1.1.0), claude-haiku-4-5-20251001 (v1.2.0)
  */
 
 
@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/gitsense/gsc-cli/internal/db"
 	"github.com/gitsense/gsc-cli/internal/registry"
 	"github.com/gitsense/gsc-cli/pkg/logger"
 )
@@ -41,7 +42,7 @@ func DeleteManifest(dbName string) error {
 	}
 
 	// 3. Resolve DB Path
-	dbPath, err := ResolveDBPath(dbName)
+	dbPath, err := db.ResolveManifestDBPath(dbName)
 	if err != nil {
 		return fmt.Errorf("failed to resolve database path: %w", err)
 	}
@@ -70,4 +71,3 @@ func DeleteManifest(dbName string) error {
 	logger.Success("Successfully deleted manifest", "manifest", entry.ManifestName, "db", dbName)
 	return nil
 }
-

@@ -1,12 +1,12 @@
 /**
  * Component: Ripgrep Metadata Enricher
- * Block-UUID: 3c121224-6fd9-48ff-a258-be46a197a4e1
- * Parent-UUID: 11fd1354-41c0-4c66-aa0a-8e0cdd997514
- * Version: 1.3.0
+ * Block-UUID: 33022faf-9f62-420c-8f5f-6b193b18742b
+ * Parent-UUID: 3c121224-6fd9-48ff-a258-be46a197a4e1
+ * Version: 1.4.0
  * Description: Enriches raw ripgrep matches with metadata. Added GetMetadataForFiles to support batch lookups for the dual-pass workflow, returning a map of file paths to metadata results. Refactored all logger calls to use structured Key-Value pairs instead of format strings.
  * Language: Go
- * Created-at: 2026-02-03T07:54:54.354Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
+ * Created-at: 2026-04-01T23:15:06.729Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), claude-haiku-4-5-20251001 (v1.4.0)
  */
 
 
@@ -33,12 +33,12 @@ func EnrichMatches(ctx context.Context, matches []RgMatch, dbName string) ([]Enr
 	}
 
 	// 1. Validate Database Exists
-	if err := ValidateDBExists(dbName); err != nil {
+	if err := db.ValidateDBExists(dbName); err != nil {
 		return nil, err
 	}
 
 	// 2. Resolve DB Path
-	dbPath, err := ResolveDBPath(dbName)
+	dbPath, err := db.ResolveManifestDBPath(dbName)
 	if err != nil {
 		return nil, err
 	}
@@ -77,12 +77,12 @@ func GetMetadataForFiles(ctx context.Context, filePaths []string, dbName string)
 	}
 
 	// 1. Validate Database Exists
-	if err := ValidateDBExists(dbName); err != nil {
+	if err := db.ValidateDBExists(dbName); err != nil {
 		return nil, err
 	}
 
 	// 2. Resolve DB Path
-	dbPath, err := ResolveDBPath(dbName)
+	dbPath, err := db.ResolveManifestDBPath(dbName)
 	if err != nil {
 		return nil, err
 	}

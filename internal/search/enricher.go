@@ -1,12 +1,12 @@
-/*
+/**
  * Component: Search Result Enricher
- * Block-UUID: 43230cdc-8c3d-4725-9019-65a86693ece9
- * Parent-UUID: 0a67a839-0cca-4cd5-b7e8-00e8966af4ea
- * Version: 3.0.0
+ * Block-UUID: 55498844-209d-491e-bd4f-169e50f26e11
+ * Parent-UUID: 43230cdc-8c3d-4725-9019-65a86693ece9
+ * Version: 3.1.0
  * Description: Exported CheckFilters, CheckSingleCondition, and CheckArrayCondition to support semantic filtering in the 'gsc tree' command.
  * Language: Go
- * Created-at: 2026-02-09T20:03:10.592Z
- * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v2.9.0), Gemini 3 Flash (v3.0.0)
+ * Created-at: 2026-04-01T23:09:55.835Z
+ * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v2.9.0), Gemini 3 Flash (v3.0.0), claude-haiku-4-5-20251001 (v3.1.0)
  */
 
 
@@ -22,7 +22,6 @@ import (
 	"strings"
 
 	"github.com/gitsense/gsc-cli/internal/db"
-	"github.com/gitsense/gsc-cli/internal/manifest"
 	"github.com/gitsense/gsc-cli/pkg/logger"
 )
 
@@ -34,12 +33,12 @@ func EnrichMatches(ctx context.Context, matches []RawMatch, dbName string, filte
 	}
 
 	// 1. Validate Database Exists
-	if err := manifest.ValidateDBExists(dbName); err != nil {
+	if err := db.ValidateDBExists(dbName); err != nil {
 		return nil, nil, 0, err
 	}
 
 	// 2. Resolve DB Path
-	dbPath, err := manifest.ResolveDBPath(dbName)
+	dbPath, err := db.ResolveManifestDBPath(dbName)
 	if err != nil {
 		return nil, nil, 0, err
 	}

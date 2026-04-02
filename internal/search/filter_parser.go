@@ -1,12 +1,12 @@
 /**
  * Component: Filter Parser
- * Block-UUID: bc4691bb-9e58-4ea0-8301-5455aa34e49c
- * Parent-UUID: 96639906-6185-42ec-b43d-fb59b5aa3958
- * Version: 1.0.2
+ * Block-UUID: 719193ad-5b3e-4413-a20a-cb170133ff98
+ * Parent-UUID: 03342c43-02e1-4678-9466-898d546b3d83
+ * Version: 1.0.5
  * Description: Parses filter strings and generates SQL WHERE clauses for metadata filtering. Supports operators, ranges, and field type detection. Fixed logic error in validateOperator for numeric fields.
  * Language: Go
- * Created-at: 2026-02-04T03:55:26.960Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2)
+ * Created-at: 2026-04-01T23:39:00.150Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), claude-haiku-4-5-20251001 (v1.0.3), claude-haiku-4-5-20251001 (v1.0.4), claude-haiku-4-5-20251001 (v1.0.5)
  */
 
 
@@ -18,7 +18,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gitsense/gsc-cli/internal/manifest"
+	"github.com/gitsense/gsc-cli/internal/db"
 )
 
 // ParseFilters parses a list of filter strings into FilterCondition objects.
@@ -29,7 +29,7 @@ func ParseFilters(ctx context.Context, filterStrings []string, dbName string) ([
 	}
 
 	// 1. Get Field Schema to determine types
-	fieldTypes, err := manifest.GetFieldTypes(ctx, dbName)
+	fieldTypes, err := db.GetFieldTypes(ctx, dbName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get field schema: %w", err)
 	}
@@ -272,13 +272,40 @@ func buildConditionSQL(cond FilterCondition) (string, []interface{}, error) {
 
 	case "in":
 		values := strings.Split(cond.Value, ",")
-		placeholders := make([]string, len(values))
+		var exactValues []string
+		var wildcardValues []string
 		args := make([]interface{}, len(values))
-		for i, v := range values {
-			placeholders[i] = "?"
-			args[i] = strings.ToLower(strings.TrimSpace(v))
+		argCount := 0
+
+		for _, v := range values {
+			v = strings.ToLower(strings.TrimSpace(v))
+
+			if strings.Contains(v, "*") {
+				// Wildcard match: convert * to %
+				pattern := strings.ReplaceAll(v, "*", "%")
+				wildcardValues = append(wildcardValues, "fm.field_value LIKE ?")
+				args[argCount] = pattern
+				argCount++
+			} else {
+				// Exact match
+				exactValues = append(exactValues, "?")
+				args[argCount] = v
+				argCount++
+			}
 		}
-		return "LOWER(fm.field_value) IN (" + strings.Join(placeholders, ",") + ")", args, nil
+
+		// Trim args to actual count
+		args = args[:argCount]
+
+		var conditions []string
+		if len(exactValues) > 0 {
+			conditions = append(conditions, "LOWER(fm.field_value) IN ("+strings.Join(exactValues, ",")+")")
+		}
+		if len(wildcardValues) > 0 {
+			conditions = append(conditions, strings.Join(wildcardValues, " OR "))
+		}
+
+		return "(" + strings.Join(conditions, " OR ") + ")", args, nil
 
 	case "not in":
 		values := strings.Split(cond.Value, ",")

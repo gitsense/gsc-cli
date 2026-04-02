@@ -1,12 +1,12 @@
 /**
  * Component: Manifest Bundler
- * Block-UUID: 930c93f7-5e99-4396-9429-abdf38bd586a
- * Parent-UUID: f6913e77-d7ef-476f-a2c4-e02ca71a97f8
- * Version: 1.3.0
+ * Block-UUID: bff973f1-acc1-4e4d-a8de-2403a97570a7
+ * Parent-UUID: 930c93f7-5e99-4396-9429-abdf38bd586a
+ * Version: 1.4.0
  * Description: Logic to generate context bundles from SQL queries against a manifest database. Fixed integer conversion to handle SQLite int64 properly. Added validation to check if the database file exists before connecting to prevent creating empty artifacts. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted Info logs to Debug level and removed redundant Error logs to prevent double logging with the CLI layer.
  * Language: Go
- * Created-at: 2026-02-02T08:33:07.479Z
- * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), Claude Haiku 4.5 (v1.1.1), GLM-4.7 (v1.1.2), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
+ * Created-at: 2026-04-01T23:16:52.116Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), Claude Haiku 4.5 (v1.1.1), GLM-4.7 (v1.1.2), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), claude-haiku-4-5-20251001 (v1.4.0)
  */
 
 
@@ -25,12 +25,12 @@ import (
 // CreateBundle executes a SQL query and formats the results as a context bundle.
 func CreateBundle(ctx context.Context, dbName string, query string, format string) (string, error) {
 	// 1. Validate Database Exists (Prevents creating empty artifacts)
-	if err := ValidateDBExists(dbName); err != nil {
+	if err := db.ValidateDBExists(dbName); err != nil {
 		return "", err
 	}
 
 	// 2. Resolve DB Path
-	dbPath, err := ResolveDBPath(dbName)
+	dbPath, err := db.ResolveManifestDBPath(dbName)
 	if err != nil {
 		return "", err
 	}

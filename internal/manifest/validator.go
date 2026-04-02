@@ -1,12 +1,12 @@
 /**
  * Component: Manifest Validator
- * Block-UUID: 8a7f9c12-3d45-4e8a-9b10-1c2d3e4f5a6b
- * Parent-UUID: 9533e908-8615-4ae9-aab6-72c7da54561a
- * Version: 1.1.0
+ * Block-UUID: dcaf816d-179b-4673-a630-ff2a0845b7fa
+ * Parent-UUID: 8a7f9c12-3d45-4e8a-9b10-1c2d3e4f5a6b
+ * Version: 1.2.0
  * Description: Validates the structure and content of a loaded ManifestFile.
  * Language: Go
- * Created-at: 2026-02-11T00:46:23.231Z
- * Authors: GLM-4.7 (v1.0.0), Gemini 3 Flash (v1.1.0)
+ * Created-at: 2026-04-01T23:42:56.454Z
+ * Authors: GLM-4.7 (v1.0.0), Gemini 3 Flash (v1.1.0), claude-haiku-4-5-20251001 (v1.2.0)
  */
 
 
@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/gitsense/gsc-cli/internal/db"
 	"github.com/gitsense/gsc-cli/pkg/logger"
 )
 
@@ -37,6 +38,11 @@ func ValidateManifest(m *ManifestFile) error {
 	}
 	if m.Manifest.DatabaseName == "" {
 		return fmt.Errorf("manifest.database_name is required")
+	}
+
+	// 3. Validate Database Exists
+	if err := db.ValidateDBExists(m.Manifest.DatabaseName); err != nil {
+		return fmt.Errorf("database '%s' not found: %w", m.Manifest.DatabaseName, err)
 	}
 
 	// Check Repositories

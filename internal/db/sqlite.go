@@ -1,20 +1,23 @@
 /**
  * Component: SQLite Database Handler
- * Block-UUID: fda07a9c-552c-47c7-9f41-4b2abc2f08d1
- * Parent-UUID: 29650eea-03f5-43b3-bd44-041e5cdff755
- * Version: 1.1.0
+ * Block-UUID: 4416f7cd-d48d-4c25-bfcb-4bc15fd8c249
+ * Parent-UUID: 6814805c-5bcb-4732-a017-6c50e93eaebe
+ * Version: 1.6.0
  * Description: Handles SQLite database connections using modernc.org/sqlite for pure Go, CGO-free execution.
  * Language: Go
- * Created-at: 2026-03-21T04:00:59.886Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0)
+ * Created-at: 2026-04-02T00:02:51.146Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), claude-haiku-4-5-20251001 (v1.2.0), claude-haiku-4-5-20251001 (v1.3.0), claude-haiku-4-5-20251001 (v1.4.0), claude-haiku-4-5-20251001 (v1.5.0), GLM-4.7 (v1.6.0)
  */
 
 
 package db
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
+	"github.com/gitsense/gsc-cli/internal/git"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -83,4 +86,75 @@ func ResolveDBPath(nativePath string) string {
 
 	// 2. No Context: Use Native Path
 	return nativePath
+}
+
+// ValidateDBExists checks if the database file exists on disk before attempting a connection.
+// This prevents the SQLite driver from creating an empty file artifact if the database is missing.
+func ValidateDBExists(dbPath string) error {
+	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
+		return fmt.Errorf("database not found at %s", dbPath)
+	}
+	return nil
+}
+
+// ResolveManifestDBPath constructs the absolute path to a manifest database file within the .gitsense directory.
+// It finds the project root and appends the database name with a .db extension.
+func ResolveManifestDBPath(dbName string) (string, error) {
+	root, err := git.FindProjectRoot()
+	if err != nil {
+		return "", fmt.Errorf("failed to find project root: %w", err)
+	}
+
+	dbPath := filepath.Join(root, ".gitsense", dbName+".db")
+	return dbPath, nil
+}
+
+// GetFieldTypes retrieves a map of field names to their types for the specified database.
+// This is used by the filter parser to determine how to handle operators (e.g., "=" for lists vs scalars).
+func GetFieldTypes(ctx context.Context, dbName string) (map[string]string, error) {
+	// 1. Resolve Database Path FIRST
+	dbPath, err := ResolveManifestDBPath(dbName)
+	if err != nil {
+		return nil, err
+	}
+
+	// 2. THEN Validate Database Exists
+	if err := ValidateDBExists(dbPath); err != nil {
+		return nil, err
+	}
+
+	// 3. Open Database Connection
+	database, err := OpenDB(dbPath)
+	if err != nil {
+		return nil, err
+	}
+	defer CloseDB(database)
+
+	// 4. Query Field Names and Types
+	query := `
+		SELECT field_name, field_type
+		FROM metadata_fields
+		ORDER BY field_name
+	`
+
+	rows, err := database.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	fieldTypes := make(map[string]string)
+	for rows.Next() {
+		var name, fieldType string
+		if err := rows.Scan(&name, &fieldType); err != nil {
+			return nil, err
+		}
+		fieldTypes[name] = fieldType
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return fieldTypes, nil
 }

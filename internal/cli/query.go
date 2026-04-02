@@ -1,12 +1,12 @@
 /**
  * Component: Query Command
- * Block-UUID: 1db313bd-fdb4-4912-8dc6-400c425f95ad
- * Parent-UUID: edb5aa42-8b16-45e7-9cb5-d420c3db14e2
- * Version: 3.13.0
+ * Block-UUID: 5b9d7925-f16a-405a-a6d5-17c510f72c5b
+ * Parent-UUID: 2a0da0ab-e136-4216-9eed-345a5e40f581
+ * Version: 3.15.0
  * Description: Added the 'DatabasesCmd' as a root-level convenience command. It supports listing all databases, inspecting a specific database schema via positional argument, or dumping all schemas using the --schema flag. Updated bridge.Execute calls to include the new exitCode argument.
  * Language: Go
- * Created-at: 2026-03-28T17:44:36.701Z
- * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v3.9.0), Gemini 3 Flash (v3.10.0), GLM-4.7 (v3.11.0), Gemini 3 Flash (v3.12.0), GLM-4.7 (v3.13.0)
+ * Created-at: 2026-04-02T00:08:00.238Z
+ * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v3.13.0), claude-haiku-4-5-20251001 (v3.14.0), GLM-4.7 (v3.15.0)
  */
 
 
@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/gitsense/gsc-cli/internal/bridge"
 	"github.com/gitsense/gsc-cli/internal/git"
+	"github.com/gitsense/gsc-cli/internal/search"
 	"github.com/gitsense/gsc-cli/internal/manifest"
 	"github.com/gitsense/gsc-cli/internal/registry"
 	"github.com/gitsense/gsc-cli/pkg/logger"
@@ -42,6 +43,7 @@ var (
 	queryFields        []string
 	queryFieldSingular []string
 	brainsSchema       bool
+	queryFilters       []string
 )
 
 // queryCmd represents the base query command
@@ -185,6 +187,7 @@ Useful for identifying common patterns or unanalyzed areas.`,
 
 		outputStr, resolvedDB, err := handleInsights(cmd.Context(), queryDB, queryFields, queryInsightsLimit, queryScopeOverride, queryFormat, queryQuiet, queryReport)
 		if err != nil {
+			cmd.SilenceUsage = true
 			return err
 		}
 
@@ -364,6 +367,7 @@ func init() {
 	// Insights Subcommand Flags
 	InsightsCmd.Flags().StringSliceVar(&queryFields, "fields", []string{}, "Field(s) to analyze (comma-separated if more than one)")
 	InsightsCmd.Flags().BoolP("help", "h", false, "Help for insights")
+	InsightsCmd.Flags().StringSliceVar(&queryFilters, "filter", []string{}, "Metadata filter (e.g., --filter 'field:operator:value')")
 	InsightsCmd.Flags().IntVar(&queryInsightsLimit, "limit", 10, "Limit top values (1-1000)")
 	InsightsCmd.Flags().StringVar(&queryScopeOverride, "scope-override", "", "Temporary scope override")
 	InsightsCmd.Flags().StringVarP(&queryDB, "db", "d", "", "Database override")
@@ -516,8 +520,14 @@ func handleInsights(ctx context.Context, dbName string, fields []string, limit i
 		return "", "", fmt.Errorf("failed to find git root: %w", err)
 	}
 
+	// Parse filters
+	filters, err := search.ParseFilters(ctx, queryFilters, resolvedDB)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to parse filters: %w", err)
+	}
+
 	logger.Debug("Executing insights analysis", "database", resolvedDB, "fields", fields, "limit", limit, "scope_override", scopeOverride)
-	report, err := manifest.ExecuteInsightsAnalysis(ctx, resolvedDB, fields, limit, scopeOverride, repoRoot, config.ActiveProfile)
+	report, err := manifest.ExecuteInsightsAnalysis(ctx, resolvedDB, fields, limit, scopeOverride, repoRoot, config.ActiveProfile, filters)
 	if err != nil {
 		return "", "", err
 	}
