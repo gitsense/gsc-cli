@@ -1,12 +1,12 @@
 /**
  * Component: Query Command
- * Block-UUID: cb52cc15-7c74-4410-a7bf-c82864fcfb2f
- * Parent-UUID: 1b8e7ee2-19be-485f-8073-8a360b982ee4
- * Version: 3.18.0
+ * Block-UUID: 00f24f7a-9b90-447a-ba50-91f4156a7aff
+ * Parent-UUID: 4d46e605-3ffb-46c1-9a12-6681a48960dc
+ * Version: 3.23.0
  * Description: Added the 'DatabasesCmd' as a root-level convenience command. It supports listing all databases, inspecting a specific database schema via positional argument, or dumping all schemas using the --schema flag. Updated bridge.Execute calls to include the new exitCode argument.
  * Language: Go
- * Created-at: 2026-04-02T14:42:07.916Z
- * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v3.17.0), claude-haiku-4-5-20251001 (v3.18.0)
+ * Created-at: 2026-04-02T18:56:32.395Z
+ * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v3.17.0), claude-haiku-4-5-20251001 (v3.18.0), GLM-4.7 (v3.19.0), GLM-4.7 (v3.20.0), GLM-4.7 (v3.21.0), GLM-4.7 (v3.22.0), GLM-4.7 (v3.23.0)
  */
 
 
@@ -81,7 +81,13 @@ If no value is provided, it displays the current workspace context.`,
 			}
 		}
 
-		outputStr, resolvedDB, err := handleQueryOrStatus(cmd.Context(), queryDB, queryField, queryValue, queryFormat, queryQuiet, queryMatchAll, querySelectFields)
+		// Parse filters
+		filters, err := search.ParseFilters(cmd.Context(), queryFilters, queryDB)
+		if err != nil {
+			return fmt.Errorf("failed to parse filters: %w", err)
+		}
+
+		outputStr, resolvedDB, err := handleQueryOrStatus(cmd.Context(), queryDB, queryField, queryValue, queryFormat, queryQuiet, queryMatchAll, querySelectFields, filters)
 		if err != nil {
 			return err
 		}
@@ -367,6 +373,7 @@ func init() {
 	queryCmd.Flags().BoolVar(&queryMatchAll, "match-all", false, "Match all values (AND logic) instead of any (OR logic)")
 	queryCmd.Flags().StringVarP(&queryFormat, "format", "o", "table", "Output format (json, table)")
 	queryCmd.Flags().BoolVar(&queryQuiet, "quiet", false, "Suppress headers, footers, and hints")
+	queryCmd.Flags().StringArrayVar(&queryFilters, "filter", []string{}, "Metadata filter (e.g., --filter 'field:operator:value')")
 
 	// List Subcommand Flags
 	queryListCmd.Flags().BoolVar(&queryListDB, "dbs", false, "List all available databases")
@@ -612,13 +619,14 @@ func handleQueryList(ctx context.Context, dbName string, fieldName string, forma
 }
 
 // handleQueryOrStatus determines whether to show status or execute a query.
-func handleQueryOrStatus(ctx context.Context, dbName string, fieldName string, value string, format string, quiet bool, matchAll bool, selectFields []string) (string, string, error) {
+func handleQueryOrStatus(ctx context.Context, dbName string, fieldName string, value string, format string, quiet bool, matchAll bool, selectFields []string, filters []search.FilterCondition) (string, string, error) {
 	config, err := manifest.GetEffectiveConfig()
 	if err != nil {
 		return "", "", fmt.Errorf("failed to load config: %w", err)
 	}
 
-	if value == "" {
+	// If no value is provided, it displays the current workspace context.
+	if value == "" && len(filters) == 0 {
 		status := manifest.FormatStatusView(config, quiet)
 		return status, "", nil
 	}
@@ -648,12 +656,12 @@ func handleQueryOrStatus(ctx context.Context, dbName string, fieldName string, v
 	if resolvedDB == "" {
 		return "", "", fmt.Errorf("database is required. Use --db flag.")
 	}
-	if resolvedField == "" {
+	if resolvedField == "" && value != "" {
 		return "", "", fmt.Errorf("field is required. Use --field flag.")
 	}
 
 	logger.Debug("Executing query", "database", resolvedDB, "field", resolvedField, "value", value)
-	results, err := manifest.ExecuteSimpleQuery(ctx, resolvedDB, resolvedField, value, matchAll, selectFields)
+	results, err := manifest.ExecuteSimpleQuery(ctx, resolvedDB, resolvedField, value, matchAll, selectFields, filters)
 	if err != nil {
 		return "", "", err
 	}

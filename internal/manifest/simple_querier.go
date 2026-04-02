@@ -1,12 +1,12 @@
 /**
  * Component: Simple Query Executor
- * Block-UUID: 894f14e2-6ca6-40ef-a332-58fcb4e7a990
- * Parent-UUID: fefd62a6-8476-4846-9b41-667eb940dccf
- * Version: 1.14.0
- * Description: Executes simple value-matching queries and hierarchical list operations.
+ * Block-UUID: 029d83f6-750c-4392-a143-53e9fe4bcc61
+ * Parent-UUID: 8c57ba2e-e30b-4f5b-8cf9-2bd6e2b122ce
+ * Version: 1.16.0
+ * Description: Executes simple value-matching queries and hierarchical list operations. Updated to support metadata filtering via --filter flag. Modified ExecuteSimpleQuery to handle filter-only queries (where --value is omitted) by selecting all files and applying filters. Fixed SQL construction to correctly append filter clauses using WHERE or AND as appropriate.
  * Language: Go
- * Created-at: 2026-04-02T14:44:16.867Z
- * Authors: claude-haiku-4-5-20251001 (v1.12.2), GLM-4.7 (v1.12.3), GLM-4.7 (v1.13.0), claude-haiku-4-5-20251001 (v1.14.0)
+ * Created-at: 2026-04-02T18:39:53.273Z
+ * Authors: claude-haiku-4-5-20251001 (v1.12.2), GLM-4.7 (v1.12.3), GLM-4.7 (v1.13.0), claude-haiku-4-5-20251001 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0)
  */
 
 
@@ -29,7 +29,8 @@ import (
 
 // ExecuteSimpleQuery performs a simple value-matching query against the database.
 // It supports comma-separated values for OR logic, or AND logic if matchAll is true.
-func ExecuteSimpleQuery(ctx context.Context, dbName string, fieldName string, value string, matchAll bool, selectFields []string) ([]QueryResult, error) {
+// It also supports metadata filtering via the filters parameter.
+func ExecuteSimpleQuery(ctx context.Context, dbName string, fieldName string, value string, matchAll bool, selectFields []string, filters []search.FilterCondition) ([]QueryResult, error) {
 	// 1. Resolve DB Path
 	dbPath, err := db.ResolveManifestDBPath(dbName)
 	if err != nil {
@@ -48,83 +49,115 @@ func ExecuteSimpleQuery(ctx context.Context, dbName string, fieldName string, va
 	}
 	defer db.CloseDB(database)
 
-	// 4. Parse Values (comma-separated for OR logic)
-	values := strings.Split(value, ",")
-
-	// 5. Build Query
-	// We need to find files where the specified field matches any of the values
-	// The field_name is stored in metadata_fields, and the value is in file_metadata
-	// We need to join tables to get the field_id first, then match values
-	
-	// Step 5a: Get field_id and field_type for the field name
-	var fieldID, fieldType string
-	fieldQuery := `SELECT field_id, field_type FROM metadata_fields WHERE field_name = ? LIMIT 1`
-	err = database.QueryRowContext(ctx, fieldQuery, fieldName).Scan(&fieldID, &fieldType)
+	// 3.5. Get Field Types for Filter Processing
+	fieldTypes, err := db.GetFieldTypes(ctx, dbName)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("field '%s' not found in database '%s'", fieldName, dbName)
-		}
-		return nil, fmt.Errorf("failed to query field: %w", err)
+		return nil, fmt.Errorf("failed to get field types: %w", err)
 	}
-
-	// Step 5b: Query files matching the values
-	// Strategy depends on field_type:
-	// - If "array" or "list": Use json_each to search within the JSON array string.
-	// - Otherwise: Use standard IN clause for scalar matching.
-	
-	args := make([]interface{}, 0, len(values)+1)
-	args = append(args, fieldID)
-
-	var conditions []string
-	for _, v := range values {
-		v = strings.TrimSpace(v)
-		if strings.Contains(v, "*") {
-			pattern := strings.ReplaceAll(v, "*", "%")
-			if fieldType == "array" || fieldType == "list" {
-				if matchAll {
-					conditions = append(conditions, "EXISTS (SELECT 1 FROM json_each(fm.field_value) WHERE json_each.value LIKE ?)")
-				} else {
-					conditions = append(conditions, "json_each.value LIKE ?")
-				}
-			} else {
-				conditions = append(conditions, "fm.field_value LIKE ?")
-			}
-			args = append(args, pattern)
-		} else {
-			if fieldType == "array" || fieldType == "list" {
-				if matchAll {
-					conditions = append(conditions, "EXISTS (SELECT 1 FROM json_each(fm.field_value) WHERE json_each.value = ?)")
-				} else {
-					conditions = append(conditions, "json_each.value = ?")
-				}
-			} else {
-				conditions = append(conditions, "fm.field_value = ?")
-			}
-			args = append(args, v)
-		}
-	}
-
-	operator := " OR "
-	if matchAll {
-		operator = " AND "
-	}
-	whereClause := strings.Join(conditions, operator)
 
 	var query string
+	var args []interface{}
 
-	if fieldType == "array" || fieldType == "list" {
+	// 4. Build Query
+	// If a value is provided, we perform standard value matching.
+	// If no value is provided (but filters are), we select all files to be filtered.
+	if value != "" {
+		// --- Standard Value Matching Logic ---
+		
+		// 4. Parse Values (comma-separated for OR logic)
+		values := strings.Split(value, ",")
+
+		// Step 5a: Get field_id and field_type for the field name
+		var fieldID, fieldType string
+		fieldQuery := `SELECT field_id, field_type FROM metadata_fields WHERE field_name = ? LIMIT 1`
+		err = database.QueryRowContext(ctx, fieldQuery, fieldName).Scan(&fieldID, &fieldType)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				return nil, fmt.Errorf("field '%s' not found in database '%s'", fieldName, dbName)
+			}
+			return nil, fmt.Errorf("failed to query field: %w", err)
+		}
+
+		// Step 5b: Query files matching the values
+		// Strategy depends on field_type:
+		// - If "array" or "list": Use json_each to search within the JSON array string.
+		// - Otherwise: Use standard IN clause for scalar matching.
+		
+		args = make([]interface{}, 0, len(values)+1)
+		args = append(args, fieldID)
+
+		var conditions []string
+		for _, v := range values {
+			v = strings.TrimSpace(v)
+			if strings.Contains(v, "*") {
+				pattern := strings.ReplaceAll(v, "*", "%")
+				if fieldType == "array" || fieldType == "list" {
+					if matchAll {
+						conditions = append(conditions, "EXISTS (SELECT 1 FROM json_each(fm.field_value) WHERE json_each.value LIKE ?)")
+					} else {
+						conditions = append(conditions, "json_each.value LIKE ?")
+					}
+				} else {
+					conditions = append(conditions, "fm.field_value LIKE ?")
+				}
+				args = append(args, pattern)
+			} else {
+				if fieldType == "array" || fieldType == "list" {
+					if matchAll {
+						conditions = append(conditions, "EXISTS (SELECT 1 FROM json_each(fm.field_value) WHERE json_each.value = ?)")
+					} else {
+						conditions = append(conditions, "json_each.value = ?")
+					}
+				} else {
+					conditions = append(conditions, "fm.field_value = ?")
+				}
+				args = append(args, v)
+			}
+		}
+
+		operator := " OR "
 		if matchAll {
-			// For AND logic on arrays, we already built the EXISTS clauses in the loop
-			query = fmt.Sprintf("SELECT f.file_path, f.chat_id FROM files f INNER JOIN file_metadata fm ON f.file_path = fm.file_path WHERE fm.field_id = ? AND (%s)", whereClause)
+			operator = " AND "
+		}
+		whereClause := strings.Join(conditions, operator)
+
+		if fieldType == "array" || fieldType == "list" {
+			if matchAll {
+				// For AND logic on arrays, we already built the EXISTS clauses in the loop
+				query = fmt.Sprintf("SELECT f.file_path, f.chat_id FROM files f INNER JOIN file_metadata fm ON f.file_path = fm.file_path WHERE fm.field_id = ? AND (%s)", whereClause)
+			} else {
+				// For OR logic, we wrap the conditions in a single EXISTS clause
+				query = fmt.Sprintf("SELECT f.file_path, f.chat_id FROM files f INNER JOIN file_metadata fm ON f.file_path = fm.file_path WHERE fm.field_id = ? AND EXISTS (SELECT 1 FROM json_each(fm.field_value) WHERE %s)", whereClause)
+			}
 		} else {
-			// For OR logic, we wrap the conditions in a single EXISTS clause
-			query = fmt.Sprintf("SELECT f.file_path, f.chat_id FROM files f INNER JOIN file_metadata fm ON f.file_path = fm.file_path WHERE fm.field_id = ? AND EXISTS (SELECT 1 FROM json_each(fm.field_value) WHERE %s)", whereClause)
+			query = fmt.Sprintf("SELECT f.file_path, f.chat_id FROM files f INNER JOIN file_metadata fm ON f.file_path = fm.file_path WHERE fm.field_id = ? AND (%s)", whereClause)
 		}
 	} else {
-		query = fmt.Sprintf("SELECT f.file_path, f.chat_id FROM files f INNER JOIN file_metadata fm ON f.file_path = fm.file_path WHERE fm.field_id = ? AND (%s)", whereClause)
+		// --- Filter-Only Logic ---
+		// If no value is provided, we select all files. Filters will be applied below.
+		query = "SELECT f.file_path, f.chat_id FROM files f"
 	}
 
-	// Step 5c: Add additional field selection if requested
+	// 5. Add Metadata Filters (AND logic)
+	if len(filters) > 0 {
+		filterClause, filterArgs, err := search.BuildSQLWhereClauseWithTypes(filters, "", nil, fieldTypes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to build filter WHERE clause: %w", err)
+		}
+		// Strip "WHERE " prefix if present
+		filterClause = strings.TrimPrefix(filterClause, "WHERE ")
+		
+		// Check if query already has a WHERE clause
+		if strings.Contains(query, "WHERE") {
+			query += " AND " + filterClause
+		} else {
+			query += " WHERE " + filterClause
+		}
+		
+		args = append(args, filterArgs...)
+	}
+
+	// 6. Add additional field selection if requested
 	var selectedFieldIDs []string
 	selectedFieldMap := make(map[string]string) // field_name -> field_id
 	if len(selectFields) > 0 {
