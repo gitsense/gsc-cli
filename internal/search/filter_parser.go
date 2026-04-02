@@ -1,12 +1,12 @@
 /**
  * Component: Filter Parser
- * Block-UUID: fefe4dcb-68a4-47ee-8dc1-388be74200a1
- * Parent-UUID: 7cdac7ca-c9df-4c9b-ba64-fb3f2fbead17
- * Version: 1.0.17
- * Description: Parses filter strings and generates SQL WHERE clauses for metadata filtering. Supports operators, ranges, and field type detection. Fixed logic error in validateOperator for numeric fields. Fixed array filtering by adding alias 'AS je' to json_each calls and referencing 'je.value' instead of 'json_each.atom' to match insights implementation. Fixed missing 'AS je' alias in the 'in' operator case. Fixed SQL error by correcting table alias for field_name (fm_filter.field_name -> mf_filter.field_name).
+ * Block-UUID: 2bd31fae-dd35-41a7-9cf5-f9b011af8026
+ * Parent-UUID: fefe4dcb-68a4-47ee-8dc1-388be74200a1
+ * Version: 1.0.18
+ * Description: Parses filter strings and generates SQL WHERE clauses for metadata filtering. Supports operators, ranges, and field type detection. Fixed logic error in validateOperator for numeric fields. Fixed array filtering by adding alias 'AS je' to json_each calls and referencing 'je.value' instead of 'json_each.atom' to match insights implementation. Fixed missing 'AS je' alias in the 'in' operator case. Fixed SQL error by correcting table alias for field_name (fm_filter.field_name -> mf_filter.field_name). Fixed wildcard matching for array fields in 'in' operator by using consistent json_each alias pattern matching simple_querier.go and properly handling exact vs wildcard value separation.
  * Language: Go
  * Created-at: 2026-04-02T18:15:12.039Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), claude-haiku-4-5-20251001 (v1.0.3), claude-haiku-4-5-20251001 (v1.0.4), claude-haiku-4-5-20251001 (v1.0.5), GLM-4.7 (v1.0.6), claude-haiku-4-5-20251001 (v1.0.7), claude-haiku-4-5-20251001 (v1.0.8), claude-haiku-4-5-20251001 (v1.0.9), claude-haiku-4-5-20251001 (v1.0.10), claude-haiku-4-5-20251001 (v1.0.11), GLM-4.7 (v1.0.12), claude-haiku-4-5-20251001 (v1.0.13), claude-haiku-4-5-20251001 (v1.0.14), GLM-4.7 (v1.0.15), GLM-4.7 (v1.0.16), GLM-4.7 (v1.0.17)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), claude-haiku-4-5-20251001 (v1.0.3), claude-haiku-4-5-20251001 (v1.0.4), claude-haiku-4-5-20251001 (v1.0.5), GLM-4.7 (v1.0.6), claude-haiku-4-5-20251001 (v1.0.7), claude-haiku-4-5-20251001 (v1.0.8), claude-haiku-4-5-20251001 (v1.0.9), claude-haiku-4-5-20251001 (v1.0.10), claude-haiku-4-5-20251001 (v1.0.11), GLM-4.7 (v1.0.12), claude-haiku-4-5-20251001 (v1.0.13), claude-haiku-4-5-20251001 (v1.0.14), GLM-4.7 (v1.0.15), GLM-4.7 (v1.0.16), GLM-4.7 (v1.0.17), claude-haiku-4-5-20251001 (v1.0.18)
  */
 
 
@@ -189,7 +189,7 @@ func validateOperator(field, op, value string, fieldTypes map[string]string) err
 
 	// Numeric fields
 	if fieldType == "number" {
-		if op == "in" || op == "not in" || op == "~" || op == "!~" {
+		if op == "in" || op == "not in" || op == "~" || op != "!~" {
 			return fmt.Errorf("string operators not supported for numeric field '%s'. Use =, !=, >, <, >=, <=", field)
 		}
 	}
@@ -310,38 +310,33 @@ func buildArrayConditionSQL(cond FilterCondition) (string, []interface{}, error)
 		values := strings.Split(cond.Value, ",")
 		var exactValues []string
 		var wildcardValues []string
-		args := make([]interface{}, len(values))
-		argCount := 0
+		var args []interface{}
+		args = append(args, cond.Field)
 
 		for _, v := range values {
 			v = strings.ToLower(strings.TrimSpace(v))
 
 			if strings.Contains(v, "*") {
-				// Wildcard match: convert * to %
+				// Wildcard match: convert * to %, append to args immediately
 				pattern := strings.ReplaceAll(v, "*", "%")
-				wildcardValues = append(wildcardValues, "LOWER(je.value) LIKE ?")
-				args[argCount] = pattern
-				argCount++
+				wildcardValues = append(wildcardValues, "LOWER(je_filter.value) LIKE ?")
+				args = append(args, pattern)
 			} else {
-				// Exact match
+				// Exact match: collect placeholder and append to args immediately
 				exactValues = append(exactValues, "?")
-				args[argCount] = v
-				argCount++
+				args = append(args, v)
 			}
 		}
 
-		// Trim args to actual count
-		args = append([]interface{}{cond.Field}, args[:argCount]...)
-
 		var conditions []string
 		if len(exactValues) > 0 {
-			conditions = append(conditions, "LOWER(je.value) IN ("+strings.Join(exactValues, ", ")+")")
+			conditions = append(conditions, "LOWER(je_filter.value) IN ("+strings.Join(exactValues, ",")+")")
 		}
 		if len(wildcardValues) > 0 {
 			conditions = append(conditions, strings.Join(wildcardValues, " OR "))
 		}
 
-		return "EXISTS (SELECT 1 FROM file_metadata fm_filter JOIN metadata_fields mf_filter ON fm_filter.field_id = mf_filter.field_id WHERE fm_filter.file_path = f.file_path AND mf_filter.field_name = ? AND json_valid(fm_filter.field_value) AND EXISTS (SELECT 1 FROM json_each(fm_filter.field_value) AS je WHERE " + strings.Join(conditions, " OR ") + "))", args, nil
+		return "EXISTS (SELECT 1 FROM file_metadata fm_filter JOIN metadata_fields mf_filter ON fm_filter.field_id = mf_filter.field_id WHERE fm_filter.file_path = f.file_path AND mf_filter.field_name = ? AND json_valid(fm_filter.field_value) AND EXISTS (SELECT 1 FROM json_each(fm_filter.field_value) AS je_filter WHERE " + strings.Join(conditions, " OR ") + "))", args, nil
 
 	case "not in":
 		values := strings.Split(cond.Value, ",")

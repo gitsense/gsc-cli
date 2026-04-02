@@ -1,12 +1,12 @@
 /**
  * Component: Search Result Enricher
- * Block-UUID: b06e8e62-8358-483e-a8c8-5833c00b1df4
- * Parent-UUID: af7c3584-e392-4682-bdbb-86e1534a55af
- * Version: 3.2.5
+ * Block-UUID: b44c8466-6d39-40b5-a4e5-28662bf27a6f
+ * Parent-UUID: b06e8e62-8358-483e-a8c8-5833c00b1df4
+ * Version: 3.2.6
  * Description: Exported CheckFilters, CheckSingleCondition, and CheckArrayCondition to support semantic filtering in the 'gsc tree' command. Added SQL query logging for debugging and fixed SQL construction to handle empty WHERE clauses properly. Fixed SQL query construction to properly handle WHERE clause - the BuildSQLWhereClauseWithTypes function returns a clause that includes "WHERE", so we strip it before combining with other conditions, then add "WHERE" at the end. Refactored to use reusable db.GetFieldTypes() helper function instead of querying field types inline.
  * Language: Go
- * Created-at: 2026-04-02T16:53:58.887Z
- * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v3.2.2), claude-haiku-4-5-20251001 (v3.2.3), GLM-4.7 (v3.2.4), claude-sonnet-4-6 (v3.2.5)
+ * Created-at: 2026-04-02T18:32:56.610Z
+ * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v3.2.2), claude-haiku-4-5-20251001 (v3.2.3), GLM-4.7 (v3.2.4), claude-sonnet-4-6 (v3.2.5), GLM-4.7 (v3.2.6)
  */
 
 
@@ -329,16 +329,32 @@ func CheckSingleCondition(metadata map[string]interface{}, cond FilterCondition)
 	case "in":
 		targetValues := strings.Split(condValue, ",")
 		for _, tgt := range targetValues {
-			if valueStr == strings.TrimSpace(tgt) {
-				return true
+			tgt = strings.TrimSpace(tgt)
+			if strings.Contains(tgt, "*") {
+				matched, _ := filepath.Match(tgt, valueStr)
+				if matched {
+					return true
+				}
+			} else {
+				if valueStr == tgt {
+					return true
+				}
 			}
 		}
 		return false
 	case "not in":
 		targetValues := strings.Split(condValue, ",")
 		for _, tgt := range targetValues {
-			if valueStr == strings.TrimSpace(tgt) {
-				return false
+			tgt = strings.TrimSpace(tgt)
+			if strings.Contains(tgt, "*") {
+				matched, _ := filepath.Match(tgt, valueStr)
+				if matched {
+					return false
+				}
+			} else {
+				if valueStr == tgt {
+					return false
+				}
 			}
 		}
 		return true
@@ -403,8 +419,16 @@ func CheckArrayCondition(array []interface{}, cond FilterCondition) bool {
 		for _, item := range array {
 			itemStr := strings.ToLower(fmt.Sprintf("%v", item))
 			for _, tgt := range targetValues {
-				if itemStr == strings.TrimSpace(tgt) {
-					return true
+				tgt = strings.TrimSpace(tgt)
+				if strings.Contains(tgt, "*") {
+					matched, _ := filepath.Match(tgt, itemStr)
+					if matched {
+						return true
+					}
+				} else {
+					if itemStr == tgt {
+						return true
+					}
 				}
 			}
 		}
@@ -414,8 +438,16 @@ func CheckArrayCondition(array []interface{}, cond FilterCondition) bool {
 		for _, item := range array {
 			itemStr := strings.ToLower(fmt.Sprintf("%v", item))
 			for _, tgt := range targetValues {
-				if itemStr == strings.TrimSpace(tgt) {
-					return false
+				tgt = strings.TrimSpace(tgt)
+				if strings.Contains(tgt, "*") {
+					matched, _ := filepath.Match(tgt, itemStr)
+					if matched {
+						return false
+					}
+				} else {
+					if itemStr == tgt {
+						return false
+					}
 				}
 			}
 		}
