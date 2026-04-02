@@ -47,14 +47,14 @@ type FieldInfo struct {
 // GetSchema retrieves the schema information for the specified database.
 // It queries the analyzers and metadata_fields tables and groups fields by their analyzer.
 func GetSchema(ctx context.Context, dbName string) (*SchemaInfo, error) {
-	// 1. Validate Database Exists (Prevents creating empty artifacts)
-	if err := db.ValidateDBExists(dbName); err != nil {
+	// 1. Resolve Database Path
+	dbPath, err := db.ResolveManifestDBPath(dbName)
+	if err != nil {
 		return nil, err
 	}
 
-	// 2. Resolve Database Path
-	dbPath, err := db.ResolveManifestDBPath(dbName)
-	if err != nil {
+	// 2. Validate Database Exists (Prevents creating empty artifacts)
+	if err := db.ValidateDBExists(dbPath); err != nil {
 		return nil, err
 	}
 
@@ -164,14 +164,14 @@ func GetSchema(ctx context.Context, dbName string) (*SchemaInfo, error) {
 // ListFieldNames retrieves a simple list of field names for the specified database.
 // This is a helper function for interactive wizards to populate dropdown menus.
 func ListFieldNames(ctx context.Context, dbName string) ([]string, error) {
-	// 1. Validate Database Exists
-	if err := db.ValidateDBExists(dbName); err != nil {
+	// 1. Resolve Database Path
+	dbPath, err := db.ResolveManifestDBPath(dbName)
+	if err != nil {
 		return nil, err
 	}
 
-	// 2. Resolve Database Path
-	dbPath, err := db.ResolveManifestDBPath(dbName)
-	if err != nil {
+	// 2. Validate Database Exists
+	if err := db.ValidateDBExists(dbPath); err != nil {
 		return nil, err
 	}
 

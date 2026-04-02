@@ -24,14 +24,14 @@ import (
 
 // CreateBundle executes a SQL query and formats the results as a context bundle.
 func CreateBundle(ctx context.Context, dbName string, query string, format string) (string, error) {
-	// 1. Validate Database Exists (Prevents creating empty artifacts)
-	if err := db.ValidateDBExists(dbName); err != nil {
+	// 1. Resolve DB Path
+	dbPath, err := db.ResolveManifestDBPath(dbName)
+	if err != nil {
 		return "", err
 	}
 
-	// 2. Resolve DB Path
-	dbPath, err := db.ResolveManifestDBPath(dbName)
-	if err != nil {
+	// 2. Validate Database Exists (Prevents creating empty artifacts)
+	if err := db.ValidateDBExists(dbPath); err != nil {
 		return "", err
 	}
 

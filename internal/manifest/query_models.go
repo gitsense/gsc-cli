@@ -1,12 +1,12 @@
 /**
  * Component: Query Models
- * Block-UUID: f2ad304a-9e4e-4860-b684-8eaeec2e8e27
- * Parent-UUID: 377e39ae-0d62-4caa-940a-01a914ab8d01
- * Version: 1.8.0
+ * Block-UUID: a79f9354-73e5-45e1-9428-3c8f2a0af773
+ * Parent-UUID: f2ad304a-9e4e-4860-b684-8eaeec2e8e27
+ * Version: 1.9.0
  * Description: Defines the Go structs for query operations, configuration, and list results. Enhanced ListItem to support hierarchical nesting and the distinction between command-line names (slugs) and human-friendly labels for the "Discovery Dashboard" and '--all' views. Updated comments to explicitly distinguish between Name (DatabaseName) and Label (DatabaseLabel).
  * Language: Go
- * Created-at: 2026-02-13T04:11:28.807Z
- * Authors: GLM-4.7 (v1.0.0), Gemini 3 Flash (v1.4.0), Gemini 3 Flash (v1.5.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), Gemini 3 Flash (v1.8.0)
+ * Created-at: 2026-04-02T14:45:38.460Z
+ * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v1.13.0), claude-haiku-4-5-20251001 (v1.14.0), claude-haiku-4-5-20251001 (v1.9.0)
  */
 
 
@@ -23,8 +23,9 @@ type SimpleQuery struct {
 
 // QueryResult represents a single file result from a query.
 type QueryResult struct {
-	FilePath string `json:"file_path"` // The path to the file
-	ChatID   int    `json:"chat_id"`   // The GitSense Chat ID for the file
+	FilePath string                 `json:"file_path"` // The path to the file
+	ChatID   int                    `json:"chat_id"`   // The GitSense Chat ID for the file
+	Metadata map[string]interface{} `json:"metadata,omitempty"` // Additional metadata fields selected via --fields
 }
 
 // QueryResponse wraps query results with context and coverage metadata.

@@ -1,12 +1,12 @@
 /**
  * Component: Filter Parser
- * Block-UUID: 4d077b23-c568-4a03-8b9a-f2387f32e6c3
- * Parent-UUID: f327db4f-41bc-4fbd-aa3a-b1db1781fd39
- * Version: 1.0.7
+ * Block-UUID: 7af577e2-94c5-44ef-9811-7e1bd5c4497f
+ * Parent-UUID: acc9ec7c-49ef-49d7-8517-580a620f3102
+ * Version: 1.0.11
  * Description: Parses filter strings and generates SQL WHERE clauses for metadata filtering. Supports operators, ranges, and field type detection. Fixed logic error in validateOperator for numeric fields.
  * Language: Go
- * Created-at: 2026-04-02T02:39:40.053Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), claude-haiku-4-5-20251001 (v1.0.3), claude-haiku-4-5-20251001 (v1.0.4), claude-haiku-4-5-20251001 (v1.0.5), GLM-4.7 (v1.0.6), claude-haiku-4-5-20251001 (v1.0.7)
+ * Created-at: 2026-04-02T15:57:07.862Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), claude-haiku-4-5-20251001 (v1.0.3), claude-haiku-4-5-20251001 (v1.0.4), claude-haiku-4-5-20251001 (v1.0.5), GLM-4.7 (v1.0.6), claude-haiku-4-5-20251001 (v1.0.7), claude-haiku-4-5-20251001 (v1.0.8), claude-haiku-4-5-20251001 (v1.0.9), claude-haiku-4-5-20251001 (v1.0.10), claude-haiku-4-5-20251001 (v1.0.11)
  */
 
 
@@ -200,7 +200,25 @@ func validateOperator(field, op, value string, fieldTypes map[string]string) err
 // BuildSQLWhereClause constructs the SQL WHERE clause and arguments from filter conditions.
 // It also handles system filters (analyzed status, file paths).
 func BuildSQLWhereClause(conditions []FilterCondition, analyzedFilter string, filePatterns []string) (string, []interface{}, error) {
+	// Note: This function requires the database context to be available.
+	// If called without database context, use BuildSQLWhereClauseWithTypes directly.
+	// For now, we pass nil and let buildConditionSQL handle missing field types.
 	return BuildSQLWhereClauseWithTypes(conditions, analyzedFilter, filePatterns, nil)
+}
+
+// BuildSQLWhereClauseWithDB retrieves field types from the database and builds the WHERE clause.
+// This is the recommended approach for use in CLI commands where database context is available.
+func BuildSQLWhereClauseWithDB(ctx context.Context, conditions []FilterCondition, analyzedFilter string, filePatterns []string, dbName string) (string, []interface{}, error) {
+	// Retrieve field types from the database
+	fieldTypes, err := db.GetFieldTypes(ctx, dbName)
+	if err != nil {
+		// If we can't get field types, fall back to the original behavior
+		// (this ensures backward compatibility and doesn't break queries)
+		fieldTypes = make(map[string]string)
+	}
+	
+	// Build WHERE clause with field type information
+	return BuildSQLWhereClauseWithTypes(conditions, analyzedFilter, filePatterns, fieldTypes)
 }
 
 // BuildSQLWhereClauseWithTypes constructs the SQL WHERE clause with field type information.
@@ -284,10 +302,10 @@ func buildArrayConditionSQL(cond FilterCondition) (string, []interface{}, error)
 	switch cond.Operator {
 	case "=":
 		// For arrays, = becomes a LIKE match on any element
-		return "EXISTS (SELECT 1 FROM json_each(fm.field_value) WHERE LOWER(json_each.value) LIKE ?)", []interface{}{"%" + strings.ToLower(cond.Value) + "%"}, nil
+		return "EXISTS (SELECT 1 FROM json_each(fm.field_value) WHERE LOWER(json_each.atom) LIKE ?)", []interface{}{"%" + strings.ToLower(cond.Value) + "%"}, nil
 
 	case "!=":
-		return "EXISTS (SELECT 1 FROM json_each(fm.field_value) WHERE LOWER(json_each.value) NOT LIKE ?)", []interface{}{"%" + strings.ToLower(cond.Value) + "%"}, nil
+		return "EXISTS (SELECT 1 FROM json_each(fm.field_value) WHERE LOWER(json_each.atom) NOT LIKE ?)", []interface{}{"%" + strings.ToLower(cond.Value) + "%"}, nil
 
 	case "in":
 		values := strings.Split(cond.Value, ",")
@@ -302,7 +320,7 @@ func buildArrayConditionSQL(cond FilterCondition) (string, []interface{}, error)
 			if strings.Contains(v, "*") {
 				// Wildcard match: convert * to %
 				pattern := strings.ReplaceAll(v, "*", "%")
-				wildcardValues = append(wildcardValues, "LOWER(json_each.value) LIKE ?")
+				wildcardValues = append(wildcardValues, "LOWER(json_each.atom) LIKE ?")
 				args[argCount] = pattern
 				argCount++
 			} else {
@@ -318,7 +336,7 @@ func buildArrayConditionSQL(cond FilterCondition) (string, []interface{}, error)
 
 		var conditions []string
 		if len(exactValues) > 0 {
-			conditions = append(conditions, "LOWER(json_each.value) IN ("+strings.Join(exactValues, ",")+")")
+			conditions = append(conditions, "LOWER(json_each.atom) IN ("+strings.Join(exactValues, ", ")+")")
 		}
 		if len(wildcardValues) > 0 {
 			conditions = append(conditions, strings.Join(wildcardValues, " OR "))
@@ -334,13 +352,13 @@ func buildArrayConditionSQL(cond FilterCondition) (string, []interface{}, error)
 			placeholders[i] = "?"
 			args[i] = strings.ToLower(strings.TrimSpace(v))
 		}
-		return "EXISTS (SELECT 1 FROM json_each(fm.field_value) WHERE LOWER(json_each.value) NOT IN (" + strings.Join(placeholders, ",") + "))", args, nil
+		return "EXISTS (SELECT 1 FROM json_each(fm.field_value) WHERE LOWER(json_each.atom) NOT IN (" + strings.Join(placeholders, ", ") + "))", args, nil
 
 	case "~":
-		return "EXISTS (SELECT 1 FROM json_each(fm.field_value) WHERE LOWER(json_each.value) LIKE ?)", []interface{}{"%" + strings.ToLower(cond.Value) + "%"}, nil
+		return "EXISTS (SELECT 1 FROM json_each(fm.field_value) WHERE LOWER(json_each.atom) LIKE ?)", []interface{}{"%" + strings.ToLower(cond.Value) + "%"}, nil
 
 	case "!~":
-		return "EXISTS (SELECT 1 FROM json_each(fm.field_value) WHERE LOWER(json_each.value) NOT LIKE ?)", []interface{}{"%" + strings.ToLower(cond.Value) + "%"}, nil
+		return "EXISTS (SELECT 1 FROM json_each(fm.field_value) WHERE LOWER(json_each.atom) NOT LIKE ?)", []interface{}{"%" + strings.ToLower(cond.Value) + "%"}, nil
 
 	case "exists":
 		return "EXISTS (SELECT 1 FROM json_each(fm.field_value))", []interface{}{}, nil

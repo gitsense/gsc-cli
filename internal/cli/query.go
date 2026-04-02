@@ -1,12 +1,12 @@
 /**
  * Component: Query Command
- * Block-UUID: 1b8e7ee2-19be-485f-8073-8a360b982ee4
- * Parent-UUID: 84c17d81-2ef1-405e-95fb-cbb67540a8f2
- * Version: 3.17.0
+ * Block-UUID: cb52cc15-7c74-4410-a7bf-c82864fcfb2f
+ * Parent-UUID: 1b8e7ee2-19be-485f-8073-8a360b982ee4
+ * Version: 3.18.0
  * Description: Added the 'DatabasesCmd' as a root-level convenience command. It supports listing all databases, inspecting a specific database schema via positional argument, or dumping all schemas using the --schema flag. Updated bridge.Execute calls to include the new exitCode argument.
  * Language: Go
- * Created-at: 2026-04-02T14:30:29.489Z
- * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v3.13.0), claude-haiku-4-5-20251001 (v3.14.0), GLM-4.7 (v3.15.0), Gemini 3 Flash (v3.15.1), GLM-4.7 (v3.16.0), GLM-4.7 (v3.17.0)
+ * Created-at: 2026-04-02T14:42:07.916Z
+ * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v3.17.0), claude-haiku-4-5-20251001 (v3.18.0)
  */
 
 
@@ -45,6 +45,7 @@ var (
 	queryFieldSingular []string
 	brainsSchema       bool
 	queryFilters       []string
+	querySelectFields  []string
 )
 
 // queryCmd represents the base query command
@@ -80,7 +81,7 @@ If no value is provided, it displays the current workspace context.`,
 			}
 		}
 
-		outputStr, resolvedDB, err := handleQueryOrStatus(cmd.Context(), queryDB, queryField, queryValue, queryFormat, queryQuiet, queryMatchAll)
+		outputStr, resolvedDB, err := handleQueryOrStatus(cmd.Context(), queryDB, queryField, queryValue, queryFormat, queryQuiet, queryMatchAll, querySelectFields)
 		if err != nil {
 			return err
 		}
@@ -362,6 +363,7 @@ func init() {
 	queryCmd.Flags().StringVarP(&queryDB, "db", "d", "", "Database name (or use default)")
 	queryCmd.Flags().StringVarP(&queryField, "field", "f", "", "Field name (or use default)")
 	queryCmd.Flags().StringVarP(&queryValue, "value", "v", "", "Value to match (comma-separated for OR)")
+	queryCmd.Flags().StringSliceVar(&querySelectFields, "fields", []string{}, "Additional metadata fields to include in results (comma-separated)")
 	queryCmd.Flags().BoolVar(&queryMatchAll, "match-all", false, "Match all values (AND logic) instead of any (OR logic)")
 	queryCmd.Flags().StringVarP(&queryFormat, "format", "o", "table", "Output format (json, table)")
 	queryCmd.Flags().BoolVar(&queryQuiet, "quiet", false, "Suppress headers, footers, and hints")
@@ -610,7 +612,7 @@ func handleQueryList(ctx context.Context, dbName string, fieldName string, forma
 }
 
 // handleQueryOrStatus determines whether to show status or execute a query.
-func handleQueryOrStatus(ctx context.Context, dbName string, fieldName string, value string, format string, quiet bool, matchAll bool) (string, string, error) {
+func handleQueryOrStatus(ctx context.Context, dbName string, fieldName string, value string, format string, quiet bool, matchAll bool, selectFields []string) (string, string, error) {
 	config, err := manifest.GetEffectiveConfig()
 	if err != nil {
 		return "", "", fmt.Errorf("failed to load config: %w", err)
@@ -651,7 +653,7 @@ func handleQueryOrStatus(ctx context.Context, dbName string, fieldName string, v
 	}
 
 	logger.Debug("Executing query", "database", resolvedDB, "field", resolvedField, "value", value)
-	results, err := manifest.ExecuteSimpleQuery(ctx, resolvedDB, resolvedField, value, matchAll)
+	results, err := manifest.ExecuteSimpleQuery(ctx, resolvedDB, resolvedField, value, matchAll, selectFields)
 	if err != nil {
 		return "", "", err
 	}

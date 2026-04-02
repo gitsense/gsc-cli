@@ -1,12 +1,12 @@
 /**
  * Component: Query Output Formatter
- * Block-UUID: a824a26c-72a5-47a9-970e-8d3421cd7b39
- * Parent-UUID: 8dcb54b2-c07b-422b-b641-4164b44bab49
- * Version: 3.8.0
+ * Block-UUID: 8c030cd5-f2db-4e8c-a70f-28690e9b3f7c
+ * Parent-UUID: b209b245-3b5e-4d51-af79-fa43e649ee14
+ * Version: 3.10.0
  * Description: Centralized schema formatting logic by adding 'FormatSchema'. This supports the new 'databases' convenience command and allows for consistent schema output (JSON, Table, CSV) across the CLI.
  * Language: Go
- * Created-at: 2026-02-15T02:50:00.486Z
- * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v3.6.0), Gemini 3 Flash (v3.7.0), GLM-4.7 (v3.8.0)
+ * Created-at: 2026-04-02T14:53:02.170Z
+ * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v3.8.0), claude-haiku-4-5-20251001 (v3.9.0), GLM-4.7 (v3.9.1), GLM-4.7 (v3.10.0)
  */
 
 
@@ -47,20 +47,62 @@ func formatQueryResultsTable(response *QueryResponse, quiet bool, config *QueryC
 		return "No results found."
 	}
 
-	headers := []string{"File Path", "Chat ID"}
-	var rows [][]string
+	// Check if any results have metadata fields
+	hasMetadata := false
+	var allMetadataKeys []string
+	metadataKeySet := make(map[string]bool)
 
 	for _, r := range response.Results {
-		rows = append(rows, []string{r.FilePath, fmt.Sprintf("%d", r.ChatID)})
+		if len(r.Metadata) > 0 {
+			hasMetadata = true
+			for k := range r.Metadata {
+				if !metadataKeySet[k] {
+					allMetadataKeys = append(allMetadataKeys, k)
+					metadataKeySet[k] = true
+				}
+			}
+		}
 	}
 
-	table := output.FormatTable(headers, rows)
+	// Sort metadata keys for consistent display
+	sort.Strings(allMetadataKeys)
+
+	var sb strings.Builder
+	var table string
+
+	// Use hybrid format (Option C) if metadata is present, otherwise use simple table
+	if hasMetadata {
+		// Hybrid format with file paths and indented metadata details
+		for i, r := range response.Results {
+			if i > 0 {
+				sb.WriteString("\n")
+			}
+			sb.WriteString(fmt.Sprintf("%s (Chat ID: %d)\n", r.FilePath, r.ChatID))
+
+			// Display metadata fields with indentation
+			if len(r.Metadata) > 0 {
+				for _, key := range allMetadataKeys {
+					if value, exists := r.Metadata[key]; exists {
+						displayValue := fmt.Sprintf("%v", value)
+						sb.WriteString(fmt.Sprintf("  %-20s: %s\n", key, displayValue))
+					}
+				}
+			}
+		}
+		table = sb.String()
+	} else {
+		// Simple table format when no metadata is selected
+		headers := []string{"File Path", "Chat ID"}
+		var rows [][]string
+		for _, r := range response.Results {
+			rows = append(rows, []string{r.FilePath, fmt.Sprintf("%d", r.ChatID)})
+		}
+		table = output.FormatTable(headers, rows)
+	}
 	
 	if quiet {
 		return table
 	}
-
-	var sb strings.Builder
 
 	if output.IsTerminal() {
 		sb.WriteString(FormatWorkspaceHeader(config, quiet))

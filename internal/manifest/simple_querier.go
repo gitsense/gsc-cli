@@ -1,12 +1,12 @@
 /**
  * Component: Simple Query Executor
- * Block-UUID: fefd62a6-8476-4846-9b41-667eb940dccf
- * Parent-UUID: adba0bef-2763-44e8-9180-ebef2bf86abc
- * Version: 1.13.0
+ * Block-UUID: 894f14e2-6ca6-40ef-a332-58fcb4e7a990
+ * Parent-UUID: fefd62a6-8476-4846-9b41-667eb940dccf
+ * Version: 1.14.0
  * Description: Executes simple value-matching queries and hierarchical list operations.
  * Language: Go
- * Created-at: 2026-04-02T14:26:06.482Z
- * Authors: claude-haiku-4-5-20251001 (v1.12.2), GLM-4.7 (v1.12.3), GLM-4.7 (v1.13.0)
+ * Created-at: 2026-04-02T14:44:16.867Z
+ * Authors: claude-haiku-4-5-20251001 (v1.12.2), GLM-4.7 (v1.12.3), GLM-4.7 (v1.13.0), claude-haiku-4-5-20251001 (v1.14.0)
  */
 
 
@@ -29,7 +29,7 @@ import (
 
 // ExecuteSimpleQuery performs a simple value-matching query against the database.
 // It supports comma-separated values for OR logic, or AND logic if matchAll is true.
-func ExecuteSimpleQuery(ctx context.Context, dbName string, fieldName string, value string, matchAll bool) ([]QueryResult, error) {
+func ExecuteSimpleQuery(ctx context.Context, dbName string, fieldName string, value string, matchAll bool, selectFields []string) ([]QueryResult, error) {
 	// 1. Resolve DB Path
 	dbPath, err := db.ResolveManifestDBPath(dbName)
 	if err != nil {
@@ -124,6 +124,25 @@ func ExecuteSimpleQuery(ctx context.Context, dbName string, fieldName string, va
 		query = fmt.Sprintf("SELECT f.file_path, f.chat_id FROM files f INNER JOIN file_metadata fm ON f.file_path = fm.file_path WHERE fm.field_id = ? AND (%s)", whereClause)
 	}
 
+	// Step 5c: Add additional field selection if requested
+	var selectedFieldIDs []string
+	selectedFieldMap := make(map[string]string) // field_name -> field_id
+	if len(selectFields) > 0 {
+		for _, fieldName := range selectFields {
+			var fID string
+			fieldQuery := `SELECT field_id FROM metadata_fields WHERE field_name = ? LIMIT 1`
+			err := database.QueryRowContext(ctx, fieldQuery, fieldName).Scan(&fID)
+			if err != nil {
+				if err != sql.ErrNoRows {
+					logger.Warning("Failed to find field", "field", fieldName, "error", err)
+				}
+				continue
+			}
+			selectedFieldIDs = append(selectedFieldIDs, fID)
+			selectedFieldMap[fID] = fieldName
+		}
+	}
+
 	rows, err := database.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute query: %w", err)
@@ -131,16 +150,56 @@ func ExecuteSimpleQuery(ctx context.Context, dbName string, fieldName string, va
 	defer rows.Close()
 
 	var results []QueryResult
+	// Map to store metadata for each file
+	fileMetadataMap := make(map[string]map[string]interface{})
+	var filePaths []string
+
+	// First pass: collect file paths and basic results
 	for rows.Next() {
 		var r QueryResult
 		if err := rows.Scan(&r.FilePath, &r.ChatID); err != nil {
 			return nil, fmt.Errorf("failed to scan row: %w", err)
 		}
+		r.Metadata = make(map[string]interface{})
+		fileMetadataMap[r.FilePath] = r.Metadata
+		filePaths = append(filePaths, r.FilePath)
 		results = append(results, r)
 	}
 
 	if err := rows.Err(); err != nil {
 		return nil, err
+	}
+
+	// Second pass: fetch selected metadata fields if requested
+	if len(selectFields) > 0 && len(filePaths) > 0 {
+		placeholders := make([]string, len(filePaths))
+		args := make([]interface{}, len(filePaths))
+		for i, path := range filePaths {
+			placeholders[i] = "?"
+			args[i] = path
+		}
+
+		metadataQuery := fmt.Sprintf(
+			"SELECT file_path, field_id, field_value FROM file_metadata WHERE file_path IN (%s)",
+			strings.Join(placeholders, ","),
+		)
+
+		metaRows, err := database.QueryContext(ctx, metadataQuery, args...)
+		if err != nil {
+			logger.Warning("Failed to fetch additional metadata", "error", err)
+		} else {
+			defer metaRows.Close()
+			for metaRows.Next() {
+				var filePath, fieldID, fieldValue string
+				if err := metaRows.Scan(&filePath, &fieldID, &fieldValue); err != nil {
+					logger.Warning("Failed to scan metadata row", "error", err)
+					continue
+				}
+				if fieldName, exists := selectedFieldMap[fieldID]; exists {
+					fileMetadataMap[filePath][fieldName] = fieldValue
+				}
+			}
+		}
 	}
 
 	logger.Info("Query executed successfully", "database", dbName, "field", fieldName, "results", len(results))

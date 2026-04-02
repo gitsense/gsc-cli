@@ -1,12 +1,12 @@
 /**
  * Component: Search Result Enricher
- * Block-UUID: 866f3047-8ef6-4f86-a8d3-e432255e5e13
- * Parent-UUID: 55498844-209d-491e-bd4f-169e50f26e11
- * Version: 3.2.0
- * Description: Exported CheckFilters, CheckSingleCondition, and CheckArrayCondition to support semantic filtering in the 'gsc tree' command.
+ * Block-UUID: 79f51bf2-8a24-4262-aa87-1d1003578883
+ * Parent-UUID: 5a55c18a-8cc6-4384-b7f3-40bd815da1bd
+ * Version: 3.2.3
+ * Description: Exported CheckFilters, CheckSingleCondition, and CheckArrayCondition to support semantic filtering in the 'gsc tree' command. Added SQL query logging for debugging and fixed SQL construction to handle empty WHERE clauses properly. Fixed SQL query construction to properly handle WHERE clause - the BuildSQLWhereClauseWithTypes function returns a clause that includes "WHERE", so we strip it before combining with other conditions, then add "WHERE" at the end.
  * Language: Go
- * Created-at: 2026-04-02T01:58:18.639Z
- * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v2.9.0), Gemini 3 Flash (v3.0.0), claude-haiku-4-5-20251001 (v3.1.0), GLM-4.7 (v3.2.0)
+ * Created-at: 2026-04-02T15:38:58.953Z
+ * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v3.2.2), claude-haiku-4-5-20251001 (v3.2.3)
  */
 
 
@@ -32,14 +32,14 @@ func EnrichMatches(ctx context.Context, matches []RawMatch, dbName string, filte
 		return []MatchResult{}, []string{}, 0, nil
 	}
 
-	// 1. Validate Database Exists
-	if err := db.ValidateDBExists(dbName); err != nil {
+	// 1. Resolve DB Path
+	dbPath, err := db.ResolveManifestDBPath(dbName)
+	if err != nil {
 		return nil, nil, 0, err
 	}
 
-	// 2. Resolve DB Path
-	dbPath, err := db.ResolveManifestDBPath(dbName)
-	if err != nil {
+	// 2. Validate Database Exists
+	if err := db.ValidateDBExists(dbPath); err != nil {
 		return nil, nil, 0, err
 	}
 
@@ -199,6 +199,8 @@ func fetchMetadataMap(ctx context.Context, database *sql.DB, filePaths []string,
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to build WHERE clause: %w", err)
 	}
+	// Strip "WHERE " prefix added by BuildSQLWhereClauseWithTypes before combining with other clauses
+	whereClause = strings.TrimPrefix(whereClause, "WHERE ")
 	
 	// Add file path IN clause
 	filePathClause := fmt.Sprintf("f.file_path IN (%s)", strings.Join(placeholders, ","))
@@ -221,19 +223,26 @@ func fetchMetadataMap(ctx context.Context, database *sql.DB, filePaths []string,
 	// Combine args: file paths + filter args
 	args = append(args, filterArgs...)
 
-	baseQuery := `
-		SELECT 
-			f.file_path,
-			f.chat_id,
-			mf.field_name,
-			fm.field_value
-		FROM files f
-		LEFT JOIN file_metadata fm ON f.file_path = fm.file_path
-		LEFT JOIN metadata_fields mf ON fm.field_id = mf.field_id
-		WHERE ` + whereClause
+	// Build base query
+	baseQuery := `SELECT 
+		f.file_path,
+		f.chat_id,
+		mf.field_name,
+		fm.field_value
+	FROM files f
+	LEFT JOIN file_metadata fm ON f.file_path = fm.file_path
+	LEFT JOIN metadata_fields mf ON fm.field_id = mf.field_id`
+
+	// Add WHERE clause only if we have conditions
+	if whereClause != "" {
+		baseQuery += " WHERE " + whereClause
+	}
+
+	logger.Debug("Executing metadata query", "query", baseQuery, "args", args)
 
 	rows, err := database.QueryContext(ctx, baseQuery, args...)
 	if err != nil {
+		logger.Error("SQL query failed", "query", baseQuery, "args", args, "error", err)
 		return nil, nil, fmt.Errorf("failed to query file metadata: %w", err)
 	}
 	defer rows.Close()
