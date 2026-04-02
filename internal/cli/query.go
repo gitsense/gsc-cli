@@ -1,12 +1,12 @@
 /**
  * Component: Query Command
- * Block-UUID: 324b4e1b-7b94-4645-9e80-d53833eb5ce0
- * Parent-UUID: 5b9d7925-f16a-405a-a6d5-17c510f72c5b
- * Version: 3.15.1
+ * Block-UUID: 1b8e7ee2-19be-485f-8073-8a360b982ee4
+ * Parent-UUID: 84c17d81-2ef1-405e-95fb-cbb67540a8f2
+ * Version: 3.17.0
  * Description: Added the 'DatabasesCmd' as a root-level convenience command. It supports listing all databases, inspecting a specific database schema via positional argument, or dumping all schemas using the --schema flag. Updated bridge.Execute calls to include the new exitCode argument.
  * Language: Go
- * Created-at: 2026-04-02T03:07:52.938Z
- * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v3.13.0), claude-haiku-4-5-20251001 (v3.14.0), GLM-4.7 (v3.15.0), Gemini 3 Flash (v3.15.1)
+ * Created-at: 2026-04-02T14:30:29.489Z
+ * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v3.13.0), claude-haiku-4-5-20251001 (v3.14.0), GLM-4.7 (v3.15.0), Gemini 3 Flash (v3.15.1), GLM-4.7 (v3.16.0), GLM-4.7 (v3.17.0)
  */
 
 
@@ -33,6 +33,7 @@ var (
 	queryDB            string
 	queryField         string
 	queryValue         string
+	queryMatchAll      bool
 	queryFormat        string
 	queryQuiet         bool
 	queryScopeOverride string
@@ -72,7 +73,14 @@ If no value is provided, it displays the current workspace context.`,
 			}
 		}
 
-		outputStr, resolvedDB, err := handleQueryOrStatus(cmd.Context(), queryDB, queryField, queryValue, queryFormat, queryQuiet)
+		// Parse positional argument if provided (e.g., "keywords in (contract,expire)")
+		if len(args) > 0 {
+			if err := parseQueryExpression(args[0]); err != nil {
+				return fmt.Errorf("invalid query expression: %w", err)
+			}
+		}
+
+		outputStr, resolvedDB, err := handleQueryOrStatus(cmd.Context(), queryDB, queryField, queryValue, queryFormat, queryQuiet, queryMatchAll)
 		if err != nil {
 			return err
 		}
@@ -354,6 +362,7 @@ func init() {
 	queryCmd.Flags().StringVarP(&queryDB, "db", "d", "", "Database name (or use default)")
 	queryCmd.Flags().StringVarP(&queryField, "field", "f", "", "Field name (or use default)")
 	queryCmd.Flags().StringVarP(&queryValue, "value", "v", "", "Value to match (comma-separated for OR)")
+	queryCmd.Flags().BoolVar(&queryMatchAll, "match-all", false, "Match all values (AND logic) instead of any (OR logic)")
 	queryCmd.Flags().StringVarP(&queryFormat, "format", "o", "table", "Output format (json, table)")
 	queryCmd.Flags().BoolVar(&queryQuiet, "quiet", false, "Suppress headers, footers, and hints")
 
@@ -601,7 +610,7 @@ func handleQueryList(ctx context.Context, dbName string, fieldName string, forma
 }
 
 // handleQueryOrStatus determines whether to show status or execute a query.
-func handleQueryOrStatus(ctx context.Context, dbName string, fieldName string, value string, format string, quiet bool) (string, string, error) {
+func handleQueryOrStatus(ctx context.Context, dbName string, fieldName string, value string, format string, quiet bool, matchAll bool) (string, string, error) {
 	config, err := manifest.GetEffectiveConfig()
 	if err != nil {
 		return "", "", fmt.Errorf("failed to load config: %w", err)
@@ -642,7 +651,7 @@ func handleQueryOrStatus(ctx context.Context, dbName string, fieldName string, v
 	}
 
 	logger.Debug("Executing query", "database", resolvedDB, "field", resolvedField, "value", value)
-	results, err := manifest.ExecuteSimpleQuery(ctx, resolvedDB, resolvedField, value)
+	results, err := manifest.ExecuteSimpleQuery(ctx, resolvedDB, resolvedField, value, matchAll)
 	if err != nil {
 		return "", "", err
 	}
@@ -678,6 +687,36 @@ func handleQueryOrStatus(ctx context.Context, dbName string, fieldName string, v
 
 	output := manifest.FormatQueryResults(response, resolvedFormat, quiet, config)
 	return output, resolvedDB, nil
+}
+
+// parseQueryExpression parses expressions like "field in (value1,value2)" or "field=value"
+// and populates the global queryField and queryValue variables.
+func parseQueryExpression(expr string) error {
+	// Try to parse "field in (values)" syntax
+	if strings.Contains(expr, " in (") {
+		parts := strings.SplitN(expr, " in (", 2)
+		if len(parts) != 2 {
+			return fmt.Errorf("invalid 'in' syntax, expected 'field in (value1,value2)'")
+		}
+		queryField = strings.TrimSpace(parts[0])
+		// Extract values from parentheses
+		valuesStr := strings.TrimSuffix(parts[1], ")")
+		queryValue = strings.TrimSpace(valuesStr)
+		return nil
+	}
+	
+	// Try to parse "field=value" syntax
+	if strings.Contains(expr, "=") {
+		parts := strings.SplitN(expr, "=", 2)
+		if len(parts) != 2 {
+			return fmt.Errorf("invalid '=' syntax, expected 'field=value'")
+		}
+		queryField = strings.TrimSpace(parts[0])
+		queryValue = strings.TrimSpace(parts[1])
+		return nil
+	}
+	
+	return fmt.Errorf("unsupported expression format. Use 'field in (values)' or 'field=value'")
 }
 
 // RegisterQueryCommand registers the query command with the root command.

@@ -1,12 +1,12 @@
 /**
  * Component: Simple Query Executor
- * Block-UUID: 13668fc2-d506-4e9f-a4bd-f6e7b45bc8bc
- * Parent-UUID: 601aa509-40a8-49ed-bedc-abf4c8345a0b
- * Version: 1.12.2
+ * Block-UUID: fefd62a6-8476-4846-9b41-667eb940dccf
+ * Parent-UUID: adba0bef-2763-44e8-9180-ebef2bf86abc
+ * Version: 1.13.0
  * Description: Executes simple value-matching queries and hierarchical list operations.
  * Language: Go
- * Created-at: 2026-04-02T03:38:24.729Z
- * Authors: claude-haiku-4-5-20251001 (v1.12.2)
+ * Created-at: 2026-04-02T14:26:06.482Z
+ * Authors: claude-haiku-4-5-20251001 (v1.12.2), GLM-4.7 (v1.12.3), GLM-4.7 (v1.13.0)
  */
 
 
@@ -28,16 +28,16 @@ import (
 )
 
 // ExecuteSimpleQuery performs a simple value-matching query against the database.
-// It supports comma-separated values for OR logic.
-func ExecuteSimpleQuery(ctx context.Context, dbName string, fieldName string, value string) ([]QueryResult, error) {
-	// 1. Validate Database Exists
-	if err := db.ValidateDBExists(dbName); err != nil {
+// It supports comma-separated values for OR logic, or AND logic if matchAll is true.
+func ExecuteSimpleQuery(ctx context.Context, dbName string, fieldName string, value string, matchAll bool) ([]QueryResult, error) {
+	// 1. Resolve DB Path
+	dbPath, err := db.ResolveManifestDBPath(dbName)
+	if err != nil {
 		return nil, err
 	}
 
-	// 2. Resolve DB Path
-	dbPath, err := db.ResolveManifestDBPath(dbName)
-	if err != nil {
+	// 2. Validate Database Exists
+	if err := db.ValidateDBExists(dbPath); err != nil {
 		return nil, err
 	}
 
@@ -81,14 +81,22 @@ func ExecuteSimpleQuery(ctx context.Context, dbName string, fieldName string, va
 		if strings.Contains(v, "*") {
 			pattern := strings.ReplaceAll(v, "*", "%")
 			if fieldType == "array" || fieldType == "list" {
-				conditions = append(conditions, "json_each.value LIKE ?")
+				if matchAll {
+					conditions = append(conditions, "EXISTS (SELECT 1 FROM json_each(fm.field_value) WHERE json_each.value LIKE ?)")
+				} else {
+					conditions = append(conditions, "json_each.value LIKE ?")
+				}
 			} else {
 				conditions = append(conditions, "fm.field_value LIKE ?")
 			}
 			args = append(args, pattern)
 		} else {
 			if fieldType == "array" || fieldType == "list" {
-				conditions = append(conditions, "json_each.value = ?")
+				if matchAll {
+					conditions = append(conditions, "EXISTS (SELECT 1 FROM json_each(fm.field_value) WHERE json_each.value = ?)")
+				} else {
+					conditions = append(conditions, "json_each.value = ?")
+				}
 			} else {
 				conditions = append(conditions, "fm.field_value = ?")
 			}
@@ -96,11 +104,22 @@ func ExecuteSimpleQuery(ctx context.Context, dbName string, fieldName string, va
 		}
 	}
 
-	whereClause := strings.Join(conditions, " OR ")
+	operator := " OR "
+	if matchAll {
+		operator = " AND "
+	}
+	whereClause := strings.Join(conditions, operator)
+
 	var query string
 
 	if fieldType == "array" || fieldType == "list" {
-		query = fmt.Sprintf("SELECT f.file_path, f.chat_id FROM files f INNER JOIN file_metadata fm ON f.file_path = fm.file_path WHERE fm.field_id = ? AND EXISTS (SELECT 1 FROM json_each(fm.field_value) WHERE %s)", whereClause)
+		if matchAll {
+			// For AND logic on arrays, we already built the EXISTS clauses in the loop
+			query = fmt.Sprintf("SELECT f.file_path, f.chat_id FROM files f INNER JOIN file_metadata fm ON f.file_path = fm.file_path WHERE fm.field_id = ? AND (%s)", whereClause)
+		} else {
+			// For OR logic, we wrap the conditions in a single EXISTS clause
+			query = fmt.Sprintf("SELECT f.file_path, f.chat_id FROM files f INNER JOIN file_metadata fm ON f.file_path = fm.file_path WHERE fm.field_id = ? AND EXISTS (SELECT 1 FROM json_each(fm.field_value) WHERE %s)", whereClause)
+		}
 	} else {
 		query = fmt.Sprintf("SELECT f.file_path, f.chat_id FROM files f INNER JOIN file_metadata fm ON f.file_path = fm.file_path WHERE fm.field_id = ? AND (%s)", whereClause)
 	}
@@ -216,14 +235,14 @@ func listAllDatabases(ctx context.Context) ([]ListItem, error) {
 
 // listFieldsInDatabase returns a list of all fields in the specified database.
 func listFieldsInDatabase(ctx context.Context, dbName string) ([]ListItem, error) {
-	// 1. Validate Database Exists
-	if err := db.ValidateDBExists(dbName); err != nil {
+	// 1. Resolve DB Path
+	dbPath, err := db.ResolveManifestDBPath(dbName)
+	if err != nil {
 		return nil, err
 	}
 
-	// 2. Resolve DB Path
-	dbPath, err := db.ResolveManifestDBPath(dbName)
-	if err != nil {
+	// 2. Validate Database Exists
+	if err := db.ValidateDBExists(dbPath); err != nil {
 		return nil, err
 	}
 
@@ -269,14 +288,14 @@ func listFieldsInDatabase(ctx context.Context, dbName string) ([]ListItem, error
 
 // listValuesForField returns a list of unique values for the specified field in the database.
 func listValuesForField(ctx context.Context, dbName string, fieldName string) ([]ListItem, error) {
-	// 1. Validate Database Exists
-	if err := db.ValidateDBExists(dbName); err != nil {
+	// 1. Resolve DB Path
+	dbPath, err := db.ResolveManifestDBPath(dbName)
+	if err != nil {
 		return nil, err
 	}
 
-	// 2. Resolve DB Path
-	dbPath, err := db.ResolveManifestDBPath(dbName)
-	if err != nil {
+	// 2. Validate Database Exists
+	if err := db.ValidateDBExists(dbPath); err != nil {
 		return nil, err
 	}
 
