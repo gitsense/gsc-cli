@@ -1,12 +1,12 @@
 /**
  * Component: Query Command
- * Block-UUID: 5b9d7925-f16a-405a-a6d5-17c510f72c5b
- * Parent-UUID: 2a0da0ab-e136-4216-9eed-345a5e40f581
- * Version: 3.15.0
+ * Block-UUID: 324b4e1b-7b94-4645-9e80-d53833eb5ce0
+ * Parent-UUID: 5b9d7925-f16a-405a-a6d5-17c510f72c5b
+ * Version: 3.15.1
  * Description: Added the 'DatabasesCmd' as a root-level convenience command. It supports listing all databases, inspecting a specific database schema via positional argument, or dumping all schemas using the --schema flag. Updated bridge.Execute calls to include the new exitCode argument.
  * Language: Go
- * Created-at: 2026-04-02T00:08:00.238Z
- * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v3.13.0), claude-haiku-4-5-20251001 (v3.14.0), GLM-4.7 (v3.15.0)
+ * Created-at: 2026-04-02T03:07:52.938Z
+ * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v3.13.0), claude-haiku-4-5-20251001 (v3.14.0), GLM-4.7 (v3.15.0), Gemini 3 Flash (v3.15.1)
  */
 
 
@@ -367,7 +367,7 @@ func init() {
 	// Insights Subcommand Flags
 	InsightsCmd.Flags().StringSliceVar(&queryFields, "fields", []string{}, "Field(s) to analyze (comma-separated if more than one)")
 	InsightsCmd.Flags().BoolP("help", "h", false, "Help for insights")
-	InsightsCmd.Flags().StringSliceVar(&queryFilters, "filter", []string{}, "Metadata filter (e.g., --filter 'field:operator:value')")
+	InsightsCmd.Flags().StringArrayVar(&queryFilters, "filter", []string{}, "Metadata filter (e.g., --filter 'field:operator:value')")
 	InsightsCmd.Flags().IntVar(&queryInsightsLimit, "limit", 10, "Limit top values (1-1000)")
 	InsightsCmd.Flags().StringVar(&queryScopeOverride, "scope-override", "", "Temporary scope override")
 	InsightsCmd.Flags().StringVarP(&queryDB, "db", "d", "", "Database override")

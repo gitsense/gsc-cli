@@ -1,12 +1,12 @@
 /**
  * Component: Simple Query Executor
- * Block-UUID: c0d924b8-bd3c-4e8f-8bfd-0abeac7258da
- * Parent-UUID: 2b59c923-aea5-484d-9ee1-7a17fdc74edb
- * Version: 1.8.9
+ * Block-UUID: 13668fc2-d506-4e9f-a4bd-f6e7b45bc8bc
+ * Parent-UUID: 601aa509-40a8-49ed-bedc-abf4c8345a0b
+ * Version: 1.12.2
  * Description: Executes simple value-matching queries and hierarchical list operations.
  * Language: Go
- * Created-at: 2026-04-02T00:57:43.483Z
- * Authors: GLM-4.7 (v1.0.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), GLM-4.7 (v1.7.1), GLM-4.7 (v1.7.2), Gemini 3 Flash (v1.8.0), claude-haiku-4-5-20251001 (v1.8.1), claude-haiku-4-5-20251001 (v1.8.2), claude-haiku-4-5-20251001 (v1.8.3), GLM-4.7 (v1.8.4), GLM-4.7 (v1.8.5), GLM-4.7 (v1.8.6), GLM-4.7 (v1.8.7), claude-haiku-4-5-20251001 (v1.8.8), GLM-4.7 (v1.8.9)
+ * Created-at: 2026-04-02T03:38:24.729Z
+ * Authors: claude-haiku-4-5-20251001 (v1.12.2)
  */
 
 
@@ -578,6 +578,19 @@ func ExecuteInsightsAnalysis(ctx context.Context, dbName string, fields []string
 	report.Summary.TotalFilesInScope = totalFilesInScope
 
 	// 6. Process each requested field
+	// 6x. Extract result value filters (when the filter field matches the analysis field)
+	// This allows us to filter the aggregation results to only show values matching the filter
+	resultValueFilters := make(map[string]search.FilterCondition)
+	for _, filter := range filters {
+		// Only apply result filtering if the filter field matches one of the fields being analyzed
+		for _, fieldName := range fields {
+			if filter.Field == fieldName {
+				resultValueFilters[fieldName] = filter
+				break
+			}
+		}
+	}
+
 	for _, fieldName := range fields {
 		// 6a. Get field info (ID and Type)
 		var fieldID, fieldType string
@@ -596,6 +609,26 @@ func ExecuteInsightsAnalysis(ctx context.Context, dbName string, fields []string
 		var filterWheres []string
 		var filterArgs []interface{}
 
+		// Get all field types for filter processing
+		var allFieldTypes map[string]string
+		fieldTypesQuery := `SELECT field_name, field_type FROM metadata_fields`
+		typeRows, err := database.QueryContext(ctx, fieldTypesQuery)
+		if err != nil {
+			return nil, fmt.Errorf("failed to query field types: %w", err)
+		}
+		defer typeRows.Close()
+		allFieldTypes = make(map[string]string)
+		for typeRows.Next() {
+			var name, fieldType string
+			if err := typeRows.Scan(&name, &fieldType); err != nil {
+				return nil, fmt.Errorf("failed to scan field type: %w", err)
+			}
+			allFieldTypes[name] = fieldType
+		}
+		if err := typeRows.Err(); err != nil {
+			return nil, err
+		}
+
 		for i, filter := range filters {
 			alias := fmt.Sprintf("fm_filter_%d", i)
 			mfAlias := fmt.Sprintf("mf_filter_%d", i)
@@ -604,26 +637,72 @@ func ExecuteInsightsAnalysis(ctx context.Context, dbName string, fields []string
 			filterJoins = append(filterJoins, fmt.Sprintf("JOIN file_metadata %s ON f.file_path = %s.file_path", alias, alias))
 			filterJoins = append(filterJoins, fmt.Sprintf("JOIN metadata_fields %s ON %s.field_id = %s.field_id", mfAlias, alias, alias))
 
-			// Build WHERE clause for this filter
+			// Get field type for this filter
+			fieldType, exists := allFieldTypes[filter.Field]
+			if !exists {
+				fieldType = "string" // Default to scalar
+			}
+			isArray := (fieldType == "array" || fieldType == "list")
+
+			// Build WHERE clause for field name
 			filterWheres = append(filterWheres, fmt.Sprintf("%s.field_name = ?", mfAlias))
 			filterArgs = append(filterArgs, filter.Field)
 
-			// Build condition SQL based on operator
-			switch filter.Operator {
-			case "=":
-				filterWheres = append(filterWheres, fmt.Sprintf("LOWER(%s.field_value) = ?", alias))
-				filterArgs = append(filterArgs, strings.ToLower(filter.Value))
-			case "!=":
-				filterWheres = append(filterWheres, fmt.Sprintf("LOWER(%s.field_value) != ?", alias))
-				filterArgs = append(filterArgs, strings.ToLower(filter.Value))
-			case "in":
-				values := strings.Split(filter.Value, ",")
-				placeholders := make([]string, len(values))
-				for j, v := range values {
-					placeholders[j] = "?"
-					filterArgs = append(filterArgs, strings.ToLower(strings.TrimSpace(v)))
+			// Build condition based on field type and operator
+			if isArray {
+				// Array field: use json_each
+				// Add JSON validation to prevent malformed JSON errors
+				filterWheres = append(filterWheres, fmt.Sprintf("json_valid(%s.field_value)", alias))
+
+				switch filter.Operator {
+				case "=":
+					filterWheres = append(filterWheres, fmt.Sprintf("EXISTS (SELECT 1 FROM json_each(%s.field_value) AS je WHERE LOWER(je.value) LIKE ?)", alias))
+					filterArgs = append(filterArgs, "%"+strings.ToLower(filter.Value)+"%")
+				case "!=":
+					filterWheres = append(filterWheres, fmt.Sprintf("EXISTS (SELECT 1 FROM json_each(%s.field_value) AS je WHERE LOWER(je.value) NOT LIKE ?)", alias))
+					filterArgs = append(filterArgs, "%"+strings.ToLower(filter.Value)+"%")
+				case "in":
+					values := strings.Split(filter.Value, ",")
+					var exactValues []string
+					var wildcardValues []string
+					for _, v := range values {
+						v = strings.ToLower(strings.TrimSpace(v))
+						if strings.Contains(v, "*") {
+							pattern := strings.ReplaceAll(v, "*", "%")
+							wildcardValues = append(wildcardValues, fmt.Sprintf("LOWER(je_filter.value) LIKE ?"))
+							filterArgs = append(filterArgs, pattern)
+						} else {
+							exactValues = append(exactValues, "?")
+							filterArgs = append(filterArgs, v)
+						}
+					}
+					var conditions []string
+					if len(exactValues) > 0 {
+						conditions = append(conditions, fmt.Sprintf("LOWER(je_filter.value) IN (%s)", strings.Join(exactValues, ",")))
+					}
+					if len(wildcardValues) > 0 {
+						conditions = append(conditions, strings.Join(wildcardValues, " OR "))
+					}
+					filterWheres = append(filterWheres, fmt.Sprintf("EXISTS (SELECT 1 FROM json_each(%s.field_value) AS je_filter WHERE %s)", alias, strings.Join(conditions, " OR ")))
 				}
-				filterWheres = append(filterWheres, fmt.Sprintf("LOWER(%s.field_value) IN (%s)", alias, strings.Join(placeholders, ",")))
+			} else {
+				// Scalar field: use direct comparison
+				switch filter.Operator {
+				case "=":
+					filterWheres = append(filterWheres, fmt.Sprintf("LOWER(%s.field_value) = ?", alias))
+					filterArgs = append(filterArgs, strings.ToLower(filter.Value))
+				case "!=":
+					filterWheres = append(filterWheres, fmt.Sprintf("LOWER(%s.field_value) != ?", alias))
+					filterArgs = append(filterArgs, strings.ToLower(filter.Value))
+				case "in":
+					values := strings.Split(filter.Value, ",")
+					placeholders := make([]string, len(values))
+					for j, v := range values {
+						placeholders[j] = "?"
+						filterArgs = append(filterArgs, strings.ToLower(strings.TrimSpace(v)))
+					}
+					filterWheres = append(filterWheres, fmt.Sprintf("LOWER(%s.field_value) IN (%s)", alias, strings.Join(placeholders, ",")))
+				}
 			}
 		}
 
@@ -642,26 +721,78 @@ func ExecuteInsightsAnalysis(ctx context.Context, dbName string, fields []string
 
 		if fieldType == "array" || fieldType == "list" {
 			// Array Type: Use json_each to expand values
+			// Build result value filtering if filters apply to this field
+			resultFilterSQL := ""
+			resultFilterArgs := []interface{}{}
+			if resultFilter, hasFilter := resultValueFilters[fieldName]; hasFilter {
+				switch resultFilter.Operator {
+				case "=", "in":
+					values := strings.Split(resultFilter.Value, ",")
+					var conditions []string
+					for _, v := range values {
+						v = strings.ToLower(strings.TrimSpace(v))
+						if strings.Contains(v, "*") {
+							pattern := strings.ReplaceAll(v, "*", "%")
+							conditions = append(conditions, "LOWER(je_main.value) LIKE ?")
+							resultFilterArgs = append(resultFilterArgs, pattern)
+						} else {
+							conditions = append(conditions, "LOWER(je_main.value) = ?")
+							resultFilterArgs = append(resultFilterArgs, v)
+						}
+					}
+					if len(conditions) > 0 {
+						resultFilterSQL = "AND (" + strings.Join(conditions, " OR ") + ")"
+					}
+				}
+			}
+
 			query = `
-				SELECT json_each.value as value, COUNT(DISTINCT f.file_path) as count
+				SELECT je_main.value as value, COUNT(DISTINCT f.file_path) as count
 				FROM file_metadata fm
 				JOIN metadata_fields mf ON fm.field_id = mf.field_id
 				JOIN files f ON fm.file_path = f.file_path
 				JOIN target_set ts ON f.file_path = ts.file_path
 				%s
-				JOIN json_each(fm.field_value)
-				WHERE mf.field_name = ? AND fm.field_id = ?
+				JOIN json_each(fm.field_value) AS je_main
+				WHERE mf.field_name = ? AND fm.field_id = ? AND json_valid(fm.field_value)
 				%s
-				GROUP BY json_each.value
+				%s
+				GROUP BY je_main.value
 				ORDER BY count DESC
 				LIMIT ?
 			`
-			query = fmt.Sprintf(query, strings.Join(filterJoins, " "), filterConditions)
+			query = fmt.Sprintf(query, strings.Join(filterJoins, " "), filterConditions, resultFilterSQL)
 			args = append([]interface{}{fieldName, fieldID}, filterArgs...)
+			args = append(args, resultFilterArgs...)
 			args = append(args, limit)
 			rows, queryErr = database.QueryContext(ctx, query, args...)
 		} else {
 			// Scalar Type: Standard GROUP BY
+			// Build result value filtering if filters apply to this field
+			resultFilterSQL := ""
+			resultFilterArgs := []interface{}{}
+			if resultFilter, hasFilter := resultValueFilters[fieldName]; hasFilter {
+				switch resultFilter.Operator {
+				case "=", "in":
+					values := strings.Split(resultFilter.Value, ",")
+					var conditions []string
+					for _, v := range values {
+						v = strings.ToLower(strings.TrimSpace(v))
+						if strings.Contains(v, "*") {
+							pattern := strings.ReplaceAll(v, "*", "%")
+							conditions = append(conditions, "LOWER(fm.field_value) LIKE ?")
+							resultFilterArgs = append(resultFilterArgs, pattern)
+						} else {
+							conditions = append(conditions, "LOWER(fm.field_value) = ?")
+							resultFilterArgs = append(resultFilterArgs, v)
+						}
+					}
+					if len(conditions) > 0 {
+						resultFilterSQL = "AND (" + strings.Join(conditions, " OR ") + ")"
+					}
+				}
+			}
+
 			query = `
 				SELECT fm.field_value as value, COUNT(DISTINCT f.file_path) as count
 				FROM file_metadata fm
@@ -669,13 +800,15 @@ func ExecuteInsightsAnalysis(ctx context.Context, dbName string, fields []string
 				JOIN files f ON fm.file_path = f.file_path
 				JOIN target_set ts ON f.file_path = ts.file_path
 				%s
-				WHERE mf.field_name = ? AND fm.field_id = ? %s
+				WHERE mf.field_name = ? AND fm.field_id = ? %s AND json_valid(fm.field_value)
+				%s
 				GROUP BY fm.field_value
 				ORDER BY count DESC
 				LIMIT ?
 			`
-			query = fmt.Sprintf(query, strings.Join(filterJoins, " "), filterConditions)
+			query = fmt.Sprintf(query, strings.Join(filterJoins, " "), filterConditions, resultFilterSQL)
 			args = append([]interface{}{fieldName, fieldID}, filterArgs...)
+			args = append(args, resultFilterArgs...)
 			args = append(args, limit)
 			rows, queryErr = database.QueryContext(ctx, query, args...)
 		}

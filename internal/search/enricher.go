@@ -1,12 +1,12 @@
 /**
  * Component: Search Result Enricher
- * Block-UUID: 55498844-209d-491e-bd4f-169e50f26e11
- * Parent-UUID: 43230cdc-8c3d-4725-9019-65a86693ece9
- * Version: 3.1.0
+ * Block-UUID: 866f3047-8ef6-4f86-a8d3-e432255e5e13
+ * Parent-UUID: 55498844-209d-491e-bd4f-169e50f26e11
+ * Version: 3.2.0
  * Description: Exported CheckFilters, CheckSingleCondition, and CheckArrayCondition to support semantic filtering in the 'gsc tree' command.
  * Language: Go
- * Created-at: 2026-04-01T23:09:55.835Z
- * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v2.9.0), Gemini 3 Flash (v3.0.0), claude-haiku-4-5-20251001 (v3.1.0)
+ * Created-at: 2026-04-02T01:58:18.639Z
+ * Authors: GLM-4.7 (v1.0.0), ..., Gemini 3 Flash (v2.9.0), Gemini 3 Flash (v3.0.0), claude-haiku-4-5-20251001 (v3.1.0), GLM-4.7 (v3.2.0)
  */
 
 
@@ -158,7 +158,26 @@ func fetchMetadataMap(ctx context.Context, database *sql.DB, filePaths []string,
 		}
 	}
 
-	// 2. Determine which fields we MUST fetch
+	// 2.5. Get field types for filter processing
+	fieldTypesQuery := `SELECT field_name, field_type FROM metadata_fields`
+	fieldTypesRows, err := database.QueryContext(ctx, fieldTypesQuery)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to query field types: %w", err)
+	}
+	defer fieldTypesRows.Close()
+	fieldTypes := make(map[string]string)
+	for fieldTypesRows.Next() {
+		var name, fieldType string
+		if err := fieldTypesRows.Scan(&name, &fieldType); err != nil {
+			return nil, nil, fmt.Errorf("failed to scan field type: %w", err)
+		}
+		fieldTypes[name] = fieldType
+	}
+	if err := fieldTypesRows.Err(); err != nil {
+		return nil, nil, err
+	}
+
+	// 3. Determine which fields we MUST fetch
 	fetchList := make(map[string]bool)
 	for _, f := range requestedFields {
 		fetchList[f] = true
@@ -175,26 +194,21 @@ func fetchMetadataMap(ctx context.Context, database *sql.DB, filePaths []string,
 		args[i] = path
 	}
 
-	whereClause := fmt.Sprintf("f.file_path IN (%s)", strings.Join(placeholders, ","))
+	// Build WHERE clause using the new array-aware filter builder
+	whereClause, filterArgs, err := BuildSQLWhereClauseWithTypes(filters, analyzedFilter, filePatterns, fieldTypes)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to build WHERE clause: %w", err)
+	}
 	
-	if analyzedFilter == "true" {
-		whereClause += " AND f.chat_id IS NOT NULL"
-	} else if analyzedFilter == "false" {
-		whereClause += " AND f.chat_id IS NULL"
+	// Add file path IN clause
+	filePathClause := fmt.Sprintf("f.file_path IN (%s)", strings.Join(placeholders, ","))
+	if whereClause != "" {
+		whereClause = filePathClause + " AND " + whereClause
+	} else {
+		whereClause = filePathClause
 	}
-
-	if len(filePatterns) > 0 {
-		var fileParts []string
-		for _, pattern := range filePatterns {
-			sqlPattern := strings.ReplaceAll(pattern, "*", "%")
-			fileParts = append(fileParts, "f.file_path LIKE ?")
-			args = append(args, sqlPattern)
-		}
-		if len(fileParts) > 0 {
-			whereClause += " AND (" + strings.Join(fileParts, " OR ") + ")"
-		}
-	}
-
+	
+	// Add field name filter
 	if len(fetchList) > 0 {
 		var fieldPlaceholders []string
 		for f := range fetchList {
@@ -203,6 +217,9 @@ func fetchMetadataMap(ctx context.Context, database *sql.DB, filePaths []string,
 		}
 		whereClause += fmt.Sprintf(" AND mf.field_name IN (%s)", strings.Join(fieldPlaceholders, ","))
 	}
+	
+	// Combine args: file paths + filter args
+	args = append(args, filterArgs...)
 
 	baseQuery := `
 		SELECT 

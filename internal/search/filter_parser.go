@@ -1,12 +1,12 @@
 /**
  * Component: Filter Parser
- * Block-UUID: 719193ad-5b3e-4413-a20a-cb170133ff98
- * Parent-UUID: 03342c43-02e1-4678-9466-898d546b3d83
- * Version: 1.0.5
+ * Block-UUID: 4d077b23-c568-4a03-8b9a-f2387f32e6c3
+ * Parent-UUID: f327db4f-41bc-4fbd-aa3a-b1db1781fd39
+ * Version: 1.0.7
  * Description: Parses filter strings and generates SQL WHERE clauses for metadata filtering. Supports operators, ranges, and field type detection. Fixed logic error in validateOperator for numeric fields.
  * Language: Go
- * Created-at: 2026-04-01T23:39:00.150Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), claude-haiku-4-5-20251001 (v1.0.3), claude-haiku-4-5-20251001 (v1.0.4), claude-haiku-4-5-20251001 (v1.0.5)
+ * Created-at: 2026-04-02T02:39:40.053Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), claude-haiku-4-5-20251001 (v1.0.3), claude-haiku-4-5-20251001 (v1.0.4), claude-haiku-4-5-20251001 (v1.0.5), GLM-4.7 (v1.0.6), claude-haiku-4-5-20251001 (v1.0.7)
  */
 
 
@@ -109,6 +109,14 @@ func parseSingleFilter(filterStr string, fieldTypes map[string]string) (FilterCo
 		return FilterCondition{}, err
 	}
 
+	// Strip parentheses from 'in' and 'not in' operators (e.g., "in (a,b)" → "a,b")
+	if op == "in" || op == "not in" {
+		value = strings.TrimSpace(value)
+		if strings.HasPrefix(value, "(") && strings.HasSuffix(value, ")") {
+			value = value[1 : len(value)-1]
+		}
+	}
+
 	return FilterCondition{
 		Field:    field,
 		Operator: op,
@@ -192,12 +200,18 @@ func validateOperator(field, op, value string, fieldTypes map[string]string) err
 // BuildSQLWhereClause constructs the SQL WHERE clause and arguments from filter conditions.
 // It also handles system filters (analyzed status, file paths).
 func BuildSQLWhereClause(conditions []FilterCondition, analyzedFilter string, filePatterns []string) (string, []interface{}, error) {
+	return BuildSQLWhereClauseWithTypes(conditions, analyzedFilter, filePatterns, nil)
+}
+
+// BuildSQLWhereClauseWithTypes constructs the SQL WHERE clause with field type information.
+// This is the main implementation that handles both scalar and array fields.
+func BuildSQLWhereClauseWithTypes(conditions []FilterCondition, analyzedFilter string, filePatterns []string, fieldTypes map[string]string) (string, []interface{}, error) {
 	var whereParts []string
 	var args []interface{}
 
 	// 1. Add Metadata Filters
 	for _, cond := range conditions {
-		sqlPart, condArgs, err := buildConditionSQL(cond)
+		sqlPart, condArgs, err := buildConditionSQL(cond, fieldTypes)
 		if err != nil {
 			return "", nil, err
 		}
@@ -240,23 +254,107 @@ func BuildSQLWhereClause(conditions []FilterCondition, analyzedFilter string, fi
 }
 
 // buildConditionSQL generates SQL for a single FilterCondition.
-func buildConditionSQL(cond FilterCondition) (string, []interface{}, error) {
+func buildConditionSQL(cond FilterCondition, fieldTypes map[string]string) (string, []interface{}, error) {
 	// Handle System Fields
 	if cond.Field == "file_path" {
 		return buildFileConditionSQL(cond)
 	}
 
-	// Handle Metadata Fields
-	// We need to join file_metadata and metadata_fields
-	// SQL structure: (SELECT field_value FROM file_metadata WHERE file_path = f.file_path AND field_id = (SELECT field_id FROM metadata_fields WHERE field_name = ?))
-	
-	// However, for efficiency in the main query, we usually join tables.
-	// This function returns the condition part assuming the tables are joined.
-	// e.g., "fm.field_value = ?" or "fm.field_value LIKE ?"
-	
-	// Note: The main query in enricher.go handles the joins. 
-	// Here we return the condition relative to the joined table alias.
-	
+	// Get field type
+	fieldType, exists := fieldTypes[cond.Field]
+	if !exists {
+		// Default to scalar if not found
+		fieldType = "string"
+	}
+
+	// Check if this is an array field
+	isArray := (fieldType == "array" || fieldType == "list")
+
+	// For array fields, wrap in EXISTS clause
+	if isArray {
+		return buildArrayConditionSQL(cond)
+	}
+
+	// For scalar fields, use existing logic
+	return buildScalarConditionSQL(cond)
+}
+
+// buildArrayConditionSQL generates SQL for array/list fields using json_each.
+func buildArrayConditionSQL(cond FilterCondition) (string, []interface{}, error) {
+	switch cond.Operator {
+	case "=":
+		// For arrays, = becomes a LIKE match on any element
+		return "EXISTS (SELECT 1 FROM json_each(fm.field_value) WHERE LOWER(json_each.value) LIKE ?)", []interface{}{"%" + strings.ToLower(cond.Value) + "%"}, nil
+
+	case "!=":
+		return "EXISTS (SELECT 1 FROM json_each(fm.field_value) WHERE LOWER(json_each.value) NOT LIKE ?)", []interface{}{"%" + strings.ToLower(cond.Value) + "%"}, nil
+
+	case "in":
+		values := strings.Split(cond.Value, ",")
+		var exactValues []string
+		var wildcardValues []string
+		args := make([]interface{}, len(values))
+		argCount := 0
+
+		for _, v := range values {
+			v = strings.ToLower(strings.TrimSpace(v))
+
+			if strings.Contains(v, "*") {
+				// Wildcard match: convert * to %
+				pattern := strings.ReplaceAll(v, "*", "%")
+				wildcardValues = append(wildcardValues, "LOWER(json_each.value) LIKE ?")
+				args[argCount] = pattern
+				argCount++
+			} else {
+				// Exact match
+				exactValues = append(exactValues, "?")
+				args[argCount] = v
+				argCount++
+			}
+		}
+
+		// Trim args to actual count
+		args = args[:argCount]
+
+		var conditions []string
+		if len(exactValues) > 0 {
+			conditions = append(conditions, "LOWER(json_each.value) IN ("+strings.Join(exactValues, ",")+")")
+		}
+		if len(wildcardValues) > 0 {
+			conditions = append(conditions, strings.Join(wildcardValues, " OR "))
+		}
+
+		return "EXISTS (SELECT 1 FROM json_each(fm.field_value) WHERE " + strings.Join(conditions, " OR ") + ")", args, nil
+
+	case "not in":
+		values := strings.Split(cond.Value, ",")
+		placeholders := make([]string, len(values))
+		args := make([]interface{}, len(values))
+		for i, v := range values {
+			placeholders[i] = "?"
+			args[i] = strings.ToLower(strings.TrimSpace(v))
+		}
+		return "EXISTS (SELECT 1 FROM json_each(fm.field_value) WHERE LOWER(json_each.value) NOT IN (" + strings.Join(placeholders, ",") + "))", args, nil
+
+	case "~":
+		return "EXISTS (SELECT 1 FROM json_each(fm.field_value) WHERE LOWER(json_each.value) LIKE ?)", []interface{}{"%" + strings.ToLower(cond.Value) + "%"}, nil
+
+	case "!~":
+		return "EXISTS (SELECT 1 FROM json_each(fm.field_value) WHERE LOWER(json_each.value) NOT LIKE ?)", []interface{}{"%" + strings.ToLower(cond.Value) + "%"}, nil
+
+	case "exists":
+		return "EXISTS (SELECT 1 FROM json_each(fm.field_value))", []interface{}{}, nil
+
+	case "!exists":
+		return "NOT EXISTS (SELECT 1 FROM json_each(fm.field_value))", []interface{}{}, nil
+
+	default:
+		return "", nil, fmt.Errorf("operator '%s' not supported for array fields", cond.Operator)
+	}
+}
+
+// buildScalarConditionSQL generates SQL for scalar fields (original logic).
+func buildScalarConditionSQL(cond FilterCondition) (string, []interface{}, error) {
 	switch cond.Operator {
 	case "=":
 		// For lists, use LIKE. For scalars, use =.
