@@ -1,12 +1,12 @@
 /**
  * Component: Filter Parser
- * Block-UUID: 1ef590dc-5be6-45d1-9cd7-4b2e2af381ab
- * Parent-UUID: 9ce54ad5-fad3-4fb2-a421-5fc1dd2af4c9
- * Version: 1.0.13
- * Description: Parses filter strings and generates SQL WHERE clauses for metadata filtering. Supports operators, ranges, and field type detection. Fixed logic error in validateOperator for numeric fields.
+ * Block-UUID: fefe4dcb-68a4-47ee-8dc1-388be74200a1
+ * Parent-UUID: 7cdac7ca-c9df-4c9b-ba64-fb3f2fbead17
+ * Version: 1.0.17
+ * Description: Parses filter strings and generates SQL WHERE clauses for metadata filtering. Supports operators, ranges, and field type detection. Fixed logic error in validateOperator for numeric fields. Fixed array filtering by adding alias 'AS je' to json_each calls and referencing 'je.value' instead of 'json_each.atom' to match insights implementation. Fixed missing 'AS je' alias in the 'in' operator case. Fixed SQL error by correcting table alias for field_name (fm_filter.field_name -> mf_filter.field_name).
  * Language: Go
- * Created-at: 2026-04-02T16:48:38.110Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), claude-haiku-4-5-20251001 (v1.0.3), claude-haiku-4-5-20251001 (v1.0.4), claude-haiku-4-5-20251001 (v1.0.5), GLM-4.7 (v1.0.6), claude-haiku-4-5-20251001 (v1.0.7), claude-haiku-4-5-20251001 (v1.0.8), claude-haiku-4-5-20251001 (v1.0.9), claude-haiku-4-5-20251001 (v1.0.10), claude-haiku-4-5-20251001 (v1.0.11), GLM-4.7 (v1.0.12), claude-haiku-4-5-20251001 (v1.0.13)
+ * Created-at: 2026-04-02T18:15:12.039Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), claude-haiku-4-5-20251001 (v1.0.3), claude-haiku-4-5-20251001 (v1.0.4), claude-haiku-4-5-20251001 (v1.0.5), GLM-4.7 (v1.0.6), claude-haiku-4-5-20251001 (v1.0.7), claude-haiku-4-5-20251001 (v1.0.8), claude-haiku-4-5-20251001 (v1.0.9), claude-haiku-4-5-20251001 (v1.0.10), claude-haiku-4-5-20251001 (v1.0.11), GLM-4.7 (v1.0.12), claude-haiku-4-5-20251001 (v1.0.13), claude-haiku-4-5-20251001 (v1.0.14), GLM-4.7 (v1.0.15), GLM-4.7 (v1.0.16), GLM-4.7 (v1.0.17)
  */
 
 
@@ -301,11 +301,10 @@ func buildConditionSQL(cond FilterCondition, fieldTypes map[string]string) (stri
 func buildArrayConditionSQL(cond FilterCondition) (string, []interface{}, error) {
 	switch cond.Operator {
 	case "=":
-		// For arrays, = becomes a LIKE match on any element. Use a subquery to avoid crashing on scalar fields.
-		return "EXISTS (SELECT 1 FROM file_metadata fm_filter JOIN metadata_fields mf_filter ON fm_filter.field_id = mf_filter.field_id WHERE fm_filter.file_path = f.file_path AND mf_filter.field_name = ? AND EXISTS (SELECT 1 FROM json_each(fm_filter.field_value) WHERE LOWER(json_each.atom) LIKE ?))", []interface{}{cond.Field, "%" + strings.ToLower(cond.Value) + "%"}, nil
+		return "EXISTS (SELECT 1 FROM file_metadata fm_filter JOIN metadata_fields mf_filter ON fm_filter.field_id = mf_filter.field_id WHERE fm_filter.file_path = f.file_path AND mf_filter.field_name = ? AND json_valid(fm_filter.field_value) AND EXISTS (SELECT 1 FROM json_each(fm_filter.field_value) AS je WHERE LOWER(je.value) LIKE ?))", []interface{}{cond.Field, "%" + strings.ToLower(cond.Value) + "%"}, nil
 
 	case "!=":
-		return "EXISTS (SELECT 1 FROM file_metadata fm_filter JOIN metadata_fields mf_filter ON fm_filter.field_id = mf_filter.field_id WHERE fm_filter.file_path = f.file_path AND mf_filter.field_name = ? AND EXISTS (SELECT 1 FROM json_each(fm_filter.field_value) WHERE LOWER(json_each.atom) NOT LIKE ?))", []interface{}{cond.Field, "%" + strings.ToLower(cond.Value) + "%"}, nil
+		return "EXISTS (SELECT 1 FROM file_metadata fm_filter JOIN metadata_fields mf_filter ON fm_filter.field_id = mf_filter.field_id WHERE fm_filter.file_path = f.file_path AND mf_filter.field_name = ? AND json_valid(fm_filter.field_value) AND EXISTS (SELECT 1 FROM json_each(fm_filter.field_value) AS je WHERE LOWER(je.value) NOT LIKE ?))", []interface{}{cond.Field, "%" + strings.ToLower(cond.Value) + "%"}, nil
 
 	case "in":
 		values := strings.Split(cond.Value, ",")
@@ -320,7 +319,7 @@ func buildArrayConditionSQL(cond FilterCondition) (string, []interface{}, error)
 			if strings.Contains(v, "*") {
 				// Wildcard match: convert * to %
 				pattern := strings.ReplaceAll(v, "*", "%")
-				wildcardValues = append(wildcardValues, "LOWER(json_each.atom) LIKE ?")
+				wildcardValues = append(wildcardValues, "LOWER(je.value) LIKE ?")
 				args[argCount] = pattern
 				argCount++
 			} else {
@@ -336,13 +335,13 @@ func buildArrayConditionSQL(cond FilterCondition) (string, []interface{}, error)
 
 		var conditions []string
 		if len(exactValues) > 0 {
-			conditions = append(conditions, "LOWER(json_each.atom) IN ("+strings.Join(exactValues, ", ")+")")
+			conditions = append(conditions, "LOWER(je.value) IN ("+strings.Join(exactValues, ", ")+")")
 		}
 		if len(wildcardValues) > 0 {
 			conditions = append(conditions, strings.Join(wildcardValues, " OR "))
 		}
 
-		return "EXISTS (SELECT 1 FROM file_metadata fm_filter JOIN metadata_fields mf_filter ON fm_filter.field_id = mf_filter.field_id WHERE fm_filter.file_path = f.file_path AND mf_filter.field_name = ? AND EXISTS (SELECT 1 FROM json_each(fm_filter.field_value) WHERE " + strings.Join(conditions, " OR ") + "))", args, nil
+		return "EXISTS (SELECT 1 FROM file_metadata fm_filter JOIN metadata_fields mf_filter ON fm_filter.field_id = mf_filter.field_id WHERE fm_filter.file_path = f.file_path AND mf_filter.field_name = ? AND json_valid(fm_filter.field_value) AND EXISTS (SELECT 1 FROM json_each(fm_filter.field_value) AS je WHERE " + strings.Join(conditions, " OR ") + "))", args, nil
 
 	case "not in":
 		values := strings.Split(cond.Value, ",")
@@ -352,19 +351,19 @@ func buildArrayConditionSQL(cond FilterCondition) (string, []interface{}, error)
 			placeholders[i] = "?"
 			args[i] = strings.ToLower(strings.TrimSpace(v))
 		}
-		return "EXISTS (SELECT 1 FROM file_metadata fm_filter JOIN metadata_fields mf_filter ON fm_filter.field_id = mf_filter.field_id WHERE fm_filter.file_path = f.file_path AND mf_filter.field_name = ? AND EXISTS (SELECT 1 FROM json_each(fm_filter.field_value) WHERE LOWER(json_each.atom) NOT IN (" + strings.Join(placeholders, ", ") + ")))", append([]interface{}{cond.Field}, args...), nil
+		return "EXISTS (SELECT 1 FROM file_metadata fm_filter JOIN metadata_fields mf_filter ON fm_filter.field_id = mf_filter.field_id WHERE fm_filter.file_path = f.file_path AND mf_filter.field_name = ? AND json_valid(fm_filter.field_value) AND EXISTS (SELECT 1 FROM json_each(fm_filter.field_value) AS je WHERE LOWER(je.value) NOT IN (" + strings.Join(placeholders, ", ") + ")))", append([]interface{}{cond.Field}, args...), nil
 
 	case "~":
-		return "EXISTS (SELECT 1 FROM file_metadata fm_filter JOIN metadata_fields mf_filter ON fm_filter.field_id = mf_filter.field_id WHERE fm_filter.file_path = f.file_path AND mf_filter.field_name = ? AND EXISTS (SELECT 1 FROM json_each(fm_filter.field_value) WHERE LOWER(json_each.atom) LIKE ?))", []interface{}{cond.Field, "%" + strings.ToLower(cond.Value) + "%"}, nil
+		return "EXISTS (SELECT 1 FROM file_metadata fm_filter JOIN metadata_fields mf_filter ON fm_filter.field_id = mf_filter.field_id WHERE fm_filter.file_path = f.file_path AND mf_filter.field_name = ? AND json_valid(fm_filter.field_value) AND EXISTS (SELECT 1 FROM json_each(fm_filter.field_value) AS je WHERE LOWER(je.value) LIKE ?))", []interface{}{cond.Field, "%" + strings.ToLower(cond.Value) + "%"}, nil
 
 	case "!~":
-		return "EXISTS (SELECT 1 FROM file_metadata fm_filter JOIN metadata_fields mf_filter ON fm_filter.field_id = mf_filter.field_id WHERE fm_filter.file_path = f.file_path AND mf_filter.field_name = ? AND EXISTS (SELECT 1 FROM json_each(fm_filter.field_value) WHERE LOWER(json_each.atom) NOT LIKE ?))", []interface{}{cond.Field, "%" + strings.ToLower(cond.Value) + "%"}, nil
+		return "EXISTS (SELECT 1 FROM file_metadata fm_filter JOIN metadata_fields mf_filter ON fm_filter.field_id = mf_filter.field_id WHERE fm_filter.file_path = f.file_path AND mf_filter.field_name = ? AND json_valid(fm_filter.field_value) AND EXISTS (SELECT 1 FROM json_each(fm_filter.field_value) AS je WHERE LOWER(je.value) NOT LIKE ?))", []interface{}{cond.Field, "%" + strings.ToLower(cond.Value) + "%"}, nil
 
 	case "exists":
-		return "EXISTS (SELECT 1 FROM file_metadata fm_filter JOIN metadata_fields mf_filter ON fm_filter.field_id = mf_filter.field_id WHERE fm_filter.file_path = f.file_path AND mf_filter.field_name = ? AND EXISTS (SELECT 1 FROM json_each(fm_filter.field_value)))", []interface{}{cond.Field}, nil
+		return "EXISTS (SELECT 1 FROM file_metadata fm_filter JOIN metadata_fields mf_filter ON fm_filter.field_id = mf_filter.field_id WHERE fm_filter.file_path = f.file_path AND mf_filter.field_name = ? AND json_valid(fm_filter.field_value) AND EXISTS (SELECT 1 FROM json_each(fm_filter.field_value) AS je))", []interface{}{cond.Field}, nil
 
 	case "!exists":
-		return "NOT EXISTS (SELECT 1 FROM file_metadata fm_filter JOIN metadata_fields mf_filter ON fm_filter.field_id = mf_filter.field_id WHERE fm_filter.file_path = f.file_path AND mf_filter.field_name = ? AND EXISTS (SELECT 1 FROM json_each(fm_filter.field_value)))", []interface{}{cond.Field}, nil
+		return "NOT EXISTS (SELECT 1 FROM file_metadata fm_filter JOIN metadata_fields mf_filter ON fm_filter.field_id = mf_filter.field_id WHERE fm_filter.file_path = f.file_path AND mf_filter.field_name = ? AND json_valid(fm_filter.field_value) AND EXISTS (SELECT 1 FROM json_each(fm_filter.field_value) AS je))", []interface{}{cond.Field}, nil
 
 	default:
 		return "", nil, fmt.Errorf("operator '%s' not supported for array fields", cond.Operator)
