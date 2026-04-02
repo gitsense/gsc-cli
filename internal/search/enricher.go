@@ -1,12 +1,12 @@
 /**
  * Component: Search Result Enricher
- * Block-UUID: 79f51bf2-8a24-4262-aa87-1d1003578883
- * Parent-UUID: 5a55c18a-8cc6-4384-b7f3-40bd815da1bd
- * Version: 3.2.3
- * Description: Exported CheckFilters, CheckSingleCondition, and CheckArrayCondition to support semantic filtering in the 'gsc tree' command. Added SQL query logging for debugging and fixed SQL construction to handle empty WHERE clauses properly. Fixed SQL query construction to properly handle WHERE clause - the BuildSQLWhereClauseWithTypes function returns a clause that includes "WHERE", so we strip it before combining with other conditions, then add "WHERE" at the end.
+ * Block-UUID: b06e8e62-8358-483e-a8c8-5833c00b1df4
+ * Parent-UUID: af7c3584-e392-4682-bdbb-86e1534a55af
+ * Version: 3.2.5
+ * Description: Exported CheckFilters, CheckSingleCondition, and CheckArrayCondition to support semantic filtering in the 'gsc tree' command. Added SQL query logging for debugging and fixed SQL construction to handle empty WHERE clauses properly. Fixed SQL query construction to properly handle WHERE clause - the BuildSQLWhereClauseWithTypes function returns a clause that includes "WHERE", so we strip it before combining with other conditions, then add "WHERE" at the end. Refactored to use reusable db.GetFieldTypes() helper function instead of querying field types inline.
  * Language: Go
- * Created-at: 2026-04-02T15:38:58.953Z
- * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v3.2.2), claude-haiku-4-5-20251001 (v3.2.3)
+ * Created-at: 2026-04-02T16:53:58.887Z
+ * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v3.2.2), claude-haiku-4-5-20251001 (v3.2.3), GLM-4.7 (v3.2.4), claude-sonnet-4-6 (v3.2.5)
  */
 
 
@@ -63,8 +63,14 @@ func EnrichMatches(ctx context.Context, matches []RawMatch, dbName string, filte
 		filePaths = append(filePaths, path)
 	}
 
+	// Get field types once, reuse in fetchMetadataMap
+	fieldTypes, err := db.GetFieldTypes(ctx, dbName)
+	if err != nil {
+		return nil, nil, 0, fmt.Errorf("failed to get field types: %w", err)
+	}
+
 	// 5. Fetch metadata for all files at once, applying system filters
-	metadataMap, availableFields, err := fetchMetadataMap(ctx, database, filePaths, analyzedFilter, filePatterns, requestedFields, filters)
+	metadataMap, availableFields, err := fetchMetadataMap(ctx, database, filePaths, analyzedFilter, filePatterns, requestedFields, filters, fieldTypes)
 	if err != nil {
 		return nil, nil, 0, fmt.Errorf("failed to fetch metadata: %w", err)
 	}
@@ -126,18 +132,30 @@ type FileMetadata struct {
 }
 
 // FetchMetadataMap is a public wrapper around fetchMetadataMap that handles DB connection.
-func FetchMetadataMap(ctx context.Context, dbPath string, filePaths []string, analyzedFilter string, filePatterns []string, requestedFields []string, filters []FilterCondition) (map[string]FileMetadata, []string, error) {
+func FetchMetadataMap(ctx context.Context, dbName string, filePaths []string, analyzedFilter string, filePatterns []string, requestedFields []string, filters []FilterCondition) (map[string]FileMetadata, []string, error) {
+	// Resolve DB path
+	dbPath, err := db.ResolveManifestDBPath(dbName)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	database, err := db.OpenDB(dbPath)
 	if err != nil {
 		return nil, nil, err
 	}
 	defer db.CloseDB(database)
 
-	return fetchMetadataMap(ctx, database, filePaths, analyzedFilter, filePatterns, requestedFields, filters)
+	// Get field types
+	fieldTypes, err := db.GetFieldTypes(ctx, dbName)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get field types: %w", err)
+	}
+
+	return fetchMetadataMap(ctx, database, filePaths, analyzedFilter, filePatterns, requestedFields, filters, fieldTypes)
 }
 
 // fetchMetadataMap performs a batch query to retrieve metadata for multiple files.
-func fetchMetadataMap(ctx context.Context, database *sql.DB, filePaths []string, analyzedFilter string, filePatterns []string, requestedFields []string, filters []FilterCondition) (map[string]FileMetadata, []string, error) {
+func fetchMetadataMap(ctx context.Context, database *sql.DB, filePaths []string, analyzedFilter string, filePatterns []string, requestedFields []string, filters []FilterCondition, fieldTypes map[string]string) (map[string]FileMetadata, []string, error) {
 	result := make(map[string]FileMetadata)
 	var availableFields []string
 
@@ -158,24 +176,8 @@ func fetchMetadataMap(ctx context.Context, database *sql.DB, filePaths []string,
 		}
 	}
 
-	// 2.5. Get field types for filter processing
-	fieldTypesQuery := `SELECT field_name, field_type FROM metadata_fields`
-	fieldTypesRows, err := database.QueryContext(ctx, fieldTypesQuery)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to query field types: %w", err)
-	}
-	defer fieldTypesRows.Close()
-	fieldTypes := make(map[string]string)
-	for fieldTypesRows.Next() {
-		var name, fieldType string
-		if err := fieldTypesRows.Scan(&name, &fieldType); err != nil {
-			return nil, nil, fmt.Errorf("failed to scan field type: %w", err)
-		}
-		fieldTypes[name] = fieldType
-	}
-	if err := fieldTypesRows.Err(); err != nil {
-		return nil, nil, err
-	}
+	// 2.5. Field types are now passed in from caller via db.GetFieldTypes()
+	// This prevents duplicate queries and makes the function more reusable
 
 	// 3. Determine which fields we MUST fetch
 	fetchList := make(map[string]bool)
@@ -210,7 +212,10 @@ func fetchMetadataMap(ctx context.Context, database *sql.DB, filePaths []string,
 		whereClause = filePathClause
 	}
 	
-	// Add field name filter
+	// Combine args: file paths + filter args FIRST (filter conditions appear in WHERE before fetchList)
+	args = append(args, filterArgs...)
+	
+	// Add field name filter (appended LAST because it appears at the end of the WHERE clause)
 	if len(fetchList) > 0 {
 		var fieldPlaceholders []string
 		for f := range fetchList {
@@ -219,9 +224,6 @@ func fetchMetadataMap(ctx context.Context, database *sql.DB, filePaths []string,
 		}
 		whereClause += fmt.Sprintf(" AND mf.field_name IN (%s)", strings.Join(fieldPlaceholders, ","))
 	}
-	
-	// Combine args: file paths + filter args
-	args = append(args, filterArgs...)
 
 	// Build base query
 	baseQuery := `SELECT 
