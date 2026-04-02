@@ -1,12 +1,12 @@
 /**
  * Component: Simple Query Executor
- * Block-UUID: 6ef6e6bb-71f0-4c81-a14a-e5179e9c4c6f
- * Parent-UUID: 54d64a3a-ac75-4bc9-8de6-6b59fe0e9aad
- * Version: 1.8.4
+ * Block-UUID: c0d924b8-bd3c-4e8f-8bfd-0abeac7258da
+ * Parent-UUID: 2b59c923-aea5-484d-9ee1-7a17fdc74edb
+ * Version: 1.8.9
  * Description: Executes simple value-matching queries and hierarchical list operations.
  * Language: Go
- * Created-at: 2026-04-02T00:28:01.763Z
- * Authors: GLM-4.7 (v1.0.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), GLM-4.7 (v1.7.1), GLM-4.7 (v1.7.2), Gemini 3 Flash (v1.8.0), claude-haiku-4-5-20251001 (v1.8.1), claude-haiku-4-5-20251001 (v1.8.2), claude-haiku-4-5-20251001 (v1.8.3), GLM-4.7 (v1.8.4)
+ * Created-at: 2026-04-02T00:57:43.483Z
+ * Authors: GLM-4.7 (v1.0.0), Gemini 3 Flash (v1.6.0), Gemini 3 Flash (v1.7.0), GLM-4.7 (v1.7.1), GLM-4.7 (v1.7.2), Gemini 3 Flash (v1.8.0), claude-haiku-4-5-20251001 (v1.8.1), claude-haiku-4-5-20251001 (v1.8.2), claude-haiku-4-5-20251001 (v1.8.3), GLM-4.7 (v1.8.4), GLM-4.7 (v1.8.5), GLM-4.7 (v1.8.6), GLM-4.7 (v1.8.7), claude-haiku-4-5-20251001 (v1.8.8), GLM-4.7 (v1.8.9)
  */
 
 
@@ -631,9 +631,18 @@ func ExecuteInsightsAnalysis(ctx context.Context, dbName string, fields []string
 		var rows *sql.Rows
 		var queryErr error
 
+		var query string
+		var args []interface{}
+
+		// Build filter conditions string, only prepend AND if filters exist
+		filterConditions := ""
+		if len(filterWheres) > 0 {
+			filterConditions = "AND " + strings.Join(filterWheres, " AND ")
+		}
+
 		if fieldType == "array" || fieldType == "list" {
 			// Array Type: Use json_each to expand values
-			query := `
+			query = `
 				SELECT json_each.value as value, COUNT(DISTINCT f.file_path) as count
 				FROM file_metadata fm
 				JOIN metadata_fields mf ON fm.field_id = mf.field_id
@@ -641,38 +650,38 @@ func ExecuteInsightsAnalysis(ctx context.Context, dbName string, fields []string
 				JOIN target_set ts ON f.file_path = ts.file_path
 				%s
 				JOIN json_each(fm.field_value)
-				WHERE mf.field_name = ?
+				WHERE mf.field_name = ? AND fm.field_id = ?
 				%s
 				GROUP BY json_each.value
 				ORDER BY count DESC
 				LIMIT ?
 			`
-			query = fmt.Sprintf(query, strings.Join(filterJoins, " "), strings.Join(filterWheres, " AND "))
-			args := append([]interface{}{fieldName}, filterArgs...)
+			query = fmt.Sprintf(query, strings.Join(filterJoins, " "), filterConditions)
+			args = append([]interface{}{fieldName, fieldID}, filterArgs...)
 			args = append(args, limit)
 			rows, queryErr = database.QueryContext(ctx, query, args...)
 		} else {
 			// Scalar Type: Standard GROUP BY
-			query := `
+			query = `
 				SELECT fm.field_value as value, COUNT(DISTINCT f.file_path) as count
 				FROM file_metadata fm
 				JOIN metadata_fields mf ON fm.field_id = mf.field_id
 				JOIN files f ON fm.file_path = f.file_path
 				JOIN target_set ts ON f.file_path = ts.file_path
 				%s
-				WHERE mf.field_name = ?
-				%s
+				WHERE mf.field_name = ? AND fm.field_id = ? %s
 				GROUP BY fm.field_value
 				ORDER BY count DESC
 				LIMIT ?
 			`
-			query = fmt.Sprintf(query, strings.Join(filterJoins, " "), strings.Join(filterWheres, " AND "))
-			args := append([]interface{}{fieldName}, filterArgs...)
+			query = fmt.Sprintf(query, strings.Join(filterJoins, " "), filterConditions)
+			args = append([]interface{}{fieldName, fieldID}, filterArgs...)
 			args = append(args, limit)
 			rows, queryErr = database.QueryContext(ctx, query, args...)
 		}
 
 		if queryErr != nil {
+			logger.Error("SQL query failed", "query", query, "args", args, "error", queryErr)
 			return nil, fmt.Errorf("failed to execute aggregation query for field '%s': %w", fieldName, queryErr)
 		}
 		defer rows.Close()
