@@ -16,7 +16,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/gitsense/gsc-cli/internal/db"
 	"github.com/gitsense/gsc-cli/pkg/logger"
 )
 
@@ -38,11 +37,6 @@ func ValidateManifest(m *ManifestFile) error {
 	}
 	if m.Manifest.DatabaseName == "" {
 		return fmt.Errorf("manifest.database_name is required")
-	}
-
-	// 3. Validate Database Exists
-	if err := db.ValidateDBExists(m.Manifest.DatabaseName); err != nil {
-		return fmt.Errorf("database '%s' not found: %w", m.Manifest.DatabaseName, err)
 	}
 
 	// Check Repositories
