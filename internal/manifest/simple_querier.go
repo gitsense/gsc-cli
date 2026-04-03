@@ -1,12 +1,12 @@
 /**
  * Component: Simple Query Executor
- * Block-UUID: 029d83f6-750c-4392-a143-53e9fe4bcc61
- * Parent-UUID: 8c57ba2e-e30b-4f5b-8cf9-2bd6e2b122ce
- * Version: 1.16.0
- * Description: Executes simple value-matching queries and hierarchical list operations. Updated to support metadata filtering via --filter flag. Modified ExecuteSimpleQuery to handle filter-only queries (where --value is omitted) by selecting all files and applying filters. Fixed SQL construction to correctly append filter clauses using WHERE or AND as appropriate.
+ * Block-UUID: e9807273-8707-4225-b93b-75437ab4c34a
+ * Parent-UUID: 029d83f6-750c-4392-a143-53e9fe4bcc61
+ * Version: 1.16.1
+ * Description: Executes simple value-matching queries and hierarchical list operations. Updated to support metadata filtering via --filter flag. Modified ExecuteSimpleQuery to handle filter-only queries (where --value is omitted) by selecting all files and applying filters. Fixed SQL construction to correctly append filter clauses using WHERE or AND as appropriate. Fixed insights analysis to remove json_valid check from scalar field queries, which was incorrectly filtering out plain text values like file extensions.
  * Language: Go
- * Created-at: 2026-04-02T18:39:53.273Z
- * Authors: claude-haiku-4-5-20251001 (v1.12.2), GLM-4.7 (v1.12.3), GLM-4.7 (v1.13.0), claude-haiku-4-5-20251001 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0)
+ * Created-at: 2026-04-03T01:34:22.193Z
+ * Authors: claude-haiku-4-5-20251001 (v1.12.2), GLM-4.7 (v1.12.3), GLM-4.7 (v1.13.0), claude-haiku-4-5-20251001 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.16.1)
  */
 
 
@@ -911,7 +911,7 @@ func ExecuteInsightsAnalysis(ctx context.Context, dbName string, fields []string
 				JOIN files f ON fm.file_path = f.file_path
 				JOIN target_set ts ON f.file_path = ts.file_path
 				%s
-				WHERE mf.field_name = ? AND fm.field_id = ? %s AND json_valid(fm.field_value)
+				WHERE mf.field_name = ? AND fm.field_id = ? %s
 				%s
 				GROUP BY fm.field_value
 				ORDER BY count DESC
