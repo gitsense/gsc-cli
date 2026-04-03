@@ -1,12 +1,12 @@
 <!--
 Component: Scout Discovery Methodology
-Block-UUID: eaa7c5a5-dd75-493d-b751-8259b0d683c7
-Parent-UUID: ad2bdd6e-29ba-4276-99f5-808bbc56a1ef
-Version: 2.0.0
+Block-UUID: 53b73eb2-4bb2-4c2c-82df-63f535caa570
+Parent-UUID: eaa7c5a5-dd75-493d-b751-8259b0d683c7
+Version: 2.1.0
 Description: Detailed discovery methodology for Scout Turn 1.
 Language: Markdown
-Created-at: 2026-04-03T03:45:00.000Z
-Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v2.0.0)
+Created-at: 2026-04-03T18:00:12.033Z
+Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0)
 -->
 
 
@@ -33,7 +33,7 @@ Based on the user's intent and the mental map:
 For each keyword, use gsc insights to check how many files it matches:
 
 ```bash
-gsc insights --db tiny-overview --fields keywords --limit 1000 \
+gsc insights --db code-intent --fields keywords --limit 1000 \
   --filter "keywords in (*contract*,*renewal*)" --format json
 ```
 
@@ -46,7 +46,7 @@ Analyze the results:
 Once you have 5-50 file clusters per keyword, use gsc query:
 
 ```bash
-gsc query --db tiny-overview --filter "keywords in (contract,renewal)" \
+gsc query --db code-intent --filter "keywords in (contract,renewal)" \
   --fields purpose,keywords,parent_keywords --format json
 ```
 
@@ -71,11 +71,20 @@ If the intent involves recency (latest, recent, newest):
 
 ```bash
 # First discover the latest date
-gsc insights --db tiny-overview --fields dates | sort | tail -1
+gsc insights --db code-intent --fields dates | sort | tail -1
 # Then filter by that date
-gsc query --db tiny-overview --filter "dates in (2026-03-15|*)" \
+gsc query --db code-intent --filter "dates in (2026-03-15_*)" \
   --fields purpose --format json
 ```
+
+### Step 8: Fallback - Explore Available Metadata
+If keyword-based discovery yields unsatisfactory results, use `gsc brains` to explore all available metadata fields:
+
+```bash
+gsc brains code-intent --format json
+```
+
+This shows all available fields (e.g., `key_entities`, `mechanism`, `logic_constraints`) that you can use for alternative search strategies with `gsc query` or `gsc grep`.
 
 ---
 

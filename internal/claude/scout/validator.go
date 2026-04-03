@@ -3,7 +3,7 @@
  * Block-UUID: fde264bb-f146-4055-b30c-b463d25ad0f4
  * Parent-UUID: 76f5d39b-3ce2-471f-9faa-4a5aa83b65e0
  * Version: 1.3.1
- * Description: Validates scout session prerequisites (brain database, working directories). Updated to check for tiny-overview brain in database registry instead of on disk.
+ * Description: Validates scout session prerequisites (brain database, working directories). Updated to check for code-intent brain in database registry instead of on disk.
  * Language: Go
  * Created-at: 2026-04-01T02:18:32.774Z
  * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), claude-haiku-4-5-20251001 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1)
@@ -31,7 +31,7 @@ type ValidationError struct {
 	Details string
 }
 
-// RequiredFields for the Tiny Overview brain
+// RequiredFields for the Code Intent brain
 var RequiredFields = []string{
 	"file_extension",
 	"keywords",
@@ -79,8 +79,8 @@ func ValidateWorkdir(wd WorkingDirectory) ([]ValidationError, error) {
 		}, nil
 	}
 
-	// Validate tiny-overview brain exists in database
-	if errs := ValidateBrainDatabase("tiny-overview"); len(errs) > 0 {
+	// Validate code-intent brain exists in database
+	if errs := ValidateBrainDatabase("code-intent"); len(errs) > 0 {
 		errors = append(errors, errs...)
 	}
 

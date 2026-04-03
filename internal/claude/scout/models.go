@@ -72,7 +72,7 @@ type Usage struct {
 	CacheReadTokens    int `json:"cache_read_input_tokens"`
 }
 
-// CandidateMetadata represents metadata from the Tiny Overview brain
+// CandidateMetadata represents metadata from the Code Intent brain
 type CandidateMetadata struct {
 	Purpose        string   `json:"purpose"`
 	FileExtension  string   `json:"file_extension"`

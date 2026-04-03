@@ -34,7 +34,7 @@ func RootCmd() *cobra.Command {
 		Long: `Scout is a fire-and-forget file discovery tool that finds relevant files across repositories.
 
 Scout runs in two phases:
-1. Discovery (Turn 1): Searches working directories using contract insights and Tiny Overview brain
+1. Discovery (Turn 1): Searches working directories using contract insights and Code Intent brain
 2. Verification (Turn 2): Optional re-scoring of candidates with Claude for deeper analysis
 
 Sessions run as background subprocesses and can be monitored independently of the chat.`,

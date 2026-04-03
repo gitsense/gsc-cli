@@ -1,12 +1,12 @@
 /**
  * Component: Scout Codebase Overview Builder
- * Block-UUID: fa9f0a36-3910-474a-85fc-ede58bfc5b3e
- * Parent-UUID: e1c65f76-f9f1-4a1e-b487-9168f9efdbf0
- * Version: 1.1.0
+ * Block-UUID: 7994b817-ddb7-40d8-98e8-ec3298d0d608
+ * Parent-UUID: fa9f0a36-3910-474a-85fc-ede58bfc5b3e
+ * Version: 1.2.0
  * Description: Generates codebase overview for Scout Turn 1 by running gsc brains and gsc insights commands
  * Language: Go
- * Created-at: 2026-03-28T21:59:16.171Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.1.0)
+ * Created-at: 2026-04-03T18:09:19.837Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -65,7 +65,7 @@ type FileExtensionStat struct {
 
 // InsightsData contains keyword insights
 type InsightsData struct {
-	Top20Keywords     []KeywordStat `json:"top_20_keywords"`
+	Top50Keywords     []KeywordStat `json:"top_50_keywords"`
 	AllParentKeywords []KeywordStat `json:"all_parent_keywords"`
 }
 
@@ -167,8 +167,8 @@ func analyzeWorkdir(wd WorkingDirectory) (*WorkdirAnalysis, error) {
 	// Brain is available, get insights
 	analysis.BrainAvailable = true
 
-	// Run insights for keywords and file extensions (limited to 20)
-	insightsResponse, err := runGSCInsights(wd.Path, "keywords,file_extension", 20)
+	// Run insights for keywords and file extensions (limited to 50)
+	insightsResponse, err := runGSCInsights(wd.Path, "keywords,file_extension", 50)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get insights for %s: %w", wd.Name, err)
 	}
@@ -195,7 +195,7 @@ func analyzeWorkdir(wd WorkingDirectory) (*WorkdirAnalysis, error) {
 
 	// Build insights
 	analysis.Insights = &InsightsData{
-		Top20Keywords:     insightsResponse.Insights.Keywords,
+		Top50Keywords:     insightsResponse.Insights.Keywords,
 		AllParentKeywords: parentKeywordsResponse.Insights.ParentKeywords,
 	}
 
@@ -204,7 +204,7 @@ func analyzeWorkdir(wd WorkingDirectory) (*WorkdirAnalysis, error) {
 
 // runGSCBrains runs gsc brains command to check brain availability
 func runGSCBrains(workdirPath string) (*GSCBrainsResponse, error) {
-	cmd := exec.Command("gsc", "brains", "tiny-overview", "--format", "json")
+	cmd := exec.Command("gsc", "brains", "code-intent", "--format", "json")
 	cmd.Dir = workdirPath
 
 	output, err := cmd.CombinedOutput()
@@ -217,8 +217,8 @@ func runGSCBrains(workdirPath string) (*GSCBrainsResponse, error) {
 			reason = "Not a Git repository"
 		} else if strings.Contains(errMsg, "GitSense workspace not found") {
 			reason = "GitSense workspace not initialized"
-		} else if strings.Contains(errMsg, "Brain 'tiny-overview' not found") {
-			reason = "Tiny Overview brain not found"
+		} else if strings.Contains(errMsg, "Brain 'code-intent' not found") {
+			reason = "Code Intent brain not found"
 		}
 
 		return nil, &BrainUnavailableError{
@@ -240,7 +240,7 @@ func runGSCBrains(workdirPath string) (*GSCBrainsResponse, error) {
 func runGSCInsights(workdirPath string, fields string, limit int) (*GSCInsightsResponse, error) {
 	args := []string{
 		"insights",
-		"--db", "tiny-overview",
+		"--db", "code-intent",
 		"--fields", fields,
 		"--format", "json",
 	}

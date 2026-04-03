@@ -48,7 +48,7 @@ func StartCmd() *cobra.Command {
 
 The Scout will:
 1. Search working directories using gsc insights and gsc grep
-2. Discover candidate files using the Tiny Overview brain
+2. Discover candidate files using the Code Intent brain
 3. Score and rank candidates by relevance
 4. Optionally proceed to verification (re-scoring with Claude)
 
