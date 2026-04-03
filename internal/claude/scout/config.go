@@ -1,12 +1,12 @@
 /**
  * Component: Scout Session Configuration Helper
- * Block-UUID: cebd85e7-10ea-446a-a5d7-945f349007b8
- * Parent-UUID: 1d92d9e1-abe3-4652-9159-d2e58f4a1bde
- * Version: 1.0.3
+ * Block-UUID: 612d2411-6795-4796-9bb0-94d6b67594cc
+ * Parent-UUID: cebd85e7-10ea-446a-a5d7-945f349007b8
+ * Version: 1.0.4
  * Description: Path resolution and session directory helpers for Scout operations
  * Language: Go
- * Created-at: 2026-03-28T21:53:25.268Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3)
+ * Created-at: 2026-04-03T03:05:52.483Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4)
  */
 
 
@@ -70,9 +70,9 @@ func (sc *SessionConfig) GetTurnLogFile(turn int, filename string) string {
 	return filepath.Join(sc.GetTurnDir(turn), filename)
 }
 
-// GetInputSchemaFile returns the absolute path to input-schema.json
-func (sc *SessionConfig) GetInputSchemaFile() string {
-	return filepath.Join(sc.GetTurnDir(1), "input-schema.json")
+// GetCodebaseOverviewFile returns the absolute path to codebase-overview.json
+func (sc *SessionConfig) GetCodebaseOverviewFile() string {
+	return filepath.Join(sc.GetTurnDir(1), "codebase-overview.json")
 }
 
 // GetReferenceFile returns the absolute path to a reference file

@@ -1,12 +1,12 @@
 /**
  * Component: Scout Subprocess Manager
- * Block-UUID: d8d9056a-66ab-49e9-9377-c1e616ba809a
- * Parent-UUID: c0b1f385-4707-42c8-8de4-41a700c20bde
- * Version: 1.0.0
+ * Block-UUID: 4545e438-21ef-4d47-8170-5847c7a0d87e
+ * Parent-UUID: d8d9056a-66ab-49e9-9377-c1e616ba809a
+ * Version: 1.1.0
  * Description: Manages subprocess spawning, process lifecycle, signal handling, and resource cleanup for Scout Claude sessions
  * Language: Go
- * Created-at: 2026-04-01T14:45:00.000Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0)
+ * Created-at: 2026-04-03T14:57:32.864Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0)
  */
 
 
@@ -30,13 +30,6 @@ import (
 func (m *Manager) spawnClaudeSubprocess(turn int) error {
 	m.debugLogger.Log("DEBUG", fmt.Sprintf("Spawning subprocess for turn %d", turn))
 
-	// Write Scout permissions to restrict Bash to gsc commands only
-	if err := WriteScoutPermissions(m.config.GetTurnDir(turn)); err != nil {
-		m.debugLogger.LogError("Failed to write permissions", err)
-		return fmt.Errorf("failed to write permissions: %w", err)
-	}
-	m.debugLogger.Log("DEBUG", "Permissions written successfully")
-
 	// Get the Claude prompt template using absolute path
 	gscHome, err := settings.GetGSCHome(false)
 	if err != nil {
@@ -45,6 +38,13 @@ func (m *Manager) spawnClaudeSubprocess(turn int) error {
 	}
 	m.debugLogger.Log("DEBUG", fmt.Sprintf("GSC_HOME: %s", gscHome))
 
+	// Write Scout permissions to restrict Bash to gsc commands only
+	if err := WriteScoutPermissions(m.config.GetTurnDir(turn)); err != nil {
+		m.debugLogger.LogError("Failed to write permissions", err)
+		return fmt.Errorf("failed to write permissions: %w", err)
+	}
+	m.debugLogger.Log("DEBUG", "Permissions written successfully")
+
 	// Write reference files NDJSON to turn directory
 	if err := m.writeReferenceFilesNDJSON(); err != nil {
 		m.debugLogger.LogError("Failed to write reference files", err)
@@ -52,54 +52,45 @@ func (m *Manager) spawnClaudeSubprocess(turn int) error {
 	}
 	m.debugLogger.Log("DEBUG", "Reference files written successfully")
 
-	var templateName string
-	if turn == 1 {
-		templateName = "turn-1-discovery.md"
-	} else {
-		templateName = "turn-2-verification.md"
+	// Copy tool capabilities to turn directory
+	toolCapabilitiesSrc := filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "tool_capabilities.md")
+	toolCapabilitiesDest := filepath.Join(m.config.GetTurnDir(turn), "tool-capabilities.md")
+	if err := copyFile(toolCapabilitiesSrc, toolCapabilitiesDest); err != nil {
+		m.debugLogger.LogError("Failed to copy tool capabilities", err)
+		return fmt.Errorf("failed to copy tool capabilities: %w", err)
 	}
+	m.debugLogger.Log("DEBUG", "Tool capabilities copied successfully")
 
-	promptPath := filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", templateName)
-	promptData, err := os.ReadFile(promptPath)
+	// Build and write combined system prompt
+	systemPrompt, err := buildCombinedSystemPrompt(gscHome, turn)
 	if err != nil {
-		m.debugLogger.LogError("Failed to read prompt template", err)
-		m.markAsStopped("TEMPLATE_FAILED", fmt.Sprintf("Failed to read prompt template: %v", err))
-		return fmt.Errorf("failed to read prompt template: %w", err)
+		m.debugLogger.LogError("Failed to build combined system prompt", err)
+		return fmt.Errorf("failed to build combined system prompt: %w", err)
 	}
-	m.debugLogger.Log("DEBUG", fmt.Sprintf("Read prompt template: %s", promptPath))
+	
+	systemPromptFile := filepath.Join(m.config.GetTurnDir(turn), "system-prompt.md")
+	if err := os.WriteFile(systemPromptFile, []byte(systemPrompt), 0644); err != nil {
+		m.debugLogger.LogError("Failed to write system prompt", err)
+		return fmt.Errorf("failed to write system prompt: %w", err)
+	}
+	m.debugLogger.Log("DEBUG", fmt.Sprintf("System prompt written to: %s", systemPromptFile))
 
-	// Build the command flags for the bash script
-	// Format reference files metadata and replace placeholder
-	refFilesMarkdown := m.formatReferenceFilesMetadata()
-	promptStr := strings.ReplaceAll(string(promptData), "{{REFERENCE_FILES}}", refFilesMarkdown)
-
-	// Replace other placeholders
-	promptStr = strings.ReplaceAll(promptStr, "{{INTENT}}", m.session.Intent)
-
-	// Format working directories and replace placeholder
+	// Write task prompt
 	workdirsMarkdown := m.formatWorkingDirectories()
-	promptStr = strings.ReplaceAll(promptStr, "{{WORKING_DIRECTORIES}}", workdirsMarkdown)
+	refFilesMarkdown := m.formatReferenceFilesMetadata()
+	if err := writeTaskPrompt(m.config.GetTurnDir(turn), turn, workdirsMarkdown, refFilesMarkdown); err != nil {
+		m.debugLogger.LogError("Failed to write task prompt", err)
+		return fmt.Errorf("failed to write task prompt: %w", err)
+	}
+	m.debugLogger.Log("DEBUG", "Task prompt written successfully")
 
-	promptData = []byte(promptStr)
+	// Intent and codebase overview are already written by manager.go
 
 	var cmd *exec.Cmd
 
 	if runtime.GOOS == "windows" {
 		// Windows: Write prompt to file and use @file syntax
 		m.debugLogger.Log("DEBUG", "Using Windows file-based approach for prompt")
-		promptFile := filepath.Join(m.config.GetTurnDir(turn), "prompt.txt")
-		if err := os.WriteFile(promptFile, []byte(promptStr), 0644); err != nil {
-			m.debugLogger.LogError("Failed to write prompt file", err)
-			m.markAsStopped("PROMPT_FAILED", fmt.Sprintf("Failed to write prompt file: %v", err))
-			return fmt.Errorf("failed to write prompt file: %w", err)
-		}
-		m.debugLogger.Log("DEBUG", fmt.Sprintf("Prompt written to: %s", promptFile))
-
-		// Build add-dir flags
-		var addDirFlags []string
-		for _, wd := range m.session.WorkingDirectories {
-			addDirFlags = append(addDirFlags, "--add-dir", wd.Path)
-		}
 
 		// Build claude command
 		args := []string{
@@ -107,12 +98,27 @@ func (m *Manager) spawnClaudeSubprocess(turn int) error {
 			"--verbose",
 			"--include-partial-messages",
 			"--output-format", "stream-json",
+			"--append-system-prompt-file", systemPromptFile,
 		}
-		args = append(args, addDirFlags...)
+		
+		// Add add-dir flags
+		for _, wd := range m.session.WorkingDirectories {
+			args = append(args, "--add-dir", wd.Path)
+		}
+		
 		if m.session.Model != "" {
 			args = append(args, "--model", m.session.Model)
 		}
-		args = append(args, "--print", "-p", "@"+promptFile)
+		
+		// Read task.md and pass as string
+		taskPath := filepath.Join(m.config.GetTurnDir(turn), "task.md")
+		taskContent, err := os.ReadFile(taskPath)
+		if err != nil {
+			m.debugLogger.LogError("Failed to read task prompt", err)
+			m.markAsStopped("TASK_READ_FAILED", fmt.Sprintf("Failed to read task prompt: %v", err))
+			return fmt.Errorf("failed to read task prompt: %w", err)
+		}
+		args = append(args, "-p", fmt.Sprintf("%q", string(taskContent)))
 
 		cmd = exec.Command("claude", args...)
 		cmd.Dir = m.config.GetTurnDir(turn)
@@ -134,6 +140,15 @@ func (m *Manager) spawnClaudeSubprocess(turn int) error {
 			modelFlag = fmt.Sprintf("--model %s", m.session.Model)
 		}
 
+		// Read task.md for the script
+		taskPath := filepath.Join(m.config.GetTurnDir(turn), "task.md")
+		taskContent, err := os.ReadFile(taskPath)
+		if err != nil {
+			m.debugLogger.LogError("Failed to read task prompt", err)
+			m.markAsStopped("TASK_READ_FAILED", fmt.Sprintf("Failed to read task prompt: %v", err))
+			return fmt.Errorf("failed to read task prompt: %w", err)
+		}
+
 		// Create bash script content using heredoc
 		scriptContent := fmt.Sprintf(`#!/bin/bash
 set -e
@@ -148,17 +163,16 @@ claude --allowedTools Read,Bash \
 --verbose \
 --include-partial-messages \
 --output-format stream-json \
+--append-system-prompt-file system-prompt.md \
 %s \
 %s \
--p <<'ENDOFPROMPT'
-%s
-ENDOFPROMPT
+-p %s
 
 echo "=== Claude subprocess completed ==="
 exit_code=$?
 echo "Exit code: $exit_code"
 exit $exit_code
-`, turn, m.session.SessionID, addDirFlagsStr, modelFlag, promptStr)
+`, turn, m.session.SessionID, addDirFlagsStr, modelFlag, fmt.Sprintf("%q", string(taskContent)))
 
 		// Write bash script to turn directory
 		scriptPath := filepath.Join(m.config.GetTurnDir(turn), "run-claude.sh")
@@ -485,4 +499,109 @@ func (m *Manager) formatWorkingDirectories() string {
 			i+1, wd.Name, wd.Path))
 	}
 	return sb.String()
+}
+
+// buildCombinedSystemPrompt reads and combines shared + turn-specific prompts
+func buildCombinedSystemPrompt(gscHome string, turn int) (string, error) {
+	// Read shared prompt
+	sharedPath := filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "system_prompt_shared.md")
+	sharedContent, err := os.ReadFile(sharedPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read shared system prompt: %w", err)
+	}
+	
+	// Read turn-specific prompt
+	var turnPromptPath string
+	if turn == 1 {
+		turnPromptPath = filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "system_prompt_turn_1.md")
+	} else {
+		turnPromptPath = filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "system_prompt_turn_2.md")
+	}
+	turnContent, err := os.ReadFile(turnPromptPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read turn-specific system prompt: %w", err)
+	}
+	
+	// Combine with tool capabilities reference
+	combined := fmt.Sprintf(`# Scout System Prompt
+
+This file combines shared principles with turn-specific instructions.
+
+## Tool Capabilities
+
+Tool capabilities reference is available at `+"`"+`tool-capabilities.md`+"`"+`.
+Read this file to understand available tools and their usage.
+
+---
+
+# Shared Principles
+
+%s
+
+---
+
+# Turn %d Mission
+
+%s
+`, string(sharedContent), turn, string(turnContent))
+	
+	return combined, nil
+}
+
+// copyFile copies a file from src to dst
+func copyFile(src, dst string) error {
+	data, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(dst, data, 0644)
+}
+
+// writeTaskPrompt writes the generic task prompt to task.md
+func writeTaskPrompt(turnDir string, turn int, workdirsMarkdown string, refFilesMarkdown string) error {
+	var taskPrompt string
+	if turn == 1 {
+		taskPrompt = fmt.Sprintf(`# Scout Turn 1: Discovery Phase
+
+You are Claude, acting as the discovery engine for Scout.
+
+## Your Task
+
+1. Read `+"`"+`intent.md`+"`"+` to understand the user's intent
+2. Read `+"`"+`codebase-overview.json`+"`"+` to understand the codebase structure
+3. Read `+"`"+`tool-capabilities.md`+"`"+` to understand available tools
+4. Review the working directories and reference files below
+5. Read `+"`"+`discovery.md`+"`"+` for detailed discovery methodology
+6. Execute the discovery phase following the instructions
+
+## Working Directories
+%s
+
+## Reference Files
+%s
+`, workdirsMarkdown, refFilesMarkdown)
+	} else {
+		taskPrompt = fmt.Sprintf(`# Scout Turn 2: Verification Phase
+
+You are Claude, acting as the verification engine for Scout.
+
+## Your Task
+
+1. Read `+"`"+`intent.md`+"`"+` to understand the user's intent
+2. Read `+"`"+`codebase-overview.json`+"`"+` to understand the codebase structure
+3. Read `+"`"+`tool-capabilities.md`+"`"+` to understand available tools
+4. Review the working directories and reference files below
+5. Read `+"`"+`verification.md`+"`"+` for detailed verification methodology
+6. Execute the verification phase following the instructions
+
+## Working Directories
+%s
+
+## Reference Files
+%s
+`, workdirsMarkdown, refFilesMarkdown)
+	}
+	
+	taskPath := filepath.Join(turnDir, "task.md")
+	return os.WriteFile(taskPath, []byte(taskPrompt), 0644)
 }

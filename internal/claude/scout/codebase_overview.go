@@ -1,12 +1,12 @@
 /**
- * Component: Scout Input Schema Builder
- * Block-UUID: e1c65f76-f9f1-4a1e-b487-9168f9efdbf0
- * Parent-UUID: 2acaa82d-93cf-4c2a-a128-3250ed81fdf2
- * Version: 1.0.1
- * Description: Generates input schema for Scout Turn 1 by running gsc brains and gsc insights commands
+ * Component: Scout Codebase Overview Builder
+ * Block-UUID: fa9f0a36-3910-474a-85fc-ede58bfc5b3e
+ * Parent-UUID: e1c65f76-f9f1-4a1e-b487-9168f9efdbf0
+ * Version: 1.1.0
+ * Description: Generates codebase overview for Scout Turn 1 by running gsc brains and gsc insights commands
  * Language: Go
  * Created-at: 2026-03-28T21:59:16.171Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.1.0)
  */
 
 
@@ -22,14 +22,14 @@ import (
 	"github.com/gitsense/gsc-cli/pkg/settings"
 )
 
-// InputSchema represents the complete input schema for Turn 1
-type InputSchema struct {
-	Metadata           SchemaMetadata     `json:"metadata"`
+// CodebaseOverview represents the complete codebase overview for Turn 1
+type CodebaseOverview struct {
+	Metadata           OverviewMetadata     `json:"metadata"`
 	WorkingDirectories []WorkdirAnalysis `json:"working_directories"`
 }
 
-// SchemaMetadata contains metadata about the input schema
-type SchemaMetadata struct {
+// OverviewMetadata contains metadata about the codebase overview
+type OverviewMetadata struct {
 	Version        string `json:"version"`
 	CreatedAt      string `json:"created_at"`
 	ScoutSessionID string `json:"scout_session_id"`
@@ -110,17 +110,17 @@ func (e *BrainUnavailableError) Error() string {
 	return e.Message
 }
 
-// BuildInputSchema generates the input schema by running gsc commands for each workdir
-func BuildInputSchema(sessionID string, workdirs []WorkingDirectory) (*InputSchema, error) {
+// BuildCodebaseOverview generates the codebase overview by running gsc commands for each workdir
+func BuildCodebaseOverview(sessionID string, workdirs []WorkingDirectory) (*CodebaseOverview, error) {
 	// Get GSC_HOME
 	gscHome, err := settings.GetGSCHome(false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve GSC_HOME: %w", err)
 	}
 
-	// Build schema
-	schema := &InputSchema{
-		Metadata: SchemaMetadata{
+	// Build overview
+	overview := &CodebaseOverview{
+		Metadata: OverviewMetadata{
 			Version:        "1.0.0",
 			CreatedAt:      time.Now().UTC().Format(time.RFC3339),
 			ScoutSessionID: sessionID,
@@ -135,10 +135,10 @@ func BuildInputSchema(sessionID string, workdirs []WorkingDirectory) (*InputSche
 		if err != nil {
 			return nil, fmt.Errorf("failed to analyze workdir %s: %w", wd.Name, err)
 		}
-		schema.WorkingDirectories = append(schema.WorkingDirectories, *analysis)
+		overview.WorkingDirectories = append(overview.WorkingDirectories, *analysis)
 	}
 
-	return schema, nil
+	return overview, nil
 }
 
 // analyzeWorkdir analyzes a single working directory

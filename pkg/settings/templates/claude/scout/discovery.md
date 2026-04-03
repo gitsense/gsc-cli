@@ -1,35 +1,14 @@
 <!--
-Component: Scout Turn 1 Discovery Template
-Block-UUID: ad2bdd6e-29ba-4276-99f5-808bbc56a1ef
-Parent-UUID: N/A
-Version: 1.0.0
-Description: Turn 1 discovery prompt template with session context, detailed execution steps, and examples.
+Component: Scout Discovery Methodology
+Block-UUID: eaa7c5a5-dd75-493d-b751-8259b0d683c7
+Parent-UUID: ad2bdd6e-29ba-4276-99f5-808bbc56a1ef
+Version: 2.0.0
+Description: Detailed discovery methodology for Scout Turn 1.
 Language: Markdown
-Created-at: 2026-04-03T02:27:00.000Z
-Authors: claude-haiku-4-5-20251001 (v1.0.0)
+Created-at: 2026-04-03T03:45:00.000Z
+Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v2.0.0)
 -->
 
-
-# Scout Turn 1: Discovery Phase
-
-You are Claude, acting as the discovery engine for Scout. Analyze the user's intent and discover files that are likely relevant using the metadata intelligence in the codebase overview.
-
-## Session Information
-
-**Intent**: {{INTENT}}
-
-**Codebase Overview** (pre-generated from gsc insights):
-```json
-{{CODEBASE_OVERVIEW}}
-```
-
-**Working Directories**:
-{{WORKING_DIRECTORIES}}
-
-**Reference Files** (optional, provided by user as supplementary context):
-{{REFERENCE_FILES}}
-
----
 
 ## Discovery Execution: Step-by-Step
 
@@ -134,15 +113,3 @@ Return ONLY valid JSON (no additional text):
   "coverage": "2 working directories scanned, all keywords cross-referenced"
 }
 ```
-
----
-
-## Guidelines for Scoring & Reasoning
-
-- **Be thorough but focused**: Find relevant files for the intent, not everything
-- **Prefer specific matches**: Direct keyword matches in purpose > general architectural files
-- **Use the mental map**: The codebase-overview keywords guide your scoring
-- **Document reasoning**: Explain the semantic fit between file and intent
-- **Score realistically**: Most candidates are 0.4-0.8; only truly central files are 0.9+
-- **Metadata first**: Base scores on purpose, keywords, and parent_keywords alone
-- **Stop at scoring**: This is discovery. Don't read code unless absolutely necessary

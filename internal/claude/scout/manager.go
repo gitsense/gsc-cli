@@ -1,12 +1,12 @@
 /**
  * Component: Scout Session Manager
- * Block-UUID: d91fe8de-2244-4cce-bd87-7c221d65d035
- * Parent-UUID: c0b1f385-4707-42c8-8de4-41a700c20bde
- * Version: 1.5.0
+ * Block-UUID: 090d230b-d53e-44ea-901b-4e57267c611e
+ * Parent-UUID: d91fe8de-2244-4cce-bd87-7c221d65d035
+ * Version: 1.5.1
  * Description: Orchestrates Scout discovery and verification phases. Refactored to focus on session lifecycle and orchestration; subprocess management moved to subprocess.go, stream processing moved to stream.go.
  * Language: Go
- * Created-at: 2026-04-01T14:50:00.000Z
- * Authors: claude-haiku-4-5-20251001 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.2.5), GLM-4.7 (v1.2.6), GLM-4.7 (v1.2.7), GLM-4.7 (v1.2.8), GLM-4.7 (v1.2.9), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.3.3), GLM-4.7 (v1.4.0), GLM-4.7 (v1.4.1), claude-haiku-4-5-20251001 (v1.5.0)
+ * Created-at: 2026-04-03T03:04:53.284Z
+ * Authors: claude-haiku-4-5-20251001 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.2.5), GLM-4.7 (v1.2.6), GLM-4.7 (v1.2.7), GLM-4.7 (v1.2.8), GLM-4.7 (v1.2.9), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.3.3), GLM-4.7 (v1.4.0), GLM-4.7 (v1.4.1), claude-haiku-4-5-20251001 (v1.5.0), GLM-4.7 (v1.5.1)
  */
 
 
@@ -165,33 +165,33 @@ func (m *Manager) InitializeSession(intent string, workdirs []WorkingDirectory, 
 	return m.writeSessionState()
 }
 
-// PrepareTurn1 generates input schema and handles no-brains case
+// PrepareTurn1 generates codebase overview and handles no-brains case
 func (m *Manager) PrepareTurn1() error {
 	m.debugLogger.Log("DEBUG", "Preparing Turn 1")
 
-	// 1. Build input schema
-	schema, err := BuildInputSchema(m.session.SessionID, m.session.WorkingDirectories)
+	// 1. Build codebase overview
+	overview, err := BuildCodebaseOverview(m.session.SessionID, m.session.WorkingDirectories)
 	if err != nil {
-		m.debugLogger.LogError("Failed to build input schema", err)
+		m.debugLogger.LogError("Failed to build codebase overview", err)
 		return err
 	}
-	m.debugLogger.Log("DEBUG", "Input schema built successfully")
+	m.debugLogger.Log("DEBUG", "Codebase overview built successfully")
 
-	// 2. Write input schema to file
-	schemaPath := m.config.GetInputSchemaFile()
-	schemaJSON, err := json.MarshalIndent(schema, "", "  ")
+	// 2. Write codebase overview to file
+	overviewPath := m.config.GetCodebaseOverviewFile()
+	overviewJSON, err := json.MarshalIndent(overview, "", "  ")
 	if err != nil {
-		m.debugLogger.LogError("Failed to marshal input schema", err)
-		return fmt.Errorf("failed to marshal input schema: %w", err)
+		m.debugLogger.LogError("Failed to marshal codebase overview", err)
+		return fmt.Errorf("failed to marshal codebase overview: %w", err)
 	}
-	if err := os.WriteFile(schemaPath, schemaJSON, 0644); err != nil {
-		m.debugLogger.LogError("Failed to write input schema", err)
-		return fmt.Errorf("failed to write input schema: %w", err)
+	if err := os.WriteFile(overviewPath, overviewJSON, 0644); err != nil {
+		m.debugLogger.LogError("Failed to write codebase overview", err)
+		return fmt.Errorf("failed to write codebase overview: %w", err)
 	}
-	m.debugLogger.Log("DEBUG", fmt.Sprintf("Input schema written to: %s", schemaPath))
+	m.debugLogger.Log("DEBUG", fmt.Sprintf("Codebase overview written to: %s", overviewPath))
 
 	// 3. Check if all brains unavailable
-	if checkAllBrainsUnavailable(schema.WorkingDirectories) {
+	if checkAllBrainsUnavailable(overview.WorkingDirectories) {
 		m.debugLogger.Log("DEBUG", "All brains unavailable, writing error event")
 		// Write error event to log
 		if err := m.writeNoBrainsError(); err != nil {
