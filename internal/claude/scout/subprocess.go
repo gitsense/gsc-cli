@@ -1,12 +1,12 @@
 /**
  * Component: Scout Subprocess Manager
- * Block-UUID: 4545e438-21ef-4d47-8170-5847c7a0d87e
- * Parent-UUID: d8d9056a-66ab-49e9-9377-c1e616ba809a
- * Version: 1.1.0
- * Description: Manages subprocess spawning, process lifecycle, signal handling, and resource cleanup for Scout Claude sessions
+ * Block-UUID: 6ebe8363-77e1-4453-b716-546259d640cd
+ * Parent-UUID: 4545e438-21ef-4d47-8170-5847c7a0d87e
+ * Version: 1.2.0
+ * Description: Manages subprocess spawning, process lifecycle, signal handling, and resource cleanup for Scout Claude sessions. Fixed to copy methodology files (discovery.md, verification.md) to turn directory and move references.ndjson to root directory.
  * Language: Go
  * Created-at: 2026-04-03T14:57:32.864Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0)
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -60,6 +60,25 @@ func (m *Manager) spawnClaudeSubprocess(turn int) error {
 		return fmt.Errorf("failed to copy tool capabilities: %w", err)
 	}
 	m.debugLogger.Log("DEBUG", "Tool capabilities copied successfully")
+
+	// Copy methodology files to turn directory (Fix #1)
+	if turn == 1 {
+		discoverySrc := filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "discovery.md")
+		discoveryDest := filepath.Join(m.config.GetTurnDir(turn), "discovery.md")
+		if err := copyFile(discoverySrc, discoveryDest); err != nil {
+			m.debugLogger.LogError("Failed to copy discovery methodology", err)
+			return fmt.Errorf("failed to copy discovery methodology: %w", err)
+		}
+		m.debugLogger.Log("DEBUG", "Discovery methodology copied successfully")
+	} else {
+		verificationSrc := filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "verification.md")
+		verificationDest := filepath.Join(m.config.GetTurnDir(turn), "verification.md")
+		if err := copyFile(verificationSrc, verificationDest); err != nil {
+			m.debugLogger.LogError("Failed to copy verification methodology", err)
+			return fmt.Errorf("failed to copy verification methodology: %w", err)
+		}
+		m.debugLogger.Log("DEBUG", "Verification methodology copied successfully")
+	}
 
 	// Build and write combined system prompt
 	systemPrompt, err := buildCombinedSystemPrompt(gscHome, turn)
@@ -440,14 +459,8 @@ func (m *Manager) writeReferenceFilesNDJSON() error {
 	}
 
 	turnDir := m.config.GetTurnDir(m.currentTurn)
-	refDir := filepath.Join(turnDir, "turn-data")
-
-	if err := os.MkdirAll(refDir, 0755); err != nil {
-		m.debugLogger.LogError("Failed to create turn-data directory", err)
-		return fmt.Errorf("failed to create turn-data directory: %w", err)
-	}
-
-	refPath := filepath.Join(refDir, "references.ndjson")
+	// Fix #2: Write directly to turn directory instead of turn-data subdirectory
+	refPath := filepath.Join(turnDir, "references.ndjson")
 	file, err := os.Create(refPath)
 	if err != nil {
 		m.debugLogger.LogError("Failed to create references.ndjson", err)
@@ -477,12 +490,14 @@ func (m *Manager) formatReferenceFilesMetadata() string {
 	}
 
 	var sb strings.Builder
-	sb.WriteString("The following reference files have been imported:\n")
+	// Fix #3: Changed "imported" to "included"
+	sb.WriteString("The following reference files have been included:\n")
 	for i, ref := range m.session.ReferenceFilesContext {
 		sb.WriteString(fmt.Sprintf("- reference-file-%03d: %s (chat-id: %d, repo: %s)\n",
 			i+1, ref.RelativePath, ref.ChatID, ref.Repository))
 	}
-	sb.WriteString("\n**Note:** Complete reference file data is available in `turn-data/references.ndjson` if you need to examine raw content.\n")
+	// Fix #2: Updated path reference from turn-data/references.ndjson to references.ndjson
+	sb.WriteString("\n**Note:** Complete reference file data is available in `references.ndjson` if you need to examine raw content.\n")
 	return sb.String()
 }
 

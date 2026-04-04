@@ -21,11 +21,9 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/gitsense/gsc-cli/internal/bridge"
-	"github.com/gitsense/gsc-cli/internal/db"
 	"github.com/gitsense/gsc-cli/internal/contract"
 	"github.com/gitsense/gsc-cli/internal/git"
 	"github.com/gitsense/gsc-cli/internal/manifest"
-	"github.com/gitsense/gsc-cli/internal/registry"
 	"github.com/gitsense/gsc-cli/internal/search"
 	"github.com/gitsense/gsc-cli/internal/tree"
 	"github.com/gitsense/gsc-cli/pkg/logger"
@@ -169,26 +167,14 @@ Filtering & Pruning:
 
 		var filters []search.FilterCondition
 		if dbName != "" {
-			// Resolve DB Name
-			dbName, err = registry.ResolveDatabase(dbName)
-			if err != nil {
-				return err
-			}
-
 			// 6. Parse Semantic Filters
 			filters, err = search.ParseFilters(cmd.Context(), treeFilters, dbName)
 			if err != nil {
 				return fmt.Errorf("failed to parse filters: %w", err)
 			}
 
-			// Resolve DB Path and Open
-			dbPath, err := db.ResolveManifestDBPath(dbName)
-			if err != nil {
-				return err
-			}
-
 			// 7. Fetch Metadata
-			metadataMap, _, err := search.FetchMetadataMap(cmd.Context(), dbPath, files, "all", nil, treeFields, filters)
+			metadataMap, _, err := search.FetchMetadataMap(cmd.Context(), dbName, files, "all", nil, treeFields, filters)
 			if err != nil {
 				logger.Debug("Failed to fetch metadata for tree", "error", err)
 			} else {

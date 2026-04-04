@@ -1,12 +1,12 @@
 /**
  * Component: Query Output Formatter
- * Block-UUID: 8c030cd5-f2db-4e8c-a70f-28690e9b3f7c
- * Parent-UUID: b209b245-3b5e-4d51-af79-fa43e649ee14
- * Version: 3.10.0
- * Description: Centralized schema formatting logic by adding 'FormatSchema'. This supports the new 'databases' convenience command and allows for consistent schema output (JSON, Table, CSV) across the CLI.
+ * Block-UUID: 5811da61-d75f-4c29-a3da-556384a89b34
+ * Parent-UUID: 8c030cd5-f2db-4e8c-a70f-28690e9b3f7c
+ * Version: 3.11.0
+ * Description: Updated FormatStatusView to reflect the simplified 'gsc query' interface. Removed references to hidden subcommands (list, insights, coverage) and legacy flags (--field, --value). Promoted the --filter syntax and top-level shortcuts (gsc brains, gsc fields, gsc insights, gsc coverage).
  * Language: Go
  * Created-at: 2026-04-02T14:53:02.170Z
- * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v3.8.0), claude-haiku-4-5-20251001 (v3.9.0), GLM-4.7 (v3.9.1), GLM-4.7 (v3.10.0)
+ * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v3.8.0), claude-haiku-4-5-20251001 (v3.9.0), GLM-4.7 (v3.9.1), GLM-4.7 (v3.10.0), GLM-4.7 (v3.11.0)
  */
 
 
@@ -370,23 +370,14 @@ func FormatStatusView(config *QueryConfig, quiet bool) string {
 
 	var sb strings.Builder
 
-	sb.WriteString("Find files by metadata value or analyze codebase coverage and insights.\n\n")
+	sb.WriteString("Find files by metadata value.\n\n")
 	sb.WriteString(FormatWorkspaceHeader(config, quiet))
 
-	sb.WriteString("Primary Subcommands:\n")
-	sb.WriteString("  list [field]       Discover fields or values (hierarchical)\n")
-	sb.WriteString("  insights           Analyze metadata distribution (Phase 2)\n")
-	sb.WriteString("  coverage           Analyze analysis blind spots (Phase 3)\n\n")
-
 	sb.WriteString("Primary Flags:\n")
-	sb.WriteString("  -v, --value <val>  Match metadata value (comma-separated for OR)\n")
 	sb.WriteString("  -d, --db <name>    Override default database\n")
-	sb.WriteString("  -f, --field <name> Override default field\n\n")
-
-	sb.WriteString("Quick Actions:\n")
-	sb.WriteString("  • List fields:     gsc query list\n")
-	sb.WriteString("  • View insights:   gsc query insights --db <name> --field <field>\n")
-	sb.WriteString("  • Check coverage:  gsc query coverage\n\n")
+	sb.WriteString("  --filter <expr>    Metadata filter (e.g., 'field=value', 'field~value')\n")
+	sb.WriteString("  --fields <list>    Additional fields to include in results\n")
+	sb.WriteString("  --match-all        Match all values (AND logic) instead of any (OR logic)\n\n")
 
 	sb.WriteString("Need more help? Run 'gsc query --help' for the full manual.\n")
 

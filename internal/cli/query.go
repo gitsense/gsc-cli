@@ -1,12 +1,12 @@
 /**
  * Component: Query Command
- * Block-UUID: 00f24f7a-9b90-447a-ba50-91f4156a7aff
- * Parent-UUID: 4d46e605-3ffb-46c1-9a12-6681a48960dc
- * Version: 3.23.0
- * Description: Added the 'DatabasesCmd' as a root-level convenience command. It supports listing all databases, inspecting a specific database schema via positional argument, or dumping all schemas using the --schema flag. Updated bridge.Execute calls to include the new exitCode argument.
+ * Block-UUID: 97011604-8d48-4714-b73e-970f6168b350
+ * Parent-UUID: 00f24f7a-9b90-447a-ba50-91f4156a7aff
+ * Version: 3.24.0
+ * Description: Simplified 'gsc query' interface by hiding subcommands (list, insights, coverage, fields, brains) and legacy flags (--field, --value). Updated examples to promote the --filter syntax.
  * Language: Go
  * Created-at: 2026-04-02T18:56:32.395Z
- * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v3.17.0), claude-haiku-4-5-20251001 (v3.18.0), GLM-4.7 (v3.19.0), GLM-4.7 (v3.20.0), GLM-4.7 (v3.21.0), GLM-4.7 (v3.22.0), GLM-4.7 (v3.23.0)
+ * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v3.17.0), claude-haiku-4-5-20251001 (v3.18.0), GLM-4.7 (v3.19.0), GLM-4.7 (v3.20.0), GLM-4.7 (v3.21.0), GLM-4.7 (v3.22.0), GLM-4.7 (v3.23.0), GLM-4.7 (v3.24.0)
  */
 
 
@@ -53,16 +53,22 @@ var queryCmd = &cobra.Command{
 	Use:   "query",
 	Short: "Find files by metadata value",
 	Long: `Find files in a database by matching a metadata field value.
-Supports exact matching and glob-style pattern matching (e.g., *connection*).
-If no value is provided, it displays the current workspace context.`,
-	Example: `  # Query using defaults (efficient!)
-  gsc query --value critical
+Supports exact matching, pattern matching, numeric comparisons, and list membership.
+If no filters are provided, it displays the current workspace context.`,
+	Example: `  # Exact match
+  gsc query --filter "intent_triggers=critical"
 
-  # Use wildcards for pattern matching
-  gsc query --field intent_triggers --value "*connection*"
+  # Pattern matching (contains)
+  gsc query --filter "intent_triggers~connection"
 
-  # Override defaults
-  gsc query --db security --field risk_level --value high`,
+  # List membership (OR logic)
+  gsc query --filter "risk_level in (high,critical)"
+
+  # Numeric comparison
+  gsc query --filter "complexity>10"
+
+  # Multiple filters (AND logic)
+  gsc query --filter "language=go" --filter "complexity>5"`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		startTime := time.Now()
 
@@ -367,8 +373,8 @@ var BrainsCmd = &cobra.Command{
 func init() {
 	// Top-level Query Flags
 	queryCmd.Flags().StringVarP(&queryDB, "db", "d", "", "Database name (or use default)")
-	queryCmd.Flags().StringVarP(&queryField, "field", "f", "", "Field name (or use default)")
-	queryCmd.Flags().StringVarP(&queryValue, "value", "v", "", "Value to match (comma-separated for OR)")
+	//queryCmd.Flags().StringVarP(&queryField, "field", "f", "", "Field name (or use default)").Hidden = true
+	//queryCmd.Flags().StringVarP(&queryValue, "value", "v", "", "Value to match (comma-separated for OR)").Hidden = true
 	queryCmd.Flags().StringSliceVar(&querySelectFields, "fields", []string{}, "Additional metadata fields to include in results (comma-separated)")
 	queryCmd.Flags().BoolVar(&queryMatchAll, "match-all", false, "Match all values (AND logic) instead of any (OR logic)")
 	queryCmd.Flags().StringVarP(&queryFormat, "format", "o", "table", "Output format (json, table)")
@@ -408,10 +414,19 @@ func init() {
 	BrainsCmd.Flags().BoolVar(&queryQuiet, "quiet", false, "Suppress headers and hints")
 
 	// Register Subcommands
+	queryListCmd.Hidden = true
 	queryCmd.AddCommand(queryListCmd)
+
+	InsightsCmd.Hidden = true
 	queryCmd.AddCommand(InsightsCmd)
+
+	CoverageCmd.Hidden = true
 	queryCmd.AddCommand(CoverageCmd)
+
+	FieldsCmd.Hidden = true
 	queryCmd.AddCommand(FieldsCmd)
+
+	BrainsCmd.Hidden = true
 	queryCmd.AddCommand(BrainsCmd)
 }
 
