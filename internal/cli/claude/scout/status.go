@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Status Command
- * Block-UUID: 0495fda9-b537-4e27-8ff0-492059e43daf
- * Parent-UUID: 29d8f91f-6dbc-4fe1-895a-ac84c5833e1c
- * Version: 1.1.0
- * Description: Implements 'gsc claude scout status' command for monitoring Scout sessions
+ * Block-UUID: 2bb7f270-cde1-4784-a117-0d97bc246c88
+ * Parent-UUID: 0495fda9-b537-4e27-8ff0-492059e43daf
+ * Version: 1.2.0
+ * Description: Implements 'gsc claude scout status' command for monitoring Scout sessions. Updated to show phase display name instead of turn number.
  * Language: Go
  * Created-at: 2026-04-01T02:45:33.250Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), GLM-4.7 (v1.0.8), GLM-4.7 (v1.0.9), GLM-4.7 (v1.1.0)
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), GLM-4.7 (v1.0.8), GLM-4.7 (v1.0.9), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -155,7 +155,12 @@ func displayStatusPretty(cmd *cobra.Command, status *claudescout.StatusData) err
 	fmt.Fprintf(cmd.OutOrStdout(), "\n  Scout Session: %s\n", status.SessionID)
 	fmt.Fprintf(cmd.OutOrStdout(), "  ===================================================\n")
 	fmt.Fprintf(cmd.OutOrStdout(), "  Status: %s\n", colorizeStatus(getDisplayStatus(status)))
-	fmt.Fprintf(cmd.OutOrStdout(), "  Turn: %s\n", getTurnDisplayName(status.Phase))
+	
+	// Show phase name instead of turn number
+	if status.Phase != "" {
+		fmt.Fprintf(cmd.OutOrStdout(), "  Phase:  %s\n", getPhaseDisplayName(status.Phase))
+	}
+	
 	fmt.Fprintf(cmd.OutOrStdout(), "  Process: PID %d", status.ProcessInfo.PID)
 
 	if status.ProcessInfo.Running {
@@ -208,6 +213,18 @@ func displayStatusPretty(cmd *cobra.Command, status *claudescout.StatusData) err
 	fmt.Fprintf(cmd.OutOrStdout(), "\n")
 
 	return nil
+}
+
+// getPhaseDisplayName returns a friendly name for the phase
+func getPhaseDisplayName(phase string) string {
+	switch phase {
+	case "discovery":
+		return "Discovery"
+	case "verification":
+		return "Verification"
+	default:
+		return phase
+	}
 }
 
 // colorizeStatus returns a colorized status string using ANSI codes

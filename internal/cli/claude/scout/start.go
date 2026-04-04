@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Start Command
- * Block-UUID: 55eec20b-639c-41bc-a5b2-0285ffb2651b
- * Parent-UUID: 51539f39-9175-4f8e-9d2b-10e0ca08d80a
- * Version: 1.3.1
+ * Block-UUID: 08e3181a-8176-4c8c-b1c0-723f431bd184
+ * Parent-UUID: 55eec20b-639c-41bc-a5b2-0285ffb2651b
+ * Version: 1.3.2
  * Description: Implements 'gsc claude scout start' command with turn-aware session handling
  * Language: Go
- * Created-at: 2026-04-01T05:31:57.927Z
- * Authors: claude-haiku-4-5-20251001 (v1.2.1), GLM-4.7 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1)
+ * Created-at: 2026-04-04T14:52:58.247Z
+ * Authors: claude-haiku-4-5-20251001 (v1.2.1), GLM-4.7 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2)
  */
 
 
@@ -202,26 +202,8 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 		// Turn 2 will use existing session data from Turn 1
 	}
 
-	// Execute based on turn
-	switch flags.Turn {
-	case 1:
-		if err := manager.StartTurn1Discovery(); err != nil {
-			cmd.SilenceUsage = true
-			return fmt.Errorf("failed to start discovery: %w", err)
-		}
-	case 2:
-		// For Turn 2, start verification with existing session
-		if err := manager.StartTurn2Verification(nil); err != nil {
-			cmd.SilenceUsage = true
-			return fmt.Errorf("failed to start verification: %w", err)
-		}
-	default:
-		// Should not reach here due to early validation, but keep as safety net
-		cmd.SilenceUsage = true
-		return fmt.Errorf("invalid turn: %d (must be 1 or 2)", flags.Turn)
-	}
-
 	// Spawn background worker with --watch-worker flag
+	// The background worker will execute the turn (StartTurn1Discovery or StartTurn2Verification)
 	if err := spawnBackgroundWorker(flags); err != nil {
 		cmd.SilenceUsage = true
 		return fmt.Errorf("failed to spawn background worker: %w", err)

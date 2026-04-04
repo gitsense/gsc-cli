@@ -1,12 +1,12 @@
 /**
  * Component: Scout Models
- * Block-UUID: f71bcf94-e211-429e-b5e3-aeb026a21ae2
- * Parent-UUID: 47866395-f525-4fea-8127-efecd21618dc
- * Version: 1.1.0
- * Description: Data structures for Scout feature (candidate discovery and verification)
+ * Block-UUID: 5df06ca5-fa29-41f3-81d6-10dea58899e6
+ * Parent-UUID: f71bcf94-e211-429e-b5e3-aeb026a21ae2
+ * Version: 1.2.0
+ * Description: Data structures for Scout feature (candidate discovery and verification). Added ReferenceFilesContext field to StatusData to persist reference files in session state.
  * Language: Go
  * Created-at: 2026-04-01T05:35:28.526Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.6), GLM-4.7 (v1.1.0)
+ * Authors: claude-haiku-4-5-20251001 (v1.0.6), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -90,6 +90,7 @@ type StatusData struct {
 	ElapsedSeconds       int64                `json:"elapsed_seconds"`
 	EstimatedRemaining   *int64               `json:"estimated_remaining,omitempty"`
 	WorkingDirectories   []WorkingDirectory   `json:"working_directories"`
+	ReferenceFilesContext []ReferenceFileContext `json:"reference_files_context"`
 	Candidates           []Candidate          `json:"candidates"`
 	TotalFound           int                  `json:"total_found"`
 	ProcessInfo          ProcessInfo          `json:"process"`

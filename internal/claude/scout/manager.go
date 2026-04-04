@@ -1,12 +1,12 @@
 /**
  * Component: Scout Session Manager
- * Block-UUID: 090d230b-d53e-44ea-901b-4e57267c611e
- * Parent-UUID: d91fe8de-2244-4cce-bd87-7c221d65d035
- * Version: 1.5.1
- * Description: Orchestrates Scout discovery and verification phases. Refactored to focus on session lifecycle and orchestration; subprocess management moved to subprocess.go, stream processing moved to stream.go.
+ * Block-UUID: 9c6696af-ba7b-479a-84e4-01b2a06df86c
+ * Parent-UUID: 090d230b-d53e-44ea-901b-4e57267c611e
+ * Version: 1.5.2
+ * Description: Orchestrates Scout discovery and verification phases. Refactored to focus on session lifecycle and orchestration; subprocess management moved to subprocess.go, stream processing moved to stream.go. Fixed to set phase in writeNoBrainsError based on current turn.
  * Language: Go
  * Created-at: 2026-04-03T03:04:53.284Z
- * Authors: claude-haiku-4-5-20251001 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.2.5), GLM-4.7 (v1.2.6), GLM-4.7 (v1.2.7), GLM-4.7 (v1.2.8), GLM-4.7 (v1.2.9), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.3.3), GLM-4.7 (v1.4.0), GLM-4.7 (v1.4.1), claude-haiku-4-5-20251001 (v1.5.0), GLM-4.7 (v1.5.1)
+ * Authors: claude-haiku-4-5-20251001 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.2.5), GLM-4.7 (v1.2.6), GLM-4.7 (v1.2.7), GLM-4.7 (v1.2.8), GLM-4.7 (v1.2.9), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.3.3), GLM-4.7 (v1.4.0), GLM-4.7 (v1.4.1), claude-haiku-4-5-20251001 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.5.2)
  */
 
 
@@ -224,8 +224,14 @@ func (m *Manager) writeNoBrainsError() error {
 	}
 	defer writer.Close()
 
+	// Set phase based on current turn
+	phase := "discovery"
+	if m.currentTurn == 2 {
+		phase = "verification"
+	}
+
 	return writer.WriteErrorEvent(ErrorEvent{
-		Phase:     "turn-1",
+		Phase:     phase,
 		ErrorCode: "NO_BRAINS_AVAILABLE",
 		Message:   "No brains available in any working directory",
 	})
