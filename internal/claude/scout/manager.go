@@ -1,12 +1,12 @@
 /**
  * Component: Scout Session Manager
- * Block-UUID: 9c6696af-ba7b-479a-84e4-01b2a06df86c
- * Parent-UUID: 090d230b-d53e-44ea-901b-4e57267c611e
- * Version: 1.5.2
- * Description: Orchestrates Scout discovery and verification phases. Refactored to focus on session lifecycle and orchestration; subprocess management moved to subprocess.go, stream processing moved to stream.go. Fixed to set phase in writeNoBrainsError based on current turn.
+ * Block-UUID: bbaa58c4-10a2-4fde-a8c1-a89de7fff930
+ * Parent-UUID: 9c6696af-ba7b-479a-84e4-01b2a06df86c
+ * Version: 1.5.3
+ * Description: Orchestrates Scout discovery and verification phases. Refactored to focus on session lifecycle and orchestration; subprocess management moved to subprocess.go, stream processing moved to stream.go. Fixed to set phase in writeNoBrainsError based on current turn. Updated LoadSession to populate WorkingDirectories and ReferenceFilesContext from StatusData.
  * Language: Go
  * Created-at: 2026-04-03T03:04:53.284Z
- * Authors: claude-haiku-4-5-20251001 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.2.5), GLM-4.7 (v1.2.6), GLM-4.7 (v1.2.7), GLM-4.7 (v1.2.8), GLM-4.7 (v1.2.9), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.3.3), GLM-4.7 (v1.4.0), GLM-4.7 (v1.4.1), claude-haiku-4-5-20251001 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.5.2)
+ * Authors: claude-haiku-4-5-20251001 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.2.5), GLM-4.7 (v1.2.6), GLM-4.7 (v1.2.7), GLM-4.7 (v1.2.8), GLM-4.7 (v1.2.9), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.3.3), GLM-4.7 (v1.4.0), GLM-4.7 (v1.4.1), claude-haiku-4-5-20251001 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.5.2), GLM-4.7 (v1.5.3)
  */
 
 
@@ -415,6 +415,7 @@ func (m *Manager) GetSessionStatus() (*StatusData, error) {
 			Phase:              "discovery",
 			StartedAt:          m.session.StartedAt,
 			WorkingDirectories: m.session.WorkingDirectories,
+			ReferenceFilesContext: m.session.ReferenceFilesContext,
 			Candidates:         []Candidate{},
 			ProcessInfo:        processInfo,
 		}
@@ -736,12 +737,14 @@ func LoadSession(sessionID string) (*Manager, error) {
 
 	// Reconstruct Session from StatusData
 	session = Session{
-		SessionID:   statusData.SessionID,
-		Status:      statusData.Status,
-		StartedAt:   statusData.StartedAt,
-		CompletedAt: statusData.CompletedAt,
-		Error:       statusData.Error,
-		// WorkingDirectories, ReferenceFiles, Intent, AutoReview are not in StatusData
+		SessionID:             statusData.SessionID,
+		Status:                statusData.Status,
+		StartedAt:             statusData.StartedAt,
+		CompletedAt:           statusData.CompletedAt,
+		Error:                 statusData.Error,
+		WorkingDirectories:    statusData.WorkingDirectories,
+		ReferenceFilesContext: statusData.ReferenceFilesContext,
+		// Intent, AutoReview, Model are not in StatusData
 		// These are only available during initial session creation
 	}
 
