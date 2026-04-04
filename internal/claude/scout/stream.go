@@ -1,12 +1,12 @@
 /**
  * Component: Scout Stream Event Processor
- * Block-UUID: 472f75bd-f981-4869-8a80-a45c60f3b8aa
- * Parent-UUID: 7cc0c063-7c98-4a77-bf74-90da16ea6063
- * Version: 1.0.1
+ * Block-UUID: 925a054f-3dd3-4864-8c16-27858cc5f9a2
+ * Parent-UUID: 472f75bd-f981-4869-8a80-a45c60f3b8aa
+ * Version: 1.1.0
  * Description: Manages Claude output stream parsing, event handling, and state updates from streaming JSONL responses
  * Language: Go
- * Created-at: 2026-04-01T14:53:01.323Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1)
+ * Created-at: 2026-04-04T16:05:03.805Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.1.0)
  */
 
 
@@ -17,11 +17,32 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
+	"strings"
+	"time"
 )
 
 // processStream reads Claude's stdout and processes events
 func (m *Manager) processStream(stdout io.Reader, turn int) {
 	m.debugLogger.Log("STREAM", "Stream processing started")
+	
+	// Open output.log for writing raw stdout
+	outputLogPath := m.config.GetTurnDir(turn) + "/output.log"
+	outputLogFile, err := os.OpenFile(outputLogPath, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
+	if err != nil {
+		m.debugLogger.LogError("Failed to open output.log", err)
+	} else {
+		defer outputLogFile.Close()
+	}
+	
+	// Helper function to write to output.log
+	writeToOutputLog := func(line string) {
+		if outputLogFile != nil {
+			timestamp := time.Now().UTC().Format(time.RFC3339Nano)
+			outputLogFile.WriteString(fmt.Sprintf("[%s] %s\n", timestamp, line))
+		}
+	}
+	
 	defer func() {
 		m.debugLogger.Log("STREAM", "Stream processing ended")
 		m.wg.Done()
@@ -48,12 +69,21 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 	for scanner.Scan() {
 		lineCount++
 		line := scanner.Text()
-		if line == "" {
-			// Skip empty lines
-			m.debugLogger.LogStreamEvent("EMPTY_LINE", fmt.Sprintf("line %d", lineCount))
+		
+		// Write raw line to output.log
+		writeToOutputLog(line)
+		
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
 			continue
 		}
-
+		
+		// Quick check: JSON objects must start with '{'
+		if !strings.HasPrefix(trimmed, "{") {
+			// Not JSON, skip (already written to output.log)
+			continue
+		}
+		
 		m.debugLogger.LogStreamEvent("LINE_READ", fmt.Sprintf("line %d: %s", lineCount, m.truncateForLog(line, 200)))
 
 		// Parse as generic map
@@ -62,7 +92,6 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 			// Not valid JSON, skip
 			// Log as raw event for debugging
 			m.debugLogger.LogStreamEvent("JSON_PARSE_ERROR", fmt.Sprintf("line %d: %v", lineCount, err))
-			m.eventWriter.WriteRawEvent(line)
 			continue
 		}
 		m.debugLogger.LogStreamEvent("JSON_PARSED", fmt.Sprintf("line %d: valid JSON", lineCount))
@@ -261,6 +290,24 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 // captureStderr reads and logs stderr from the subprocess
 func (m *Manager) captureStderr(stderr io.Reader) {
 	m.debugLogger.Log("DEBUG", "Stderr capture started")
+	
+	// Open output.log for writing raw stderr
+	outputLogPath := m.config.GetTurnDir(m.currentTurn) + "/output.log"
+	outputLogFile, err := os.OpenFile(outputLogPath, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
+	if err != nil {
+		m.debugLogger.LogError("Failed to open output.log", err)
+	} else {
+		defer outputLogFile.Close()
+	}
+	
+	// Helper function to write to output.log
+	writeToOutputLog := func(line string) {
+		if outputLogFile != nil {
+			timestamp := time.Now().UTC().Format(time.RFC3339Nano)
+			outputLogFile.WriteString(fmt.Sprintf("[%s] [STDERR] %s\n", timestamp, line))
+		}
+	}
+	
 	defer func() {
 		m.debugLogger.Log("DEBUG", "Stderr capture ended")
 		m.wg.Done()
@@ -272,6 +319,10 @@ func (m *Manager) captureStderr(stderr io.Reader) {
 	for scanner.Scan() {
 		lineCount++
 		line := scanner.Text()
+		
+		// Write to output.log
+		writeToOutputLog(line)
+		
 		m.debugLogger.Log("STDERR", fmt.Sprintf("line %d: %s", lineCount, line))
 	}
 

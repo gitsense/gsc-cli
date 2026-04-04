@@ -1,12 +1,12 @@
 /**
  * Component: Scout Subprocess Manager
- * Block-UUID: 6ebe8363-77e1-4453-b716-546259d640cd
- * Parent-UUID: 4545e438-21ef-4d47-8170-5847c7a0d87e
- * Version: 1.2.0
- * Description: Manages subprocess spawning, process lifecycle, signal handling, and resource cleanup for Scout Claude sessions. Fixed to copy methodology files (discovery.md, verification.md) to turn directory and move references.ndjson to root directory.
+ * Block-UUID: 58a5c665-fa6e-4e4e-ade3-bc19a3211e37
+ * Parent-UUID: d6e01837-6f56-49c6-bd8d-d8f13bac1f9f
+ * Version: 1.4.0
+ * Description: Manages subprocess spawning, process lifecycle, signal handling, and resource cleanup for Scout Claude sessions. Fixed to use heredoc for -p flag to prevent command substitution issues with backticks in markdown.
  * Language: Go
- * Created-at: 2026-04-03T14:57:32.864Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
+ * Created-at: 2026-04-04T16:30:00.000Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
  */
 
 
@@ -168,7 +168,7 @@ func (m *Manager) spawnClaudeSubprocess(turn int) error {
 			return fmt.Errorf("failed to read task prompt: %w", err)
 		}
 
-		// Create bash script content using heredoc
+		// Create bash script content using heredoc for -p flag
 		scriptContent := fmt.Sprintf(`#!/bin/bash
 set -e
 
@@ -185,13 +185,15 @@ claude --allowedTools Read,Bash \
 --append-system-prompt-file system-prompt.md \
 %s \
 %s \
--p %s
+-p <<'EOF'
+%s
+EOF
 
 echo "=== Claude subprocess completed ==="
 exit_code=$?
 echo "Exit code: $exit_code"
 exit $exit_code
-`, turn, m.session.SessionID, addDirFlagsStr, modelFlag, fmt.Sprintf("%q", string(taskContent)))
+`, turn, m.session.SessionID, addDirFlagsStr, modelFlag, string(taskContent))
 
 		// Write bash script to turn directory
 		scriptPath := filepath.Join(m.config.GetTurnDir(turn), "run-claude.sh")
@@ -260,6 +262,16 @@ exit $exit_code
 			}
 		}
 		m.debugLogger.LogProcessExit(cmd.Process.Pid, exitCode, err)
+		
+		// Update session state when process exits naturally
+		if m.session != nil {
+			m.session.Status = "stopped"
+		}
+		if m.processInfo != nil {
+			m.processInfo.Running = false
+		}
+		m.writeSessionState()
+		
 		// Close debug logger when process exits naturally
 		m.closeDebugLogger()
 		m.wg.Done()

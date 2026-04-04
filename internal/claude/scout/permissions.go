@@ -33,6 +33,9 @@ func WriteScoutPermissions(turnDir string) error {
 		"permissions": map[string]interface{}{
 			"allow": []string{
 				"Bash(gsc:*)",
+				"Bash(sort)",
+				"Bash(head)",
+				"Bash(tail)",
 				"Read(*)",
 			},
 			"deny": []string{

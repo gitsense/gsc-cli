@@ -50,4 +50,4 @@ Lead with `gsc insights` to build your mental map, then use `gsc query` and `gsc
 
 ## Important: JSON vs. Piping
 - Use `--format json` when you need structured data for your final answer.
-- Do NOT use `--format json` if you are piping to `sort`, `tail`, `head`, or `wc`, as the JSON structure will be destroyed.
+- Do NOT use `--format json` if you are piping to `sort`, `head`, or `tail`, as the JSON structure will be destroyed.
