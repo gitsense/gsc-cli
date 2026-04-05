@@ -1,12 +1,12 @@
 /**
  * Component: Simple Query Executor
- * Block-UUID: e9807273-8707-4225-b93b-75437ab4c34a
- * Parent-UUID: 029d83f6-750c-4392-a143-53e9fe4bcc61
- * Version: 1.16.1
+ * Block-UUID: a83d7761-0958-4fa6-8767-0734fb5d5548
+ * Parent-UUID: 8f5f2487-c44c-4b24-9c68-82c36e811e37
+ * Version: 1.18.0
  * Description: Executes simple value-matching queries and hierarchical list operations. Updated to support metadata filtering via --filter flag. Modified ExecuteSimpleQuery to handle filter-only queries (where --value is omitted) by selecting all files and applying filters. Fixed SQL construction to correctly append filter clauses using WHERE or AND as appropriate. Fixed insights analysis to remove json_valid check from scalar field queries, which was incorrectly filtering out plain text values like file extensions.
  * Language: Go
- * Created-at: 2026-04-03T01:34:22.193Z
- * Authors: claude-haiku-4-5-20251001 (v1.12.2), GLM-4.7 (v1.12.3), GLM-4.7 (v1.13.0), claude-haiku-4-5-20251001 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.16.1)
+ * Created-at: 2026-04-05T20:09:21.426Z
+ * Authors: claude-haiku-4-5-20251001 (v1.12.2), GLM-4.7 (v1.12.3), GLM-4.7 (v1.13.0), claude-haiku-4-5-20251001 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.16.1), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0)
  */
 
 
@@ -16,11 +16,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/bmatcuk/doublestar/v4"
 	"github.com/gitsense/gsc-cli/internal/db"
 	"github.com/gitsense/gsc-cli/internal/git"
 	"github.com/gitsense/gsc-cli/internal/search"
@@ -30,7 +32,7 @@ import (
 // ExecuteSimpleQuery performs a simple value-matching query against the database.
 // It supports comma-separated values for OR logic, or AND logic if matchAll is true.
 // It also supports metadata filtering via the filters parameter.
-func ExecuteSimpleQuery(ctx context.Context, dbName string, fieldName string, value string, matchAll bool, selectFields []string, filters []search.FilterCondition) ([]QueryResult, error) {
+func ExecuteSimpleQuery(ctx context.Context, dbName string, fieldName string, value string, matchAll bool, selectFields []string, filters []search.FilterCondition, repoRoot string, globPatterns []string) ([]QueryResult, error) {
 	// 1. Resolve DB Path
 	dbPath, err := db.ResolveManifestDBPath(dbName)
 	if err != nil {
@@ -48,6 +50,15 @@ func ExecuteSimpleQuery(ctx context.Context, dbName string, fieldName string, va
 		return nil, err
 	}
 	defer db.CloseDB(database)
+
+	// 3.5. Prepare Target Set if glob patterns are provided
+	var useTargetSet bool
+	if len(globPatterns) > 0 {
+		if err := PrepareTargetSet(ctx, database, nil, repoRoot, globPatterns); err != nil {
+			return nil, fmt.Errorf("failed to prepare target set for glob patterns: %w", err)
+		}
+		useTargetSet = true
+	}
 
 	// 3.5. Get Field Types for Filter Processing
 	fieldTypes, err := db.GetFieldTypes(ctx, dbName)
@@ -136,6 +147,11 @@ func ExecuteSimpleQuery(ctx context.Context, dbName string, fieldName string, va
 		// --- Filter-Only Logic ---
 		// If no value is provided, we select all files. Filters will be applied below.
 		query = "SELECT f.file_path, f.chat_id FROM files f"
+	}
+
+	// 5.5. Add Target Set Join if active
+	if useTargetSet {
+		query += " JOIN target_set ts ON f.file_path = ts.file_path"
 	}
 
 	// 5. Add Metadata Filters (AND logic)
@@ -447,7 +463,7 @@ func listValuesForField(ctx context.Context, dbName string, fieldName string) ([
 // PrepareTargetSet creates and populates a temporary table with files matching the active Focus Scope.
 // This function is critical for Phase 2 performance, allowing efficient joins against the 'files' table.
 // It drops any existing 'target_set' table to ensure a clean state for the current query context.
-func PrepareTargetSet(ctx context.Context, db *sql.DB, scope *ScopeConfig, repoRoot string) error {
+func PrepareTargetSet(ctx context.Context, db *sql.DB, scope *ScopeConfig, repoRoot string, globPatterns []string) error {
 	// 1. Clean up existing temporary table (if any)
 	// We ignore errors here as the table might not exist
 	_, _ = db.ExecContext(ctx, "DROP TABLE IF EXISTS target_set")
@@ -473,9 +489,43 @@ func PrepareTargetSet(ctx context.Context, db *sql.DB, scope *ScopeConfig, repoR
 	}
 	defer stmt.Close()
 
+	// Get current working directory for relative path matching
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get current working directory: %w", err)
+	}
+
 	insertedCount := 0
 	for _, filePath := range trackedFiles {
 		// Check if file matches the scope
+		if len(globPatterns) > 0 {
+			matched := false
+			for _, pattern := range globPatterns {
+				// Normalize paths for matching:
+				// - If pattern is absolute, match against absolute file path
+				// - If pattern is relative, match against path relative to CWD
+				// This ensures globs work correctly when run from subdirectories
+				absPath := filepath.Join(repoRoot, filePath)
+				var match bool
+				if filepath.IsAbs(pattern) {
+					match, _ = doublestar.Match(pattern, absPath)
+				} else {
+					relPath, err := filepath.Rel(cwd, absPath)
+					if err == nil {
+						match, _ = doublestar.Match(pattern, relPath)
+					}
+				}
+
+				if match {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				continue
+			}
+		}
+
 		if MatchScope(filePath, scope) {
 			if _, err := stmt.ExecContext(ctx, filePath); err != nil {
 				return fmt.Errorf("failed to insert file into target_set: %w", err)
@@ -490,7 +540,7 @@ func PrepareTargetSet(ctx context.Context, db *sql.DB, scope *ScopeConfig, repoR
 
 // ExecuteCoverageAnalysis calculates analysis coverage within the active Focus Scope.
 // It compares Git tracked files against the manifest database to identify blind spots.
-func ExecuteCoverageAnalysis(ctx context.Context, dbName string, scopeOverride string, repoRoot string, profileName string) (*CoverageReport, error) {
+func ExecuteCoverageAnalysis(ctx context.Context, dbName string, scopeOverride string, repoRoot string, profileName string, globPatterns []string) (*CoverageReport, error) {
 	// 1. Resolve Scope
 	scope, err := ResolveScopeForQuery(ctx, profileName, scopeOverride)
 	if err != nil {
@@ -509,7 +559,7 @@ func ExecuteCoverageAnalysis(ctx context.Context, dbName string, scopeOverride s
 	defer db.CloseDB(database)
 
 	// 3. Prepare Target Set (Temporary Table)
-	if err := PrepareTargetSet(ctx, database, scope, repoRoot); err != nil {
+	if err := PrepareTargetSet(ctx, database, scope, repoRoot, globPatterns); err != nil {
 		return nil, err
 	}
 
@@ -639,7 +689,7 @@ func ExecuteCoverageAnalysis(ctx context.Context, dbName string, scopeOverride s
 
 // ExecuteInsightsAnalysis performs metadata aggregation for the requested fields within the active Focus Scope.
 // It implements type-aware SQL aggregation (scalar vs array) and calculates summary statistics.
-func ExecuteInsightsAnalysis(ctx context.Context, dbName string, fields []string, limit int, scopeOverride string, repoRoot string, profileName string, filters []search.FilterCondition) (*InsightsReport, error) {
+func ExecuteInsightsAnalysis(ctx context.Context, dbName string, fields []string, limit int, scopeOverride string, repoRoot string, profileName string, filters []search.FilterCondition, globPatterns []string) (*InsightsReport, error) {
 	// 1. Resolve Scope
 	scope, err := ResolveScopeForQuery(ctx, profileName, scopeOverride)
 	if err != nil {
@@ -658,7 +708,7 @@ func ExecuteInsightsAnalysis(ctx context.Context, dbName string, fields []string
 	defer db.CloseDB(database)
 
 	// 3. Prepare Target Set (Temporary Table)
-	if err := PrepareTargetSet(ctx, database, scope, repoRoot); err != nil {
+	if err := PrepareTargetSet(ctx, database, scope, repoRoot, globPatterns); err != nil {
 		return nil, err
 	}
 

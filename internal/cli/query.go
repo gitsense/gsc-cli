@@ -1,12 +1,12 @@
 /**
  * Component: Query Command
- * Block-UUID: 97011604-8d48-4714-b73e-970f6168b350
- * Parent-UUID: 00f24f7a-9b90-447a-ba50-91f4156a7aff
- * Version: 3.24.0
+ * Block-UUID: 29e34576-a55c-4539-b05a-72e2893516fe
+ * Parent-UUID: 97011604-8d48-4714-b73e-970f6168b350
+ * Version: 3.25.0
  * Description: Simplified 'gsc query' interface by hiding subcommands (list, insights, coverage, fields, brains) and legacy flags (--field, --value). Updated examples to promote the --filter syntax.
  * Language: Go
- * Created-at: 2026-04-02T18:56:32.395Z
- * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v3.17.0), claude-haiku-4-5-20251001 (v3.18.0), GLM-4.7 (v3.19.0), GLM-4.7 (v3.20.0), GLM-4.7 (v3.21.0), GLM-4.7 (v3.22.0), GLM-4.7 (v3.23.0), GLM-4.7 (v3.24.0)
+ * Created-at: 2026-04-05T18:55:08.946Z
+ * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v3.17.0), claude-haiku-4-5-20251001 (v3.18.0), GLM-4.7 (v3.19.0), GLM-4.7 (v3.20.0), GLM-4.7 (v3.21.0), GLM-4.7 (v3.22.0), GLM-4.7 (v3.23.0), GLM-4.7 (v3.24.0), GLM-4.7 (v3.25.0)
  */
 
 
@@ -40,6 +40,7 @@ var (
 	queryInsightsLimit int
 	queryListDB        bool
 	queryListAll       bool
+	queryGlobs         []string
 	queryReport        bool
 	queryFields        []string
 	queryFieldSingular []string
@@ -380,6 +381,7 @@ func init() {
 	queryCmd.Flags().StringVarP(&queryFormat, "format", "o", "table", "Output format (json, table)")
 	queryCmd.Flags().BoolVar(&queryQuiet, "quiet", false, "Suppress headers, footers, and hints")
 	queryCmd.Flags().StringArrayVar(&queryFilters, "filter", []string{}, "Metadata filter (e.g., --filter 'field:operator:value')")
+	queryCmd.Flags().StringArrayVar(&queryGlobs, "glob", []string{}, "Filter by file path pattern (e.g., 'src/**/*.go')")
 
 	// List Subcommand Flags
 	queryListCmd.Flags().BoolVar(&queryListDB, "dbs", false, "List all available databases")
@@ -392,6 +394,7 @@ func init() {
 	InsightsCmd.Flags().StringSliceVar(&queryFields, "fields", []string{}, "Field(s) to analyze (comma-separated if more than one)")
 	InsightsCmd.Flags().BoolP("help", "h", false, "Help for insights")
 	InsightsCmd.Flags().StringArrayVar(&queryFilters, "filter", []string{}, "Metadata filter (e.g., --filter 'field:operator:value')")
+	InsightsCmd.Flags().StringArrayVar(&queryGlobs, "glob", []string{}, "Filter by file path pattern (e.g., 'src/**/*.go')")
 	InsightsCmd.Flags().IntVar(&queryInsightsLimit, "limit", 10, "Limit top values (1-1000)")
 	InsightsCmd.Flags().StringVar(&queryScopeOverride, "scope-override", "", "Temporary scope override")
 	InsightsCmd.Flags().StringVarP(&queryDB, "db", "d", "", "Database override")
@@ -401,6 +404,7 @@ func init() {
 	// Coverage Subcommand Flags
 	CoverageCmd.Flags().StringVar(&queryScopeOverride, "scope-override", "", "Temporary scope override")
 	CoverageCmd.Flags().StringVarP(&queryDB, "db", "d", "", "Database override")
+	CoverageCmd.Flags().StringArrayVar(&queryGlobs, "glob", []string{}, "Filter by file path pattern (e.g., 'src/**/*.go')")
 	CoverageCmd.Flags().StringVarP(&queryFormat, "format(o)", "o", "table", "Output format")
 	CoverageCmd.Flags().BoolVar(&queryQuiet, "quiet", false, "Suppress headers")
 
@@ -508,8 +512,8 @@ func handleCoverage(ctx context.Context, dbName string, scopeOverride string, fo
 		return "", "", fmt.Errorf("failed to find git root: %w", err)
 	}
 
-	logger.Debug("Executing coverage analysis", "database", resolvedDB, "scope_override", scopeOverride)
-	report, err := manifest.ExecuteCoverageAnalysis(ctx, resolvedDB, scopeOverride, repoRoot, config.ActiveProfile)
+	logger.Debug("Executing coverage analysis", "database", resolvedDB, "scope_override", scopeOverride, "globs", queryGlobs)
+	report, err := manifest.ExecuteCoverageAnalysis(ctx, resolvedDB, scopeOverride, repoRoot, config.ActiveProfile, queryGlobs)
 	if err != nil {
 		return "", "", err
 	}
@@ -559,8 +563,8 @@ func handleInsights(ctx context.Context, dbName string, fields []string, limit i
 		return "", "", fmt.Errorf("failed to parse filters: %w", err)
 	}
 
-	logger.Debug("Executing insights analysis", "database", resolvedDB, "fields", fields, "limit", limit, "scope_override", scopeOverride)
-	report, err := manifest.ExecuteInsightsAnalysis(ctx, resolvedDB, fields, limit, scopeOverride, repoRoot, config.ActiveProfile, filters)
+	logger.Debug("Executing insights analysis", "database", resolvedDB, "fields", fields, "limit", limit, "scope_override", scopeOverride, "globs", queryGlobs)
+	report, err := manifest.ExecuteInsightsAnalysis(ctx, resolvedDB, fields, limit, scopeOverride, repoRoot, config.ActiveProfile, filters, queryGlobs)
 	if err != nil {
 		return "", "", err
 	}
@@ -675,18 +679,19 @@ func handleQueryOrStatus(ctx context.Context, dbName string, fieldName string, v
 		return "", "", fmt.Errorf("field is required. Use --field flag.")
 	}
 
-	logger.Debug("Executing query", "database", resolvedDB, "field", resolvedField, "value", value)
-	results, err := manifest.ExecuteSimpleQuery(ctx, resolvedDB, resolvedField, value, matchAll, selectFields, filters)
+	// Get Repo Root for glob filtering
+	repoRoot, err := git.FindGitRoot()
+	if err != nil {
+		return "", "", fmt.Errorf("failed to find git root: %w", err)
+	}
+
+	logger.Debug("Executing query", "database", resolvedDB, "field", resolvedField, "value", value, "globs", queryGlobs)
+	results, err := manifest.ExecuteSimpleQuery(ctx, resolvedDB, resolvedField, value, matchAll, selectFields, filters, repoRoot, queryGlobs)
 	if err != nil {
 		return "", "", err
 	}
 
-	repoRoot, err := git.FindGitRoot()
-	if err != nil {
-		return "", "", fmt.Errorf("failed to find git root for coverage analysis: %w", err)
-	}
-
-	coverageReport, err := manifest.ExecuteCoverageAnalysis(ctx, resolvedDB, "", repoRoot, config.ActiveProfile)
+	coverageReport, err := manifest.ExecuteCoverageAnalysis(ctx, resolvedDB, "", repoRoot, config.ActiveProfile, queryGlobs)
 	if err != nil {
 		logger.Warning("Failed to execute coverage analysis", "error", err)
 		coverageReport = &manifest.CoverageReport{

@@ -1,12 +1,12 @@
 /**
  * Component: Tree Command
- * Block-UUID: 40a19b61-70d6-42dd-9f3a-8cf6c7397e04
- * Parent-UUID: ddaceecb-fa19-4713-870d-0d889804d903
- * Version: 1.7.2
+ * Block-UUID: 17504381-f0f8-4273-8609-33b028c515ea
+ * Parent-UUID: 237b09e4-6a86-4ea7-a68d-c5a6c6c57362
+ * Version: 1.8.1
  * Description: Implemented 'prune by default when filtering' behavior. Added --no-prune flag to allow users to see the full heat map. Updated EnrichTree call to pass requested fields for metadata projection. Updated help text for --prune to reflect new defaults.
  * Language: Go
- * Created-at: 2026-03-11T15:31:46.846Z
- * Authors: GLM-4.7 (v1.7.1), GLM-4.7 (v1.7.2)
+ * Created-at: 2026-04-05T19:09:56.648Z
+ * Authors: GLM-4.7 (v1.7.1), GLM-4.7 (v1.7.2), GLM-4.7 (v1.8.0), GLM-4.7 (v1.8.1)
  */
 
 
@@ -40,6 +40,7 @@ var (
 	treeFocus     []string
 	treeNoCompact bool
 	treeFieldSingular []string
+	treeGlobs     []string
 	treeNoPrune   bool
 	treeUUID      string
 	treeAuthCode  string
@@ -163,7 +164,7 @@ Filtering & Pruning:
 		}
 
 		// 5. Build Initial Tree (with Structural Focus)
-		rootNode := tree.BuildTree(files, cwdOffset, treeFocus)
+		rootNode := tree.BuildTree(files, cwdOffset, treeFocus, treeGlobs)
 
 		var filters []search.FilterCondition
 		if dbName != "" {
@@ -180,7 +181,13 @@ Filtering & Pruning:
 			} else {
 				// 8. Enrich Tree & Evaluate Filters
 				// Pass treeFields to ensure only requested fields are projected into the node metadata
-				tree.EnrichTree(rootNode, "", metadataMap, filters, treeFields)
+				
+				// Convert search.FileMetadata to map[string]map[string]interface{} for tree.EnrichTree
+				convertedMetadataMap := make(map[string]map[string]interface{})
+				for path, meta := range metadataMap {
+					convertedMetadataMap[path] = meta.Fields
+				}
+				tree.EnrichTree(rootNode, "", convertedMetadataMap, filters, treeFields)
 			}
 		} else if len(treeFilters) > 0 {
 			return fmt.Errorf("database (--db) is required when using --filter")
@@ -259,6 +266,7 @@ func init() {
 	// New Filter & Focus Flags
 	treeCmd.Flags().StringArrayVarP(&treeFilters, "filter", "F", []string{}, "Filter by metadata field. Supports 'in' (e.g., 'layer in cli,logic')")
 	treeCmd.Flags().StringArrayVarP(&treeFocus, "focus", "f", []string{}, "Restrict tree to specific paths or globs")
+	treeCmd.Flags().StringArrayVar(&treeGlobs, "glob", []string{}, "Filter by file path pattern (e.g., 'src/**/*.go')")
 	treeCmd.Flags().BoolVar(&treeNoCompact, "no-compact", false, "Show filenames for non-matching files in the heat map")
 	treeCmd.Flags().BoolVar(&treeNoPrune, "no-prune", false, "Show all files in the tree, marking matches (Heat Map mode)")
 	treeCmd.Flags().StringVar(&treeUUID, "uuid", "", "Contract UUID for remote execution")
