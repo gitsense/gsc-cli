@@ -1,12 +1,12 @@
 /**
  * Component: Scout Stream Event Processor
- * Block-UUID: ca2a8482-3106-4458-870a-46affc2fc652
- * Parent-UUID: f7600274-6d3a-4083-8445-9522a4cc18a2
- * Version: 1.0.6
+ * Block-UUID: 52ee5e51-87c4-4bbb-a6b6-36ae3ab720bb
+ * Parent-UUID: ca2a8482-3106-4458-870a-46affc2fc652
+ * Version: 1.0.7
  * Description: JSONL event streaming, parsing, and file I/O for Scout sessions
  * Language: Go
- * Created-at: 2026-04-01T02:47:34.146Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6)
+ * Created-at: 2026-04-05T14:51:08.901Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7)
  */
 
 
@@ -290,6 +290,7 @@ func (ph *ProcessorHelper) ReadSessionStatusFromEvents(turn int) (*StatusData, e
 	// Build status from events
 	status := &StatusData{
 		SessionID: ph.sessionConfig.SessionID,
+		SessionDir: ph.sessionConfig.GetSessionDir(),
 		Candidates: []Candidate{},
 	}
 

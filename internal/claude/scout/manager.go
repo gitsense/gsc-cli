@@ -1,12 +1,12 @@
 /**
  * Component: Scout Session Manager
- * Block-UUID: bbaa58c4-10a2-4fde-a8c1-a89de7fff930
- * Parent-UUID: 9c6696af-ba7b-479a-84e4-01b2a06df86c
- * Version: 1.5.3
+ * Block-UUID: 1405c45c-4328-46a9-b885-6e7db4749bc6
+ * Parent-UUID: bbaa58c4-10a2-4fde-a8c1-a89de7fff930
+ * Version: 1.5.4
  * Description: Orchestrates Scout discovery and verification phases. Refactored to focus on session lifecycle and orchestration; subprocess management moved to subprocess.go, stream processing moved to stream.go. Fixed to set phase in writeNoBrainsError based on current turn. Updated LoadSession to populate WorkingDirectories and ReferenceFilesContext from StatusData.
  * Language: Go
- * Created-at: 2026-04-03T03:04:53.284Z
- * Authors: claude-haiku-4-5-20251001 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.2.5), GLM-4.7 (v1.2.6), GLM-4.7 (v1.2.7), GLM-4.7 (v1.2.8), GLM-4.7 (v1.2.9), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.3.3), GLM-4.7 (v1.4.0), GLM-4.7 (v1.4.1), claude-haiku-4-5-20251001 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.5.2), GLM-4.7 (v1.5.3)
+ * Created-at: 2026-04-05T14:49:42.685Z
+ * Authors: claude-haiku-4-5-20251001 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.2.5), GLM-4.7 (v1.2.6), GLM-4.7 (v1.2.7), GLM-4.7 (v1.2.8), GLM-4.7 (v1.2.9), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.3.3), GLM-4.7 (v1.4.0), GLM-4.7 (v1.4.1), claude-haiku-4-5-20251001 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.5.2), GLM-4.7 (v1.5.3), GLM-4.7 (v1.5.4)
  */
 
 
@@ -284,6 +284,17 @@ func (m *Manager) StartTurn1Discovery() error {
 	}
 	m.debugLogger.Log("DEBUG", fmt.Sprintf("Created event writer: %s", logPath))
 
+	// Store log paths in session
+	m.session.Turn1LogPath = logPath
+	m.session.CurrentLogPath = logPath
+	
+	// Write session state to persist log paths
+	if err := m.writeSessionState(); err != nil {
+		m.debugLogger.LogError("Failed to write session state", err)
+		return err
+	}
+	m.debugLogger.Log("DEBUG", "Log paths stored in session state")
+
 	// Write init event
 	initEvent := InitEvent{
 		SessionID:             m.session.SessionID,
@@ -349,6 +360,17 @@ func (m *Manager) StartTurn2Verification(selectedCandidates *SelectedCandidates)
 		return err
 	}
 	m.debugLogger.Log("DEBUG", fmt.Sprintf("Created event writer: %s", logPath))
+
+	// Store log paths in session
+	m.session.Turn2LogPath = logPath
+	m.session.CurrentLogPath = logPath
+	
+	// Write session state to persist log paths
+	if err := m.writeSessionState(); err != nil {
+		m.debugLogger.LogError("Failed to write session state", err)
+		return err
+	}
+	m.debugLogger.Log("DEBUG", "Log paths stored in session state")
 
 	// Write init event with selected candidates
 	initEvent := InitEvent{

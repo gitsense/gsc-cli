@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Status Command
- * Block-UUID: 2bb7f270-cde1-4784-a117-0d97bc246c88
- * Parent-UUID: 0495fda9-b537-4e27-8ff0-492059e43daf
- * Version: 1.2.0
+ * Block-UUID: 1d3b6f3d-e252-4aec-b20c-eea8e872dd2c
+ * Parent-UUID: 2bb7f270-cde1-4784-a117-0d97bc246c88
+ * Version: 1.3.0
  * Description: Implements 'gsc claude scout status' command for monitoring Scout sessions. Updated to show phase display name instead of turn number.
  * Language: Go
- * Created-at: 2026-04-01T02:45:33.250Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), GLM-4.7 (v1.0.8), GLM-4.7 (v1.0.9), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
+ * Created-at: 2026-04-05T14:52:03.814Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), GLM-4.7 (v1.0.8), GLM-4.7 (v1.0.9), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
  */
 
 
@@ -156,6 +156,11 @@ func displayStatusPretty(cmd *cobra.Command, status *claudescout.StatusData) err
 	fmt.Fprintf(cmd.OutOrStdout(), "  ===================================================\n")
 	fmt.Fprintf(cmd.OutOrStdout(), "  Status: %s\n", colorizeStatus(getDisplayStatus(status)))
 	
+	// Show session directory
+	if status.SessionDir != "" {
+		fmt.Fprintf(cmd.OutOrStdout(), "  Directory: %s\n", status.SessionDir)
+	}
+	
 	// Show phase name instead of turn number
 	if status.Phase != "" {
 		fmt.Fprintf(cmd.OutOrStdout(), "  Phase:  %s\n", getPhaseDisplayName(status.Phase))
@@ -183,6 +188,11 @@ func displayStatusPretty(cmd *cobra.Command, status *claudescout.StatusData) err
 		for _, wd := range status.WorkingDirectories {
 			fmt.Fprintf(cmd.OutOrStdout(), "    • %s\n", wd.Name)
 		}
+	}
+
+	// Show current log file path
+	if status.CurrentLogPath != "" {
+		fmt.Fprintf(cmd.OutOrStdout(), "\n  Log File: %s\n", status.CurrentLogPath)
 	}
 
 	if status.TotalFound > 0 {

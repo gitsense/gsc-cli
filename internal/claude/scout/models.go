@@ -1,12 +1,12 @@
 /**
  * Component: Scout Models
- * Block-UUID: 5df06ca5-fa29-41f3-81d6-10dea58899e6
- * Parent-UUID: f71bcf94-e211-429e-b5e3-aeb026a21ae2
- * Version: 1.2.0
+ * Block-UUID: 085d825c-ffea-4fb6-b2e0-e6bfe9eb994d
+ * Parent-UUID: befbff1d-ab4c-41a8-97e7-732c0f45cc6b
+ * Version: 1.4.0
  * Description: Data structures for Scout feature (candidate discovery and verification). Added ReferenceFilesContext field to StatusData to persist reference files in session state.
  * Language: Go
- * Created-at: 2026-04-01T05:35:28.526Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.6), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
+ * Created-at: 2026-04-05T14:56:35.058Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.6), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
  */
 
 
@@ -29,6 +29,9 @@ type Session struct {
 	CompletedAt           *time.Time
 	Error                 *string
 	WatcherPID            *int `json:"watcher_pid,omitempty"`
+	Turn1LogPath         string `json:"turn_1_log_path,omitempty"`
+	Turn2LogPath         string `json:"turn_2_log_path,omitempty"`
+	CurrentLogPath       string `json:"current_log_path,omitempty"`
 }
 
 // WorkingDirectory represents a directory in the contract being searched
@@ -103,6 +106,10 @@ type StatusData struct {
 	ShutdownInitiated    bool                 `json:"shutdown_initiated,omitempty"`
 	ShutdownCompleted    bool                 `json:"shutdown_completed,omitempty"`
 	WatcherPID           *int                 `json:"watcher_pid,omitempty"`
+	SessionDir           string               `json:"session_dir,omitempty"`
+	Turn1LogPath         string               `json:"turn_1_log_path,omitempty"`
+	Turn2LogPath         string               `json:"turn_2_log_path,omitempty"`
+	CurrentLogPath       string               `json:"current_log_path,omitempty"`
 }
 
 // ProcessInfo contains process-level information

@@ -1,12 +1,12 @@
 /**
  * Component: Scout Subprocess Manager
- * Block-UUID: 2f5b2bcf-1f85-412a-a359-9fb5d0b19c75
- * Parent-UUID: 833e81a2-5feb-42c3-8540-3bf4274e4a1e
- * Version: 2.1.0
+ * Block-UUID: 1ec5b171-239c-4813-8392-a50076aa723d
+ * Parent-UUID: 2f5b2bcf-1f85-412a-a359-9fb5d0b19c75
+ * Version: 2.2.0
  * Description: Manages subprocess spawning, process lifecycle, signal handling, and resource cleanup for Scout Claude sessions. Updated to find gsc location using exec.LookPath and add its directory to PATH in subprocess.
  * Language: Go
- * Created-at: 2026-04-05T04:12:19.805Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0)
+ * Created-at: 2026-04-05T14:53:04.517Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0)
  */
 
 
@@ -280,8 +280,10 @@ exit $exit_code
 		m.debugLogger.LogProcessExit(cmd.Process.Pid, exitCode, err)
 		
 		// Update session state when process exits naturally
+		completedAt := time.Now()
 		if m.session != nil {
 			m.session.Status = "stopped"
+			m.session.CompletedAt = &completedAt
 		}
 		if m.processInfo != nil {
 			m.processInfo.Running = false
