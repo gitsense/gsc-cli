@@ -1,12 +1,12 @@
 /**
  * Component: Scout Models
- * Block-UUID: 2b8bb65e-d070-4384-98c3-24787b10f9fa
- * Parent-UUID: 0478b22f-42d8-440b-869a-2585c83661a6
- * Version: 1.6.0
+ * Block-UUID: 26207f2e-8ee2-4ce2-90fa-2ea8e78723d1
+ * Parent-UUID: 2b8bb65e-d070-4384-98c3-24787b10f9fa
+ * Version: 1.7.0
  * Description: Data structures for Scout feature (candidate discovery and verification). Added ReferenceFilesContext field to StatusData to persist reference files in session state.
  * Language: Go
- * Created-at: 2026-04-05T15:55:47.290Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.6), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0)
+ * Created-at: 2026-04-05T16:14:01.752Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.6), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0)
  */
 
 
@@ -19,16 +19,16 @@ import (
 // Session represents a Scout discovery/verification session
 type Session struct {
 	SessionDir            string              `json:"session_dir"`
-	SessionID             string
-	Intent                string
-	Model                 string
-	WorkingDirectories    []WorkingDirectory
-	ReferenceFilesContext []ReferenceFileContext
-	AutoReview            bool
-	Status                string // "discovery", "discovery_complete", "verification", "verification_complete", "stopped", "error"
-	StartedAt             time.Time
-	CompletedAt           *time.Time
-	Error                 *string
+	SessionID             string              `json:"session_id"`
+	Intent                string              `json:"intent"`
+	Model                 string              `json:"model"`
+	WorkingDirectories    []WorkingDirectory   `json:"working_directories"`
+	ReferenceFilesContext []ReferenceFileContext `json:"reference_files_context"`
+	AutoReview            bool                `json:"auto_review"`
+	Status                string              `json:"status"` // "discovery", "discovery_complete", "verification", "verification_complete", "stopped", "error"
+	StartedAt             time.Time           `json:"started_at"`
+	CompletedAt           *time.Time          `json:"completed_at,omitempty"`
+	Error                 *string             `json:"error,omitempty"`
 	WatcherPID            *int `json:"watcher_pid,omitempty"`
 	Turns                 []TurnState         `json:"turns"`
 }

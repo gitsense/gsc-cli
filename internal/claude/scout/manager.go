@@ -1,12 +1,12 @@
 /**
  * Component: Scout Session Manager
- * Block-UUID: f3dc09af-ed55-461d-b460-cc6db3987748
- * Parent-UUID: 1405c45c-4328-46a9-b885-6e7db4749bc6
- * Version: 1.6.0
+ * Block-UUID: 6eb8fd06-c1f8-46f2-9034-8ea2fb13a8da
+ * Parent-UUID: 6a20459a-899d-4985-ab23-31015adec09c
+ * Version: 1.8.0
  * Description: Orchestrates Scout discovery and verification phases. Refactored to focus on session lifecycle and orchestration; subprocess management moved to subprocess.go, stream processing moved to stream.go. Fixed to set phase in writeNoBrainsError based on current turn. Updated LoadSession to populate WorkingDirectories and ReferenceFilesContext from StatusData.
  * Language: Go
- * Created-at: 2026-04-05T15:48:27.823Z
- * Authors: claude-haiku-4-5-20251001 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.2.5), GLM-4.7 (v1.2.6), GLM-4.7 (v1.2.7), GLM-4.7 (v1.2.8), GLM-4.7 (v1.2.9), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.3.3), GLM-4.7 (v1.4.0), GLM-4.7 (v1.4.1), claude-haiku-4-5-20251001 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.5.2), GLM-4.7 (v1.5.3), GLM-4.7 (v1.5.4), GLM-4.7 (v1.6.0)
+ * Created-at: 2026-04-05T16:25:07.687Z
+ * Authors: claude-haiku-4-5-20251001 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.2.5), GLM-4.7 (v1.2.6), GLM-4.7 (v1.2.7), GLM-4.7 (v1.2.8), GLM-4.7 (v1.2.9), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.3.3), GLM-4.7 (v1.4.0), GLM-4.7 (v1.4.1), claude-haiku-4-5-20251001 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.5.2), GLM-4.7 (v1.5.3), GLM-4.7 (v1.5.4), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0)
  */
 
 
@@ -157,6 +157,7 @@ func (m *Manager) InitializeSession(intent string, workdirs []WorkingDirectory, 
 		AutoReview:            autoReview,
 		Status:                "discovery",
 		StartedAt:             time.Now(),
+		Turns:                 []TurnState{},
 	}
 	m.debugLogger.Log("DEBUG", "Session struct created")
 
@@ -746,27 +747,6 @@ func LoadSession(sessionID string) (*Manager, error) {
 		return nil, fmt.Errorf("failed to parse session state: %w", err)
 	}
 
-	// Reconstruct Session from StatusData
-	// Note: status.json contains StatusData, not Session
-	var statusData StatusData
-	if err := json.Unmarshal(data, &statusData); err != nil {
-		return nil, fmt.Errorf("failed to parse status data: %w", err)
-	}
-	
-	// Reconstruct Session from StatusData
-	session = Session{
-		SessionID:             statusData.SessionID,
-		Status:                statusData.Status,
-		StartedAt:             statusData.StartedAt,
-		CompletedAt:           statusData.CompletedAt,
-		Error:                 statusData.Error,
-		WorkingDirectories:    statusData.WorkingDirectories,
-		ReferenceFilesContext: statusData.ReferenceFilesContext,
-		// Intent, AutoReview, Model are not in StatusData
-		SessionDir:            statusData.SessionDir,
-		// These are only available during initial session creation
-	}
-
 	// Infer currentTurn from session status
 	currentTurn := 1
 	if session.Status == "verification" || session.Status == "verification_complete" {
@@ -783,9 +763,6 @@ func LoadSession(sessionID string) (*Manager, error) {
 		debugLogger: debugLogger,
 		currentTurn: currentTurn,
 	}
-
-	// Initialize ProcessInfo from loaded status
-	mgr.processInfo = &statusData.ProcessInfo
 
 	return mgr, nil
 }
