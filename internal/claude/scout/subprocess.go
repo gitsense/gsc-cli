@@ -1,18 +1,19 @@
 /**
  * Component: Scout Subprocess Manager
- * Block-UUID: 58a5c665-fa6e-4e4e-ade3-bc19a3211e37
- * Parent-UUID: d6e01837-6f56-49c6-bd8d-d8f13bac1f9f
- * Version: 1.4.0
- * Description: Manages subprocess spawning, process lifecycle, signal handling, and resource cleanup for Scout Claude sessions. Fixed to use heredoc for -p flag to prevent command substitution issues with backticks in markdown.
+ * Block-UUID: 2f5b2bcf-1f85-412a-a359-9fb5d0b19c75
+ * Parent-UUID: 833e81a2-5feb-42c3-8540-3bf4274e4a1e
+ * Version: 2.1.0
+ * Description: Manages subprocess spawning, process lifecycle, signal handling, and resource cleanup for Scout Claude sessions. Updated to find gsc location using exec.LookPath and add its directory to PATH in subprocess.
  * Language: Go
- * Created-at: 2026-04-04T16:30:00.000Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
+ * Created-at: 2026-04-05T04:12:19.805Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0)
  */
 
 
 package scout
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -21,6 +22,7 @@ import (
 	"runtime"
 	"strings"
 	"syscall"
+	"text/template"
 	"time"
 
 	"github.com/gitsense/gsc-cli/pkg/settings"
@@ -38,6 +40,16 @@ func (m *Manager) spawnClaudeSubprocess(turn int) error {
 	}
 	m.debugLogger.Log("DEBUG", fmt.Sprintf("GSC_HOME: %s", gscHome))
 
+	// Find gsc location to add to PATH
+	gscPath, err := exec.LookPath("gsc")
+	if err != nil {
+		m.debugLogger.LogError("Failed to find gsc in PATH", err)
+		return fmt.Errorf("gsc not found in PATH: %w", err)
+	}
+	gscDir := filepath.Dir(gscPath)
+	m.debugLogger.Log("DEBUG", fmt.Sprintf("Found gsc at: %s", gscPath))
+	m.debugLogger.Log("DEBUG", fmt.Sprintf("Adding to PATH: %s", gscDir))
+
 	// Write Scout permissions to restrict Bash to gsc commands only
 	if err := WriteScoutPermissions(m.config.GetTurnDir(turn)); err != nil {
 		m.debugLogger.LogError("Failed to write permissions", err)
@@ -52,16 +64,7 @@ func (m *Manager) spawnClaudeSubprocess(turn int) error {
 	}
 	m.debugLogger.Log("DEBUG", "Reference files written successfully")
 
-	// Copy tool capabilities to turn directory
-	toolCapabilitiesSrc := filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "tool_capabilities.md")
-	toolCapabilitiesDest := filepath.Join(m.config.GetTurnDir(turn), "tool-capabilities.md")
-	if err := copyFile(toolCapabilitiesSrc, toolCapabilitiesDest); err != nil {
-		m.debugLogger.LogError("Failed to copy tool capabilities", err)
-		return fmt.Errorf("failed to copy tool capabilities: %w", err)
-	}
-	m.debugLogger.Log("DEBUG", "Tool capabilities copied successfully")
-
-	// Copy methodology files to turn directory (Fix #1)
+	// Copy methodology files to turn directory
 	if turn == 1 {
 		discoverySrc := filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "discovery.md")
 		discoveryDest := filepath.Join(m.config.GetTurnDir(turn), "discovery.md")
@@ -94,7 +97,7 @@ func (m *Manager) spawnClaudeSubprocess(turn int) error {
 	}
 	m.debugLogger.Log("DEBUG", fmt.Sprintf("System prompt written to: %s", systemPromptFile))
 
-	// Write task prompt
+	// Write task prompt from template
 	workdirsMarkdown := m.formatWorkingDirectories()
 	refFilesMarkdown := m.formatReferenceFilesMetadata()
 	if err := writeTaskPrompt(m.config.GetTurnDir(turn), turn, workdirsMarkdown, refFilesMarkdown); err != nil {
@@ -103,7 +106,7 @@ func (m *Manager) spawnClaudeSubprocess(turn int) error {
 	}
 	m.debugLogger.Log("DEBUG", "Task prompt written successfully")
 
-	// Intent and codebase overview are already written by manager.go
+	// Intent is already written by manager.go
 
 	var cmd *exec.Cmd
 
@@ -169,13 +172,26 @@ func (m *Manager) spawnClaudeSubprocess(turn int) error {
 		}
 
 		// Create bash script content using heredoc for -p flag
+		// Add gsc directory to PATH
 		scriptContent := fmt.Sprintf(`#!/bin/bash
 set -e
+
+# Add gsc directory to PATH
+export PATH="%s:$PATH"
+
+# Verify gsc is available
+if ! command -v gsc &> /dev/null; then
+    echo "ERROR: gsc command not found in PATH"
+    echo "Current PATH: $PATH"
+    echo "Expected gsc at: %s"
+    exit 1
+fi
 
 echo "=== Starting Claude Scout subprocess ==="
 echo "Working directory: $(pwd)"
 echo "Turn: %d"
 echo "Session ID: %s"
+echo "gsc location: $(which gsc)"
 echo "=== Executing Claude command ==="
 
 claude --allowedTools Read,Bash \
@@ -193,7 +209,7 @@ echo "=== Claude subprocess completed ==="
 exit_code=$?
 echo "Exit code: $exit_code"
 exit $exit_code
-`, turn, m.session.SessionID, addDirFlagsStr, modelFlag, string(taskContent))
+`, gscDir, gscPath, turn, m.session.SessionID, addDirFlagsStr, modelFlag, string(taskContent))
 
 		// Write bash script to turn directory
 		scriptPath := filepath.Join(m.config.GetTurnDir(turn), "run-claude.sh")
@@ -471,7 +487,6 @@ func (m *Manager) writeReferenceFilesNDJSON() error {
 	}
 
 	turnDir := m.config.GetTurnDir(m.currentTurn)
-	// Fix #2: Write directly to turn directory instead of turn-data subdirectory
 	refPath := filepath.Join(turnDir, "references.ndjson")
 	file, err := os.Create(refPath)
 	if err != nil {
@@ -502,13 +517,11 @@ func (m *Manager) formatReferenceFilesMetadata() string {
 	}
 
 	var sb strings.Builder
-	// Fix #3: Changed "imported" to "included"
 	sb.WriteString("The following reference files have been included:\n")
 	for i, ref := range m.session.ReferenceFilesContext {
 		sb.WriteString(fmt.Sprintf("- reference-file-%03d: %s (chat-id: %d, repo: %s)\n",
 			i+1, ref.RelativePath, ref.ChatID, ref.Repository))
 	}
-	// Fix #2: Updated path reference from turn-data/references.ndjson to references.ndjson
 	sb.WriteString("\n**Note:** Complete reference file data is available in `references.ndjson` if you need to examine raw content.\n")
 	return sb.String()
 }
@@ -528,7 +541,7 @@ func (m *Manager) formatWorkingDirectories() string {
 	return sb.String()
 }
 
-// buildCombinedSystemPrompt reads and combines shared + turn-specific prompts
+// buildCombinedSystemPrompt reads and combines shared + turn-specific prompts with embedded tool capabilities
 func buildCombinedSystemPrompt(gscHome string, turn int) (string, error) {
 	// Read shared prompt
 	sharedPath := filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "system_prompt_shared.md")
@@ -549,15 +562,21 @@ func buildCombinedSystemPrompt(gscHome string, turn int) (string, error) {
 		return "", fmt.Errorf("failed to read turn-specific system prompt: %w", err)
 	}
 	
-	// Combine with tool capabilities reference
+	// Read tool capabilities
+	toolCapabilitiesPath := filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "tool_capabilities.md")
+	toolCapabilitiesContent, err := os.ReadFile(toolCapabilitiesPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read tool capabilities: %w", err)
+	}
+	
+	// Combine with tool capabilities embedded
 	combined := fmt.Sprintf(`# Scout System Prompt
 
 This file combines shared principles with turn-specific instructions.
 
 ## Tool Capabilities
 
-Tool capabilities reference is available at `+"`"+`tool-capabilities.md`+"`"+`.
-Read this file to understand available tools and their usage.
+%s
 
 ---
 
@@ -570,7 +589,7 @@ Read this file to understand available tools and their usage.
 # Turn %d Mission
 
 %s
-`, string(sharedContent), turn, string(turnContent))
+`, string(toolCapabilitiesContent), string(sharedContent), turn, string(turnContent))
 	
 	return combined, nil
 }
@@ -584,64 +603,47 @@ func copyFile(src, dst string) error {
 	return os.WriteFile(dst, data, 0644)
 }
 
-// writeTaskPrompt writes the generic task prompt to task.md
+// writeTaskPrompt writes the task prompt from template
 func writeTaskPrompt(turnDir string, turn int, workdirsMarkdown string, refFilesMarkdown string) error {
-	var taskPrompt string
-	if turn == 1 {
-		taskPrompt = fmt.Sprintf(`# Scout Turn 1: Discovery Phase
-
-You are Claude, acting as the discovery engine for Scout.
-
-## Your Task
-
-1. Read `+"`"+`intent.md`+"`"+` to understand the user's intent
-2. Read `+"`"+`codebase-overview.json`+"`"+` to understand the codebase structure
-3. Read `+"`"+`tool-capabilities.md`+"`"+` to understand available tools
-4. Review the working directories and reference files below
-5. Read `+"`"+`discovery.md`+"`"+` for detailed discovery methodology
-6. Execute the discovery phase following the instructions
-
-## ⚠️ CRITICAL WARNING: Do Not Read Files During Discovery
-
-**NEVER use the Read tool to read file contents during discovery.**
-
-If you need to match file content (e.g., function names, specific code patterns), use "gsc grep" instead:
-- "gsc grep --summary --fields purpose,keywords --db code-intent --format json 'functionName'"
-- "gsc grep --filter "keywords in (auth)" --format json 'validateToken'"
-
-**Why?**
-- "gsc grep" searches code content efficiently without reading entire files
-- Reading files wastes tokens and slows down the process
-- Only use the Read tool when metadata is genuinely ambiguous and you need to see the actual implementation
-
-## Working Directories
-%s
-
-## Reference Files
-%s
-`, workdirsMarkdown, refFilesMarkdown)
-	} else {
-		taskPrompt = fmt.Sprintf(`# Scout Turn 2: Verification Phase
-
-You are Claude, acting as the verification engine for Scout.
-
-## Your Task
-
-1. Read `+"`"+`intent.md`+"`"+` to understand the user's intent
-2. Read `+"`"+`codebase-overview.json`+"`"+` to understand the codebase structure
-3. Read `+"`"+`tool-capabilities.md`+"`"+` to understand available tools
-4. Review the working directories and reference files below
-5. Read `+"`"+`verification.md`+"`"+` for detailed verification methodology
-6. Execute the verification phase following the instructions
-
-## Working Directories
-%s
-
-## Reference Files
-%s
-`, workdirsMarkdown, refFilesMarkdown)
+	// Get GSC_HOME
+	gscHome, err := settings.GetGSCHome(false)
+	if err != nil {
+		return fmt.Errorf("failed to resolve GSC_HOME: %w", err)
 	}
-	
+
+	// Read task template
+	var templatePath string
+	if turn == 1 {
+		templatePath = filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "task_turn_1.md")
+	} else {
+		templatePath = filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "task_turn_2.md")
+	}
+
+	templateContent, err := os.ReadFile(templatePath)
+	if err != nil {
+		return fmt.Errorf("failed to read task template: %w", err)
+	}
+
+	// Create template and execute
+	tmpl, err := template.New("task").Parse(string(templateContent))
+	if err != nil {
+		return fmt.Errorf("failed to parse task template: %w", err)
+	}
+
+	var buf bytes.Buffer
+	data := struct {
+		Workdirs string
+		RefFiles string
+	}{
+		Workdirs: workdirsMarkdown,
+		RefFiles: refFilesMarkdown,
+	}
+
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return fmt.Errorf("failed to execute task template: %w", err)
+	}
+
+	// Write to task.md
 	taskPath := filepath.Join(turnDir, "task.md")
-	return os.WriteFile(taskPath, []byte(taskPrompt), 0644)
+	return os.WriteFile(taskPath, buf.Bytes(), 0644)
 }

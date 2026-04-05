@@ -38,10 +38,7 @@ func WriteScoutPermissions(turnDir string) error {
 				"Bash(tail)",
 				"Read(*)",
 			},
-			"deny": []string{
-				"Bash(*)",
-			},
-			"defaultMode": "dontAsk",
+			"defaultMode": "default",
 		},
 	}
 
