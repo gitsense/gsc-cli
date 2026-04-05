@@ -1,12 +1,12 @@
 /**
  * Component: Scout Session Configuration Helper
- * Block-UUID: 612d2411-6795-4796-9bb0-94d6b67594cc
- * Parent-UUID: cebd85e7-10ea-446a-a5d7-945f349007b8
- * Version: 1.0.4
+ * Block-UUID: c2091662-401e-478f-971e-bbe5cd14a85c
+ * Parent-UUID: 612d2411-6795-4796-9bb0-94d6b67594cc
+ * Version: 1.1.0
  * Description: Path resolution and session directory helpers for Scout operations
  * Language: Go
- * Created-at: 2026-04-03T03:05:52.483Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4)
+ * Created-at: 2026-04-05T15:47:01.233Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.1.0)
  */
 
 
@@ -44,9 +44,9 @@ func (sc *SessionConfig) GetSessionDir() string {
 	return filepath.Join(sc.GSCHome, settings.ScoutSessionsDirRelPath, sc.SessionID)
 }
 
-// GetStatusFile returns the absolute path to the status.json file
-func (sc *SessionConfig) GetStatusFile() string {
-	return filepath.Join(sc.GetSessionDir(), settings.ScoutStatusFileName)
+// GetSessionFile returns the absolute path to the session.json file
+func (sc *SessionConfig) GetSessionFile() string {
+	return filepath.Join(sc.GetSessionDir(), "session.json")
 }
 
 // GetIntentFile returns the absolute path to the intent.json file

@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Status Command
- * Block-UUID: 1d3b6f3d-e252-4aec-b20c-eea8e872dd2c
- * Parent-UUID: 2bb7f270-cde1-4784-a117-0d97bc246c88
- * Version: 1.3.0
+ * Block-UUID: bef51f29-f9bf-4f93-95a7-eaec04a2ad41
+ * Parent-UUID: 1d3b6f3d-e252-4aec-b20c-eea8e872dd2c
+ * Version: 1.4.0
  * Description: Implements 'gsc claude scout status' command for monitoring Scout sessions. Updated to show phase display name instead of turn number.
  * Language: Go
- * Created-at: 2026-04-05T14:52:03.814Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), GLM-4.7 (v1.0.8), GLM-4.7 (v1.0.9), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
+ * Created-at: 2026-04-05T15:53:56.483Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), GLM-4.7 (v1.0.8), GLM-4.7 (v1.0.9), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
  */
 
 
@@ -304,10 +304,29 @@ func followSessionEvents(cmd *cobra.Command, config *claudescout.SessionConfig) 
 				fmt.Fprintf(cmd.OutOrStdout(), ".")
 			}
 
-			// Try to read the latest log file
-			logFile, _, err := claudescout.NewProcessorHelper(config).GetLatestLogFile()
+			// Read session.json to get the current turn's log path
+			session, err := claudescout.NewProcessorHelper(config).ReadSession(config.SessionID)
 			if err != nil {
-				// Log file not yet created
+				// Session file not yet created
+				continue
+			}
+
+			// Find the current turn's log path
+			var logFile string
+			for _, turn := range session.Turns {
+				if turn.Status == "running" {
+					logFile = turn.LogPath
+					break
+				}
+			}
+			
+			// If no running turn, use the last turn
+			if logFile == "" && len(session.Turns) > 0 {
+				logFile = session.Turns[len(session.Turns)-1].LogPath
+			}
+			
+			// If still no log file, skip this iteration
+			if logFile == "" {
 				continue
 			}
 

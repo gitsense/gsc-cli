@@ -1,12 +1,12 @@
 /**
  * Component: Scout Models
- * Block-UUID: 085d825c-ffea-4fb6-b2e0-e6bfe9eb994d
- * Parent-UUID: befbff1d-ab4c-41a8-97e7-732c0f45cc6b
- * Version: 1.4.0
+ * Block-UUID: 2b8bb65e-d070-4384-98c3-24787b10f9fa
+ * Parent-UUID: 0478b22f-42d8-440b-869a-2585c83661a6
+ * Version: 1.6.0
  * Description: Data structures for Scout feature (candidate discovery and verification). Added ReferenceFilesContext field to StatusData to persist reference files in session state.
  * Language: Go
- * Created-at: 2026-04-05T14:56:35.058Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.6), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
+ * Created-at: 2026-04-05T15:55:47.290Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.6), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0)
  */
 
 
@@ -18,6 +18,7 @@ import (
 
 // Session represents a Scout discovery/verification session
 type Session struct {
+	SessionDir            string              `json:"session_dir"`
 	SessionID             string
 	Intent                string
 	Model                 string
@@ -29,9 +30,7 @@ type Session struct {
 	CompletedAt           *time.Time
 	Error                 *string
 	WatcherPID            *int `json:"watcher_pid,omitempty"`
-	Turn1LogPath         string `json:"turn_1_log_path,omitempty"`
-	Turn2LogPath         string `json:"turn_2_log_path,omitempty"`
-	CurrentLogPath       string `json:"current_log_path,omitempty"`
+	Turns                 []TurnState         `json:"turns"`
 }
 
 // WorkingDirectory represents a directory in the contract being searched
@@ -107,8 +106,6 @@ type StatusData struct {
 	ShutdownCompleted    bool                 `json:"shutdown_completed,omitempty"`
 	WatcherPID           *int                 `json:"watcher_pid,omitempty"`
 	SessionDir           string               `json:"session_dir,omitempty"`
-	Turn1LogPath         string               `json:"turn_1_log_path,omitempty"`
-	Turn2LogPath         string               `json:"turn_2_log_path,omitempty"`
 	CurrentLogPath       string               `json:"current_log_path,omitempty"`
 }
 
@@ -227,4 +224,21 @@ type SelectedCandidate struct {
 	FilePath    string  `json:"file_path"`
 	WorkdirID   int     `json:"workdir_id"`
 	OriginalScore float64 `json:"original_score"`
+}
+
+// TurnState represents the state of a single turn in a Scout session
+type TurnState struct {
+	TurnNumber           int                 `json:"turn_number"`
+	Status               string              `json:"status"` // "pending", "running", "complete", "error"
+	StartedAt            time.Time           `json:"started_at"`
+	CompletedAt          *time.Time          `json:"completed_at,omitempty"`
+	LogPath              string              `json:"log_path"`
+	ProcessInfo          ProcessInfo         `json:"process_info"`
+	Candidates           []Candidate         `json:"candidates,omitempty"`
+	TotalFound           int                 `json:"total_found"`
+	Usage                *Usage              `json:"usage,omitempty"`
+	Cost                 *float64            `json:"cost,omitempty"`
+	Duration             *int64              `json:"duration,omitempty"`
+	ClaudeSessionID      *string             `json:"claude_session_id,omitempty"`
+	Error                *string             `json:"error,omitempty"`
 }

@@ -1,12 +1,12 @@
 /**
  * Component: Scout Session Manager
- * Block-UUID: 1405c45c-4328-46a9-b885-6e7db4749bc6
- * Parent-UUID: bbaa58c4-10a2-4fde-a8c1-a89de7fff930
- * Version: 1.5.4
+ * Block-UUID: f3dc09af-ed55-461d-b460-cc6db3987748
+ * Parent-UUID: 1405c45c-4328-46a9-b885-6e7db4749bc6
+ * Version: 1.6.0
  * Description: Orchestrates Scout discovery and verification phases. Refactored to focus on session lifecycle and orchestration; subprocess management moved to subprocess.go, stream processing moved to stream.go. Fixed to set phase in writeNoBrainsError based on current turn. Updated LoadSession to populate WorkingDirectories and ReferenceFilesContext from StatusData.
  * Language: Go
- * Created-at: 2026-04-05T14:49:42.685Z
- * Authors: claude-haiku-4-5-20251001 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.2.5), GLM-4.7 (v1.2.6), GLM-4.7 (v1.2.7), GLM-4.7 (v1.2.8), GLM-4.7 (v1.2.9), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.3.3), GLM-4.7 (v1.4.0), GLM-4.7 (v1.4.1), claude-haiku-4-5-20251001 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.5.2), GLM-4.7 (v1.5.3), GLM-4.7 (v1.5.4)
+ * Created-at: 2026-04-05T15:48:27.823Z
+ * Authors: claude-haiku-4-5-20251001 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.2.5), GLM-4.7 (v1.2.6), GLM-4.7 (v1.2.7), GLM-4.7 (v1.2.8), GLM-4.7 (v1.2.9), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.3.3), GLM-4.7 (v1.4.0), GLM-4.7 (v1.4.1), claude-haiku-4-5-20251001 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.5.2), GLM-4.7 (v1.5.3), GLM-4.7 (v1.5.4), GLM-4.7 (v1.6.0)
  */
 
 
@@ -285,8 +285,17 @@ func (m *Manager) StartTurn1Discovery() error {
 	m.debugLogger.Log("DEBUG", fmt.Sprintf("Created event writer: %s", logPath))
 
 	// Store log paths in session
-	m.session.Turn1LogPath = logPath
-	m.session.CurrentLogPath = logPath
+	// Initialize or update Turn 1 state
+	if len(m.session.Turns) == 0 {
+		m.session.Turns = make([]TurnState, 1)
+	}
+	m.session.Turns[0] = TurnState{
+		TurnNumber:  1,
+		Status:      "running",
+		StartedAt:   time.Now(),
+		LogPath:     logPath,
+		ProcessInfo: ProcessInfo{Running: true},
+	}
 	
 	// Write session state to persist log paths
 	if err := m.writeSessionState(); err != nil {
@@ -362,8 +371,20 @@ func (m *Manager) StartTurn2Verification(selectedCandidates *SelectedCandidates)
 	m.debugLogger.Log("DEBUG", fmt.Sprintf("Created event writer: %s", logPath))
 
 	// Store log paths in session
-	m.session.Turn2LogPath = logPath
-	m.session.CurrentLogPath = logPath
+	// Mark Turn 1 as complete
+	if len(m.session.Turns) > 0 {
+		m.session.Turns[0].Status = "complete"
+		m.session.Turns[0].CompletedAt = &[]time.Time{time.Now()}[0]
+		m.session.Turns[0].ProcessInfo.Running = false
+	}
+	// Initialize Turn 2 state
+	m.session.Turns = append(m.session.Turns, TurnState{
+		TurnNumber:  2,
+		Status:      "running",
+		StartedAt:   time.Now(),
+		LogPath:     logPath,
+		ProcessInfo: ProcessInfo{Running: true},
+	})
 	
 	// Write session state to persist log paths
 	if err := m.writeSessionState(); err != nil {
@@ -417,33 +438,14 @@ func (m *Manager) StartTurn2Verification(selectedCandidates *SelectedCandidates)
 
 // GetSessionStatus reconstructs the current session status
 func (m *Manager) GetSessionStatus() (*StatusData, error) {
-	if m.session == nil {
-		return nil, fmt.Errorf("session not initialized")
-	}
-
-	// Read status from latest turn's log file
-	status, err := m.processor.ReadSessionStatusFromEvents(m.currentTurn)
+	// Read session.json (single source of truth)
+	session, err := m.processor.ReadSession(m.config.SessionID)
 	if err != nil {
-		m.debugLogger.LogError("Failed to read status from events", err)
-		// If no events yet, construct minimal status with safe ProcessInfo
-		processInfo := ProcessInfo{}
-		if m.processInfo != nil {
-			processInfo = *m.processInfo
-		}
-
-		status = &StatusData{
-			SessionID:          m.session.SessionID,
-			Status:             m.session.Status,
-			Phase:              "discovery",
-			StartedAt:          m.session.StartedAt,
-			WorkingDirectories: m.session.WorkingDirectories,
-			ReferenceFilesContext: m.session.ReferenceFilesContext,
-			Candidates:         []Candidate{},
-			ProcessInfo:        processInfo,
-		}
+		return nil, fmt.Errorf("failed to read session: %w", err)
 	}
 
-	return status, nil
+	// Generate StatusData from Session for display
+	return m.processor.GenerateStatusData(session, m.currentTurn)
 }
 
 // GetFinalizedTurnResults retrieves the finalized results for a specific turn
@@ -699,24 +701,18 @@ func (m *Manager) WriteSessionState() error {
 
 // writeSessionState writes the session state to disk
 func (m *Manager) writeSessionState() error {
-	statusPath := m.config.GetStatusFile()
+	sessionPath := m.config.GetSessionFile()
 
-	// Get full status data including candidates, process info, etc.
-	status, err := m.GetSessionStatus()
+	// Marshal the complete session state directly
+	data, err := json.MarshalIndent(m.session, "", "  ")
 	if err != nil {
-		m.debugLogger.LogError("Failed to get session status for write", err)
+		m.debugLogger.LogError("Failed to marshal session status", err)
 		return fmt.Errorf("failed to marshal session: %w", err)
 	}
 
-	data, err := json.MarshalIndent(status, "", "  ")
-	if err != nil {
-		m.debugLogger.LogError("Failed to marshal session status", err)
-		return fmt.Errorf("failed to marshal status: %w", err)
-	}
-
-	if err := os.WriteFile(statusPath, data, 0644); err != nil {
+	if err := os.WriteFile(sessionPath, data, 0644); err != nil {
 		m.debugLogger.LogError("Failed to write status file", err)
-		return fmt.Errorf("failed to write status file: %w", err)
+		return fmt.Errorf("failed to write session file: %w", err)
 	}
 
 	return nil
@@ -739,8 +735,8 @@ func LoadSession(sessionID string) (*Manager, error) {
 		return nil, err
 	}
 
-	statusPath := config.GetStatusFile()
-	data, err := os.ReadFile(statusPath)
+	sessionPath := config.GetSessionFile()
+	data, err := os.ReadFile(sessionPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read status file: %w", err)
 	}
@@ -756,7 +752,7 @@ func LoadSession(sessionID string) (*Manager, error) {
 	if err := json.Unmarshal(data, &statusData); err != nil {
 		return nil, fmt.Errorf("failed to parse status data: %w", err)
 	}
-
+	
 	// Reconstruct Session from StatusData
 	session = Session{
 		SessionID:             statusData.SessionID,
@@ -767,6 +763,7 @@ func LoadSession(sessionID string) (*Manager, error) {
 		WorkingDirectories:    statusData.WorkingDirectories,
 		ReferenceFilesContext: statusData.ReferenceFilesContext,
 		// Intent, AutoReview, Model are not in StatusData
+		SessionDir:            statusData.SessionDir,
 		// These are only available during initial session creation
 	}
 
@@ -775,6 +772,9 @@ func LoadSession(sessionID string) (*Manager, error) {
 	if session.Status == "verification" || session.Status == "verification_complete" {
 		currentTurn = 2
 	}
+
+	// Set SessionDir from config
+	session.SessionDir = config.GetSessionDir()
 
 	mgr := &Manager{
 		config:      config,

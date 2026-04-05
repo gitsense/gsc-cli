@@ -1,12 +1,12 @@
 /**
  * Component: Scout Stream Event Processor
- * Block-UUID: 52ee5e51-87c4-4bbb-a6b6-36ae3ab720bb
- * Parent-UUID: ca2a8482-3106-4458-870a-46affc2fc652
- * Version: 1.0.7
+ * Block-UUID: 55333790-587b-4154-a4fd-e1432541dbd1
+ * Parent-UUID: 52ee5e51-87c4-4bbb-a6b6-36ae3ab720bb
+ * Version: 1.1.0
  * Description: JSONL event streaming, parsing, and file I/O for Scout sessions
  * Language: Go
- * Created-at: 2026-04-05T14:51:08.901Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7)
+ * Created-at: 2026-04-05T15:49:30.370Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), GLM-4.7 (v1.1.0)
  */
 
 
@@ -380,4 +380,82 @@ func (ph *ProcessorHelper) CopyReferenceFile(sourceFile string, refType string) 
 	}
 
 	return nil
+}
+
+// ReadSession reads the session.json file and returns the Session struct
+func (ph *ProcessorHelper) ReadSession(sessionID string) (*Session, error) {
+	sessionPath := ph.sessionConfig.GetSessionFile()
+	data, err := os.ReadFile(sessionPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read session file: %w", err)
+	}
+
+	var session Session
+	if err := json.Unmarshal(data, &session); err != nil {
+		return nil, fmt.Errorf("failed to parse session file: %w", err)
+	}
+
+	return &session, nil
+}
+
+// GenerateStatusData creates StatusData from Session for display purposes
+func (ph *ProcessorHelper) GenerateStatusData(session *Session, currentTurn int) (*StatusData, error) {
+	if session == nil {
+		return nil, fmt.Errorf("session is nil")
+	}
+
+	// Find the current turn
+	var currentTurnState *TurnState
+	for i := range session.Turns {
+		if session.Turns[i].TurnNumber == currentTurn {
+			currentTurnState = &session.Turns[i]
+			break
+		}
+	}
+
+	// If no current turn found, use the last turn
+	if currentTurnState == nil && len(session.Turns) > 0 {
+		currentTurnState = &session.Turns[len(session.Turns)-1]
+	}
+
+	// Determine phase name
+	phase := "discovery"
+	if currentTurnState != nil && currentTurnState.TurnNumber == 2 {
+		phase = "verification"
+	}
+
+	// Build StatusData
+	status := &StatusData{
+		SessionID:            session.SessionID,
+		Status:               session.Status,
+		Phase:                phase,
+		StartedAt:            session.StartedAt,
+		CompletedAt:          session.CompletedAt,
+		WorkingDirectories:   session.WorkingDirectories,
+		ReferenceFilesContext: session.ReferenceFilesContext,
+		SessionDir:           session.SessionDir,
+		WatcherPID:           session.WatcherPID,
+	}
+
+	// Add turn-specific data
+	if currentTurnState != nil {
+		status.Candidates = currentTurnState.Candidates
+		status.TotalFound = currentTurnState.TotalFound
+		status.ProcessInfo = currentTurnState.ProcessInfo
+		status.Usage = currentTurnState.Usage
+		status.Cost = currentTurnState.Cost
+		status.Duration = currentTurnState.Duration
+		status.ClaudeSessionID = currentTurnState.ClaudeSessionID
+		status.Error = currentTurnState.Error
+		status.CurrentLogPath = currentTurnState.LogPath
+	}
+
+	// Calculate elapsed time
+	if status.CompletedAt != nil {
+		status.ElapsedSeconds = int64(status.CompletedAt.Sub(status.StartedAt).Seconds())
+	} else {
+		status.ElapsedSeconds = int64(time.Since(session.StartedAt).Seconds())
+	}
+
+	return status, nil
 }

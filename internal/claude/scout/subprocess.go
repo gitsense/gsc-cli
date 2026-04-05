@@ -1,12 +1,12 @@
 /**
  * Component: Scout Subprocess Manager
- * Block-UUID: 1ec5b171-239c-4813-8392-a50076aa723d
- * Parent-UUID: 2f5b2bcf-1f85-412a-a359-9fb5d0b19c75
- * Version: 2.2.0
+ * Block-UUID: a245e2e4-ff99-4ca3-a8d9-b2167be9e057
+ * Parent-UUID: 1ec5b171-239c-4813-8392-a50076aa723d
+ * Version: 2.3.0
  * Description: Manages subprocess spawning, process lifecycle, signal handling, and resource cleanup for Scout Claude sessions. Updated to find gsc location using exec.LookPath and add its directory to PATH in subprocess.
  * Language: Go
- * Created-at: 2026-04-05T14:53:04.517Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0)
+ * Created-at: 2026-04-05T15:52:38.091Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0)
  */
 
 
@@ -279,9 +279,27 @@ exit $exit_code
 		}
 		m.debugLogger.LogProcessExit(cmd.Process.Pid, exitCode, err)
 		
-		// Update session state when process exits naturally
+		// Update turn state when process exits naturally
 		completedAt := time.Now()
 		if m.session != nil {
+			// Find the current turn and update its state
+			for i := range m.session.Turns {
+				if m.session.Turns[i].TurnNumber == m.currentTurn {
+					m.session.Turns[i].Status = "complete"
+					m.session.Turns[i].CompletedAt = &completedAt
+					m.session.Turns[i].ProcessInfo.Running = false
+					m.session.Turns[i].ProcessInfo.PID = cmd.Process.Pid
+					
+					// Set error if process exited with non-zero code
+					if exitCode != 0 {
+						errorMsg := fmt.Sprintf("Process exited with code %d", exitCode)
+						m.session.Turns[i].Error = &errorMsg
+					}
+					break
+				}
+			}
+			
+			// Update overall session status
 			m.session.Status = "stopped"
 			m.session.CompletedAt = &completedAt
 		}
