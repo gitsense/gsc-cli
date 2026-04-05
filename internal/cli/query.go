@@ -1,12 +1,12 @@
 /**
  * Component: Query Command
- * Block-UUID: 29e34576-a55c-4539-b05a-72e2893516fe
- * Parent-UUID: 97011604-8d48-4714-b73e-970f6168b350
- * Version: 3.25.0
+ * Block-UUID: c42a2fca-fecd-4117-a53a-819110c43f54
+ * Parent-UUID: 968d3650-7a0b-4895-9fbc-b4e02aad56c3
+ * Version: 3.27.0
  * Description: Simplified 'gsc query' interface by hiding subcommands (list, insights, coverage, fields, brains) and legacy flags (--field, --value). Updated examples to promote the --filter syntax.
  * Language: Go
- * Created-at: 2026-04-05T18:55:08.946Z
- * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v3.17.0), claude-haiku-4-5-20251001 (v3.18.0), GLM-4.7 (v3.19.0), GLM-4.7 (v3.20.0), GLM-4.7 (v3.21.0), GLM-4.7 (v3.22.0), GLM-4.7 (v3.23.0), GLM-4.7 (v3.24.0), GLM-4.7 (v3.25.0)
+ * Created-at: 2026-04-05T20:54:52.564Z
+ * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v3.26.0), claude-haiku-4-5-20251001 (v3.27.0)
  */
 
 
@@ -519,6 +519,18 @@ func handleCoverage(ctx context.Context, dbName string, scopeOverride string, fo
 	}
 
 	output := manifest.FormatCoverageReport(report, format, quiet, config)
+	
+	// Append hint for simple extension patterns to the output
+	if format != "json" {
+		for _, pattern := range queryGlobs {
+			if isSimpleExtensionPattern(pattern) {
+				output += "\n\nHint: Pattern '" + pattern + "' matches files in the current directory only.\n"
+				output += "      Use '**/" + pattern + "' to match files in all subdirectories.\n"
+				break
+			}
+		}
+	}
+	
 	return output, resolvedDB, nil
 }
 
@@ -585,6 +597,17 @@ func handleInsights(ctx context.Context, dbName string, fields []string, limit i
 		output = manifest.FormatInsightsReport(report, outputFormat, quiet, config)
 	}
 
+	// Append hint for simple extension patterns to the output
+	if outputFormat != "json" {
+		for _, pattern := range queryGlobs {
+			if isSimpleExtensionPattern(pattern) {
+				output += "\n\nHint: Pattern '" + pattern + "' matches files in the current directory only.\n"
+				output += "      Use '**/" + pattern + "' to match files in all subdirectories.\n"
+				break
+			}
+		}
+	}
+	
 	return output, resolvedDB, nil
 }
 
@@ -716,7 +739,30 @@ func handleQueryOrStatus(ctx context.Context, dbName string, fieldName string, v
 	}
 
 	output := manifest.FormatQueryResults(response, resolvedFormat, quiet, config)
+	
+	// Append hint for simple extension patterns to the output
+	if resolvedFormat != "json" {
+		for _, pattern := range queryGlobs {
+			if isSimpleExtensionPattern(pattern) {
+				output += "\n\nHint: Pattern '" + pattern + "' matches files in the current directory only.\n"
+				output += "      Use '**/" + pattern + "' to match files in all subdirectories.\n"
+				break
+			}
+		}
+	}
+	
 	return output, resolvedDB, nil
+}
+
+// isSimpleExtensionPattern checks if a glob pattern is a simple extension pattern
+// like "*.go" that only matches files in the current directory.
+func isSimpleExtensionPattern(pattern string) bool {
+	// Matches: *.go, *.js, *.md
+	// Does not match: **/*.go, internal/*.go, test_*.go
+	return strings.HasPrefix(pattern, "*.") &&
+		!strings.Contains(pattern, "/") &&
+		!strings.Contains(pattern, "\\") &&
+		len(pattern) > 2 // More than just "*."
 }
 
 // parseQueryExpression parses expressions like "field in (value1,value2)" or "field=value"

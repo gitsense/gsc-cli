@@ -1,12 +1,12 @@
 /**
  * Component: Tree Command
- * Block-UUID: 17504381-f0f8-4273-8609-33b028c515ea
- * Parent-UUID: 237b09e4-6a86-4ea7-a68d-c5a6c6c57362
- * Version: 1.8.1
+ * Block-UUID: ecd8ef58-add3-4a6b-9eb7-caf65a84f554
+ * Parent-UUID: 1dc167db-008f-40b1-92d0-459c0113f727
+ * Version: 1.10.0
  * Description: Implemented 'prune by default when filtering' behavior. Added --no-prune flag to allow users to see the full heat map. Updated EnrichTree call to pass requested fields for metadata projection. Updated help text for --prune to reflect new defaults.
  * Language: Go
- * Created-at: 2026-04-05T19:09:56.648Z
- * Authors: GLM-4.7 (v1.7.1), GLM-4.7 (v1.7.2), GLM-4.7 (v1.8.0), GLM-4.7 (v1.8.1)
+ * Created-at: 2026-04-05T20:55:35.360Z
+ * Authors: GLM-4.7 (v1.7.1), GLM-4.7 (v1.7.2), GLM-4.7 (v1.8.0), GLM-4.7 (v1.8.1), GLM-4.7 (v1.9.0), GLM-4.7 (v1.9.1), claude-haiku-4-5-20251001 (v1.10.0)
  */
 
 
@@ -250,6 +250,18 @@ Filtering & Pruning:
 
 		// Standard Output
 		fmt.Print(outputStr)
+		
+		// Append hint for simple extension patterns to the output
+		if treeFormat != "json" {
+			for _, pattern := range treeGlobs {
+				if isSimpleExtensionPattern(pattern) {
+					fmt.Printf("\n\nHint: Pattern '%s' matches files in the current directory only.\n", pattern)
+					fmt.Printf("      Use '**/%s' to match files in all subdirectories.\n", pattern)
+					break
+				}
+			}
+		}
+		
 		return nil
 	},
 }
