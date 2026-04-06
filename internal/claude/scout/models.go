@@ -1,12 +1,12 @@
 /**
  * Component: Scout Models
- * Block-UUID: 26207f2e-8ee2-4ce2-90fa-2ea8e78723d1
- * Parent-UUID: 2b8bb65e-d070-4384-98c3-24787b10f9fa
- * Version: 1.7.0
+ * Block-UUID: c6253492-f0d4-451a-be9d-325578a0d99a
+ * Parent-UUID: 26207f2e-8ee2-4ce2-90fa-2ea8e78723d1
+ * Version: 1.8.0
  * Description: Data structures for Scout feature (candidate discovery and verification). Added ReferenceFilesContext field to StatusData to persist reference files in session state.
  * Language: Go
- * Created-at: 2026-04-05T16:14:01.752Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.6), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0)
+ * Created-at: 2026-04-06T03:31:01.050Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.6), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0)
  */
 
 
@@ -107,6 +107,8 @@ type StatusData struct {
 	WatcherPID           *int                 `json:"watcher_pid,omitempty"`
 	SessionDir           string               `json:"session_dir,omitempty"`
 	CurrentLogPath       string               `json:"current_log_path,omitempty"`
+	Turns                []TurnState          `json:"turns"`
+	CurrentTurn          int                  `json:"current_turn"`
 }
 
 // ProcessInfo contains process-level information

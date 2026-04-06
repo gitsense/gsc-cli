@@ -1,12 +1,12 @@
 /**
  * Component: Scout Stream Event Processor
- * Block-UUID: b02fe205-6f95-4e18-88e3-fb24a6d509c4
- * Parent-UUID: 55333790-587b-4154-a4fd-e1432541dbd1
- * Version: 1.1.1
+ * Block-UUID: 12024f23-f259-4357-ae25-c4c78de6a28f
+ * Parent-UUID: b02fe205-6f95-4e18-88e3-fb24a6d509c4
+ * Version: 1.1.2
  * Description: JSONL event streaming, parsing, and file I/O for Scout sessions
  * Language: Go
- * Created-at: 2026-04-05T15:49:30.370Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), GLM-4.7 (v1.1.0), GLM-4.7 (v1.1.1)
+ * Created-at: 2026-04-06T03:31:56.462Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), GLM-4.7 (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.1.2)
  */
 
 
@@ -435,6 +435,8 @@ func (ph *ProcessorHelper) GenerateStatusData(session *Session, currentTurn int)
 		ReferenceFilesContext: session.ReferenceFilesContext,
 		SessionDir:           session.SessionDir,
 		WatcherPID:           session.WatcherPID,
+		Turns:                session.Turns,
+		CurrentTurn:          currentTurn,
 	}
 
 	// Add turn-specific data
