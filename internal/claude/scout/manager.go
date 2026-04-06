@@ -1,12 +1,12 @@
 /**
  * Component: Scout Session Manager
- * Block-UUID: 6eb8fd06-c1f8-46f2-9034-8ea2fb13a8da
- * Parent-UUID: 6a20459a-899d-4985-ab23-31015adec09c
- * Version: 1.8.0
+ * Block-UUID: 4d70aeda-498d-4cb8-8245-ef2f4423e533
+ * Parent-UUID: 6eb8fd06-c1f8-46f2-9034-8ea2fb13a8da
+ * Version: 1.9.0
  * Description: Orchestrates Scout discovery and verification phases. Refactored to focus on session lifecycle and orchestration; subprocess management moved to subprocess.go, stream processing moved to stream.go. Fixed to set phase in writeNoBrainsError based on current turn. Updated LoadSession to populate WorkingDirectories and ReferenceFilesContext from StatusData.
  * Language: Go
- * Created-at: 2026-04-05T16:25:07.687Z
- * Authors: claude-haiku-4-5-20251001 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.2.5), GLM-4.7 (v1.2.6), GLM-4.7 (v1.2.7), GLM-4.7 (v1.2.8), GLM-4.7 (v1.2.9), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.3.3), GLM-4.7 (v1.4.0), GLM-4.7 (v1.4.1), claude-haiku-4-5-20251001 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.5.2), GLM-4.7 (v1.5.3), GLM-4.7 (v1.5.4), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0)
+ * Created-at: 2026-04-05T23:56:02.382Z
+ * Authors: claude-haiku-4-5-20251001 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.2.5), GLM-4.7 (v1.2.6), GLM-4.7 (v1.2.7), GLM-4.7 (v1.2.8), GLM-4.7 (v1.2.9), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.3.3), GLM-4.7 (v1.4.0), GLM-4.7 (v1.4.1), claude-haiku-4-5-20251001 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.5.2), GLM-4.7 (v1.5.3), GLM-4.7 (v1.5.4), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0)
  */
 
 
@@ -120,7 +120,31 @@ func (m *Manager) InitializeSession(intent string, workdirs []WorkingDirectory, 
 		return err
 	}
 
-	if errs, _ := ValidateSetup(workdirs, refFilesContext); len(errs) > 0 {
+	// Initialize directories first (so we have a place to write session.json)
+	if err := m.config.InitializeSessionDirs(); err != nil {
+		m.debugLogger.LogError("Failed to initialize session directories", err)
+		return err
+	}
+	m.debugLogger.Log("DEBUG", "Session directories initialized")
+
+	// Create session struct with common state information
+	m.session = &Session{
+		SessionDir: 		   m.config.GetSessionDir(),
+		SessionID:             m.config.SessionID,
+		Intent:                intent,
+		Model:                 model,
+		WorkingDirectories:    workdirs,
+		ReferenceFilesContext: refFilesContext,
+		AutoReview:            autoReview,
+		Status:                "discovery",  // Default status
+		StartedAt:             time.Now(),
+		Turns:                 []TurnState{},
+	}
+	m.debugLogger.Log("DEBUG", "Session struct created")
+
+	// Validate setup
+	errs, _ := ValidateSetup(workdirs, refFilesContext)
+	if len(errs) > 0 {
 		// Build detailed error message
 		var errorDetails []string
 		for _, e := range errs {
@@ -128,16 +152,25 @@ func (m *Manager) InitializeSession(intent string, workdirs []WorkingDirectory, 
 		}
 		errMsg := fmt.Sprintf("validation failed with %d error(s):\n%s", len(errs), strings.Join(errorDetails, "\n"))
 		m.debugLogger.LogError("Setup validation failed", fmt.Errorf(errMsg))
+
+		// Update only error-specific fields
+		m.session.Status = "error"
+		m.session.Error = &errMsg
+		completedAt := time.Now()
+		m.session.CompletedAt = &completedAt
+		m.debugLogger.Log("DEBUG", "Session updated with error status")
+
+		// Write session state with error
+		if err := m.WriteSessionState(); err != nil {
+			m.debugLogger.LogError("Failed to write session state", err)
+			return fmt.Errorf("%s (also failed to write session state: %w)", errMsg, err)
+		}
+		m.debugLogger.Log("DEBUG", "Session state written with error")
+
+		// Return the validation error
 		return fmt.Errorf(errMsg)
 	}
 	m.debugLogger.Log("DEBUG", "Validation passed")
-
-	// Initialize directories
-	if err := m.config.InitializeSessionDirs(); err != nil {
-		m.debugLogger.LogError("Failed to initialize session directories", err)
-		return err
-	}
-	m.debugLogger.Log("DEBUG", "Session directories initialized")
 
 	// Write intent to turn-1/intent.md
 	intentPath := m.config.GetIntentFile(1)
@@ -147,23 +180,8 @@ func (m *Manager) InitializeSession(intent string, workdirs []WorkingDirectory, 
 	}
 	m.debugLogger.Log("DEBUG", fmt.Sprintf("Intent written to: %s", intentPath))
 
-	// Create session struct
-	m.session = &Session{
-		SessionID:             m.config.SessionID,
-		Intent:                intent,
-		Model:                 model,
-		WorkingDirectories:    workdirs,
-		ReferenceFilesContext: refFilesContext,
-		AutoReview:            autoReview,
-		Status:                "discovery",
-		StartedAt:             time.Now(),
-		Turns:                 []TurnState{},
-	}
-	m.debugLogger.Log("DEBUG", "Session struct created")
-
-	// Reference files from NDJSON already have content embedded, no need to copy
-
-	return m.writeSessionState()
+	// Write session state for successful initialization
+	return m.WriteSessionState()
 }
 
 // PrepareTurn1 generates codebase overview and handles no-brains case
@@ -752,9 +770,6 @@ func LoadSession(sessionID string) (*Manager, error) {
 	if session.Status == "verification" || session.Status == "verification_complete" {
 		currentTurn = 2
 	}
-
-	// Set SessionDir from config
-	session.SessionDir = config.GetSessionDir()
 
 	mgr := &Manager{
 		config:      config,

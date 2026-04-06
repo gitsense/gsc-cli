@@ -1,12 +1,12 @@
 /**
  * Component: Scout Setup and Configuration Validator
- * Block-UUID: fde264bb-f146-4055-b30c-b463d25ad0f4
- * Parent-UUID: 76f5d39b-3ce2-471f-9faa-4a5aa83b65e0
- * Version: 1.3.1
+ * Block-UUID: a5828e66-49d9-4eca-a9bd-38f9e75436ee
+ * Parent-UUID: fde264bb-f146-4055-b30c-b463d25ad0f4
+ * Version: 1.3.2
  * Description: Validates scout session prerequisites (brain database, working directories). Updated to check for code-intent brain in database registry instead of on disk.
  * Language: Go
- * Created-at: 2026-04-01T02:18:32.774Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), claude-haiku-4-5-20251001 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1)
+ * Created-at: 2026-04-06T00:10:57.020Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), claude-haiku-4-5-20251001 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2)
  */
 
 
@@ -80,7 +80,7 @@ func ValidateWorkdir(wd WorkingDirectory) ([]ValidationError, error) {
 	}
 
 	// Validate code-intent brain exists in database
-	if errs := ValidateBrainDatabase("code-intent"); len(errs) > 0 {
+	if errs := ValidateBrainDatabase("code-intent", wd.Name); len(errs) > 0 {
 		errors = append(errors, errs...)
 	}
 
@@ -88,7 +88,7 @@ func ValidateWorkdir(wd WorkingDirectory) ([]ValidationError, error) {
 }
 
 // ValidateBrainDatabase checks if the specified brain database exists and contains required fields
-func ValidateBrainDatabase(dbName string) []ValidationError {
+func ValidateBrainDatabase(dbName string, workdirName string) []ValidationError {
 	var errors []ValidationError
 
 	// 1. Check if database exists in registry
@@ -97,7 +97,7 @@ func ValidateBrainDatabase(dbName string) []ValidationError {
 		return []ValidationError{
 			{
 				Type:    "missing_brain",
-				Message: fmt.Sprintf("Failed to load registry: %v", err),
+				Message: fmt.Sprintf("Failed to load registry for working directory (%s): %v", workdirName, err),
 				Details: "Cannot verify brain database without registry access",
 			},
 		}
@@ -108,7 +108,7 @@ func ValidateBrainDatabase(dbName string) []ValidationError {
 		return []ValidationError{
 			{
 				Type:    "missing_brain",
-				Message: fmt.Sprintf("Brain database '%s' not found in registry", dbName),
+				Message: fmt.Sprintf("Brain database '%s' not found in registry for working directory (%s)", dbName, workdirName),
 				Details: "Please import the brain database using 'gsc manifest import'",
 			},
 		}
@@ -120,7 +120,7 @@ func ValidateBrainDatabase(dbName string) []ValidationError {
 		return []ValidationError{
 			{
 				Type:    "missing_brain",
-				Message: fmt.Sprintf("Brain database file not found: %s", dbName),
+				Message: fmt.Sprintf("Brain database file not found for working directory (%s): %s", workdirName, dbName),
 				Details: err.Error(),
 			},
 		}
@@ -133,7 +133,7 @@ func ValidateBrainDatabase(dbName string) []ValidationError {
 		return []ValidationError{
 			{
 				Type:    "missing_brain",
-				Message: fmt.Sprintf("Failed to query brain database schema: %s", dbName),
+				Message: fmt.Sprintf("Failed to query brain database schema for working directory (%s): %s", workdirName, dbName),
 				Details: err.Error(),
 			},
 		}
@@ -155,7 +155,7 @@ func ValidateBrainDatabase(dbName string) []ValidationError {
 	if len(missingFields) > 0 {
 		errors = append(errors, ValidationError{
 			Type:    "missing_fields",
-			Message: fmt.Sprintf("Brain database '%s' is missing required fields", dbName),
+			Message: fmt.Sprintf("Brain database '%s' is missing required fields for working directory (%s)", dbName, workdirName),
 			Details: fmt.Sprintf("Missing fields: %v", missingFields),
 		})
 	}
