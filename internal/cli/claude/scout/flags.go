@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Flags and Options
- * Block-UUID: db648b40-f87b-468f-ba45-461b5d7eeecd
- * Parent-UUID: 35f54e7f-f149-4dd3-8403-a797462ce180
- * Version: 1.9.0
+ * Block-UUID: b78e624a-3a73-4328-add2-3dc612c491ff
+ * Parent-UUID: db648b40-f87b-468f-ba45-461b5d7eeecd
+ * Version: 1.10.0
  * Description: Shared flag definitions for Scout CLI commands (start, status, stop) with turn and force support. Removed MarkFlagRequired("intent") to allow --intent-file as alternative. Added hidden WatchWorker flag for background worker process.
  * Language: Go
- * Created-at: 2026-04-01T05:29:54.928Z
- * Authors: claude-haiku-4-5-20251001 (v1.8.0), GLM-4.7 (v1.8.1), GLM-4.7 (v1.8.2), GLM-4.7 (v1.9.0)
+ * Created-at: 2026-04-06T16:42:33.184Z
+ * Authors: claude-haiku-4-5-20251001 (v1.8.0), GLM-4.7 (v1.8.1), GLM-4.7 (v1.8.2), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0)
  */
 
 
@@ -46,6 +46,7 @@ type StatusFlags struct {
 	SessionID string
 	Follow    bool
 	Format    string // json, table, pretty
+	Verbose   bool   // Show full results with reasoning and metadata
 }
 
 // StopFlags contains flags for the scout stop command

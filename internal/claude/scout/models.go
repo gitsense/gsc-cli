@@ -1,12 +1,12 @@
 /**
  * Component: Scout Models
- * Block-UUID: c6253492-f0d4-451a-be9d-325578a0d99a
- * Parent-UUID: 26207f2e-8ee2-4ce2-90fa-2ea8e78723d1
- * Version: 1.8.0
+ * Block-UUID: 2407aadc-8db9-4440-afbb-fcc3aeafa791
+ * Parent-UUID: 3e702c8e-b336-4fe9-99a1-8b6422013e62
+ * Version: 1.10.0
  * Description: Data structures for Scout feature (candidate discovery and verification). Added ReferenceFilesContext field to StatusData to persist reference files in session state.
  * Language: Go
- * Created-at: 2026-04-06T03:31:01.050Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.6), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0)
+ * Created-at: 2026-04-06T16:33:43.641Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.6), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0)
  */
 
 
@@ -80,6 +80,14 @@ type CandidateMetadata struct {
 	FileExtension  string   `json:"file_extension"`
 	Keywords       []string `json:"keywords"`
 	ParentKeywords []string `json:"parent_keywords"`
+}
+
+// QuickCandidate represents a lightweight candidate for quick status display
+type QuickCandidate struct {
+	WorkdirID   int     `json:"workdir_id"`
+	WorkdirName string  `json:"workdir_name"`
+	FilePath    string  `json:"file_path"`
+	Score       float64 `json:"score"`
 }
 
 // StatusData represents the complete status of a scout session
@@ -236,11 +244,39 @@ type TurnState struct {
 	CompletedAt          *time.Time          `json:"completed_at,omitempty"`
 	LogPath              string              `json:"log_path"`
 	ProcessInfo          ProcessInfo         `json:"process_info"`
-	Candidates           []Candidate         `json:"candidates,omitempty"`
+	Candidates           []QuickCandidate    `json:"candidates,omitempty"`
 	TotalFound           int                 `json:"total_found"`
 	Usage                *Usage              `json:"usage,omitempty"`
+	Results              *TurnResults        `json:"results,omitempty"`
 	Cost                 *float64            `json:"cost,omitempty"`
 	Duration             *int64              `json:"duration,omitempty"`
 	ClaudeSessionID      *string             `json:"claude_session_id,omitempty"`
 	Error                *string             `json:"error,omitempty"`
+}
+
+// TurnResults contains full results with reasoning and metadata
+type TurnResults struct {
+	Candidates           []Candidate         `json:"candidates"`
+	DiscoveryLog         *DiscoveryLog       `json:"discovery_log,omitempty"`
+	VerificationSummary  *VerificationSummary `json:"verification_summary,omitempty"`
+	Coverage             string              `json:"coverage,omitempty"`
+}
+
+// DiscoveryLog contains the discovery methodology and pivot checks
+type DiscoveryLog struct {
+	IntentKeywords       []string            `json:"intent_keywords"`
+	PivotChecks          []string            `json:"pivot_checks"`
+	Methodology          string              `json:"methodology"`
+	TotalCandidatesFound int                 `json:"total_candidates_found"`
+	TopCandidatesReturned int                 `json:"top_candidates_returned"`
+}
+
+// VerificationSummary contains verification phase statistics
+type VerificationSummary struct {
+	TotalVerified        int                 `json:"total_verified"`
+	CandidatesPromoted   int                 `json:"candidates_promoted"`
+	CandidatesDemoted    int                 `json:"candidates_demoted"`
+	CandidatesRemoved    int                 `json:"candidates_removed"`
+	AverageVerifiedScore float64             `json:"average_verified_score"`
+	TopCandidatesCount   int                 `json:"top_candidates_count"`
 }

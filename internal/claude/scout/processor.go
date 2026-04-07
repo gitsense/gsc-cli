@@ -1,12 +1,12 @@
 /**
  * Component: Scout Stream Event Processor
- * Block-UUID: 12024f23-f259-4357-ae25-c4c78de6a28f
- * Parent-UUID: b02fe205-6f95-4e18-88e3-fb24a6d509c4
- * Version: 1.1.2
- * Description: JSONL event streaming, parsing, and file I/O for Scout sessions
+ * Block-UUID: 824b538b-eedf-4163-b6ef-c98c52ef4e43
+ * Parent-UUID: 24802470-b616-485f-a366-e740db68fce5
+ * Version: 1.1.4
+ * Description: JSONL event streaming, parsing, and file I/O for Scout sessions. Fixed type mismatch by removing direct assignment of []QuickCandidate to []Candidate.
  * Language: Go
- * Created-at: 2026-04-06T03:31:56.462Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), GLM-4.7 (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.1.2)
+ * Created-at: 2026-04-06T16:35:25.745Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), GLM-4.7 (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.1.2), GLM-4.7 (v1.1.3), GLM-4.7 (v1.1.4)
  */
 
 
@@ -441,8 +441,20 @@ func (ph *ProcessorHelper) GenerateStatusData(session *Session, currentTurn int)
 
 	// Add turn-specific data
 	if currentTurnState != nil {
-		status.Candidates = currentTurnState.Candidates
-		status.TotalFound = currentTurnState.TotalFound
+		status.TotalFound = currentTurnState.TotalFound // Now reads from session state
+		
+		// Convert []QuickCandidate to []Candidate for StatusData
+		if len(currentTurnState.Candidates) > 0 {
+			status.Candidates = make([]Candidate, len(currentTurnState.Candidates))
+			for i, qc := range currentTurnState.Candidates {
+				status.Candidates[i] = Candidate{
+					WorkdirID:   qc.WorkdirID,
+					WorkdirName: qc.WorkdirName,
+					FilePath:    qc.FilePath,
+					Score:       qc.Score,
+				}
+			}
+		}
 		status.ProcessInfo = currentTurnState.ProcessInfo
 		status.Usage = currentTurnState.Usage
 		status.Cost = currentTurnState.Cost
