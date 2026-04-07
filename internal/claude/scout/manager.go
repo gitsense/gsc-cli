@@ -1,12 +1,12 @@
 /**
  * Component: Scout Session Manager
- * Block-UUID: 0deabc28-e116-4daa-be69-a29cc8040de2
- * Parent-UUID: 4d70aeda-498d-4cb8-8245-ef2f4423e533
- * Version: 1.11.0
+ * Block-UUID: 63a9a430-7696-476b-911b-aa5c54237bc3
+ * Parent-UUID: 0deabc28-e116-4daa-be69-a29cc8040de2
+ * Version: 1.12.0
  * Description: Orchestrates Scout discovery and verification phases. Refactored to focus on session lifecycle and orchestration; subprocess management moved to subprocess.go, stream processing moved to stream.go. Fixed to set phase in writeNoBrainsError based on current turn. Updated LoadSession to populate WorkingDirectories and ReferenceFilesContext from StatusData. Removed GetFinalizedTurnResults() function as results are now stored in session.json. Updated GenerateStatusData() to read candidates from session state. Added lastAssistantMessage field to track assistant messages for post-processing.
  * Language: Go
- * Created-at: 2026-04-06T16:14:12.382Z
- * Authors: claude-haiku-4-5-20251001 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.2.5), GLM-4.7 (v1.2.6), GLM-4.7 (v1.2.7), GLM-4.7 (v1.2.8), GLM-4.7 (v1.2.9), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.3.3), GLM-4.7 (v1.4.0), GLM-4.7 (v1.4.1), claude-haiku-4-5-20251001 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.5.2), GLM-4.7 (v1.5.3), GLM-4.7 (v1.5.4), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0)
+ * Created-at: 2026-04-07T00:31:34.709Z
+ * Authors: claude-haiku-4-5-20251001 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.2.5), GLM-4.7 (v1.2.6), GLM-4.7 (v1.2.7), GLM-4.7 (v1.2.8), GLM-4.7 (v1.2.9), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.3.3), GLM-4.7 (v1.4.0), GLM-4.7 (v1.4.1), claude-haiku-4-5-20251001 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.5.2), GLM-4.7 (v1.5.3), GLM-4.7 (v1.5.4), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0)
  */
 
 
@@ -324,24 +324,6 @@ func (m *Manager) StartTurn1Discovery() error {
 	}
 	m.debugLogger.Log("DEBUG", "Log paths stored in session state")
 
-	// Write init event
-	initEvent := InitEvent{
-		SessionID:             m.session.SessionID,
-		Intent:                m.session.Intent,
-		WorkingDirectories:    m.session.WorkingDirectories,
-		ReferenceFilesContext: m.session.ReferenceFilesContext,
-		Options: InitOptions{
-			AutoReview: m.session.AutoReview,
-			Turn:       m.currentTurn,
-			Model:      m.session.Model,
-		},
-	}
-	if err := m.eventWriter.WriteInitEvent(initEvent); err != nil {
-		m.debugLogger.LogEventWrite("init", false, err)
-		return err
-	}
-	m.debugLogger.LogEventWrite("init", true, nil)
-
 	// Spawn subprocess for Turn 1 (defined in subprocess.go)
 	if err := m.spawnClaudeSubprocess(m.currentTurn); err != nil {
 		m.debugLogger.LogError("Failed to spawn subprocess", err)
@@ -412,24 +394,6 @@ func (m *Manager) StartTurn2Verification(selectedCandidates *SelectedCandidates)
 		return err
 	}
 	m.debugLogger.Log("DEBUG", "Log paths stored in session state")
-
-	// Write init event with selected candidates
-	initEvent := InitEvent{
-		SessionID:             m.session.SessionID,
-		Intent:                m.session.Intent,
-		WorkingDirectories:    m.session.WorkingDirectories,
-		ReferenceFilesContext: m.session.ReferenceFilesContext,
-		Options: InitOptions{
-			AutoReview: m.session.AutoReview,
-			Turn:       m.currentTurn,
-			Model:      m.session.Model,
-		},
-	}
-	if err := m.eventWriter.WriteInitEvent(initEvent); err != nil {
-		m.debugLogger.LogEventWrite("init", false, err)
-		return err
-	}
-	m.debugLogger.LogEventWrite("init", true, nil)
 
 	// Save selected candidates for Claude to reference
 	if selectedCandidates != nil {
