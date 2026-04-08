@@ -1,12 +1,12 @@
 /**
  * Component: Scout Stream Event Processor
- * Block-UUID: fe47afb8-7192-4e7d-98b8-fa330d9e9070
- * Parent-UUID: e59e362b-b93b-4008-a6eb-10c14cc1fb18
- * Version: 1.9.0
- * Description: Manages Claude output stream parsing, event handling, and state updates from streaming JSONL responses. Updated to implement "Pure Stream" architecture: writes raw CLI events + start/end markers to raw-stream.ndjson, and populates session.json with structured results.
+ * Block-UUID: d2f85c86-1fc4-4be4-8b24-ea6d0b9b79d8
+ * Parent-UUID: fe47afb8-7192-4e7d-98b8-fa330d9e9070
+ * Version: 1.10.0
+ * Description: Manages Claude output stream parsing, event handling, and state updates from streaming JSONL responses. Updated to use turn-type references (discovery/verification) instead of turn numbers (Turn 1/Turn 2) for consistency with Phase 1 requirements.
  * Language: Go
  * Created-at: 2026-04-08T13:23:47.493Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), claude-sonnet-4-6 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0)
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), claude-sonnet-4-6 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0)
  */
 
 
@@ -229,8 +229,8 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 					resultContent = strings.TrimSpace(resultContent)
 				}
 
-				// Try Turn 1 format first
-				var turn1Result struct {
+				// Try discovery format first
+				var discoveryResult struct {
 					Candidates []Candidate `json:"candidates"`
 					Duration   *int64      `json:"duration,omitempty"`
 					Cost       *float64    `json:"cost,omitempty"`
@@ -239,20 +239,20 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 					Coverage   string      `json:"coverage"`
 					DiscoveryLog *DiscoveryLog `json:"discovery_log"`
 				}
-				if err := json.Unmarshal([]byte(resultContent), &turn1Result); err == nil {
-					// Populate session state (Turn 1)
-					m.populateTurnState(turn, turn1Result.Candidates, turn1Result.TotalFound, usage, cost, duration, claudeSessionID, &TurnResults{
-						Candidates:   turn1Result.Candidates,
+				if err := json.Unmarshal([]byte(resultContent), &discoveryResult); err == nil {
+					// Populate session state (discovery)
+					m.populateTurnState(turn, discoveryResult.Candidates, discoveryResult.TotalFound, usage, cost, duration, claudeSessionID, &TurnResults{
+						Candidates:   discoveryResult.Candidates,
 						Duration:     &duration,
 						Cost:         &cost,
 						Usage:        &usage,
-						DiscoveryLog: turn1Result.DiscoveryLog,
-						Coverage:     turn1Result.Coverage,
+						DiscoveryLog: discoveryResult.DiscoveryLog,
+						Coverage:     discoveryResult.Coverage,
 					})
 					
 					// DEBUG: Log after populateTurnState
 					m.debugLogger.Log("METRICS", fmt.Sprintf(
-						"AFTER populateTurnState (Turn 1) - Duration: %dms, Cost: $%.6f, InputTokens: %d, OutputTokens: %d",
+						"AFTER populateTurnState (discovery) - Duration: %dms, Cost: $%.6f, InputTokens: %d, OutputTokens: %d",
 						duration,
 						cost,
 						usage.InputTokens,
@@ -264,8 +264,8 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 					break
 				}
 
-				// Try Turn 2 format
-				var turn2Result struct {
+				// Try verification format
+				var verificationResult struct {
 					VerifiedCandidates []VerificationUpdate `json:"verified_candidates"`
 					Duration           *int64              `json:"duration,omitempty"`
 					Cost               *float64            `json:"cost,omitempty"`
@@ -279,29 +279,29 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 						TopCandidatesCount   int     `json:"top_candidates_count"`
 					} `json:"summary"`
 				}
-				if err := json.Unmarshal([]byte(resultContent), &turn2Result); err == nil {
-					// Populate session state (Turn 2)
-					// Note: Turn 2 needs to merge with Turn 1 candidates
-					verifiedCandidates := m.mergeVerificationUpdates(turn2Result.VerifiedCandidates)
+				if err := json.Unmarshal([]byte(resultContent), &verificationResult); err == nil {
+					// Populate session state (verification)
+					// Note: Verification needs to merge with discovery candidates
+					verifiedCandidates := m.mergeVerificationUpdates(verificationResult.VerifiedCandidates)
 					
-					m.populateTurnState(turn, verifiedCandidates, turn2Result.Summary.TotalVerified, usage, cost, duration, claudeSessionID, &TurnResults{
+					m.populateTurnState(turn, verifiedCandidates, verificationResult.Summary.TotalVerified, usage, cost, duration, claudeSessionID, &TurnResults{
 						Candidates: verifiedCandidates,
 						VerificationSummary: &VerificationSummary{
 							Duration: &duration,
 							Cost:     &cost,
 							Usage:    &usage,
-							TotalVerified:        turn2Result.Summary.TotalVerified,
-							CandidatesPromoted:   turn2Result.Summary.CandidatesPromoted,
-							CandidatesDemoted:    turn2Result.Summary.CandidatesDemoted,
-							CandidatesRemoved:    turn2Result.Summary.CandidatesRemoved,
-							AverageVerifiedScore: turn2Result.Summary.AverageVerifiedScore,
-							TopCandidatesCount:   turn2Result.Summary.TopCandidatesCount,
+							TotalVerified:        verificationResult.Summary.TotalVerified,
+							CandidatesPromoted:   verificationResult.Summary.CandidatesPromoted,
+							CandidatesDemoted:    verificationResult.Summary.CandidatesDemoted,
+							CandidatesRemoved:    verificationResult.Summary.CandidatesRemoved,
+							AverageVerifiedScore: verificationResult.Summary.AverageVerifiedScore,
+							TopCandidatesCount:   verificationResult.Summary.TopCandidatesCount,
 						},
 					})
 
 					// DEBUG: Log after populateTurnState
 					m.debugLogger.Log("METRICS", fmt.Sprintf(
-						"AFTER populateTurnState (Turn 2) - Duration: %dms, Cost: $%.6f, InputTokens: %d, OutputTokens: %d",
+						"AFTER populateTurnState (verification) - Duration: %dms, Cost: $%.6f, InputTokens: %d, OutputTokens: %d",
 						duration,
 						cost,
 						usage.InputTokens,
@@ -568,44 +568,44 @@ func (m *Manager) processAssistantMessage(rawMessage string, turn int, usage Usa
 	// DEBUG: Log JSON validation
 	m.debugLogger.Log("METRICS", "JSON syntax validated")
 	
-	// Try to parse as Turn 1 format (discovery)
-	var turn1Result struct {
+	// Try to parse as discovery format
+	var discoveryResult struct {
 		Candidates []Candidate `json:"candidates"`
 		DiscoveryLog *DiscoveryLog `json:"discovery_log"`
 		Coverage string `json:"coverage"`
 	}
 	
-	// DEBUG: Log trying Turn 1 format
-	m.debugLogger.Log("METRICS", "Trying Turn 1 format")
+	// DEBUG: Log trying discovery format
+	m.debugLogger.Log("METRICS", "Trying discovery format")
 	
-	if err := json.Unmarshal([]byte(jsonStr), &turn1Result); err == nil && len(turn1Result.Candidates) > 0 {
-		m.debugLogger.Log("DEBUG", fmt.Sprintf("Parsed Turn 1 discovery results: %d candidates", len(turn1Result.Candidates)))
+	if err := json.Unmarshal([]byte(jsonStr), &discoveryResult); err == nil && len(discoveryResult.Candidates) > 0 {
+		m.debugLogger.Log("DEBUG", fmt.Sprintf("Parsed discovery results: %d candidates", len(discoveryResult.Candidates)))
 		
-		// DEBUG: Log Turn 1 parse success
-		m.debugLogger.Log("METRICS", fmt.Sprintf("Turn 1 format parsed successfully: %d candidates", len(turn1Result.Candidates)))
+		// DEBUG: Log discovery parse success
+		m.debugLogger.Log("METRICS", fmt.Sprintf("Discovery format parsed successfully: %d candidates", len(discoveryResult.Candidates)))
 		
 		// Populate session state
-		m.populateTurnState(turn, turn1Result.Candidates, len(turn1Result.Candidates), usage, cost, duration, claudeSessionID, &TurnResults{
-			Candidates:   turn1Result.Candidates,
-			DiscoveryLog: turn1Result.DiscoveryLog,
-			Coverage:     turn1Result.Coverage,
+		m.populateTurnState(turn, discoveryResult.Candidates, len(discoveryResult.Candidates), usage, cost, duration, claudeSessionID, &TurnResults{
+			Candidates:   discoveryResult.Candidates,
+			DiscoveryLog: discoveryResult.DiscoveryLog,
+			Coverage:     discoveryResult.Coverage,
 		})
 		
 		// DEBUG: Log after populateTurnState (fallback)
-		m.debugLogger.Log("METRICS", "populateTurnState called from fallback (Turn 1)")
+		m.debugLogger.Log("METRICS", "populateTurnState called from fallback (discovery)")
 		
 		m.session.Status = "discovery_complete"
 		m.writeSessionState()
 		
-		m.debugLogger.Log("DEBUG", "Turn 1 discovery results processed successfully")
+		m.debugLogger.Log("DEBUG", "Discovery results processed successfully")
 		return nil
 	}
 	
-	// DEBUG: Log Turn 1 format failed
-	m.debugLogger.Log("METRICS", "Turn 1 format parse failed, trying Turn 2")
+	// DEBUG: Log discovery format failed
+	m.debugLogger.Log("METRICS", "Discovery format parse failed, trying verification")
 	
-	// Try to parse as Turn 2 format (verification)
-	var turn2Result struct {
+	// Try to parse as verification format
+	var verificationResult struct {
 		VerifiedCandidates []VerificationUpdate `json:"verified_candidates"`
 		Summary struct {
 			TotalVerified        int     `json:"total_verified"`
@@ -617,45 +617,45 @@ func (m *Manager) processAssistantMessage(rawMessage string, turn int, usage Usa
 		} `json:"summary"`
 	}
 	
-	// DEBUG: Log trying Turn 2 format
-	m.debugLogger.Log("METRICS", "Trying Turn 2 format")
+	// DEBUG: Log trying verification format
+	m.debugLogger.Log("METRICS", "Trying verification format")
 	
-	if err := json.Unmarshal([]byte(jsonStr), &turn2Result); err == nil && len(turn2Result.VerifiedCandidates) > 0 {
-		m.debugLogger.Log("DEBUG", fmt.Sprintf("Parsed Turn 2 verification results: %d verified candidates", len(turn2Result.VerifiedCandidates)))
+	if err := json.Unmarshal([]byte(jsonStr), &verificationResult); err == nil && len(verificationResult.VerifiedCandidates) > 0 {
+		m.debugLogger.Log("DEBUG", fmt.Sprintf("Parsed verification results: %d verified candidates", len(verificationResult.VerifiedCandidates)))
 		
-		// DEBUG: Log Turn 2 parse success
-		m.debugLogger.Log("METRICS", fmt.Sprintf("Turn 2 format parsed successfully: %d verified candidates", len(turn2Result.VerifiedCandidates)))
+		// DEBUG: Log verification parse success
+		m.debugLogger.Log("METRICS", fmt.Sprintf("Verification format parsed successfully: %d verified candidates", len(verificationResult.VerifiedCandidates)))
 		
 		// Populate session state
-		verifiedCandidates := m.mergeVerificationUpdates(turn2Result.VerifiedCandidates)
+		verifiedCandidates := m.mergeVerificationUpdates(verificationResult.VerifiedCandidates)
 		
-		m.populateTurnState(turn, verifiedCandidates, turn2Result.Summary.TotalVerified, usage, cost, duration, claudeSessionID, &TurnResults{
+		m.populateTurnState(turn, verifiedCandidates, verificationResult.Summary.TotalVerified, usage, cost, duration, claudeSessionID, &TurnResults{
 			Candidates: verifiedCandidates,
 			VerificationSummary: &VerificationSummary{
-				TotalVerified:        turn2Result.Summary.TotalVerified,
-				CandidatesPromoted:   turn2Result.Summary.CandidatesPromoted,
-				CandidatesDemoted:    turn2Result.Summary.CandidatesDemoted,
-				CandidatesRemoved:    turn2Result.Summary.CandidatesRemoved,
-				AverageVerifiedScore: turn2Result.Summary.AverageVerifiedScore,
-				TopCandidatesCount:   turn2Result.Summary.TopCandidatesCount,
+				TotalVerified:        verificationResult.Summary.TotalVerified,
+				CandidatesPromoted:   verificationResult.Summary.CandidatesPromoted,
+				CandidatesDemoted:    verificationResult.Summary.CandidatesDemoted,
+				CandidatesRemoved:    verificationResult.Summary.CandidatesRemoved,
+				AverageVerifiedScore: verificationResult.Summary.AverageVerifiedScore,
+				TopCandidatesCount:   verificationResult.Summary.TopCandidatesCount,
 			},
 		})
 		
 		// DEBUG: Log after populateTurnState (fallback)
-		m.debugLogger.Log("METRICS", "populateTurnState called from fallback (Turn 2)")
+		m.debugLogger.Log("METRICS", "populateTurnState called from fallback (verification)")
 		
 		m.session.Status = "verification_complete"
 		m.writeSessionState()
 		
-		m.debugLogger.Log("DEBUG", "Turn 2 verification results processed successfully")
+		m.debugLogger.Log("DEBUG", "Verification results processed successfully")
 		return nil
 	}
 	
 	// DEBUG: Log both formats failed
-	m.debugLogger.Log("METRICS", "Both Turn 1 and Turn 2 formats failed to parse")
+	m.debugLogger.Log("METRICS", "Both discovery and verification formats failed to parse")
 	
 	// If we get here, couldn't parse as either format
-	return fmt.Errorf("assistant message does not contain valid Turn 1 or Turn 2 results")
+	return fmt.Errorf("assistant message does not contain valid discovery or verification results")
 }
 
 // populateTurnState is a helper to populate the session state for a turn
@@ -743,19 +743,19 @@ func (m *Manager) populateTurnState(turn int, candidates []Candidate, totalFound
 	}
 }
 
-// mergeVerificationUpdates merges Turn 2 verification updates with Turn 1 candidates
+// mergeVerificationUpdates merges verification updates with discovery candidates
 func (m *Manager) mergeVerificationUpdates(updates []VerificationUpdate) []Candidate {
 	// DEBUG: Log merge start
 	m.debugLogger.Log("METRICS", fmt.Sprintf("mergeVerificationUpdates called with %d updates", len(updates)))
 	
-	// Get original candidates from Turn 1
+	// Get original candidates from discovery turn
 	var originalCandidates []Candidate
 	if len(m.session.Turns) > 0 && m.session.Turns[0].Results != nil {
 		originalCandidates = m.session.Turns[0].Results.Candidates
 	}
 	
 	// DEBUG: Log original candidates
-	m.debugLogger.Log("METRICS", fmt.Sprintf("Found %d original candidates from Turn 1", len(originalCandidates)))
+	m.debugLogger.Log("METRICS", fmt.Sprintf("Found %d original candidates from discovery turn", len(originalCandidates)))
 	
 	verifiedCandidates := make([]Candidate, 0, len(originalCandidates))
 	

@@ -1,12 +1,12 @@
 /**
  * Component: Scout Subprocess Manager
- * Block-UUID: 21ea0d31-5c01-47e9-83bc-eff101cb23ee
- * Parent-UUID: 08d262e7-ed6e-43d1-aa2c-27649c610fa4
- * Version: 2.5.0
+ * Block-UUID: 8d308c0d-5ac6-420a-9fa1-addbcfaec17d
+ * Parent-UUID: 21ea0d31-5c01-47e9-83bc-eff101cb23ee
+ * Version: 2.6.0
  * Description: Manages subprocess spawning, process lifecycle, signal handling, and resource cleanup for Scout Claude sessions. Updated to find gsc location using exec.LookPath and add its directory to PATH in subprocess.
  * Language: Go
- * Created-at: 2026-04-08T16:55:15.562Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), GLM-4.7 (v2.5.0)
+ * Created-at: 2026-04-08T17:33:48.522Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), GLM-4.7 (v2.5.0), GLM-4.7 (v2.6.0)
  */
 
 
@@ -461,8 +461,11 @@ func (m *Manager) markAsStopped(errorCode, message string) {
 		})
 		// Also write a status event to ensure Phase is set in StatusData
 		phase := "discovery"
-		if m.currentTurn == 2 {
-			phase = "verification"
+		if len(m.session.Turns) > 0 {
+			lastTurn := m.session.Turns[len(m.session.Turns)-1]
+			if lastTurn.TurnType == "verification" {
+				phase = "verification"
+			}
 		}
 		m.eventWriter.WriteStatusEvent(StatusEvent{Phase: phase, Message: message})
 		m.eventWriter.Close()
@@ -573,9 +576,9 @@ func buildCombinedSystemPrompt(gscHome string, turnType string) (string, error) 
 	// Read turn-specific prompt
 	var turnPromptPath string
 	if turnType == "discovery" {
-		turnPromptPath = filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "system_prompt_turn_1.md")
+		turnPromptPath = filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "system_prompt_discovery.md")
 	} else {
-		turnPromptPath = filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "system_prompt_turn_2.md")
+		turnPromptPath = filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "system_prompt_verification.md")
 	}
 	turnContent, err := os.ReadFile(turnPromptPath)
 	if err != nil {

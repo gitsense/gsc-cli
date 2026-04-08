@@ -1,12 +1,12 @@
 /**
  * Component: Scout Session Manager
- * Block-UUID: dc5b321f-4537-4ff5-8082-1c0db52b2400
- * Parent-UUID: 136f6f11-0df7-40e5-980f-6da07437aaba
- * Version: 1.15.0
- * Description: Orchestrates Scout discovery and verification phases. Refactored to focus on session lifecycle and orchestration; subprocess management moved to subprocess.go, stream processing moved to stream.go. Fixed to set phase in writeNoBrainsError based on current turn. Updated LoadSession to populate WorkingDirectories and ReferenceFilesContext from StatusData. Removed GetFinalizedTurnResults() function as results are now stored in session.json. Updated GenerateStatusData() to read candidates from session state. Added lastAssistantMessage field to track assistant messages for post-processing. Updated comments to reflect turn-type based approach instead of turn numbers.
+ * Block-UUID: ea59c662-ac0d-444a-91fe-8734f3afb6b6
+ * Parent-UUID: dc5b321f-4537-4ff5-8082-1c0db52b2400
+ * Version: 1.16.0
+ * Description: Orchestrates Scout discovery and verification phases. Refactored to focus on session lifecycle and orchestration; subprocess management moved to subprocess.go, stream processing moved to stream.go. Fixed to set phase in writeNoBrainsError based on current turn. Updated LoadSession to populate WorkingDirectories and ReferenceFilesContext from StatusData. Removed GetFinalizedTurnResults() function as results are now stored in session.json. Updated GenerateStatusData() to read candidates from session state. Added lastAssistantMessage field to track assistant messages for post-processing. Updated comments to reflect turn-type based approach instead of turn numbers. Fixed critical issues with hardcoded turn numbers - now uses dynamic turn calculation to support multiple discovery turns.
  * Language: Go
  * Created-at: 2026-04-08T16:55:49.327Z
- * Authors: claude-haiku-4-5-20251001 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.2.5), GLM-4.7 (v1.2.6), GLM-4.7 (v1.2.7), GLM-4.7 (v1.2.8), GLM-4.7 (v1.2.9), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.3.3), GLM-4.7 (v1.4.0), GLM-4.7 (v1.4.1), claude-haiku-4-5-20251001 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.5.2), GLM-4.7 (v1.5.3), GLM-4.7 (v1.5.4), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0)
+ * Authors: claude-haiku-4-5-20251001 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.2.5), GLM-4.7 (v1.2.6), GLM-4.7 (v1.2.7), GLM-4.7 (v1.2.8), GLM-4.7 (v1.2.9), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.3.3), GLM-4.7 (v1.4.0), GLM-4.7 (v1.4.1), claude-haiku-4-5-20251001 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.5.2), GLM-4.7 (v1.5.3), GLM-4.7 (v1.5.4), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0)
  */
 
 
@@ -235,7 +235,7 @@ func (m *Manager) PrepareTurn1() error {
 // writeNoBrainsError writes error event to log when no brains available
 func (m *Manager) writeNoBrainsError() error {
 	logFilename := fmt.Sprintf("raw-stream-%d.ndjson", time.Now().Unix())
-	logPath := m.config.GetTurnLogFile(1, logFilename)
+	logPath := m.config.GetTurnLogFile(m.currentTurn, logFilename)
 
 	writer, err := NewEventWriter(logPath)
 	if err != nil {
@@ -244,10 +244,13 @@ func (m *Manager) writeNoBrainsError() error {
 	}
 	defer writer.Close()
 
-	// Set phase based on current turn
+	// Set phase based on current turn type
 	phase := "discovery"
-	if m.currentTurn == 2 {
-		phase = "verification"
+	if len(m.session.Turns) > 0 {
+		lastTurn := m.session.Turns[len(m.session.Turns)-1]
+		if lastTurn.TurnType == "verification" {
+			phase = "verification"
+		}
 	}
 
 	return writer.WriteErrorEvent(ErrorEvent{
@@ -255,6 +258,14 @@ func (m *Manager) writeNoBrainsError() error {
 		ErrorCode: "NO_BRAINS_AVAILABLE",
 		Message:   "No brains available in any working directory",
 	})
+}
+
+// getNextTurnNumber calculates the next turn number dynamically
+func (m *Manager) getNextTurnNumber() int {
+	if len(m.session.Turns) == 0 {
+		return 1
+	}
+	return m.session.Turns[len(m.session.Turns)-1].TurnNumber + 1
 }
 
 // StartDiscoveryTurn initiates the discovery phase and spawns subprocess
@@ -283,7 +294,9 @@ func (m *Manager) StartDiscoveryTurn() error {
 		return nil // Don't spawn Claude, already handled
 	}
 
-	m.currentTurn = 1
+	// Calculate next turn number dynamically
+	nextTurn := m.getNextTurnNumber()
+	m.currentTurn = nextTurn
 	m.session.Status = "discovery"
 
 	// Close previous eventWriter if it exists to prevent resource leaks
@@ -304,19 +317,16 @@ func (m *Manager) StartDiscoveryTurn() error {
 	}
 	m.debugLogger.Log("DEBUG", fmt.Sprintf("Created event writer: %s", logPath))
 
-	// Store log paths in session
-	// Initialize or update Turn 1 state
-	if len(m.session.Turns) == 0 {
-		m.session.Turns = make([]TurnState, 1)
-	}
-	m.session.Turns[0] = TurnState{
-		TurnNumber:  1,
+	// Create new turn state and append to turns slice
+	newTurn := TurnState{
+		TurnNumber:  nextTurn,
 		TurnType:    "discovery",
 		Status:      "running",
 		StartedAt:   time.Now(),
 		LogPath:     logPath,
 		ProcessInfo: ProcessInfo{Running: true},
 	}
+	m.session.Turns = append(m.session.Turns, newTurn)
 	
 	// Write session state to persist log paths
 	if err := m.writeSessionState(); err != nil {
@@ -352,7 +362,9 @@ func (m *Manager) StartVerificationTurn(selectedCandidates *SelectedCandidates) 
 		return fmt.Errorf("cannot start verification: discovery not complete")
 	}
 
-	m.currentTurn = 2
+	// Calculate next turn number dynamically
+	nextTurn := m.getNextTurnNumber()
+	m.currentTurn = nextTurn
 	m.session.Status = "verification"
 
 	// Close previous eventWriter if it exists to prevent resource leaks
@@ -360,7 +372,7 @@ func (m *Manager) StartVerificationTurn(selectedCandidates *SelectedCandidates) 
 		m.eventWriter.Close()
 	}
 
-	// Create log file for Turn 2
+	// Create log file for this turn
 	logFilename := fmt.Sprintf("raw-stream-%d.ndjson", time.Now().Unix())
 	logPath := m.config.GetTurnLogFile(m.currentTurn, logFilename)
 
@@ -373,22 +385,24 @@ func (m *Manager) StartVerificationTurn(selectedCandidates *SelectedCandidates) 
 	}
 	m.debugLogger.Log("DEBUG", fmt.Sprintf("Created event writer: %s", logPath))
 
-	// Store log paths in session
-	// Mark Turn 1 as complete
+	// Mark last turn as complete
 	if len(m.session.Turns) > 0 {
-		m.session.Turns[0].Status = "complete"
-		m.session.Turns[0].CompletedAt = &[]time.Time{time.Now()}[0]
-		m.session.Turns[0].ProcessInfo.Running = false
+		lastTurnIndex := len(m.session.Turns) - 1
+		m.session.Turns[lastTurnIndex].Status = "complete"
+		m.session.Turns[lastTurnIndex].CompletedAt = &[]time.Time{time.Now()}[0]
+		m.session.Turns[lastTurnIndex].ProcessInfo.Running = false
 	}
-	// Initialize Turn 2 state
-	m.session.Turns = append(m.session.Turns, TurnState{
-		TurnNumber:  2,
+	
+	// Create new turn state and append to turns slice
+	newTurn := TurnState{
+		TurnNumber:  nextTurn,
 		TurnType:    "verification",
 		Status:      "running",
 		StartedAt:   time.Now(),
 		LogPath:     logPath,
 		ProcessInfo: ProcessInfo{Running: true},
-	})
+	}
+	m.session.Turns = append(m.session.Turns, newTurn)
 	
 	// Write session state to persist log paths
 	if err := m.writeSessionState(); err != nil {
@@ -438,53 +452,17 @@ func (m *Manager) GetSessionStatus() (*StatusData, error) {
 // Returns 0 if no turn has completed (new session)
 func (m *Manager) GetLastCompletedTurn() (int, error) {
 	if m.session == nil {
-		// Load status to check completion
-		status, err := m.GetSessionStatus()
-		if err != nil {
-			return 0, err
-		}
-		if status == nil {
-			return 0, nil
-		}
-
-		// Check what turn is currently referenced
-		if status.Phase == "discovery" && (status.Status == "discovery_complete" || status.Status == "discovery_in_progress") {
-			return 1, nil
-		}
-		if status.Phase == "verification" {
-			return 2, nil
-		}
 		return 0, nil
 	}
 
-	// Based on session status, determine completed turn
-	switch m.session.Status {
-	case "discovery_complete", "verification", "verification_complete":
-		return 1, nil
-	case "stopped", "error":
-		// Check log file to see which turn actually completed
-		lastLogFile, lastTurn, err := m.processor.GetLatestLogFile()
-		if err == nil && lastLogFile != "" {
-			reader, err := NewEventReader(lastLogFile)
-			if err != nil {
-				// Log error but continue - if we can't read the log file,
-				// we can't determine if the turn completed
-				return 0, nil
-			}
-			if reader != nil {
-				defer reader.Close()
-				events, _ := reader.ReadAllEvents()
-				for _, event := range events {
-					if event.Type == "done" {
-						return lastTurn, nil
-					}
-				}
-			}
+	// Find the last turn with status "complete"
+	for i := len(m.session.Turns) - 1; i >= 0; i-- {
+		if m.session.Turns[i].Status == "complete" {
+			return m.session.Turns[i].TurnNumber, nil
 		}
-		return 0, nil
-	default:
-		return 0, nil
 	}
+
+	return 0, nil
 }
 
 // MarkDiscoveryComplete transitions to discovery_complete state
@@ -569,10 +547,10 @@ func LoadSession(sessionID string) (*Manager, error) {
 		return nil, fmt.Errorf("failed to parse session state: %w", err)
 	}
 
-	// Infer currentTurn from session status
-	currentTurn := 1
-	if session.Status == "verification" || session.Status == "verification_complete" {
-		currentTurn = 2
+	// Infer currentTurn from turn count (supports unlimited turns)
+	currentTurn := len(session.Turns)
+	if currentTurn == 0 {
+		currentTurn = 1
 	}
 
 	mgr := &Manager{
