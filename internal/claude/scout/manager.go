@@ -1,12 +1,12 @@
 /**
  * Component: Scout Session Manager
- * Block-UUID: 63a9a430-7696-476b-911b-aa5c54237bc3
- * Parent-UUID: 0deabc28-e116-4daa-be69-a29cc8040de2
- * Version: 1.12.0
+ * Block-UUID: 12e1907d-013c-4925-936d-9531762c438c
+ * Parent-UUID: 63a9a430-7696-476b-911b-aa5c54237bc3
+ * Version: 1.13.0
  * Description: Orchestrates Scout discovery and verification phases. Refactored to focus on session lifecycle and orchestration; subprocess management moved to subprocess.go, stream processing moved to stream.go. Fixed to set phase in writeNoBrainsError based on current turn. Updated LoadSession to populate WorkingDirectories and ReferenceFilesContext from StatusData. Removed GetFinalizedTurnResults() function as results are now stored in session.json. Updated GenerateStatusData() to read candidates from session state. Added lastAssistantMessage field to track assistant messages for post-processing.
  * Language: Go
- * Created-at: 2026-04-07T00:31:34.709Z
- * Authors: claude-haiku-4-5-20251001 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.2.5), GLM-4.7 (v1.2.6), GLM-4.7 (v1.2.7), GLM-4.7 (v1.2.8), GLM-4.7 (v1.2.9), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.3.3), GLM-4.7 (v1.4.0), GLM-4.7 (v1.4.1), claude-haiku-4-5-20251001 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.5.2), GLM-4.7 (v1.5.3), GLM-4.7 (v1.5.4), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0)
+ * Created-at: 2026-04-08T16:36:38.719Z
+ * Authors: claude-haiku-4-5-20251001 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.2.5), GLM-4.7 (v1.2.6), GLM-4.7 (v1.2.7), GLM-4.7 (v1.2.8), GLM-4.7 (v1.2.9), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.3.3), GLM-4.7 (v1.4.0), GLM-4.7 (v1.4.1), claude-haiku-4-5-20251001 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.5.2), GLM-4.7 (v1.5.3), GLM-4.7 (v1.5.4), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0)
  */
 
 
@@ -311,6 +311,7 @@ func (m *Manager) StartTurn1Discovery() error {
 	}
 	m.session.Turns[0] = TurnState{
 		TurnNumber:  1,
+		TurnType:    "discovery",
 		Status:      "running",
 		StartedAt:   time.Now(),
 		LogPath:     logPath,
@@ -382,6 +383,7 @@ func (m *Manager) StartTurn2Verification(selectedCandidates *SelectedCandidates)
 	// Initialize Turn 2 state
 	m.session.Turns = append(m.session.Turns, TurnState{
 		TurnNumber:  2,
+		TurnType:    "verification",
 		Status:      "running",
 		StartedAt:   time.Now(),
 		LogPath:     logPath,
@@ -612,4 +614,85 @@ func (m *Manager) closeDebugLogger() {
 		m.debugLogger.Log("DEBUG", "All goroutines finished, closing logger file")
 		m.debugLogger.Close()
 	}()
+}
+
+// writeTurnHistory writes the turn-history.json file
+func (m *Manager) writeTurnHistory(turnNumber int) error {
+	if m.session == nil {
+		return nil
+	}
+	
+	// Find the turn
+	var turn *TurnState
+	for i := range m.session.Turns {
+		if m.session.Turns[i].TurnNumber == turnNumber {
+			turn = &m.session.Turns[i]
+			break
+		}
+	}
+	
+	if turn == nil {
+		return fmt.Errorf("turn %d not found", turnNumber)
+	}
+	
+	// Build turn history entry
+	historyEntry := map[string]interface{}{
+		"turn_number": turn.TurnNumber,
+		"turn_type":   turn.TurnType,
+		"intent":      m.session.Intent,
+		"started_at":  turn.StartedAt.Format(time.RFC3339),
+	}
+	
+	if turn.CompletedAt != nil {
+		historyEntry["completed_at"] = turn.CompletedAt.Format(time.RFC3339)
+	}
+	
+	if turn.Error != nil {
+		historyEntry["error"] = *turn.Error
+	}
+	
+	// Add results if available
+	if turn.Results != nil {
+		historyEntry["candidates"] = turn.Results.Candidates
+		
+		if turn.Results.DiscoveryLog != nil {
+			historyEntry["discovery_log"] = turn.Results.DiscoveryLog
+		}
+		
+		if turn.Results.VerificationSummary != nil {
+			historyEntry["verification_summary"] = turn.Results.VerificationSummary
+		}
+	}
+	
+	// Read existing history
+	var history []map[string]interface{}
+	historyPath := filepath.Join(m.config.GetSessionDir(), "turn-history.json")
+	
+	if data, err := os.ReadFile(historyPath); err == nil {
+		if err := json.Unmarshal(data, &history); err != nil {
+			return fmt.Errorf("failed to parse turn-history.json: %w", err)
+		}
+	}
+	
+	// Add or update this turn
+	found := false
+	for i, entry := range history {
+		if entry["turn_number"] == turnNumber {
+			history[i] = historyEntry
+			found = true
+			break
+		}
+	}
+	
+	if !found {
+		history = append(history, historyEntry)
+	}
+	
+	// Write back
+	data, err := json.MarshalIndent(history, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal turn-history.json: %w", err)
+	}
+	
+	return os.WriteFile(historyPath, data, 0644)
 }

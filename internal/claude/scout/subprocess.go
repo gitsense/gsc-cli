@@ -1,12 +1,12 @@
 /**
  * Component: Scout Subprocess Manager
- * Block-UUID: a245e2e4-ff99-4ca3-a8d9-b2167be9e057
- * Parent-UUID: 1ec5b171-239c-4813-8392-a50076aa723d
- * Version: 2.3.0
+ * Block-UUID: 08d262e7-ed6e-43d1-aa2c-27649c610fa4
+ * Parent-UUID: a245e2e4-ff99-4ca3-a8d9-b2167be9e057
+ * Version: 2.4.0
  * Description: Manages subprocess spawning, process lifecycle, signal handling, and resource cleanup for Scout Claude sessions. Updated to find gsc location using exec.LookPath and add its directory to PATH in subprocess.
  * Language: Go
- * Created-at: 2026-04-05T15:52:38.091Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0)
+ * Created-at: 2026-04-08T16:37:36.706Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0)
  */
 
 
@@ -65,7 +65,7 @@ func (m *Manager) spawnClaudeSubprocess(turn int) error {
 	m.debugLogger.Log("DEBUG", "Reference files written successfully")
 
 	// Copy methodology files to turn directory
-	if turn == 1 {
+	if turnType == "discovery" {
 		discoverySrc := filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "discovery.md")
 		discoveryDest := filepath.Join(m.config.GetTurnDir(turn), "discovery.md")
 		if err := copyFile(discoverySrc, discoveryDest); err != nil {
@@ -84,7 +84,7 @@ func (m *Manager) spawnClaudeSubprocess(turn int) error {
 	}
 
 	// Build and write combined system prompt
-	systemPrompt, err := buildCombinedSystemPrompt(gscHome, turn)
+	systemPrompt, err := buildCombinedSystemPrompt(gscHome, turnType)
 	if err != nil {
 		m.debugLogger.LogError("Failed to build combined system prompt", err)
 		return fmt.Errorf("failed to build combined system prompt: %w", err)
@@ -100,7 +100,7 @@ func (m *Manager) spawnClaudeSubprocess(turn int) error {
 	// Write task prompt from template
 	workdirsMarkdown := m.formatWorkingDirectories()
 	refFilesMarkdown := m.formatReferenceFilesMetadata()
-	if err := writeTaskPrompt(m.config.GetTurnDir(turn), turn, workdirsMarkdown, refFilesMarkdown); err != nil {
+	if err := writeTaskPrompt(m.config.GetTurnDir(turn), turn, workdirsMarkdown, refFilesMarkdown, turnType); err != nil {
 		m.debugLogger.LogError("Failed to write task prompt", err)
 		return fmt.Errorf("failed to write task prompt: %w", err)
 	}
@@ -562,7 +562,7 @@ func (m *Manager) formatWorkingDirectories() string {
 }
 
 // buildCombinedSystemPrompt reads and combines shared + turn-specific prompts with embedded tool capabilities
-func buildCombinedSystemPrompt(gscHome string, turn int) (string, error) {
+func buildCombinedSystemPrompt(gscHome string, turnType string) (string, error) {
 	// Read shared prompt
 	sharedPath := filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "system_prompt_shared.md")
 	sharedContent, err := os.ReadFile(sharedPath)
@@ -572,7 +572,7 @@ func buildCombinedSystemPrompt(gscHome string, turn int) (string, error) {
 	
 	// Read turn-specific prompt
 	var turnPromptPath string
-	if turn == 1 {
+	if turnType == "discovery" {
 		turnPromptPath = filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "system_prompt_turn_1.md")
 	} else {
 		turnPromptPath = filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "system_prompt_turn_2.md")
@@ -606,10 +606,10 @@ This file combines shared principles with turn-specific instructions.
 
 ---
 
-# Turn %d Mission
+# %s Mission
 
 %s
-`, string(toolCapabilitiesContent), string(sharedContent), turn, string(turnContent))
+`, string(toolCapabilitiesContent), string(sharedContent), turnType, string(turnContent))
 	
 	return combined, nil
 }
@@ -624,7 +624,7 @@ func copyFile(src, dst string) error {
 }
 
 // writeTaskPrompt writes the task prompt from template
-func writeTaskPrompt(turnDir string, turn int, workdirsMarkdown string, refFilesMarkdown string) error {
+func writeTaskPrompt(turnDir string, turn int, workdirsMarkdown string, refFilesMarkdown string, turnType string) error {
 	// Get GSC_HOME
 	gscHome, err := settings.GetGSCHome(false)
 	if err != nil {
@@ -633,10 +633,10 @@ func writeTaskPrompt(turnDir string, turn int, workdirsMarkdown string, refFiles
 
 	// Read task template
 	var templatePath string
-	if turn == 1 {
-		templatePath = filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "task_turn_1.md")
+	if turnType == "discovery" {
+		templatePath = filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "task_discovery.md")
 	} else {
-		templatePath = filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "task_turn_2.md")
+		templatePath = filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "task_verification.md")
 	}
 
 	templateContent, err := os.ReadFile(templatePath)
@@ -654,6 +654,8 @@ func writeTaskPrompt(turnDir string, turn int, workdirsMarkdown string, refFiles
 	data := struct {
 		Workdirs string
 		RefFiles string
+		Intent   string
+		TurnType string
 	}{
 		Workdirs: workdirsMarkdown,
 		RefFiles: refFilesMarkdown,

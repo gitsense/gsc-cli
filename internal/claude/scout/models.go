@@ -1,12 +1,12 @@
 /**
  * Component: Scout Models
- * Block-UUID: a8b9d1bc-a1c1-4185-8d87-9406701d05f5
- * Parent-UUID: 84f02e4c-83fc-49bb-816c-d16631c7c6ac
- * Version: 1.13.0
+ * Block-UUID: a4a0f633-d391-4f87-bf94-35d18198472c
+ * Parent-UUID: a8b9d1bc-a1c1-4185-8d87-9406701d05f5
+ * Version: 1.14.0
  * Description: Data structures for Scout feature (candidate discovery and verification). Added Duration, Cost, and Usage fields to VerificationSummary struct to support embedding session metrics in verification results.
  * Language: Go
- * Created-at: 2026-04-08T02:22:23.270Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.6), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0)
+ * Created-at: 2026-04-08T16:25:52.091Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.6), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0)
  */
 
 
@@ -239,6 +239,7 @@ type SelectedCandidate struct {
 // TurnState represents the state of a single turn in a Scout session
 type TurnState struct {
 	TurnNumber           int                 `json:"turn_number"`
+	TurnType             string              `json:"turn_type"` // "discovery" or "verification"
 	Status               string              `json:"status"` // "pending", "running", "complete", "error"
 	StartedAt            time.Time           `json:"started_at"`
 	CompletedAt          *time.Time          `json:"completed_at,omitempty"`

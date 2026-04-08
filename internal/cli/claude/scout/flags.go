@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Flags and Options
- * Block-UUID: b78e624a-3a73-4328-add2-3dc612c491ff
- * Parent-UUID: db648b40-f87b-468f-ba45-461b5d7eeecd
- * Version: 1.10.0
+ * Block-UUID: 5dd31964-be8d-410d-aa0e-934e26b17aa3
+ * Parent-UUID: b78e624a-3a73-4328-add2-3dc612c491ff
+ * Version: 1.11.0
  * Description: Shared flag definitions for Scout CLI commands (start, status, stop) with turn and force support. Removed MarkFlagRequired("intent") to allow --intent-file as alternative. Added hidden WatchWorker flag for background worker process.
  * Language: Go
- * Created-at: 2026-04-06T16:42:33.184Z
- * Authors: claude-haiku-4-5-20251001 (v1.8.0), GLM-4.7 (v1.8.1), GLM-4.7 (v1.8.2), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0)
+ * Created-at: 2026-04-08T16:32:45.164Z
+ * Authors: claude-haiku-4-5-20251001 (v1.8.0), GLM-4.7 (v1.8.1), GLM-4.7 (v1.8.2), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0)
  */
 
 
@@ -34,7 +34,7 @@ type StartFlags struct {
 	WorkingDirectories []string
 	ReferenceFilesJSON string
 	SessionID          string // Optional session ID
-	Turn               int    // Required: 1 or 2
+	TurnType           string // Required: "discovery" or "verification"
 	Force              bool   // Force overwrite existing session
 	Format             string // Output format: text or json
 	Model              string // Claude model family: haiku, sonnet, opus
@@ -106,13 +106,13 @@ func RegisterStartFlags(cmd *cobra.Command, flags *StartFlags) {
 		"Optional session ID (auto-generated if not provided)",
 	)
 
-	cmd.Flags().IntVar(
-		&flags.Turn,
-		"turn",
-		0,
-		"Turn to execute (1=discovery, 2=verification)",
+	cmd.Flags().StringVar(
+		&flags.TurnType,
+		"turn-type",
+		"",
+		"Turn type: discovery or verification",
 	)
-	cmd.MarkFlagRequired("turn")
+	cmd.MarkFlagRequired("turn-type")
 
 	cmd.Flags().BoolVar(
 		&flags.Force,
@@ -238,12 +238,12 @@ func ValidateStartFlags(flags *StartFlags) error {
 		}
 	}
 
-	if flags.Turn != 1 && flags.Turn != 2 {
-		return &FlagError{Flag: "turn", Message: "turn must be 1 or 2"}
+	if flags.TurnType != "discovery" && flags.TurnType != "verification" {
+		return &FlagError{Flag: "turn-type", Message: "turn-type must be 'discovery' or 'verification'"}
 	}
 
 	// For Turn 1, workdirs are required; for Turn 2, they're loaded from existing session
-	if flags.Turn == 1 && len(flags.WorkingDirectories) == 0 {
+	if flags.TurnType == "discovery" && len(flags.WorkingDirectories) == 0 {
 		return &FlagError{Flag: "workdir", Message: "at least one working directory is required"}
 	}
 

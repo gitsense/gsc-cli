@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Start Command
- * Block-UUID: 08e3181a-8176-4c8c-b1c0-723f431bd184
- * Parent-UUID: 55eec20b-639c-41bc-a5b2-0285ffb2651b
- * Version: 1.3.2
+ * Block-UUID: 760d27ee-eb41-4da4-8904-bf7bf072216a
+ * Parent-UUID: 08e3181a-8176-4c8c-b1c0-723f431bd184
+ * Version: 1.4.0
  * Description: Implements 'gsc claude scout start' command with turn-aware session handling
  * Language: Go
- * Created-at: 2026-04-04T14:52:58.247Z
- * Authors: claude-haiku-4-5-20251001 (v1.2.1), GLM-4.7 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2)
+ * Created-at: 2026-04-08T16:38:50.896Z
+ * Authors: claude-haiku-4-5-20251001 (v1.2.1), GLM-4.7 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0)
  */
 
 
@@ -82,17 +82,6 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 		return fmt.Errorf("invalid flags: %w", err)
 	}
 
-	// EARLY VALIDATION: Reject turns > 2 for now
-	if flags.Turn > 2 {
-		cmd.SilenceUsage = true
-		return fmt.Errorf(
-			"Turn %d is not yet supported. Currently only Turn 1 (discovery) and Turn 2 (verification) are implemented.\n"+
-				"Turn 1: gsc claude scout start --turn 1 ...\n"+
-				"Turn 2: gsc claude scout start --turn 2 ... (after Turn 1 completes)",
-			flags.Turn,
-		)
-	}
-
 	// Determine intent (from flag or file)
 	intent := flags.Intent
 	if flags.IntentFile != "" {
@@ -114,8 +103,8 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 		// Check if session already exists
 		config, _ := claudescout.NewSessionConfig(sessionID)
 
-		// TURN-AWARE SESSION HANDLING
-		if flags.Turn == 1 {
+		// TURN-TYPE-AWARE SESSION HANDLING
+		if flags.TurnType == "discovery" {
 			// Turn 1: Error if session exists (unless --force)
 			if config.SessionExists() {
 				if !flags.Force {
@@ -128,7 +117,7 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 					return fmt.Errorf("failed to cleanup existing session: %w", err)
 				}
 			}
-		} else if flags.Turn == 2 {
+		} else if flags.TurnType == "verification" {
 			// Turn 2: Session must exist (will load it)
 			if !config.SessionExists() {
 				cmd.SilenceUsage = true
@@ -177,7 +166,7 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 
 	// Create or load scout manager based on turn
 	var manager *claudescout.Manager
-	if flags.Turn == 1 {
+	if flags.TurnType == "discovery" {
 		// Turn 1: Create new manager with debug logging enabled if requested
 		var err error
 		manager, err = claudescout.NewManagerWithDebug(sessionID, flags.Debug)
@@ -191,7 +180,7 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 			cmd.SilenceUsage = true
 			return fmt.Errorf("failed to initialize session: %w", err)
 		}
-	} else if flags.Turn == 2 {
+	} else if flags.TurnType == "verification" {
 		// Turn 2: Load existing manager
 		var err error
 		manager, err = claudescout.LoadSession(sessionID)
@@ -222,7 +211,7 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 	if flags.Format == "json" {
 		response := StartResponse{
 			SessionID:  sessionID,
-			Turn:       flags.Turn,
+			Turn:       1, // Will be updated from session state
 			Status:     "in_progress",
 			ProcessPID: processPID,
 			Message:    "Scout session started successfully",
@@ -238,16 +227,16 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 		// Existing text output
 		fmt.Fprintf(cmd.OutOrStdout(), "Scout session started\n")
 		fmt.Fprintf(cmd.OutOrStdout(), "Session ID: %s\n", FormatSessionPath(sessionID))
-		fmt.Fprintf(cmd.OutOrStdout(), "Turn: %d\n", flags.Turn)
+		fmt.Fprintf(cmd.OutOrStdout(), "Turn Type: %s\n", flags.TurnType)
 
-		if flags.Turn == 1 {
+		if flags.TurnType == "discovery" {
 			fmt.Fprintf(cmd.OutOrStdout(), "\nMonitor progress with:\n")
 			fmt.Fprintf(cmd.OutOrStdout(), "  gsc claude scout status -s %s\n", sessionID)
 			fmt.Fprintf(cmd.OutOrStdout(), "\nFollow in real-time with:\n")
 			fmt.Fprintf(cmd.OutOrStdout(), "  gsc claude scout status -s %s -f\n", sessionID)
 			fmt.Fprintf(cmd.OutOrStdout(), "\nWhen discovery completes, proceed to verification with:\n")
 			fmt.Fprintf(cmd.OutOrStdout(), "  gsc claude scout start --session-id %s --turn 2\n", sessionID)
-		} else if flags.Turn == 2 {
+		} else if flags.TurnType == "verification" {
 			fmt.Fprintf(cmd.OutOrStdout(), "\nMonitor verification progress with:\n")
 			fmt.Fprintf(cmd.OutOrStdout(), "  gsc claude scout status -s %s\n", sessionID)
 			fmt.Fprintf(cmd.OutOrStdout(), "\nFollow in real-time with:\n")
@@ -267,7 +256,7 @@ func spawnBackgroundWorker(flags *StartFlags) error {
 	args := []string{"claude", "scout", "start"}
 	args = append(args, "--session-id", flags.SessionID)
 	args = append(args, "--watch-worker")
-	args = append(args, "--turn", fmt.Sprintf("%d", flags.Turn))
+	args = append(args, "--turn-type", flags.TurnType)
 
 	// Spawn worker in background
 	cmd := exec.Command(os.Args[0], args...)
@@ -301,7 +290,7 @@ func runBackgroundWorker(cmd *cobra.Command, flags *StartFlags) error {
 	}
 
 	// Execute the turn (this blocks until complete)
-	if flags.Turn == 1 {
+	if flags.TurnType == "discovery" {
 		return manager.StartTurn1Discovery()
 	} else {
 		return manager.StartTurn2Verification(nil)

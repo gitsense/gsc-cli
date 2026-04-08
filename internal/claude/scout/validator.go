@@ -1,12 +1,12 @@
 /**
  * Component: Scout Setup and Configuration Validator
- * Block-UUID: b2458bd2-3b32-4e00-9d35-eeb06fe0c6f0
- * Parent-UUID: 5b42da08-7a58-4cce-9409-309f2290a9d4
- * Version: 1.5.1
+ * Block-UUID: 3f60134d-5420-4336-b845-3b1d751bd0ce
+ * Parent-UUID: b2458bd2-3b32-4e00-9d35-eeb06fe0c6f0
+ * Version: 1.6.0
  * Description: Validates scout session prerequisites (brain database, working directories). Updated to execute gsc brains command in working directory for both availability check and field validation.
  * Language: Go
- * Created-at: 2026-04-06T02:52:38.766Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), claude-haiku-4-5-20251001 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1)
+ * Created-at: 2026-04-08T16:35:21.209Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), claude-haiku-4-5-20251001 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0)
  */
 
 
@@ -287,4 +287,35 @@ func getBrainFields(dbName string, workdirPath string) ([]string, error) {
 	}
 
 	return commonFields, nil
+}
+
+// ValidateTurnSequence checks if a turn type is valid given the current session state
+func ValidateTurnSequence(turnType string, turns []TurnState) error {
+	// Validate turn-type value
+	if turnType != "discovery" && turnType != "verification" {
+		return fmt.Errorf("turn-type must be 'discovery' or 'verification'")
+	}
+	
+	// If no turns exist, first turn must be discovery
+	if len(turns) == 0 {
+		if turnType != "discovery" {
+			return fmt.Errorf("first turn must be discovery")
+		}
+		return nil
+	}
+	
+	// Get the last turn
+	lastTurn := turns[len(turns)-1]
+	
+	// Can't start new turn if last turn failed
+	if lastTurn.Status == "error" {
+		return fmt.Errorf("cannot start new turn: previous turn failed. Please retry the failed turn")
+	}
+	
+	// Can't do verification → verification
+	if lastTurn.TurnType == "verification" && turnType == "verification" {
+		return fmt.Errorf("cannot run verification after verification. Run discovery first")
+	}
+	
+	return nil
 }
