@@ -1,12 +1,12 @@
 /**
  * Component: Scout Stream Event Processor
- * Block-UUID: 824b538b-eedf-4163-b6ef-c98c52ef4e43
- * Parent-UUID: 24802470-b616-485f-a366-e740db68fce5
- * Version: 1.1.4
+ * Block-UUID: b94d264f-7a19-4a60-b13a-565b3e5bda55
+ * Parent-UUID: 824b538b-eedf-4163-b6ef-c98c52ef4e43
+ * Version: 1.1.5
  * Description: JSONL event streaming, parsing, and file I/O for Scout sessions. Fixed type mismatch by removing direct assignment of []QuickCandidate to []Candidate.
  * Language: Go
- * Created-at: 2026-04-06T16:35:25.745Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), GLM-4.7 (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.1.2), GLM-4.7 (v1.1.3), GLM-4.7 (v1.1.4)
+ * Created-at: 2026-04-08T19:00:09.545Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), GLM-4.7 (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.1.2), GLM-4.7 (v1.1.3), GLM-4.7 (v1.1.4), claude-haiku-4-5-20251001 (v1.1.5)
  */
 
 
@@ -239,24 +239,41 @@ func (ph *ProcessorHelper) GetLatestLogFile() (string, int, error) {
 	var latestTime time.Time
 	var latestTurn int
 
-	// Check both turn directories
-	for turn := 1; turn <= 2; turn++ {
-		turnDir := ph.sessionConfig.GetTurnDir(turn)
-		entries, err := os.ReadDir(turnDir)
+	// Read all directories in session directory
+	sessionDir := ph.sessionConfig.GetSessionDir()
+	entries, err := os.ReadDir(sessionDir)
+	if err != nil {
+		return "", 0, fmt.Errorf("failed to read session directory: %w", err)
+	}
+
+	// Check each turn directory
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		// Check if directory name matches turn-N pattern
+		var turnNum int
+		if _, err := fmt.Sscanf(entry.Name(), "turn-%d", &turnNum); err != nil {
+			continue // Skip non-turn directories
+		}
+
+		turnDir := filepath.Join(sessionDir, entry.Name())
+		turnEntries, err := os.ReadDir(turnDir)
 		if err != nil {
 			continue // Skip if directory doesn't exist
 		}
 
-		for _, entry := range entries {
-			if !entry.IsDir() && filepath.Ext(entry.Name()) == ".ndjson" {
-				info, err := entry.Info()
+		for _, turnEntry := range turnEntries {
+			if !turnEntry.IsDir() && filepath.Ext(turnEntry.Name()) == ".ndjson" {
+				info, err := turnEntry.Info()
 				if err != nil {
 					continue
 				}
 				if info.ModTime().After(latestTime) {
 					latestTime = info.ModTime()
-					latestFile = filepath.Join(turnDir, entry.Name())
-					latestTurn = turn
+					latestFile = filepath.Join(turnDir, turnEntry.Name())
+					latestTurn = turnNum
 				}
 			}
 		}
@@ -420,7 +437,7 @@ func (ph *ProcessorHelper) GenerateStatusData(session *Session, currentTurn int)
 
 	// Determine phase name
 	phase := "discovery"
-	if currentTurnState != nil && currentTurnState.TurnNumber == 2 {
+	if currentTurnState != nil && currentTurnState.TurnType == "verification" {
 		phase = "verification"
 	}
 

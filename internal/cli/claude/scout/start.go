@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Start Command
- * Block-UUID: 760d27ee-eb41-4da4-8904-bf7bf072216a
- * Parent-UUID: 08e3181a-8176-4c8c-b1c0-723f431bd184
- * Version: 1.4.0
+ * Block-UUID: 5217f326-67b0-4d1f-8ec0-5ebb1c4e840b
+ * Parent-UUID: 760d27ee-eb41-4da4-8904-bf7bf072216a
+ * Version: 1.5.0
  * Description: Implements 'gsc claude scout start' command with turn-aware session handling
  * Language: Go
- * Created-at: 2026-04-08T16:38:50.896Z
- * Authors: claude-haiku-4-5-20251001 (v1.2.1), GLM-4.7 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0)
+ * Created-at: 2026-04-08T22:29:10.637Z
+ * Authors: claude-haiku-4-5-20251001 (v1.2.1), GLM-4.7 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), claude-haiku-4-5-20251001 (v1.5.0)
  */
 
 
@@ -118,16 +118,16 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 				}
 			}
 		} else if flags.TurnType == "verification" {
-			// Turn 2: Session must exist (will load it)
+			// Verification: Session must exist (will load it)
 			if !config.SessionExists() {
 				cmd.SilenceUsage = true
 				return fmt.Errorf(
-					"session '%s' not found. Please run Turn 1 discovery first:\n"+
-						"  gsc claude scout start --session-id %s --turn 1 --intent-file <intent-file> --workdir <workdir>",
+					"session '%s' not found. Please run discovery turn first:\n"+
+						"  gsc claude scout start --session-id %s --turn-type discovery --intent-file <intent-file> --workdir <workdir>",
 					sessionID, sessionID,
 				)
 			}
-			// For Turn 2, load existing session instead of creating new
+			// For verification, load existing session instead of creating new
 			tempManager, err := claudescout.LoadSession(sessionID)
 			if err != nil {
 				cmd.SilenceUsage = true
@@ -143,7 +143,7 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 			if lastCompleted < 1 {
 				cmd.SilenceUsage = true
 				return fmt.Errorf(
-					"Turn 1 discovery has not completed yet. Check status with:\n"+
+					"Discovery turn has not completed yet. Check status with:\n"+
 						"  gsc claude scout status -s %s",
 					sessionID,
 				)
@@ -167,7 +167,7 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 	// Create or load scout manager based on turn
 	var manager *claudescout.Manager
 	if flags.TurnType == "discovery" {
-		// Turn 1: Create new manager with debug logging enabled if requested
+		// Discovery: Create new manager with debug logging enabled if requested
 		var err error
 		manager, err = claudescout.NewManagerWithDebug(sessionID, flags.Debug)
 		if err != nil {
@@ -181,14 +181,14 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 			return fmt.Errorf("failed to initialize session: %w", err)
 		}
 	} else if flags.TurnType == "verification" {
-		// Turn 2: Load existing manager
+		// Verification: Load existing manager
 		var err error
 		manager, err = claudescout.LoadSession(sessionID)
 		if err != nil {
 			cmd.SilenceUsage = true
 			return fmt.Errorf("failed to load session: %w", err)
 		}
-		// Turn 2 will use existing session data from Turn 1
+		// Verification will use existing session data from discovery
 	}
 
 	// Spawn background worker with --watch-worker flag
@@ -235,7 +235,7 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 			fmt.Fprintf(cmd.OutOrStdout(), "\nFollow in real-time with:\n")
 			fmt.Fprintf(cmd.OutOrStdout(), "  gsc claude scout status -s %s -f\n", sessionID)
 			fmt.Fprintf(cmd.OutOrStdout(), "\nWhen discovery completes, proceed to verification with:\n")
-			fmt.Fprintf(cmd.OutOrStdout(), "  gsc claude scout start --session-id %s --turn 2\n", sessionID)
+			fmt.Fprintf(cmd.OutOrStdout(), "  gsc claude scout start --session-id %s --turn-type verification\n", sessionID)
 		} else if flags.TurnType == "verification" {
 			fmt.Fprintf(cmd.OutOrStdout(), "\nMonitor verification progress with:\n")
 			fmt.Fprintf(cmd.OutOrStdout(), "  gsc claude scout status -s %s\n", sessionID)

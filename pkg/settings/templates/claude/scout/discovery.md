@@ -1,12 +1,12 @@
 <!--
 Component: Scout Discovery Methodology
-Block-UUID: 53b73eb2-4bb2-4c2c-82df-63f535caa570
-Parent-UUID: eaa7c5a5-dd75-493d-b751-8259b0d683c7
-Version: 5.0.0
-Description: Detailed discovery methodology for Scout Turn 1. Removed codebase overview step, improved fail-fast logic to evaluate semantic alignment, updated keyword extraction to 2-5 keywords, added wildcard requirement, mandated gsc grep over Unix grep, relabeled Step 4 to 'Understand Purpose', and clarified workflow to prevent infinite loops.
+Block-UUID: 184e7c80-72da-45d7-a1aa-1d5b421f40bf
+Parent-UUID: 53b73eb2-4bb2-4c2c-82df-63f535caa570
+Version: 5.1.0
+Description: Detailed discovery methodology for Scout discovery. Removed codebase overview step, improved fail-fast logic to evaluate semantic alignment, updated keyword extraction to 2-5 keywords, added wildcard requirement, mandated gsc grep over Unix grep, relabeled Step 4 to 'Understand Purpose', and clarified workflow to prevent infinite loops.
 Language: Markdown
 Created-at: 2026-04-05T03:40:15.123Z
-Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v3.0.0), GLM-4.7 (v4.0.0), GLM-4.7 (v5.0.0)
+Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v3.0.0), GLM-4.7 (v4.0.0), GLM-4.7 (v5.0.0), GLM-4.7 (v5.1.0)
 -->
 
 
@@ -176,7 +176,7 @@ This shows all available fields (e.g., `key_entities`, `mechanism`, `logic_const
 **FORBIDDEN TOOLS:**
 - ❌ **NEVER use Unix `grep`** - it's slow and inefficient
 - ❌ **NEVER use `jq`, `uniq`, `wc`, `find`, `ls`, `cat`, `less`, `more`**
-- ❌ **NEVER use the Read tool during Turn 1 discovery**
+- ❌ **NEVER use the Read tool during discovery**
 
 **REQUIRED TOOLS:**
 - ✅ **ALWAYS use `gsc grep`** for code content searches

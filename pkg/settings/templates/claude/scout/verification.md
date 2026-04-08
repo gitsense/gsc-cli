@@ -1,19 +1,19 @@
 <!--
 Component: Scout Verification Methodology
-Block-UUID: 60a8f724-9261-4cd7-b2d3-7526614eb19f
-Parent-UUID: N/A
-Version: 2.0.0
-Description: Detailed verification methodology for Scout Turn 2. Renamed from turn_2_verification.md to remove turn-specific naming.
+Block-UUID: b8fab98f-bc2d-4c71-95d6-e0e7263a15b5
+Parent-UUID: 60a8f724-9261-4cd7-b2d3-7526614eb19f
+Version: 2.1.0
+Description: Detailed verification methodology for Scout verification. Renamed from turn_2_verification.md to remove turn-specific naming.
 Language: Markdown
 Created-at: 2026-04-03T03:45:00.000Z
-Authors: GLM-4.7 (v2.0.0)
+Authors: GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0)
 -->
 
 
 ## Verification Execution: Step-by-Step
 
 ### Step 1: Review Discovery Results
-Review the candidates discovered in Turn 1:
+Review the candidates discovered in the last discovery turn:
 - Read the candidates from the discovery phase
 - Understand the original scores and reasoning
 - Identify which candidates need verification

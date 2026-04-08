@@ -1,12 +1,12 @@
 /**
  * Component: Scout Codebase Overview Builder
- * Block-UUID: 7994b817-ddb7-40d8-98e8-ec3298d0d608
- * Parent-UUID: fa9f0a36-3910-474a-85fc-ede58bfc5b3e
- * Version: 1.2.0
- * Description: Generates codebase overview for Scout Turn 1 by running gsc brains and gsc insights commands
+ * Block-UUID: c6308729-9bef-4602-8d0c-63fe59948218
+ * Parent-UUID: 7994b817-ddb7-40d8-98e8-ec3298d0d608
+ * Version: 1.3.0
+ * Description: Generates codebase overview for Scout discovery turns by running gsc brains and gsc insights commands
  * Language: Go
- * Created-at: 2026-04-03T18:09:19.837Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
+ * Created-at: 2026-04-08T22:45:48.369Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
  */
 
 
@@ -22,7 +22,7 @@ import (
 	"github.com/gitsense/gsc-cli/pkg/settings"
 )
 
-// CodebaseOverview represents the complete codebase overview for Turn 1
+// CodebaseOverview represents the complete codebase overview for Discovery
 type CodebaseOverview struct {
 	Metadata           OverviewMetadata     `json:"metadata"`
 	WorkingDirectories []WorkdirAnalysis `json:"working_directories"`
