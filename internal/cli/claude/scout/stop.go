@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Stop Command
- * Block-UUID: 89367aef-a915-4407-825e-ec9722608de8
- * Parent-UUID: d4c1d171-4a3f-4aa1-b050-f42067e9583e
- * Version: 1.1.0
+ * Block-UUID: 87366767-9319-4fe8-889a-26316215e780
+ * Parent-UUID: 89367aef-a915-4407-825e-ec9722608de8
+ * Version: 1.2.0
  * Description: Implements 'gsc claude scout stop' command for terminating Scout sessions
  * Language: Go
- * Created-at: 2026-04-01T05:37:15.179Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), claude-haiku-4-5-20251001 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.1.0)
+ * Created-at: 2026-04-08T23:26:20.403Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), claude-haiku-4-5-20251001 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -61,7 +61,7 @@ func runStopCommand(cmd *cobra.Command, flags *StopFlags) error {
 	}
 
 	// Load the session
-	manager, err := claudescout.LoadSession(flags.SessionID)
+	manager, err := claudescout.LoadSession(flags.Session)
 	if err != nil {
 		return fmt.Errorf("failed to load session: %w", err)
 	}
@@ -73,7 +73,7 @@ func runStopCommand(cmd *cobra.Command, flags *StopFlags) error {
 	}
 
 	if !status.ProcessInfo.Running {
-		fmt.Fprintf(cmd.OutOrStdout(), "Session %s is not running\n", flags.SessionID)
+		fmt.Fprintf(cmd.OutOrStdout(), "Session %s is not running\n", flags.Session)
 		return nil
 	}
 
@@ -100,7 +100,7 @@ func runStopCommand(cmd *cobra.Command, flags *StopFlags) error {
 
 	// Display confirmation
 	fmt.Fprintf(cmd.OutOrStdout(), "✓ Scout session stopped\n")
-	fmt.Fprintf(cmd.OutOrStdout(), "  Session ID: %s\n", flags.SessionID)
+	fmt.Fprintf(cmd.OutOrStdout(), "  Session ID: %s\n", flags.Session)
 	fmt.Fprintf(cmd.OutOrStdout(), "  Status: %s\n", status.Status)
 
 	// Show shutdown method
@@ -140,7 +140,7 @@ func runStopCommand(cmd *cobra.Command, flags *StopFlags) error {
 	if status.TotalFound > 0 {
 		fmt.Fprintf(cmd.OutOrStdout(), "  Candidates discovered: %d\n", status.TotalFound)
 		fmt.Fprintf(cmd.OutOrStdout(), "\nView results with:\n")
-		fmt.Fprintf(cmd.OutOrStdout(), "  gsc claude scout status -s %s\n", flags.SessionID)
+		fmt.Fprintf(cmd.OutOrStdout(), "  gsc claude scout status -s %s\n", flags.Session)
 	} else {
 		fmt.Fprintf(cmd.OutOrStdout(), "\nNo candidates discovered yet.\n")
 	}

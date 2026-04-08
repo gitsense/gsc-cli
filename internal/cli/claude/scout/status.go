@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Status Command
- * Block-UUID: 614a21f9-eb14-49f2-b5f9-53c4c1189592
- * Parent-UUID: 39c50b0e-d533-4d64-abb3-318b5cb65dad
- * Version: 1.7.0
+ * Block-UUID: 6c541df8-f64b-45db-b83f-8ef8765ad168
+ * Parent-UUID: 614a21f9-eb14-49f2-b5f9-53c4c1189592
+ * Version: 1.8.0
  * Description: Implements 'gsc claude scout status' command for monitoring Scout sessions. Updated to show phase display name instead of turn number.
  * Language: Go
- * Created-at: 2026-04-08T02:19:50.542Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), GLM-4.7 (v1.0.8), GLM-4.7 (v1.0.9), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0)
+ * Created-at: 2026-04-08T23:23:52.938Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), GLM-4.7 (v1.0.8), GLM-4.7 (v1.0.9), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0)
  */
 
 
@@ -55,7 +55,7 @@ func runStatusCommand(cmd *cobra.Command, flags *StatusFlags) error {
 	}
 
 	// Load the session
-	manager, err := claudescout.LoadSession(flags.SessionID)
+	manager, err := claudescout.LoadSession(flags.Session)
 	if err != nil {
 		return fmt.Errorf("failed to load session: %w", err)
 	}

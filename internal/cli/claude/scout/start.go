@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Start Command
- * Block-UUID: 5217f326-67b0-4d1f-8ec0-5ebb1c4e840b
- * Parent-UUID: 760d27ee-eb41-4da4-8904-bf7bf072216a
- * Version: 1.5.0
+ * Block-UUID: 917988e1-2083-44b2-9346-60cb95cb8e23
+ * Parent-UUID: 5217f326-67b0-4d1f-8ec0-5ebb1c4e840b
+ * Version: 1.6.0
  * Description: Implements 'gsc claude scout start' command with turn-type aware session handling. Supports multiple discovery turns followed by verification. Handles session creation, loading, and background worker spawning for both discovery and verification phases.
  * Language: Go
- * Created-at: 2026-04-08T22:29:10.637Z
- * Authors: claude-haiku-4-5-20251001 (v1.2.1), GLM-4.7 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), claude-haiku-4-5-20251001 (v1.5.0)
+ * Created-at: 2026-04-08T23:21:58.823Z
+ * Authors: claude-haiku-4-5-20251001 (v1.2.1), GLM-4.7 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), claude-haiku-4-5-20251001 (v1.5.0), GLM-4.7 (v1.6.0)
  */
 
 
@@ -94,7 +94,7 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 	}
 
 	// Generate a unique session ID and handle turn-aware session logic
-	sessionID := flags.SessionID
+	sessionID := flags.Session
 	if sessionID == "" {
 		// Auto-generate if not provided
 		sessionID = uuid.New().String()[:12]
@@ -254,7 +254,7 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 func spawnBackgroundWorker(flags *StartFlags) error {
 	// Build args for worker
 	args := []string{"claude", "scout", "start"}
-	args = append(args, "--session-id", flags.SessionID)
+	args = append(args, "--session", flags.Session)
 	args = append(args, "--watch-worker")
 	args = append(args, "--turn-type", flags.TurnType)
 
@@ -269,7 +269,7 @@ func spawnBackgroundWorker(flags *StartFlags) error {
 	}
 
 	// Store worker PID in session state
-	manager, err := claudescout.LoadSession(flags.SessionID)
+	manager, err := claudescout.LoadSession(flags.Session)
 	if err != nil {
 		return fmt.Errorf("failed to load session to store watcher PID: %w", err)
 	}
@@ -284,7 +284,7 @@ func spawnBackgroundWorker(flags *StartFlags) error {
 // runBackgroundWorker executes the scout session in the background worker process
 func runBackgroundWorker(cmd *cobra.Command, flags *StartFlags) error {
 	// Load existing session
-	manager, err := claudescout.LoadSession(flags.SessionID)
+	manager, err := claudescout.LoadSession(flags.Session)
 	if err != nil {
 		return fmt.Errorf("failed to load session: %w", err)
 	}

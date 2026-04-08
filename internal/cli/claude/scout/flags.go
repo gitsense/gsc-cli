@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Flags and Options
- * Block-UUID: 743fd370-5c22-40cd-831a-f8c86752385d
- * Parent-UUID: 5dd31964-be8d-410d-aa0e-934e26b17aa3
- * Version: 1.12.0
+ * Block-UUID: a2933e36-1024-49c7-9d6d-1477a2cea8ff
+ * Parent-UUID: 743fd370-5c22-40cd-831a-f8c86752385d
+ * Version: 1.13.0
  * Description: Shared flag definitions for Scout CLI commands (start, status, stop) with turn-type support. Supports multiple discovery turns followed by verification. Removed MarkFlagRequired("intent") to allow --intent-file as alternative. Added hidden WatchWorker flag for background worker process.
  * Language: Go
- * Created-at: 2026-04-08T23:14:03.577Z
- * Authors: claude-haiku-4-5-20251001 (v1.8.0), GLM-4.7 (v1.8.1), GLM-4.7 (v1.8.2), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0)
+ * Created-at: 2026-04-08T23:18:39.854Z
+ * Authors: claude-haiku-4-5-20251001 (v1.8.0), GLM-4.7 (v1.8.1), GLM-4.7 (v1.8.2), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0)
  */
 
 
@@ -33,7 +33,7 @@ type StartFlags struct {
 	AutoReview         bool
 	WorkingDirectories []string
 	ReferenceFilesJSON string
-	SessionID          string // Optional session ID
+	Session            string // Optional session ID
 	TurnType           string // Required: "discovery" or "verification"
 	Force              bool   // Force overwrite existing session
 	Format             string // Output format: text or json
@@ -43,7 +43,7 @@ type StartFlags struct {
 
 // StatusFlags contains flags for the scout status command
 type StatusFlags struct {
-	SessionID string
+	Session   string
 	Follow    bool
 	Format    string // json, table, pretty
 	Verbose   bool   // Show full results with reasoning and metadata
@@ -51,13 +51,13 @@ type StatusFlags struct {
 
 // StopFlags contains flags for the scout stop command
 type StopFlags struct {
-	SessionID string
+	Session   string
 	Force     bool
 }
 
 // ResultsFlags contains flags for the scout results command
 type ResultsFlags struct {
-	SessionID string
+	Session   string
 	Turn      int
 	Format    string // json, text
 }
@@ -100,8 +100,8 @@ func RegisterStartFlags(cmd *cobra.Command, flags *StartFlags) {
 	)
 
 	cmd.Flags().StringVar(
-		&flags.SessionID,
-		"session-id",
+		&flags.Session,
+		"session",
 		"",
 		"Optional session ID (auto-generated if not provided)",
 	)
@@ -154,7 +154,7 @@ func RegisterStartFlags(cmd *cobra.Command, flags *StartFlags) {
 // RegisterStatusFlags registers flags for the status command
 func RegisterStatusFlags(cmd *cobra.Command, flags *StatusFlags) {
 	cmd.Flags().StringVarP(
-		&flags.SessionID,
+		&flags.Session,
 		"session", "s",
 		"",
 		"Scout session ID to get status for",
@@ -179,7 +179,7 @@ func RegisterStatusFlags(cmd *cobra.Command, flags *StatusFlags) {
 // RegisterStopFlags registers flags for the stop command
 func RegisterStopFlags(cmd *cobra.Command, flags *StopFlags) {
 	cmd.Flags().StringVarP(
-		&flags.SessionID,
+		&flags.Session,
 		"session", "s",
 		"",
 		"Scout session ID to stop",
@@ -197,7 +197,7 @@ func RegisterStopFlags(cmd *cobra.Command, flags *StopFlags) {
 // RegisterResultsFlags registers flags for the results command
 func RegisterResultsFlags(cmd *cobra.Command, flags *ResultsFlags) {
 	cmd.Flags().StringVarP(
-		&flags.SessionID,
+		&flags.Session,
 		"session", "s",
 		"",
 		"Scout session ID to retrieve results for",
@@ -269,9 +269,9 @@ func ValidateStartFlags(flags *StartFlags) error {
 	}
 
 	// Validate session ID format if provided
-	if flags.SessionID != "" {
-		if err := ValidateSessionID(flags.SessionID); err != nil {
-			return &FlagError{Flag: "session-id", Message: err.Error()}
+	if flags.Session != "" {
+		if err := ValidateSessionID(flags.Session); err != nil {
+			return &FlagError{Flag: "session", Message: err.Error()}
 		}
 	}
 
@@ -289,7 +289,7 @@ func ValidateStartFlags(flags *StartFlags) error {
 
 // ValidateStatusFlags validates the status command flags
 func ValidateStatusFlags(flags *StatusFlags) error {
-	if flags.SessionID == "" {
+	if flags.Session == "" {
 		return &FlagError{Flag: "session", Message: "session ID is required"}
 	}
 
@@ -307,7 +307,7 @@ func ValidateStatusFlags(flags *StatusFlags) error {
 
 // ValidateStopFlags validates the stop command flags
 func ValidateStopFlags(flags *StopFlags) error {
-	if flags.SessionID == "" {
+	if flags.Session == "" {
 		return &FlagError{Flag: "session", Message: "session ID is required"}
 	}
 
@@ -316,7 +316,7 @@ func ValidateStopFlags(flags *StopFlags) error {
 
 // ValidateResultsFlags validates the results command flags
 func ValidateResultsFlags(flags *ResultsFlags) error {
-	if flags.SessionID == "" {
+	if flags.Session == "" {
 		return &FlagError{Flag: "session", Message: "session ID is required"}
 	}
 
@@ -333,7 +333,7 @@ func ValidateResultsFlags(flags *ResultsFlags) error {
 	}
 
 	// Validate session ID format
-	return ValidateSessionID(flags.SessionID)
+	return ValidateSessionID(flags.Session)
 }
 
 // ValidateScoutFlags checks that unsupported flags are not set
