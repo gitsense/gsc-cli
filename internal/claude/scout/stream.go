@@ -3,7 +3,7 @@
  * Block-UUID: 80b56b78-45ff-42d4-b03d-9ba4c35aad9b
  * Parent-UUID: d2f85c86-1fc4-4be4-8b24-ea6d0b9b79d8
  * Version: 1.11.0
- * Description: Manages Claude output stream parsing, event handling, and state updates from streaming JSONL responses. Updated to use turn-type references (discovery/verification) instead of turn numbers (Turn 1/Turn 2) for consistency with Phase 1 requirements.
+ * Description: Manages Claude output stream parsing, event handling, and state updates from streaming JSONL responses. Handles discovery and verification result parsing, error capture, and turn state updates. Supports multiple discovery turns with dynamic turn number calculation.
  * Language: Go
  * Created-at: 2026-04-08T18:30:15.527Z
  * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), claude-sonnet-4-6 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), claude-haiku-4-5-20251001 (v1.11.0)

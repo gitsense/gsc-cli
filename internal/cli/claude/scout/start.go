@@ -3,7 +3,7 @@
  * Block-UUID: 5217f326-67b0-4d1f-8ec0-5ebb1c4e840b
  * Parent-UUID: 760d27ee-eb41-4da4-8904-bf7bf072216a
  * Version: 1.5.0
- * Description: Implements 'gsc claude scout start' command with turn-aware session handling
+ * Description: Implements 'gsc claude scout start' command with turn-type aware session handling. Supports multiple discovery turns followed by verification. Handles session creation, loading, and background worker spawning for both discovery and verification phases.
  * Language: Go
  * Created-at: 2026-04-08T22:29:10.637Z
  * Authors: claude-haiku-4-5-20251001 (v1.2.1), GLM-4.7 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), claude-haiku-4-5-20251001 (v1.5.0)

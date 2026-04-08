@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Flags and Options
- * Block-UUID: 5dd31964-be8d-410d-aa0e-934e26b17aa3
- * Parent-UUID: b78e624a-3a73-4328-add2-3dc612c491ff
- * Version: 1.11.0
- * Description: Shared flag definitions for Scout CLI commands (start, status, stop) with turn and force support. Removed MarkFlagRequired("intent") to allow --intent-file as alternative. Added hidden WatchWorker flag for background worker process.
+ * Block-UUID: 743fd370-5c22-40cd-831a-f8c86752385d
+ * Parent-UUID: 5dd31964-be8d-410d-aa0e-934e26b17aa3
+ * Version: 1.12.0
+ * Description: Shared flag definitions for Scout CLI commands (start, status, stop) with turn-type support. Supports multiple discovery turns followed by verification. Removed MarkFlagRequired("intent") to allow --intent-file as alternative. Added hidden WatchWorker flag for background worker process.
  * Language: Go
- * Created-at: 2026-04-08T16:32:45.164Z
- * Authors: claude-haiku-4-5-20251001 (v1.8.0), GLM-4.7 (v1.8.1), GLM-4.7 (v1.8.2), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0)
+ * Created-at: 2026-04-08T23:14:03.577Z
+ * Authors: claude-haiku-4-5-20251001 (v1.8.0), GLM-4.7 (v1.8.1), GLM-4.7 (v1.8.2), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0)
  */
 
 
@@ -208,7 +208,7 @@ func RegisterResultsFlags(cmd *cobra.Command, flags *ResultsFlags) {
 		&flags.Turn,
 		"turn",
 		0,
-		"Turn number to retrieve results for (1=discovery, 2=verification)",
+		"Turn number to retrieve results for (odd=discovery, even=verification)",
 	)
 	cmd.MarkFlagRequired("turn")
 
@@ -320,8 +320,8 @@ func ValidateResultsFlags(flags *ResultsFlags) error {
 		return &FlagError{Flag: "session", Message: "session ID is required"}
 	}
 
-	if flags.Turn != 1 && flags.Turn != 2 {
-		return &FlagError{Flag: "turn", Message: "turn must be 1 or 2"}
+	if flags.Turn < 1 {
+		return &FlagError{Flag: "turn", Message: "turn must be a positive integer"}
 	}
 
 	validFormats := map[string]bool{

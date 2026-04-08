@@ -1,12 +1,12 @@
 /**
  * Component: Scout Session Manager
- * Block-UUID: d70b445c-7a22-4ef6-9f6d-d32fde8cf51b
- * Parent-UUID: ea59c662-ac0d-444a-91fe-8734f3afb6b6
- * Version: 1.17.0
- * Description: Orchestrates Scout discovery and verification phases. Refactored to focus on session lifecycle and orchestration; subprocess management moved to subprocess.go, stream processing moved to stream.go. Fixed to set phase in writeNoBrainsError based on current turn. Updated LoadSession to populate WorkingDirectories and ReferenceFilesContext from StatusData. Removed GetFinalizedTurnResults() function as results are now stored in session.json. Updated GenerateStatusData() to read candidates from session state. Added lastAssistantMessage field to track assistant messages for post-processing. Updated comments to reflect turn-type based approach instead of turn numbers. Fixed critical issues with hardcoded turn numbers - now uses dynamic turn calculation to support multiple discovery turns.
+ * Block-UUID: c795d3cc-45d2-473b-9e18-37e635b37007
+ * Parent-UUID: d70b445c-7a22-4ef6-9f6d-d32fde8cf51b
+ * Version: 1.18.0
+ * Description: Orchestrates Scout discovery and verification phases. Refactored to focus on session lifecycle and orchestration; subprocess management moved to subprocess.go, stream processing moved to stream.go. Fixed to set phase in writeNoBrainsError based on current turn. Updated LoadSession to populate WorkingDirectories and ReferenceFilesContext from StatusData. Removed GetFinalizedTurnResults() function as results are now stored in session.json. Updated GenerateStatusData() to read candidates from session state. Added lastAssistantMessage field to track assistant messages for post-processing. Updated comments to reflect turn-type based approach instead of turn numbers. Fixed critical issues with hardcoded turn numbers - now uses dynamic turn calculation to support multiple discovery turns. Added EnsureTurnDir() calls to create turn directories on-demand.
  * Language: Go
- * Created-at: 2026-04-08T22:45:16.154Z
- * Authors: claude-haiku-4-5-20251001 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.2.5), GLM-4.7 (v1.2.6), GLM-4.7 (v1.2.7), GLM-4.7 (v1.2.8), GLM-4.7 (v1.2.9), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.3.3), GLM-4.7 (v1.4.0), GLM-4.7 (v1.4.1), claude-haiku-4-5-20251001 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.5.2), GLM-4.7 (v1.5.3), GLM-4.7 (v1.5.4), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.17.0)
+ * Created-at: 2026-04-08T23:05:22.521Z
+ * Authors: ..., (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0)
  */
 
 
@@ -284,7 +284,7 @@ func (m *Manager) StartDiscoveryTurn() error {
 
 	// Prepare discovery turn (generate input schema)
 	if err := m.PrepareCodebaseOverview(); err != nil {
-		m.debugLogger.LogError("PrepareTurn1 failed", err)
+		m.debugLogger.LogError("PrepareCodebaseOverview failed", err)
 		return err
 	}
 
@@ -298,6 +298,13 @@ func (m *Manager) StartDiscoveryTurn() error {
 	nextTurn := m.getNextTurnNumber()
 	m.currentTurn = nextTurn
 	m.session.Status = "discovery"
+
+	// Ensure turn directory exists
+	if err := m.config.EnsureTurnDir(nextTurn); err != nil {
+		m.debugLogger.LogError("Failed to create turn directory", err)
+		m.markAsStopped("DIR_CREATE_FAILED", fmt.Sprintf("Failed to create turn directory: %v", err))
+		return err
+	}
 
 	// Close previous eventWriter if it exists to prevent resource leaks
 	if m.eventWriter != nil {
@@ -366,6 +373,13 @@ func (m *Manager) StartVerificationTurn(selectedCandidates *SelectedCandidates) 
 	nextTurn := m.getNextTurnNumber()
 	m.currentTurn = nextTurn
 	m.session.Status = "verification"
+
+	// Ensure turn directory exists
+	if err := m.config.EnsureTurnDir(nextTurn); err != nil {
+		m.debugLogger.LogError("Failed to create turn directory", err)
+		m.markAsStopped("DIR_CREATE_FAILED", fmt.Sprintf("Failed to create turn directory: %v", err))
+		return err
+	}
 
 	// Close previous eventWriter if it exists to prevent resource leaks
 	if m.eventWriter != nil {
