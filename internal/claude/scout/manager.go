@@ -1,12 +1,12 @@
 /**
  * Component: Scout Session Manager
- * Block-UUID: 12e1907d-013c-4925-936d-9531762c438c
- * Parent-UUID: 63a9a430-7696-476b-911b-aa5c54237bc3
- * Version: 1.13.0
- * Description: Orchestrates Scout discovery and verification phases. Refactored to focus on session lifecycle and orchestration; subprocess management moved to subprocess.go, stream processing moved to stream.go. Fixed to set phase in writeNoBrainsError based on current turn. Updated LoadSession to populate WorkingDirectories and ReferenceFilesContext from StatusData. Removed GetFinalizedTurnResults() function as results are now stored in session.json. Updated GenerateStatusData() to read candidates from session state. Added lastAssistantMessage field to track assistant messages for post-processing.
+ * Block-UUID: dc5b321f-4537-4ff5-8082-1c0db52b2400
+ * Parent-UUID: 136f6f11-0df7-40e5-980f-6da07437aaba
+ * Version: 1.15.0
+ * Description: Orchestrates Scout discovery and verification phases. Refactored to focus on session lifecycle and orchestration; subprocess management moved to subprocess.go, stream processing moved to stream.go. Fixed to set phase in writeNoBrainsError based on current turn. Updated LoadSession to populate WorkingDirectories and ReferenceFilesContext from StatusData. Removed GetFinalizedTurnResults() function as results are now stored in session.json. Updated GenerateStatusData() to read candidates from session state. Added lastAssistantMessage field to track assistant messages for post-processing. Updated comments to reflect turn-type based approach instead of turn numbers.
  * Language: Go
- * Created-at: 2026-04-08T16:36:38.719Z
- * Authors: claude-haiku-4-5-20251001 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.2.5), GLM-4.7 (v1.2.6), GLM-4.7 (v1.2.7), GLM-4.7 (v1.2.8), GLM-4.7 (v1.2.9), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.3.3), GLM-4.7 (v1.4.0), GLM-4.7 (v1.4.1), claude-haiku-4-5-20251001 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.5.2), GLM-4.7 (v1.5.3), GLM-4.7 (v1.5.4), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0)
+ * Created-at: 2026-04-08T16:55:49.327Z
+ * Authors: claude-haiku-4-5-20251001 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.2.5), GLM-4.7 (v1.2.6), GLM-4.7 (v1.2.7), GLM-4.7 (v1.2.8), GLM-4.7 (v1.2.9), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.3.3), GLM-4.7 (v1.4.0), GLM-4.7 (v1.4.1), claude-haiku-4-5-20251001 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.5.2), GLM-4.7 (v1.5.3), GLM-4.7 (v1.5.4), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0)
  */
 
 
@@ -23,8 +23,8 @@ import (
 )
 
 // FinalizedTurnResults represents the lightweight results for a completed turn
-// For Turn 2, Candidates contains only verified/relevant candidates (score > 0.0)
-// OriginalCandidates contains all Turn 1 discovery results for comparison
+// For verification turns, Candidates contains only verified/relevant candidates (score > 0.0)
+// OriginalCandidates contains all discovery results for comparison
 type FinalizedTurnResults struct {
 	SessionID          string      `json:"session_id"`
 	Turn               int         `json:"turn"`
@@ -187,7 +187,7 @@ func (m *Manager) InitializeSession(intent string, workdirs []WorkingDirectory, 
 
 // PrepareTurn1 generates codebase overview and handles no-brains case
 func (m *Manager) PrepareTurn1() error {
-	m.debugLogger.Log("DEBUG", "Preparing Turn 1")
+	m.debugLogger.Log("DEBUG", "Preparing discovery turn")
 
 	// 1. Build codebase overview
 	overview, err := BuildCodebaseOverview(m.session.SessionID, m.session.WorkingDirectories)
@@ -257,13 +257,13 @@ func (m *Manager) writeNoBrainsError() error {
 	})
 }
 
-// StartTurn1Discovery initiates the discovery phase and spawns subprocess
-func (m *Manager) StartTurn1Discovery() error {
+// StartDiscoveryTurn initiates the discovery phase and spawns subprocess
+func (m *Manager) StartDiscoveryTurn() error {
 	if m.session == nil {
 		return fmt.Errorf("session not initialized")
 	}
 
-	m.debugLogger.Log("DEBUG", "Starting Turn 1 discovery")
+	m.debugLogger.Log("DEBUG", "Starting discovery turn")
 	m.debugLogger.Log("DEBUG", fmt.Sprintf("Session status: %s", m.session.Status))
 	m.debugLogger.Log("DEBUG", fmt.Sprintf("Working directories: %d", len(m.session.WorkingDirectories)))
 
@@ -271,7 +271,7 @@ func (m *Manager) StartTurn1Discovery() error {
 		return fmt.Errorf("cannot start discovery: session status is %s", m.session.Status)
 	}
 
-	// Prepare Turn 1 (generate input schema)
+	// Prepare discovery turn (generate input schema)
 	if err := m.PrepareTurn1(); err != nil {
 		m.debugLogger.LogError("PrepareTurn1 failed", err)
 		return err
@@ -325,8 +325,8 @@ func (m *Manager) StartTurn1Discovery() error {
 	}
 	m.debugLogger.Log("DEBUG", "Log paths stored in session state")
 
-	// Spawn subprocess for Turn 1 (defined in subprocess.go)
-	if err := m.spawnClaudeSubprocess(m.currentTurn); err != nil {
+	// Spawn subprocess for discovery turn (defined in subprocess.go)
+	if err := m.spawnClaudeSubprocess(m.currentTurn, "discovery"); err != nil {
 		m.debugLogger.LogError("Failed to spawn subprocess", err)
 		m.markAsStopped("SPAWN_FAILED", fmt.Sprintf("Failed to spawn subprocess: %v", err))
 		return err
@@ -339,13 +339,13 @@ func (m *Manager) StartTurn1Discovery() error {
 	return m.writeSessionState()
 }
 
-// StartTurn2Verification initiates the verification phase
-func (m *Manager) StartTurn2Verification(selectedCandidates *SelectedCandidates) error {
+// StartVerificationTurn initiates the verification phase
+func (m *Manager) StartVerificationTurn(selectedCandidates *SelectedCandidates) error {
 	if m.session == nil {
 		return fmt.Errorf("session not initialized")
 	}
 
-	m.debugLogger.Log("DEBUG", "Starting Turn 2 verification")
+	m.debugLogger.Log("DEBUG", "Starting verification turn")
 	m.debugLogger.Log("DEBUG", fmt.Sprintf("Session status: %s", m.session.Status))
 
 	if m.session.Status != "discovery_complete" {
@@ -408,8 +408,8 @@ func (m *Manager) StartTurn2Verification(selectedCandidates *SelectedCandidates)
 		}
 	}
 
-	// Spawn subprocess for Turn 2 (defined in subprocess.go)
-	if err := m.spawnClaudeSubprocess(m.currentTurn); err != nil {
+	// Spawn subprocess for verification turn (defined in subprocess.go)
+	if err := m.spawnClaudeSubprocess(m.currentTurn, "verification"); err != nil {
 		m.debugLogger.LogError("Failed to spawn subprocess", err)
 		m.markAsStopped("SPAWN_FAILED", fmt.Sprintf("Failed to spawn subprocess: %v", err))
 		return err

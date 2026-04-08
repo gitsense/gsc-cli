@@ -192,7 +192,7 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 	}
 
 	// Spawn background worker with --watch-worker flag
-	// The background worker will execute the turn (StartTurn1Discovery or StartTurn2Verification)
+	// The background worker will execute the turn (StartDiscoveryTurn or StartVerificationTurn)
 	if err := spawnBackgroundWorker(flags); err != nil {
 		cmd.SilenceUsage = true
 		return fmt.Errorf("failed to spawn background worker: %w", err)
@@ -291,9 +291,9 @@ func runBackgroundWorker(cmd *cobra.Command, flags *StartFlags) error {
 
 	// Execute the turn (this blocks until complete)
 	if flags.TurnType == "discovery" {
-		return manager.StartTurn1Discovery()
+		return manager.StartDiscoveryTurn()
 	} else {
-		return manager.StartTurn2Verification(nil)
+		return manager.StartVerificationTurn(nil)
 	}
 }
 

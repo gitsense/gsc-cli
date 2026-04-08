@@ -1,12 +1,12 @@
 /**
  * Component: Scout Subprocess Manager
- * Block-UUID: 08d262e7-ed6e-43d1-aa2c-27649c610fa4
- * Parent-UUID: a245e2e4-ff99-4ca3-a8d9-b2167be9e057
- * Version: 2.4.0
+ * Block-UUID: 21ea0d31-5c01-47e9-83bc-eff101cb23ee
+ * Parent-UUID: 08d262e7-ed6e-43d1-aa2c-27649c610fa4
+ * Version: 2.5.0
  * Description: Manages subprocess spawning, process lifecycle, signal handling, and resource cleanup for Scout Claude sessions. Updated to find gsc location using exec.LookPath and add its directory to PATH in subprocess.
  * Language: Go
- * Created-at: 2026-04-08T16:37:36.706Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0)
+ * Created-at: 2026-04-08T16:55:15.562Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), GLM-4.7 (v2.5.0)
  */
 
 
@@ -29,7 +29,7 @@ import (
 )
 
 // spawnClaudeSubprocess spawns the claude subprocess for a turn
-func (m *Manager) spawnClaudeSubprocess(turn int) error {
+func (m *Manager) spawnClaudeSubprocess(turn int, turnType string) error {
 	m.debugLogger.Log("DEBUG", fmt.Sprintf("Spawning subprocess for turn %d", turn))
 
 	// Get the Claude prompt template using absolute path
@@ -644,27 +644,50 @@ func writeTaskPrompt(turnDir string, turn int, workdirsMarkdown string, refFiles
 		return fmt.Errorf("failed to read task template: %w", err)
 	}
 
+	// Read intent.md file
+	intentPath := filepath.Join(turnDir, "..", "intent.md")
+	intentContent, err := os.ReadFile(intentPath)
+	if err != nil {
+		return fmt.Errorf("failed to read intent: %w", err)
+	}
+	
+	// Read turn-history.json if it exists
+	var turnHistoryJSON string
+	var turnHistoryExists bool
+	
+	turnHistoryPath := filepath.Join(turnDir, "..", "turn-history.json")
+	if data, err := os.ReadFile(turnHistoryPath); err == nil {
+		turnHistoryJSON = string(data)
+		turnHistoryExists = true
+	}
+	
 	// Create template and execute
 	tmpl, err := template.New("task").Parse(string(templateContent))
 	if err != nil {
 		return fmt.Errorf("failed to parse task template: %w", err)
 	}
-
+	
 	var buf bytes.Buffer
 	data := struct {
-		Workdirs string
-		RefFiles string
-		Intent   string
-		TurnType string
+		Workdirs         string
+		RefFiles         string
+		Intent           string
+		TurnType         string
+		TurnHistoryExists bool
+		TurnHistoryJSON  string
 	}{
-		Workdirs: workdirsMarkdown,
-		RefFiles: refFilesMarkdown,
+		Workdirs:         workdirsMarkdown,
+		RefFiles:         refFilesMarkdown,
+		Intent:           string(intentContent),
+		TurnType:         turnType,
+		TurnHistoryExists: turnHistoryExists,
+		TurnHistoryJSON:  turnHistoryJSON,
 	}
-
+	
 	if err := tmpl.Execute(&buf, data); err != nil {
 		return fmt.Errorf("failed to execute task template: %w", err)
 	}
-
+	
 	// Write to task.md
 	taskPath := filepath.Join(turnDir, "task.md")
 	return os.WriteFile(taskPath, buf.Bytes(), 0644)
