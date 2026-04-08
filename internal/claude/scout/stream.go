@@ -1,12 +1,12 @@
 /**
  * Component: Scout Stream Event Processor
- * Block-UUID: e59e362b-b93b-4008-a6eb-10c14cc1fb18
- * Parent-UUID: b2ef1de8-7268-401b-8039-cfff862d16e3
- * Version: 1.8.0
+ * Block-UUID: fe47afb8-7192-4e7d-98b8-fa330d9e9070
+ * Parent-UUID: e59e362b-b93b-4008-a6eb-10c14cc1fb18
+ * Version: 1.9.0
  * Description: Manages Claude output stream parsing, event handling, and state updates from streaming JSONL responses. Updated to implement "Pure Stream" architecture: writes raw CLI events + start/end markers to raw-stream.ndjson, and populates session.json with structured results.
  * Language: Go
- * Created-at: 2026-04-08T04:06:14.471Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), claude-sonnet-4-6 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0)
+ * Created-at: 2026-04-08T13:23:47.493Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), claude-sonnet-4-6 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0)
  */
 
 
@@ -333,7 +333,7 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 			// DEBUG: Log processing last assistant message
 			m.debugLogger.Log("METRICS", "Processing last assistant message as fallback")
 
-			if err := m.processAssistantMessage(m.lastAssistantMessage, turn); err != nil {
+			if err := m.processAssistantMessage(m.lastAssistantMessage, turn, usage, cost, duration, claudeSessionID); err != nil {
 				m.debugLogger.LogError("Failed to process assistant message", err)
 			}
 		}
@@ -348,7 +348,7 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 		// DEBUG: Log post-processing last assistant message
 		m.debugLogger.Log("METRICS", "Post-processing last assistant message")
 
-		if err := m.processAssistantMessage(m.lastAssistantMessage, turn); err != nil {
+		if err := m.processAssistantMessage(m.lastAssistantMessage, turn, usage, cost, duration, claudeSessionID); err != nil {
 			m.debugLogger.LogError("Failed to process assistant message", err)
 		}
 	}
@@ -451,7 +451,7 @@ func (m *Manager) captureStderr(stderr io.Reader) {
 
 // processAssistantMessage extracts and processes JSON from an assistant message
 // This is a fallback when the 'result' event is missing or malformed
-func (m *Manager) processAssistantMessage(rawMessage string, turn int) error {
+func (m *Manager) processAssistantMessage(rawMessage string, turn int, usage Usage, cost float64, duration int64, claudeSessionID string) error {
 	m.debugLogger.Log("DEBUG", "Processing assistant message")
 	
 	// DEBUG: Log processing start
@@ -585,7 +585,7 @@ func (m *Manager) processAssistantMessage(rawMessage string, turn int) error {
 		m.debugLogger.Log("METRICS", fmt.Sprintf("Turn 1 format parsed successfully: %d candidates", len(turn1Result.Candidates)))
 		
 		// Populate session state
-		m.populateTurnState(turn, turn1Result.Candidates, len(turn1Result.Candidates), Usage{}, 0, 0, "", &TurnResults{
+		m.populateTurnState(turn, turn1Result.Candidates, len(turn1Result.Candidates), usage, cost, duration, claudeSessionID, &TurnResults{
 			Candidates:   turn1Result.Candidates,
 			DiscoveryLog: turn1Result.DiscoveryLog,
 			Coverage:     turn1Result.Coverage,
@@ -629,7 +629,7 @@ func (m *Manager) processAssistantMessage(rawMessage string, turn int) error {
 		// Populate session state
 		verifiedCandidates := m.mergeVerificationUpdates(turn2Result.VerifiedCandidates)
 		
-		m.populateTurnState(turn, verifiedCandidates, turn2Result.Summary.TotalVerified, Usage{}, 0, 0, "", &TurnResults{
+		m.populateTurnState(turn, verifiedCandidates, turn2Result.Summary.TotalVerified, usage, cost, duration, claudeSessionID, &TurnResults{
 			Candidates: verifiedCandidates,
 			VerificationSummary: &VerificationSummary{
 				TotalVerified:        turn2Result.Summary.TotalVerified,
