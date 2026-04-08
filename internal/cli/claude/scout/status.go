@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Status Command
- * Block-UUID: 39c50b0e-d533-4d64-abb3-318b5cb65dad
- * Parent-UUID: 1b317295-aec2-46e3-add8-9605423ba7d7
- * Version: 1.6.0
+ * Block-UUID: 614a21f9-eb14-49f2-b5f9-53c4c1189592
+ * Parent-UUID: 39c50b0e-d533-4d64-abb3-318b5cb65dad
+ * Version: 1.7.0
  * Description: Implements 'gsc claude scout status' command for monitoring Scout sessions. Updated to show phase display name instead of turn number.
  * Language: Go
- * Created-at: 2026-04-06T16:40:25.399Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), GLM-4.7 (v1.0.8), GLM-4.7 (v1.0.9), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0)
+ * Created-at: 2026-04-08T02:19:50.542Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), GLM-4.7 (v1.0.8), GLM-4.7 (v1.0.9), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0)
  */
 
 
@@ -260,6 +260,33 @@ func displayStatusPretty(cmd *cobra.Command, status *claudescout.StatusData, ver
 			// Show coverage if available
 			if currentTurn.Results.Coverage != "" {
 				fmt.Fprintf(cmd.OutOrStdout(), "\n  Coverage: %s\n", currentTurn.Results.Coverage)
+			}
+			
+			// Show session metrics if available
+			if currentTurn.Results.Usage != nil || currentTurn.Results.Cost != nil || currentTurn.Results.Duration != nil {
+				fmt.Fprintf(cmd.OutOrStdout(), "\n  Session Metrics:\n")
+				fmt.Fprintf(cmd.OutOrStdout(), "  --------------------------------------------------\n")
+				
+				if currentTurn.Results.Duration != nil {
+					duration := time.Duration(*currentTurn.Results.Duration) * time.Millisecond
+					fmt.Fprintf(cmd.OutOrStdout(), "  Duration: %v\n", duration.Round(time.Millisecond))
+				}
+				
+				if currentTurn.Results.Cost != nil {
+					fmt.Fprintf(cmd.OutOrStdout(), "  Cost: $%.6f\n", *currentTurn.Results.Cost)
+				}
+				
+				if currentTurn.Results.Usage != nil {
+					fmt.Fprintf(cmd.OutOrStdout(), "  Usage:\n")
+					fmt.Fprintf(cmd.OutOrStdout(), "    Input Tokens: %d\n", currentTurn.Results.Usage.InputTokens)
+					fmt.Fprintf(cmd.OutOrStdout(), "    Output Tokens: %d\n", currentTurn.Results.Usage.OutputTokens)
+					if currentTurn.Results.Usage.CacheCreationTokens > 0 {
+						fmt.Fprintf(cmd.OutOrStdout(), "    Cache Creation Tokens: %d\n", currentTurn.Results.Usage.CacheCreationTokens)
+					}
+					if currentTurn.Results.Usage.CacheReadTokens > 0 {
+						fmt.Fprintf(cmd.OutOrStdout(), "    Cache Read Tokens: %d\n", currentTurn.Results.Usage.CacheReadTokens)
+					}
+				}
 			}
 			
 			// Show detailed candidates with reasoning

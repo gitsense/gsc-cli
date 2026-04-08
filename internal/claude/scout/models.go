@@ -1,12 +1,12 @@
 /**
  * Component: Scout Models
- * Block-UUID: 2407aadc-8db9-4440-afbb-fcc3aeafa791
- * Parent-UUID: 3e702c8e-b336-4fe9-99a1-8b6422013e62
- * Version: 1.10.0
- * Description: Data structures for Scout feature (candidate discovery and verification). Added ReferenceFilesContext field to StatusData to persist reference files in session state.
+ * Block-UUID: a8b9d1bc-a1c1-4185-8d87-9406701d05f5
+ * Parent-UUID: 84f02e4c-83fc-49bb-816c-d16631c7c6ac
+ * Version: 1.13.0
+ * Description: Data structures for Scout feature (candidate discovery and verification). Added Duration, Cost, and Usage fields to VerificationSummary struct to support embedding session metrics in verification results.
  * Language: Go
- * Created-at: 2026-04-06T16:33:43.641Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.6), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0)
+ * Created-at: 2026-04-08T02:22:23.270Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.6), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0)
  */
 
 
@@ -260,6 +260,9 @@ type TurnResults struct {
 	DiscoveryLog         *DiscoveryLog       `json:"discovery_log,omitempty"`
 	VerificationSummary  *VerificationSummary `json:"verification_summary,omitempty"`
 	Coverage             string              `json:"coverage,omitempty"`
+	Duration             *int64              `json:"duration,omitempty"`
+	Cost                 *float64            `json:"cost,omitempty"`
+	Usage                *Usage              `json:"usage,omitempty"`
 }
 
 // DiscoveryLog contains the discovery methodology and pivot checks
@@ -279,4 +282,7 @@ type VerificationSummary struct {
 	CandidatesRemoved    int                 `json:"candidates_removed"`
 	AverageVerifiedScore float64             `json:"average_verified_score"`
 	TopCandidatesCount   int                 `json:"top_candidates_count"`
+	Duration             *int64              `json:"duration,omitempty"`
+	Cost                 *float64            `json:"cost,omitempty"`
+	Usage                *Usage              `json:"usage,omitempty"`
 }

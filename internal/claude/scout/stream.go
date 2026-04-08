@@ -1,12 +1,12 @@
 /**
  * Component: Scout Stream Event Processor
- * Block-UUID: 96892268-9492-47ed-94c2-1f24b76dba45
- * Parent-UUID: 925a054f-3dd3-4864-8c16-27858cc5f9a2
- * Version: 1.3.0
+ * Block-UUID: fefc2a32-0526-4788-a2c0-029a46ed06d9
+ * Parent-UUID: c7958e96-6374-44be-8d37-f1153b1d97aa
+ * Version: 1.5.0
  * Description: Manages Claude output stream parsing, event handling, and state updates from streaming JSONL responses. Updated to implement "Pure Stream" architecture: writes raw CLI events + start/end markers to raw-stream.ndjson, and populates session.json with structured results.
  * Language: Go
- * Created-at: 2026-04-06T16:15:04.922Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
+ * Created-at: 2026-04-08T03:07:46.561Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
  */
 
 
@@ -189,9 +189,26 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 				m.debugLogger.LogStreamEvent("RESULT", fmt.Sprintf("line %d: result length=%d", lineCount, len(resultContent)))
 
 				// Parse Scout's JSON from result field to populate session state
+				// Strip markdown code fences if present
+				resultContent = strings.TrimSpace(resultContent)
+				if strings.HasPrefix(resultContent, "```json") {
+					resultContent = strings.TrimPrefix(resultContent, "```json")
+					resultContent = strings.TrimSpace(resultContent)
+				} else if strings.HasPrefix(resultContent, "```") {
+					resultContent = strings.TrimPrefix(resultContent, "```")
+					resultContent = strings.TrimSpace(resultContent)
+				}
+				if strings.HasSuffix(resultContent, "```") {
+					resultContent = strings.TrimSuffix(resultContent, "```")
+					resultContent = strings.TrimSpace(resultContent)
+				}
+
 				// Try Turn 1 format first
 				var turn1Result struct {
 					Candidates []Candidate `json:"candidates"`
+					Duration   *int64      `json:"duration,omitempty"`
+					Cost       *float64    `json:"cost,omitempty"`
+					Usage      *Usage      `json:"usage,omitempty"`
 					TotalFound int         `json:"total_found"`
 					Coverage   string      `json:"coverage"`
 					DiscoveryLog *DiscoveryLog `json:"discovery_log"`
@@ -200,6 +217,9 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 					// Populate session state (Turn 1)
 					m.populateTurnState(turn, turn1Result.Candidates, turn1Result.TotalFound, usage, cost, duration, claudeSessionID, &TurnResults{
 						Candidates:   turn1Result.Candidates,
+						Duration:     &duration,
+						Cost:         &cost,
+						Usage:        &usage,
 						DiscoveryLog: turn1Result.DiscoveryLog,
 						Coverage:     turn1Result.Coverage,
 					})
@@ -212,6 +232,9 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 				// Try Turn 2 format
 				var turn2Result struct {
 					VerifiedCandidates []VerificationUpdate `json:"verified_candidates"`
+					Duration           *int64              `json:"duration,omitempty"`
+					Cost               *float64            `json:"cost,omitempty"`
+					Usage              *Usage              `json:"usage,omitempty"`
 					Summary            struct {
 						TotalVerified        int     `json:"total_verified"`
 						CandidatesPromoted   int     `json:"candidates_promoted"`
@@ -229,6 +252,9 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 					m.populateTurnState(turn, verifiedCandidates, turn2Result.Summary.TotalVerified, usage, cost, duration, claudeSessionID, &TurnResults{
 						Candidates: verifiedCandidates,
 						VerificationSummary: &VerificationSummary{
+							Duration: &duration,
+							Cost:     &cost,
+							Usage:    &usage,
 							TotalVerified:        turn2Result.Summary.TotalVerified,
 							CandidatesPromoted:   turn2Result.Summary.CandidatesPromoted,
 							CandidatesDemoted:    turn2Result.Summary.CandidatesDemoted,
