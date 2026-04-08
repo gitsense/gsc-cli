@@ -57,7 +57,6 @@ func FormatContractMarkdown(data ContractMessageData) string {
 
 	// Informational Blurb
 	sb.WriteString(fmt.Sprintf("\n> **Note 1:** To retrieve your authorization code, run `gsc contract info %s`\n", data.UUID))
-	sb.WriteString("\n\n> **Note 2:** If you renew or modify this handshake via the CLI, the status will update automatically. Reload the page to see changes immediately.");
 
 	return sb.String()
 }
