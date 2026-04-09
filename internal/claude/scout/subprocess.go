@@ -1,12 +1,12 @@
 /**
  * Component: Scout Subprocess Manager
- * Block-UUID: 8d308c0d-5ac6-420a-9fa1-addbcfaec17d
- * Parent-UUID: 21ea0d31-5c01-47e9-83bc-eff101cb23ee
- * Version: 2.6.0
- * Description: Manages subprocess spawning, process lifecycle, signal handling, and resource cleanup for Scout Claude sessions. Updated to find gsc location using exec.LookPath and add its directory to PATH in subprocess.
+ * Block-UUID: 4045c9e1-6f6c-4fa8-bead-f89800acf7f1
+ * Parent-UUID: 8d308c0d-5ac6-420a-9fa1-addbcfaec17d
+ * Version: 2.7.0
+ * Description: Manages subprocess spawning, process lifecycle, signal handling, and resource cleanup for Scout Claude sessions. Updated to find gsc location using exec.LookPath and add its directory to PATH in subprocess. Fixed intent file reading to read from turn directory instead of session directory.
  * Language: Go
  * Created-at: 2026-04-08T17:33:48.522Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), GLM-4.7 (v2.5.0), GLM-4.7 (v2.6.0)
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), GLM-4.7 (v2.5.0), GLM-4.7 (v2.6.0), GLM-4.7 (v2.7.0)
  */
 
 
@@ -105,8 +105,6 @@ func (m *Manager) spawnClaudeSubprocess(turn int, turnType string) error {
 		return fmt.Errorf("failed to write task prompt: %w", err)
 	}
 	m.debugLogger.Log("DEBUG", "Task prompt written successfully")
-
-	// Intent is already written by manager.go
 
 	var cmd *exec.Cmd
 
@@ -647,8 +645,8 @@ func writeTaskPrompt(turnDir string, turn int, workdirsMarkdown string, refFiles
 		return fmt.Errorf("failed to read task template: %w", err)
 	}
 
-	// Read intent.md file
-	intentPath := filepath.Join(turnDir, "..", "intent.md")
+	// Read intent.md file from turn directory
+	intentPath := filepath.Join(turnDir, "intent.md")
 	intentContent, err := os.ReadFile(intentPath)
 	if err != nil {
 		return fmt.Errorf("failed to read intent: %w", err)
