@@ -56,7 +56,7 @@ func FormatContractMarkdown(data ContractMessageData) string {
 	sb.WriteString(fmt.Sprintf("| **Status** | %s\n", data.Status))
 
 	// Informational Blurb
-	sb.WriteString(fmt.Sprintf("\n> **To retrieve your authorization code, run `gsc contract info %s`\n", data.UUID))
+	sb.WriteString(fmt.Sprintf("\n**Note:** To retrieve your authorization code, run `gsc contract info %s`\n", data.UUID))
 
 	return sb.String()
 }
