@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Start Command
- * Block-UUID: 917988e1-2083-44b2-9346-60cb95cb8e23
- * Parent-UUID: 5217f326-67b0-4d1f-8ec0-5ebb1c4e840b
- * Version: 1.6.0
+ * Block-UUID: d8f593dd-7ffb-4958-a8b8-2bab0cfb2432
+ * Parent-UUID: 917988e1-2083-44b2-9346-60cb95cb8e23
+ * Version: 1.7.0
  * Description: Implements 'gsc claude scout start' command with turn-type aware session handling. Supports multiple discovery turns followed by verification. Handles session creation, loading, and background worker spawning for both discovery and verification phases.
  * Language: Go
- * Created-at: 2026-04-08T23:21:58.823Z
- * Authors: claude-haiku-4-5-20251001 (v1.2.1), GLM-4.7 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), claude-haiku-4-5-20251001 (v1.5.0), GLM-4.7 (v1.6.0)
+ * Created-at: 2026-04-12T03:17:22.362Z
+ * Authors: claude-haiku-4-5-20251001 (v1.2.1), GLM-4.7 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), claude-haiku-4-5-20251001 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0)
  */
 
 
@@ -257,6 +257,9 @@ func spawnBackgroundWorker(flags *StartFlags) error {
 	args = append(args, "--session", flags.Session)
 	args = append(args, "--watch-worker")
 	args = append(args, "--turn-type", flags.TurnType)
+	if flags.ReviewFiles != "" {
+		args = append(args, "--review-files", flags.ReviewFiles)
+	}
 
 	// Spawn worker in background
 	cmd := exec.Command(os.Args[0], args...)
@@ -289,11 +292,25 @@ func runBackgroundWorker(cmd *cobra.Command, flags *StartFlags) error {
 		return fmt.Errorf("failed to load session: %w", err)
 	}
 
+	// Parse review files if provided for verification
+	var selectedCandidates *claudescout.SelectedCandidates
+	if flags.TurnType == "verification" && flags.ReviewFiles != "" {
+		data, err := os.ReadFile(flags.ReviewFiles)
+		if err != nil {
+			return fmt.Errorf("failed to read review files: %w", err)
+		}
+		var cand claudescout.SelectedCandidates
+		if err := json.Unmarshal(data, &cand); err != nil {
+			return fmt.Errorf("failed to parse review files: %w", err)
+		}
+		selectedCandidates = &cand
+	}
+
 	// Execute the turn (this blocks until complete)
 	if flags.TurnType == "discovery" {
 		return manager.StartDiscoveryTurn()
 	} else {
-		return manager.StartVerificationTurn(nil)
+		return manager.StartVerificationTurn(selectedCandidates)
 	}
 }
 

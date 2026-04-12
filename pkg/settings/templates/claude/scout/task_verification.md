@@ -1,12 +1,12 @@
 <!--
 Component: Scout Verification Task Prompt
-Block-UUID: 6ca20d04-52c4-4c7d-b812-eac5486fa1b8
-Parent-UUID: N/A
-Version: 1.0.0
+Block-UUID: ab9a9a5c-e1c3-43cf-9e96-e4da8548ad86
+Parent-UUID: 6ca20d04-52c4-4c7d-b812-eac5486fa1b8
+Version: 1.1.0
 Description: Task prompt for Scout verification turns. Includes turn-history context for reviewing discovery results.
 Language: Markdown
-Created-at: 2026-04-08T16:41:00.000Z
-Authors: GLM-4.7 (v1.0.0)
+Created-at: 2026-04-12T03:21:06.830Z
+Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0)
 -->
 
 
@@ -19,12 +19,29 @@ Authors: GLM-4.7 (v1.0.0)
 {{if .TurnHistoryExists}}
 ## Previous Discovery Context
 
-The following discovery turn provides the candidates to verify:
+The following discovery turn provides context from previous turns:
 
-```json
+\```json
 {{.TurnHistoryJSON}}
-```
+\```
 
+{{if .HasReviewFiles}}
+**User Selection:**
+The user has selected the following files for verification review:
+
+\```json
+{{.ReviewFilesJSON}}
+\```
+
+**Your task:**
+- Review ONLY the files listed in "User Selection" above (full file paths)
+- Use the discovery context to understand the original intent and methodology
+- Read the code for each selected file to verify relevance
+- Re-score based on actual implementation (0.0-1.0)
+- Provide detailed reasoning for score changes
+- Identify false positives (score = 0.0)
+- Extract keyword effectiveness assessment
+{{else}}
 **Your task:**
 - Review each candidate from the last discovery turn
 - Read their code to verify relevance to the original intent
@@ -32,14 +49,7 @@ The following discovery turn provides the candidates to verify:
 - Provide detailed reasoning for score changes
 - Identify false positives (score = 0.0)
 - Extract keyword effectiveness assessment
-
-**Keyword Assessment:**
-For each keyword from the discovery intent:
-- Rate effectiveness (High/Medium/Low)
-- Explain why it worked/didn't work
-- List example matches
-- Identify new keywords discovered in verified files
-- Provide recommendations for future discovery turns
+{{end}}
 {{else}}
 ## Previous Discovery Context
 

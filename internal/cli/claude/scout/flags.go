@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Flags and Options
- * Block-UUID: a2933e36-1024-49c7-9d6d-1477a2cea8ff
- * Parent-UUID: 743fd370-5c22-40cd-831a-f8c86752385d
- * Version: 1.13.0
+ * Block-UUID: b642ddf0-d954-4ce0-a9c5-6bc90de606e0
+ * Parent-UUID: a2933e36-1024-49c7-9d6d-1477a2cea8ff
+ * Version: 1.14.0
  * Description: Shared flag definitions for Scout CLI commands (start, status, stop) with turn-type support. Supports multiple discovery turns followed by verification. Removed MarkFlagRequired("intent") to allow --intent-file as alternative. Added hidden WatchWorker flag for background worker process.
  * Language: Go
- * Created-at: 2026-04-08T23:18:39.854Z
- * Authors: claude-haiku-4-5-20251001 (v1.8.0), GLM-4.7 (v1.8.1), GLM-4.7 (v1.8.2), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0)
+ * Created-at: 2026-04-12T03:15:13.862Z
+ * Authors: claude-haiku-4-5-20251001 (v1.8.0), GLM-4.7 (v1.8.1), GLM-4.7 (v1.8.2), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0)
  */
 
 
@@ -29,6 +29,7 @@ import (
 type StartFlags struct {
 	Intent             string
 	IntentFile         string
+	ReviewFiles        string // Path to JSON file containing files to review
 	Debug              bool   // Enable debug logging
 	AutoReview         bool
 	WorkingDirectories []string
@@ -149,6 +150,13 @@ func RegisterStartFlags(cmd *cobra.Command, flags *StartFlags) {
 		"Run as background worker process",
 	)
 	cmd.Flags().MarkHidden("watch-worker")
+
+	cmd.Flags().StringVar(
+		&flags.ReviewFiles,
+		"review-files",
+		"",
+		"Path to JSON file containing files to review (for selective verification)",
+	)
 }
 
 // RegisterStatusFlags registers flags for the status command
@@ -265,6 +273,20 @@ func ValidateStartFlags(flags *StartFlags) error {
 	if flags.ReferenceFilesJSON != "" {
 		if err := validateReferenceFilesJSON(flags.ReferenceFilesJSON); err != nil {
 			return &FlagError{Flag: "reference-files", Message: fmt.Sprintf("invalid reference files JSON: %v", err)}
+		}
+	}
+
+	// Validate review files JSON file exists (if provided)
+	if flags.ReviewFiles != "" {
+		if _, err := os.Stat(flags.ReviewFiles); err != nil {
+			return &FlagError{Flag: "review-files", Message: fmt.Sprintf("review files JSON not found: %s", flags.ReviewFiles)}
+		}
+	}
+
+	// Validate review files JSON is valid JSON format (if provided)
+	if flags.ReviewFiles != "" {
+		if err := validateReviewFilesJSON(flags.ReviewFiles); err != nil {
+			return &FlagError{Flag: "review-files", Message: fmt.Sprintf("invalid review files JSON: %v", err)}
 		}
 	}
 
@@ -495,6 +517,34 @@ func validateReferenceFilesJSON(filePath string) error {
 	}
 
 	return scanner.Err()
+}
+
+// validateReviewFilesJSON validates that the review files JSON is valid JSON format
+func validateReviewFilesJSON(filePath string) error {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to open review files: %w", err)
+	}
+	defer file.Close()
+
+	// Parse as JSON array
+	var files []map[string]interface{}
+	decoder := json.NewDecoder(file)
+	if err := decoder.Decode(&files); err != nil {
+		return fmt.Errorf("invalid JSON format: %w", err)
+	}
+
+	// Validate structure (basic check for required fields)
+	for _, f := range files {
+		if _, ok := f["file_path"]; !ok {
+			return fmt.Errorf("missing 'file_path' field in review file entry")
+		}
+		if _, ok := f["workdir_id"]; !ok {
+			return fmt.Errorf("missing 'workdir_id' field in review file entry")
+		}
+	}
+
+	return nil
 }
 
 // ParseAutoReview extracts auto-review flag

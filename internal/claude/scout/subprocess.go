@@ -1,12 +1,12 @@
 /**
  * Component: Scout Subprocess Manager
- * Block-UUID: 4045c9e1-6f6c-4fa8-bead-f89800acf7f1
- * Parent-UUID: 8d308c0d-5ac6-420a-9fa1-addbcfaec17d
- * Version: 2.7.0
+ * Block-UUID: 00306cc3-fa60-4dbb-b42f-1315407b0292
+ * Parent-UUID: 9d677fad-16a8-4b97-ad50-82a85ea484a0
+ * Version: 2.9.0
  * Description: Manages subprocess spawning, process lifecycle, signal handling, and resource cleanup for Scout Claude sessions. Updated to find gsc location using exec.LookPath and add its directory to PATH in subprocess. Fixed intent file reading to read from turn directory instead of session directory.
  * Language: Go
- * Created-at: 2026-04-08T17:33:48.522Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), GLM-4.7 (v2.5.0), GLM-4.7 (v2.6.0), GLM-4.7 (v2.7.0)
+ * Created-at: 2026-04-12T03:22:58.148Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), GLM-4.7 (v2.5.0), GLM-4.7 (v2.6.0), GLM-4.7 (v2.7.0), GLM-4.7 (v2.8.0), GLM-4.7 (v2.9.0)
  */
 
 
@@ -100,7 +100,7 @@ func (m *Manager) spawnClaudeSubprocess(turn int, turnType string) error {
 	// Write task prompt from template
 	workdirsMarkdown := m.formatWorkingDirectories()
 	refFilesMarkdown := m.formatReferenceFilesMetadata()
-	if err := writeTaskPrompt(m.config.GetTurnDir(turn), turn, workdirsMarkdown, refFilesMarkdown, turnType); err != nil {
+	if err := writeTaskPrompt(m, m.config.GetTurnDir(turn), turn, workdirsMarkdown, refFilesMarkdown, turnType); err != nil {
 		m.debugLogger.LogError("Failed to write task prompt", err)
 		return fmt.Errorf("failed to write task prompt: %w", err)
 	}
@@ -625,7 +625,7 @@ func copyFile(src, dst string) error {
 }
 
 // writeTaskPrompt writes the task prompt from template
-func writeTaskPrompt(turnDir string, turn int, workdirsMarkdown string, refFilesMarkdown string, turnType string) error {
+func writeTaskPrompt(m *Manager, turnDir string, turn int, workdirsMarkdown string, refFilesMarkdown string, turnType string) error {
 	// Get GSC_HOME
 	gscHome, err := settings.GetGSCHome(false)
 	if err != nil {
@@ -656,6 +656,33 @@ func writeTaskPrompt(turnDir string, turn int, workdirsMarkdown string, refFiles
 	var turnHistoryJSON string
 	var turnHistoryExists bool
 	
+	// Read selected-candidates.json if it exists (for selective verification)
+	var reviewFilesJSON string
+	var hasReviewFiles bool
+	
+	selectedCandPath := filepath.Join(turnDir, "selected-candidates.json")
+	if data, err := os.ReadFile(selectedCandPath); err == nil {
+		var selectedCands []SelectedCandidate
+		if err := json.Unmarshal(data, &selectedCands); err == nil {
+			var fullPaths []string
+			for _, cand := range selectedCands {
+				// Find the workdir to resolve the full path
+				for _, wd := range m.session.WorkingDirectories {
+					if wd.ID == cand.WorkdirID {
+						fullPath := filepath.Join(wd.Path, cand.FilePath)
+						fullPaths = append(fullPaths, fullPath)
+						break
+					}
+				}
+			}
+			if len(fullPaths) > 0 {
+				reviewFilesBytes, _ := json.MarshalIndent(fullPaths, "", "  ")
+				reviewFilesJSON = string(reviewFilesBytes)
+				hasReviewFiles = true
+			}
+		}
+	}
+	
 	turnHistoryPath := filepath.Join(turnDir, "..", "turn-history.json")
 	if data, err := os.ReadFile(turnHistoryPath); err == nil {
 		turnHistoryJSON = string(data)
@@ -676,6 +703,8 @@ func writeTaskPrompt(turnDir string, turn int, workdirsMarkdown string, refFiles
 		TurnType         string
 		TurnHistoryExists bool
 		TurnHistoryJSON  string
+		ReviewFilesJSON  string
+		HasReviewFiles   bool
 	}{
 		Workdirs:         workdirsMarkdown,
 		RefFiles:         refFilesMarkdown,
@@ -683,6 +712,8 @@ func writeTaskPrompt(turnDir string, turn int, workdirsMarkdown string, refFiles
 		TurnType:         turnType,
 		TurnHistoryExists: turnHistoryExists,
 		TurnHistoryJSON:  turnHistoryJSON,
+		ReviewFilesJSON:  reviewFilesJSON,
+		HasReviewFiles:   hasReviewFiles,
 	}
 	
 	if err := tmpl.Execute(&buf, data); err != nil {
