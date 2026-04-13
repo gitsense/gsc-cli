@@ -1,12 +1,12 @@
 /**
  * Component: Scout Session Manager
- * Block-UUID: 7a2749da-a599-4454-9598-6bb75bd4aedc
- * Parent-UUID: b92c5d3b-2a22-46f5-b936-a6ca57319798
- * Version: 1.22.0
+ * Block-UUID: 2445a753-5cde-4529-ac7a-ac47b843dee3
+ * Parent-UUID: df1471e5-5aed-482c-bc3d-72ce75a52889
+ * Version: 1.24.0
  * Description: Orchestrates Scout discovery and verification phases. Refactored to focus on session lifecycle and orchestration; subprocess management moved to subprocess.go, stream processing moved to stream.go. Fixed to set phase in writeNoBrainsError based on current turn. Updated LoadSession to populate WorkingDirectories and ReferenceFilesContext from StatusData. Removed GetFinalizedTurnResults() function as results are now stored in session.json. Updated GenerateStatusData() to read candidates from session state. Added lastAssistantMessage field to track assistant messages for post-processing. Updated comments to reflect turn-type based approach instead of turn numbers. Fixed critical issues with hardcoded turn numbers - now uses dynamic turn calculation to support multiple discovery turns. Added EnsureTurnDir() calls to create turn directories on-demand. Moved intent writing from InitializeSession to StartDiscoveryTurn and reordered EnsureTurnDir to run before PrepareCodebaseOverview to fix directory creation issues. Simplified writeTurnHistory() to use entire turn object instead of manually extracting fields, making it future-proof. Added calls to writeTurnHistory() in both StartDiscoveryTurn() and StartVerificationTurn() to ensure turn-history.json is created and updated after each turn completes.
  * Language: Go
- * Created-at: 2026-04-13T02:02:05.850Z
- * Authors: ..., (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.19.0), GLM-4.7 (v1.20.0), GLM-4.7 (v1.21.0), GLM-4.7 (v1.22.0)
+ * Created-at: 2026-04-13T04:25:25.046Z
+ * Authors: ..., (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.19.0), GLM-4.7 (v1.20.0), GLM-4.7 (v1.21.0), GLM-4.7 (v1.22.0), GLM-4.7 (v1.23.0), GLM-4.7 (v1.24.0)
  */
 
 
@@ -343,6 +343,11 @@ func (m *Manager) StartDiscoveryTurn() error {
 	}
 	m.debugLogger.Log("DEBUG", "Log paths stored in session state")
 
+	// Write turn history to disk
+	if err := m.writeTurnHistory(m.currentTurn); err != nil {
+		m.debugLogger.LogError("Failed to write turn history", err)
+	}
+
 	// Spawn subprocess for discovery turn (defined in subprocess.go)
 	if err := m.spawnClaudeSubprocess(m.currentTurn, "discovery"); err != nil {
 		m.debugLogger.LogError("Failed to spawn subprocess", err)
@@ -353,11 +358,6 @@ func (m *Manager) StartDiscoveryTurn() error {
 
 	// Wait for stream processing to complete (blocking for worker process)
 	m.wg.Wait()
-
-	// Write turn history to disk
-	if err := m.writeTurnHistory(m.currentTurn); err != nil {
-		m.debugLogger.LogError("Failed to write turn history", err)
-	}
 
 	return m.writeSessionState()
 }
@@ -386,15 +386,6 @@ func (m *Manager) StartVerificationTurn(selectedCandidates *SelectedCandidates) 
 		m.markAsStopped("DIR_CREATE_FAILED", fmt.Sprintf("Failed to create turn directory: %v", err))
 		return err
 	}
-
-	// Write intent to turn directory (preserves intent for this specific turn)
-	intentPath := filepath.Join(m.config.GetTurnDir(nextTurn), "intent.md")
-	if err := os.WriteFile(intentPath, []byte(m.session.Intent), 0644); err != nil {
-		m.debugLogger.LogError("Failed to write intent file", err)
-		m.markAsStopped("INTENT_WRITE_FAILED", fmt.Sprintf("Failed to write intent file: %v", err))
-		return err
-	}
-	m.debugLogger.Log("DEBUG", fmt.Sprintf("Intent written to: %s", intentPath))
 
 	// Close previous eventWriter if it exists to prevent resource leaks
 	if m.eventWriter != nil {
@@ -443,6 +434,11 @@ func (m *Manager) StartVerificationTurn(selectedCandidates *SelectedCandidates) 
 		}
 	}
 
+	// Write turn history to disk
+	if err := m.writeTurnHistory(m.currentTurn); err != nil {
+		m.debugLogger.LogError("Failed to write turn history", err)
+	}
+
 	// Spawn subprocess for verification turn (defined in subprocess.go)
 	if err := m.spawnClaudeSubprocess(m.currentTurn, "verification"); err != nil {
 		m.debugLogger.LogError("Failed to spawn subprocess", err)
@@ -453,11 +449,6 @@ func (m *Manager) StartVerificationTurn(selectedCandidates *SelectedCandidates) 
 
 	// Wait for stream processing to complete (blocking for worker process)
 	m.wg.Wait()
-
-	// Write turn history to disk
-	if err := m.writeTurnHistory(m.currentTurn); err != nil {
-		m.debugLogger.LogError("Failed to write turn history", err)
-	}
 
 	return m.writeSessionState()
 }
@@ -626,55 +617,20 @@ func (m *Manager) writeTurnHistory(turnNumber int) error {
 		return nil
 	}
 	
-	// Find the turn
-	var turn *TurnState
-	for i := range m.session.Turns {
-		if m.session.Turns[i].TurnNumber == turnNumber {
-			turn = &m.session.Turns[i]
-			break
-		}
-	}
-	
-	if turn == nil {
-		return fmt.Errorf("turn %d not found", turnNumber)
-	}
-	
-	// Build turn history entry with session-level context
-	// Use the entire turn object to be future-proof
-	historyEntry := map[string]interface{}{
-		"session_intent": m.session.Intent,
-		"turn":           turn,
-	}
-	
-	// Read existing history
+	// Build complete turn history from session.json (source of truth)
 	var history []map[string]interface{}
-	historyPath := filepath.Join(m.config.GetSessionDir(), "turn-history.json")
-	
-	if data, err := os.ReadFile(historyPath); err == nil {
-		if err := json.Unmarshal(data, &history); err != nil {
-			return fmt.Errorf("failed to parse turn-history.json: %w", err)
+	for _, turn := range m.session.Turns {
+		historyEntry := map[string]interface{}{
+			"session_intent": m.session.Intent,
+			"turn":           turn,
 		}
-	}
-	
-	// Add or update this turn
-	found := false
-	for i, entry := range history {
-		if entry["turn"].(map[string]interface{})["turn_number"] == float64(turnNumber) {
-			history[i] = historyEntry
-			found = true
-			break
-		}
-	}
-	
-	if !found {
 		history = append(history, historyEntry)
 	}
 	
-	// Write back
+	// Write complete history to the turn directory
 	data, err := json.MarshalIndent(history, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal turn-history.json: %w", err)
 	}
-	
-	return os.WriteFile(historyPath, data, 0644)
+	return os.WriteFile(filepath.Join(m.config.GetTurnDir(turnNumber), "turn-history.json"), data, 0644)
 }

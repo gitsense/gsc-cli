@@ -1,12 +1,12 @@
 /**
  * Component: Scout Models
- * Block-UUID: a4a0f633-d391-4f87-bf94-35d18198472c
- * Parent-UUID: a8b9d1bc-a1c1-4185-8d87-9406701d05f5
- * Version: 1.14.0
+ * Block-UUID: fead5c6c-a005-426e-9b7c-917cb2342cbe
+ * Parent-UUID: a4a0f633-d391-4f87-bf94-35d18198472c
+ * Version: 1.15.0
  * Description: Data structures for Scout feature (candidate discovery and verification). Added Duration, Cost, and Usage fields to VerificationSummary struct to support embedding session metrics in verification results.
  * Language: Go
- * Created-at: 2026-04-08T16:25:52.091Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.6), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0)
+ * Created-at: 2026-04-13T04:40:10.160Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.6), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0)
  */
 
 
@@ -275,6 +275,40 @@ type DiscoveryLog struct {
 	TopCandidatesReturned int                 `json:"top_candidates_returned"`
 }
 
+// VerificationLog contains the verification methodology and findings
+type VerificationLog struct {
+	DiscoveryReviewed      []string            `json:"discovery_reviewed"`       // Files from discovery that were reviewed
+	CriticalFindings       []string            `json:"critical_findings"`        // Key discoveries (e.g., missed files)
+	MissingFilesIdentified []MissingFile       `json:"missing_files_identified"` // Files discovery missed
+	KeywordAssessment      KeywordAssessment   `json:"keyword_assessment"`       // Effectiveness of discovery keywords
+	VerificationMethod     string              `json:"verification_method"`      // How verification was performed
+	TotalVerified          int                 `json:"total_verified"`
+	Confidence             string              `json:"confidence"`               // Confidence level in results
+}
+
+// MissingFile represents a file that was missed by discovery but found during verification
+type MissingFile struct {
+	FilePath    string `json:"file_path"`
+	Reason      string `json:"reason"`
+	Evidence    string `json:"evidence"`
+	Relevance   string `json:"relevance"`
+}
+
+// KeywordAssessment contains analysis of keyword effectiveness from discovery
+type KeywordAssessment struct {
+	DiscoveryKeywords []string            `json:"discovery_keywords"`
+	Effectiveness     map[string]KeywordEffectiveness `json:"effectiveness"`
+	NewKeywords       []string            `json:"new_keywords_discovered"`
+	Recommendations   []string            `json:"recommendations"`
+}
+
+// KeywordEffectiveness describes how well a keyword performed
+type KeywordEffectiveness struct {
+	Rating     string   `json:"rating"`     // High/Medium/Low
+	Explanation string  `json:"explanation"`
+	Matches    []string `json:"matches"`
+}
+
 // VerificationSummary contains verification phase statistics
 type VerificationSummary struct {
 	TotalVerified        int                 `json:"total_verified"`
@@ -286,4 +320,5 @@ type VerificationSummary struct {
 	Duration             *int64              `json:"duration,omitempty"`
 	Cost                 *float64            `json:"cost,omitempty"`
 	Usage                *Usage              `json:"usage,omitempty"`
+	VerificationLog      *VerificationLog    `json:"verification_log,omitempty"`
 }

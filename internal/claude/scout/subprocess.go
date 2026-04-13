@@ -1,12 +1,12 @@
 /**
  * Component: Scout Subprocess Manager
- * Block-UUID: 00306cc3-fa60-4dbb-b42f-1315407b0292
- * Parent-UUID: 9d677fad-16a8-4b97-ad50-82a85ea484a0
- * Version: 2.9.0
+ * Block-UUID: 5bef2a3b-dbea-4192-bdce-7fa4b857331f
+ * Parent-UUID: 3fd22241-e6ef-40f6-98f3-4b4ecdd98062
+ * Version: 2.12.0
  * Description: Manages subprocess spawning, process lifecycle, signal handling, and resource cleanup for Scout Claude sessions. Updated to find gsc location using exec.LookPath and add its directory to PATH in subprocess. Fixed intent file reading to read from turn directory instead of session directory.
  * Language: Go
- * Created-at: 2026-04-12T03:22:58.148Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), GLM-4.7 (v2.5.0), GLM-4.7 (v2.6.0), GLM-4.7 (v2.7.0), GLM-4.7 (v2.8.0), GLM-4.7 (v2.9.0)
+ * Created-at: 2026-04-13T04:31:47.723Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), GLM-4.7 (v2.5.0), GLM-4.7 (v2.6.0), GLM-4.7 (v2.7.0), GLM-4.7 (v2.8.0), GLM-4.7 (v2.9.0), GLM-4.7 (v2.10.0), GLM-4.7 (v2.11.0), GLM-4.7 (v2.12.0)
  */
 
 
@@ -646,10 +646,18 @@ func writeTaskPrompt(m *Manager, turnDir string, turn int, workdirsMarkdown stri
 	}
 
 	// Read intent.md file from turn directory
-	intentPath := filepath.Join(turnDir, "intent.md")
-	intentContent, err := os.ReadFile(intentPath)
-	if err != nil {
-		return fmt.Errorf("failed to read intent: %w", err)
+	var intentContent []byte
+	
+	// For verification turns, use session intent (intent.md is only written for discovery turns)
+	if turnType == "verification" {
+		intentContent = []byte(m.session.Intent)
+	} else {
+		// For discovery turns, read from intent.md file
+		intentPath := filepath.Join(turnDir, "intent.md")
+		intentContent, err = os.ReadFile(intentPath)
+		if err != nil {
+			return fmt.Errorf("failed to read intent: %w", err)
+		}
 	}
 	
 	// Read turn-history.json if it exists
@@ -683,7 +691,7 @@ func writeTaskPrompt(m *Manager, turnDir string, turn int, workdirsMarkdown stri
 		}
 	}
 	
-	turnHistoryPath := filepath.Join(turnDir, "..", "turn-history.json")
+	turnHistoryPath := filepath.Join(turnDir, "turn-history.json")
 	if data, err := os.ReadFile(turnHistoryPath); err == nil {
 		turnHistoryJSON = string(data)
 		turnHistoryExists = true
