@@ -387,6 +387,15 @@ func (m *Manager) StartVerificationTurn(selectedCandidates *SelectedCandidates) 
 		return err
 	}
 
+	// Write intent to turn directory (preserves intent for this specific turn)
+	intentPath := filepath.Join(m.config.GetTurnDir(nextTurn), "intent.md")
+	if err := os.WriteFile(intentPath, []byte(m.session.Intent), 0644); err != nil {
+		m.debugLogger.LogError("Failed to write intent file", err)
+		m.markAsStopped("INTENT_WRITE_FAILED", fmt.Sprintf("Failed to write intent file: %v", err))
+		return err
+	}
+	m.debugLogger.Log("DEBUG", fmt.Sprintf("Intent written to: %s", intentPath))
+
 	// Close previous eventWriter if it exists to prevent resource leaks
 	if m.eventWriter != nil {
 		m.eventWriter.Close()
