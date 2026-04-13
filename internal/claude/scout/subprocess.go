@@ -1,12 +1,12 @@
 /**
  * Component: Scout Subprocess Manager
- * Block-UUID: 5bef2a3b-dbea-4192-bdce-7fa4b857331f
- * Parent-UUID: 3fd22241-e6ef-40f6-98f3-4b4ecdd98062
- * Version: 2.12.0
+ * Block-UUID: 5b13fbbe-0a6f-4cd8-a6eb-b8e9cf0ab842
+ * Parent-UUID: 5bef2a3b-dbea-4192-bdce-7fa4b857331f
+ * Version: 2.13.0
  * Description: Manages subprocess spawning, process lifecycle, signal handling, and resource cleanup for Scout Claude sessions. Updated to find gsc location using exec.LookPath and add its directory to PATH in subprocess. Fixed intent file reading to read from turn directory instead of session directory.
  * Language: Go
- * Created-at: 2026-04-13T04:31:47.723Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), GLM-4.7 (v2.5.0), GLM-4.7 (v2.6.0), GLM-4.7 (v2.7.0), GLM-4.7 (v2.8.0), GLM-4.7 (v2.9.0), GLM-4.7 (v2.10.0), GLM-4.7 (v2.11.0), GLM-4.7 (v2.12.0)
+ * Created-at: 2026-04-13T14:45:45.510Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), GLM-4.7 (v2.5.0), GLM-4.7 (v2.6.0), GLM-4.7 (v2.7.0), GLM-4.7 (v2.8.0), GLM-4.7 (v2.9.0), GLM-4.7 (v2.10.0), GLM-4.7 (v2.11.0), GLM-4.7 (v2.12.0), GLM-4.7 (v2.13.0)
  */
 
 
@@ -670,10 +670,10 @@ func writeTaskPrompt(m *Manager, turnDir string, turn int, workdirsMarkdown stri
 	
 	selectedCandPath := filepath.Join(turnDir, "selected-candidates.json")
 	if data, err := os.ReadFile(selectedCandPath); err == nil {
-		var selectedCands []SelectedCandidate
+		var selectedCands SelectedCandidates
 		if err := json.Unmarshal(data, &selectedCands); err == nil {
 			var fullPaths []string
-			for _, cand := range selectedCands {
+			for _, cand := range selectedCands.Selected {
 				// Find the workdir to resolve the full path
 				for _, wd := range m.session.WorkingDirectories {
 					if wd.ID == cand.WorkdirID {

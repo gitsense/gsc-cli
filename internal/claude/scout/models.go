@@ -233,7 +233,6 @@ type SelectedCandidates struct {
 type SelectedCandidate struct {
 	FilePath    string  `json:"file_path"`
 	WorkdirID   int     `json:"workdir_id"`
-	OriginalScore float64 `json:"original_score"`
 }
 
 // TurnState represents the state of a single turn in a Scout session
