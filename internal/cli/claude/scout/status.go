@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Status Command
- * Block-UUID: 6c541df8-f64b-45db-b83f-8ef8765ad168
- * Parent-UUID: 614a21f9-eb14-49f2-b5f9-53c4c1189592
- * Version: 1.8.0
+ * Block-UUID: 16567356-7fc1-4a4e-9459-584157a73431
+ * Parent-UUID: 2a2d3911-a719-4c25-a442-5bc4a531d62b
+ * Version: 1.9.1
  * Description: Implements 'gsc claude scout status' command for monitoring Scout sessions. Updated to show phase display name instead of turn number.
  * Language: Go
- * Created-at: 2026-04-08T23:23:52.938Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), GLM-4.7 (v1.0.8), GLM-4.7 (v1.0.9), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0)
+ * Created-at: 2026-04-13T15:28:47.677Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), GLM-4.7 (v1.0.8), GLM-4.7 (v1.0.9), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), claude-sonnet-4-6 (v1.9.1)
  */
 
 
@@ -15,11 +15,29 @@ package scoutcli
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"time"
 
 	claudescout "github.com/gitsense/gsc-cli/internal/claude/scout"
 	"github.com/spf13/cobra"
 )
+
+// FileScoreTracking tracks scores for a file across turns
+type FileScoreTracking struct {
+	FilePath                 string
+	LatestDiscoveryScore     float64
+	LatestVerificationScore  float64
+	LatestDiscoveryTurn      int
+	LatestVerificationTurn   int
+	Reasoning                string
+	Metadata                 claudescout.CandidateMetadata
+}
+
+// ConsolidatedCandidates represents all unique candidates with their latest scores
+type ConsolidatedCandidates struct {
+	DiscoveryCandidates    []FileScoreTracking
+	VerificationCandidates []FileScoreTracking
+}
 
 // StatusCmd creates the "scout status" subcommand
 func StatusCmd() *cobra.Command {
@@ -205,8 +223,11 @@ func displayStatusPretty(cmd *cobra.Command, status *claudescout.StatusData, ver
 	if status.TotalFound > 0 {
 		fmt.Fprintf(cmd.OutOrStdout(), "\n  Candidates Found: %d\n", status.TotalFound)
 		if len(status.Candidates) > 0 {
-			maxShow := 3
+			maxShow := 5
 			if verbose {
+				maxShow = len(status.Candidates)
+			}
+			if maxShow > len(status.Candidates) {
 				maxShow = len(status.Candidates)
 			}
 			for i := 0; i < maxShow; i++ {
@@ -222,6 +243,8 @@ func displayStatusPretty(cmd *cobra.Command, status *claudescout.StatusData, ver
 	// Show full results in verbose mode
 	if verbose && len(status.Turns) > 0 {
 		// Find the current turn
+		consolidated := buildConsolidatedCandidates(status.Turns)
+		
 		var currentTurn *claudescout.TurnState
 		for i := range status.Turns {
 			if status.Turns[i].TurnNumber == status.CurrentTurn {
@@ -291,17 +314,34 @@ func displayStatusPretty(cmd *cobra.Command, status *claudescout.StatusData, ver
 			
 			// Show detailed candidates with reasoning
 			fmt.Fprintf(cmd.OutOrStdout(), "\n  Detailed Candidates:\n")
-			for i, cand := range currentTurn.Results.Candidates {
+			for i, cand := range consolidated.VerificationCandidates {
 				fmt.Fprintf(cmd.OutOrStdout(), "\n  %d. %s\n", i+1, cand.FilePath)
-				fmt.Fprintf(cmd.OutOrStdout(), "     Score: %.2f\n", cand.Score)
+				fmt.Fprintf(cmd.OutOrStdout(), "     Score: %.2f\n", cand.LatestVerificationScore)
+				
 				if cand.Reasoning != "" {
 					fmt.Fprintf(cmd.OutOrStdout(), "     Reasoning: %s\n", cand.Reasoning)
 				}
-				if len(cand.BrainMetadata.Keywords) > 0 {
-					fmt.Fprintf(cmd.OutOrStdout(), "     Keywords: %v\n", cand.BrainMetadata.Keywords)
+				
+				// Show score comparison if both discovery and verification scores exist
+				if cand.LatestDiscoveryScore > 0 {
+					change := cand.LatestVerificationScore - cand.LatestDiscoveryScore
+					if change > 0 {
+						fmt.Fprintf(cmd.OutOrStdout(), "     Score Change: ↑ %.1f%% (from %.1f%% in discovery turn %d)\n", 
+							change*100, cand.LatestDiscoveryScore*100, cand.LatestDiscoveryTurn)
+					} else if change < 0 {
+						fmt.Fprintf(cmd.OutOrStdout(), "     Score Change: ↓ %.1f%% (from %.1f%% in discovery turn %d)\n", 
+							-change*100, cand.LatestDiscoveryScore*100, cand.LatestDiscoveryTurn)
+					} else {
+						fmt.Fprintf(cmd.OutOrStdout(), "     Score Change: unchanged (from %.1f%% in discovery turn %d)\n", 
+							cand.LatestDiscoveryScore*100, cand.LatestDiscoveryTurn)
+					}
 				}
-				if len(cand.BrainMetadata.ParentKeywords) > 0 {
-					fmt.Fprintf(cmd.OutOrStdout(), "     Parent Keywords: %v\n", cand.BrainMetadata.ParentKeywords)
+				
+				if len(cand.Metadata.Keywords) > 0 {
+					fmt.Fprintf(cmd.OutOrStdout(), "     Keywords: %v\n", cand.Metadata.Keywords)
+				}
+				if len(cand.Metadata.ParentKeywords) > 0 {
+					fmt.Fprintf(cmd.OutOrStdout(), "     Parent Keywords: %v\n", cand.Metadata.ParentKeywords)
 				}
 			}
 		}
@@ -507,4 +547,86 @@ func displayEvent(cmd *cobra.Command, event *claudescout.StreamEvent) {
 			}
 		}
 	}
+}
+
+// buildConsolidatedCandidates builds a consolidated list of candidates with per-file score tracking
+// Iterates turns in reverse to capture the latest scores for each file
+func buildConsolidatedCandidates(turns []claudescout.TurnState) *ConsolidatedCandidates {
+	fileScores := make(map[string]*FileScoreTracking)
+	
+	// Iterate turns in reverse (newest first)
+	for i := len(turns) - 1; i >= 0; i-- {
+		turn := turns[i]
+		
+		// Process candidates from turn-level quick candidates
+		for _, cand := range turn.Candidates {
+			key := cand.FilePath
+			
+			if fileScores[key] == nil {
+				fileScores[key] = &FileScoreTracking{
+					FilePath: key,
+				}
+			}
+			
+			if turn.TurnType == "discovery" {
+				// Only record if we haven't seen a discovery score yet (going backwards)
+				if fileScores[key].LatestDiscoveryTurn == 0 {
+					fileScores[key].LatestDiscoveryScore = cand.Score
+					fileScores[key].LatestDiscoveryTurn = turn.TurnNumber
+				}
+			} else if turn.TurnType == "verification" {
+				// Only record if we haven't seen a verification score yet (going backwards)
+				if fileScores[key].LatestVerificationTurn == 0 {
+					fileScores[key].LatestVerificationScore = cand.Score
+					fileScores[key].LatestVerificationTurn = turn.TurnNumber
+				}
+			}
+		}
+		
+		// Process candidates from full results (for reasoning and metadata)
+		if turn.Results != nil {
+			for _, cand := range turn.Results.Candidates {
+				key := cand.FilePath
+				
+				if fileScores[key] == nil {
+					fileScores[key] = &FileScoreTracking{
+						FilePath: key,
+					}
+				}
+				
+				// Store reasoning and metadata from the most recent turn
+				if cand.Reasoning != "" {
+					fileScores[key].Reasoning = cand.Reasoning
+				}
+				if len(cand.BrainMetadata.Keywords) > 0 || len(cand.BrainMetadata.ParentKeywords) > 0 {
+					fileScores[key].Metadata = cand.BrainMetadata
+				}
+			}
+		}
+	}
+	
+	// Build consolidated lists
+	result := &ConsolidatedCandidates{
+		DiscoveryCandidates:    []FileScoreTracking{},
+		VerificationCandidates: []FileScoreTracking{},
+	}
+	
+	for _, tracking := range fileScores {
+		if tracking.LatestDiscoveryScore > 0 {
+			result.DiscoveryCandidates = append(result.DiscoveryCandidates, *tracking)
+		}
+		if tracking.LatestVerificationScore > 0 {
+			result.VerificationCandidates = append(result.VerificationCandidates, *tracking)
+		}
+	}
+	
+	// Sort by score (descending)
+	sort.Slice(result.DiscoveryCandidates, func(i, j int) bool {
+		return result.DiscoveryCandidates[i].LatestDiscoveryScore > result.DiscoveryCandidates[j].LatestDiscoveryScore
+	})
+	sort.Slice(result.VerificationCandidates, func(i, j int) bool {
+		return result.VerificationCandidates[i].LatestVerificationScore > result.VerificationCandidates[j].LatestVerificationScore
+	})
+	
+	return result
 }
