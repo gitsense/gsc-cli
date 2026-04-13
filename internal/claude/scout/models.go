@@ -2,11 +2,11 @@
  * Component: Scout Models
  * Block-UUID: fead5c6c-a005-426e-9b7c-917cb2342cbe
  * Parent-UUID: a4a0f633-d391-4f87-bf94-35d18198472c
- * Version: 1.15.0
- * Description: Data structures for Scout feature (candidate discovery and verification). Added Duration, Cost, and Usage fields to VerificationSummary struct to support embedding session metrics in verification results.
+ * Version: 2.0.0
+ * Description: Data structures for Scout feature (candidate discovery and verification). Updated to support rich verification format with critical missing files, keyword effectiveness assessment, and actionable recommendations.
  * Language: Go
  * Created-at: 2026-04-13T04:40:10.160Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.6), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0)
+ * Authors: claude-haiku-4-5-20251001 (v1.0.6), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v2.0.0)
  */
 
 
@@ -185,7 +185,7 @@ type VerifiedEvent struct {
 	UpdatedCandidates  []VerificationUpdate      `json:"updated_candidates"`
 }
 
-// VerificationUpdate represents a candidate after re-verification
+// VerificationUpdate represents a candidate after re-verification (simple format for backward compatibility)
 type VerificationUpdate struct {
 	FilePath       string  `json:"file_path"`
 	WorkdirID      int     `json:"workdir_id"`
@@ -309,16 +309,103 @@ type KeywordEffectiveness struct {
 	Matches    []string `json:"matches"`
 }
 
-// VerificationSummary contains verification phase statistics
+// VerificationSummary contains verification phase statistics (rich format)
 type VerificationSummary struct {
-	TotalVerified        int                 `json:"total_verified"`
-	CandidatesPromoted   int                 `json:"candidates_promoted"`
-	CandidatesDemoted    int                 `json:"candidates_demoted"`
-	CandidatesRemoved    int                 `json:"candidates_removed"`
-	AverageVerifiedScore float64             `json:"average_verified_score"`
-	TopCandidatesCount   int                 `json:"top_candidates_count"`
-	Duration             *int64              `json:"duration,omitempty"`
-	Cost                 *float64            `json:"cost,omitempty"`
-	Usage                *Usage              `json:"usage,omitempty"`
-	VerificationLog      *VerificationLog    `json:"verification_log,omitempty"`
+	SessionIntent              string                      `json:"session_intent"`
+	TurnNumber                 int                         `json:"turn_number"`
+	TotalCandidatesReviewed    int                         `json:"total_candidates_reviewed"`
+	VerifiedCandidatesCount    int                         `json:"verified_candidates_count"`
+	CriticalFinding            string                      `json:"critical_finding"`
+	TotalVerified              int                         `json:"total_verified"`
+	CandidatesPromoted         int                         `json:"candidates_promoted"`
+	CandidatesDemoted          int                         `json:"candidates_demoted"`
+	CandidatesRemoved          int                         `json:"candidates_removed"`
+	AverageVerifiedScore       float64                     `json:"average_verified_score"`
+	TopCandidatesCount         int                         `json:"top_candidates_count"`
+	Duration                   *int64                      `json:"duration,omitempty"`
+	Cost                       *float64                    `json:"cost,omitempty"`
+	Usage                      *Usage                      `json:"usage,omitempty"`
+	VerificationLog            *VerificationLog            `json:"verification_log,omitempty"`
+}
+
+// RichVerifiedCandidate represents a verified candidate with detailed analysis
+type RichVerifiedCandidate struct {
+	FilePath         string              `json:"file_path"`
+	OriginalScore    float64             `json:"original_score"`
+	VerifiedScore    float64             `json:"verified_score"`
+	Relevance        string              `json:"relevance"`
+	Reasoning        string              `json:"reasoning"`
+	CodeVerification CodeVerification    `json:"code_verification"`
+	ActionRequired    string              `json:"action_required"`
+}
+
+// CodeVerification contains detailed code analysis
+type CodeVerification struct {
+	ConfirmedPatterns   []string `json:"confirmed_patterns"`
+	MissingPatterns     []string `json:"missing_patterns,omitempty"`
+	ImplementationDetails string  `json:"implementation_details"`
+	Issues              []string `json:"issues,omitempty"`
+}
+
+// CriticalMissingCandidate represents a file that discovery missed
+type CriticalMissingCandidate struct {
+	FilePath         string            `json:"file_path"`
+	Score            float64           `json:"score"`
+	Relevance        string            `json:"relevance"`
+	Reasoning        string            `json:"reasoning"`
+	CodeVerification MissingFileCodeVerification `json:"code_verification"`
+	ActionRequired    string            `json:"action_required"`
+}
+
+// MissingFileCodeVerification contains code verification for missing files
+type MissingFileCodeVerification struct {
+	ConfirmedPattern string `json:"confirmed_pattern"`
+}
+
+// RichKeywordAssessment contains detailed keyword effectiveness analysis
+type RichKeywordAssessment struct {
+	DiscoveryIntentKeywords []string                        `json:"discovery_intent_keywords"`
+	KeywordEffectiveness     map[string]KeywordEffectivenessDetail `json:"keyword_effectiveness"`
+	NewKeywordsDiscovered    map[string]NewKeywordDetail    `json:"new_keywords_discovered_in_code"`
+	KeywordRecommendations   KeywordRecommendations          `json:"keyword_recommendations"`
+}
+
+// KeywordEffectivenessDetail contains detailed effectiveness analysis for a keyword
+type KeywordEffectivenessDetail struct {
+	Effectiveness    string   `json:"effectiveness"`    // HIGH/MEDIUM/LOW
+	Explanation      string   `json:"explanation"`
+	MatchedFiles     int      `json:"matched_files"`
+	ExampleMatches   []string `json:"example_matches"`
+	Issue            string   `json:"issue,omitempty"`
+}
+
+// NewKeywordDetail contains details about a newly discovered keyword
+type NewKeywordDetail struct {
+	FoundIn   string `json:"found_in"`
+	Pattern   string `json:"pattern"`
+	Relevance string `json:"relevance"`
+}
+
+// KeywordRecommendations contains recommendations for improving keyword strategy
+type KeywordRecommendations struct {
+	ShouldAdd              []string `json:"should_add"`
+	ShouldRefine           []string `json:"should_refine"`
+	FutureDiscoveryStrategy string   `json:"future_discovery_strategy"`
+}
+
+// SummaryAndRecommendations contains overall assessment and actionable recommendations
+type SummaryAndRecommendations struct {
+	FilesToModify              []FileModification `json:"files_to_modify_to_change_default_expiration"`
+	FalsePositivesIdentified   []string           `json:"false_positives_identified"`
+	DiscoveryQualityAssessment string             `json:"discovery_quality_assessment"`
+	Verdict                    string             `json:"verdict"`
+}
+
+// FileModification represents a file that needs to be modified
+type FileModification struct {
+	Priority string `json:"priority"` // PRIMARY/SECONDARY/TERTIARY
+	File     string `json:"file"`
+	Line     int    `json:"line"`
+	Change   string `json:"change"`
+	Reason   string `json:"reason"`
 }

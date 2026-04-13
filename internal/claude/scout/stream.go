@@ -2,11 +2,11 @@
  * Component: Scout Stream Event Processor
  * Block-UUID: cd1fe6f8-0463-4c43-9df4-f2326b16e1f5
  * Parent-UUID: 80b56b78-45ff-42d4-b03d-9ba4c35aad9b
- * Version: 1.13.0
- * Description: Manages Claude output stream parsing, event handling, and state updates from streaming JSONL responses. Handles discovery and verification result parsing, error capture, and turn state updates. Supports multiple discovery turns with dynamic turn number calculation. Updated to handle new verification format with verification_summary, critical_missing_file, and keyword_effectiveness_assessment fields.
+ * Version: 2.0.0
+ * Description: Manages Claude output stream parsing, event handling, and state updates from streaming JSONL responses. Handles discovery and verification result parsing, error capture, and turn state updates. Supports multiple discovery turns with dynamic turn number calculation. Updated to parse rich verification format with critical missing files, keyword effectiveness assessment, and actionable recommendations.
  * Language: Go
  * Created-at: 2026-04-08T18:30:15.527Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), claude-sonnet-4-6 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), claude-haiku-4-5-20251001 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0)
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), claude-sonnet-4-6 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), claude-haiku-4-5-20251001 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v2.0.0)
  */
 
 
@@ -264,8 +264,154 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 					break
 				}
 
-				// Try verification format
-				var verificationResult struct {
+				// Try rich verification format (new format)
+				var richVerificationResult struct {
+					VerificationSummary struct {
+						SessionIntent              string `json:"session_intent"`
+						TurnNumber                 int    `json:"turn_number"`
+						TotalCandidatesReviewed    int    `json:"total_candidates_reviewed"`
+						VerifiedCandidatesCount    int    `json:"verified_candidates_count"`
+						CriticalFinding            string `json:"critical_finding"`
+					} `json:"verification_summary"`
+					VerifiedCandidates []RichVerifiedCandidate `json:"verified_candidates"`
+					CriticalMissingCandidate *CriticalMissingCandidate `json:"critical_missing_candidate"`
+					KeywordAssessment RichKeywordAssessment `json:"keyword_assessment"`
+					SummaryAndRecommendations SummaryAndRecommendations `json:"summary_and_recommendations"`
+				}
+				if err := json.Unmarshal([]byte(resultContent), &richVerificationResult); err == nil {
+					// Successfully parsed rich verification format
+					m.debugLogger.Log("METRICS", "Successfully parsed rich verification format")
+					
+					// Convert rich candidates to simple candidates for storage
+					verifiedCandidates := make([]Candidate, len(richVerificationResult.VerifiedCandidates))
+					for i, richCand := range richVerificationResult.VerifiedCandidates {
+						verifiedCandidates[i] = Candidate{
+							FilePath:  richCand.FilePath,
+							Score:     richCand.VerifiedScore,
+							Reasoning: fmt.Sprintf("%s\n\n%s", richCand.Relevance, richCand.Reasoning),
+						}
+					}
+					
+					// Build verification log from rich data
+					var verificationLog *VerificationLog
+					if richVerificationResult.VerificationSummary.TotalCandidatesReviewed > 0 {
+						// Build missing files list
+						var missingFiles []MissingFile
+						if richVerificationResult.CriticalMissingCandidate != nil {
+							missingFiles = append(missingFiles, MissingFile{
+								FilePath:  richVerificationResult.CriticalMissingCandidate.FilePath,
+								Reason:    richVerificationResult.CriticalMissingCandidate.Reasoning,
+								Evidence:  richVerificationResult.CriticalMissingCandidate.CodeVerification.ConfirmedPattern,
+								Relevance: richVerificationResult.CriticalMissingCandidate.Relevance,
+							})
+						}
+						
+						// Build keyword effectiveness map
+						effectivenessMap := make(map[string]KeywordEffectiveness)
+						for keyword, eff := range richVerificationResult.KeywordAssessment.KeywordEffectiveness {
+							effectivenessMap[keyword] = KeywordEffectiveness{
+								Rating:     eff.Effectiveness,
+								Explanation: eff.Explanation,
+								Matches:    eff.ExampleMatches,
+							}
+						}
+						
+						// Combine recommendations
+						var allRecommendations []string
+						allRecommendations = append(allRecommendations, richVerificationResult.KeywordAssessment.KeywordRecommendations.ShouldAdd...)
+						allRecommendations = append(allRecommendations, richVerificationResult.KeywordAssessment.KeywordRecommendations.ShouldRefine...)
+						allRecommendations = append(allRecommendations, richVerificationResult.KeywordAssessment.KeywordRecommendations.FutureDiscoveryStrategy)
+						
+						// Build discovery reviewed list from verified candidates
+						var discoveryReviewed []string
+						for _, cand := range richVerificationResult.VerifiedCandidates {
+							discoveryReviewed = append(discoveryReviewed, cand.FilePath)
+						}
+						
+						// Build critical findings
+						var criticalFindings []string
+						if richVerificationResult.VerificationSummary.CriticalFinding != "" {
+							criticalFindings = append(criticalFindings, richVerificationResult.VerificationSummary.CriticalFinding)
+						}
+						if richVerificationResult.SummaryAndRecommendations.DiscoveryQualityAssessment != "" {
+							criticalFindings = append(criticalFindings, richVerificationResult.SummaryAndRecommendations.DiscoveryQualityAssessment)
+						}
+						if richVerificationResult.SummaryAndRecommendations.Verdict != "" {
+							criticalFindings = append(criticalFindings, fmt.Sprintf("Verdict: %s", richVerificationResult.SummaryAndRecommendations.Verdict))
+						}
+						
+						// Build new keywords list
+						var newKeywords []string
+						for keyword := range richVerificationResult.KeywordAssessment.NewKeywordsDiscovered {
+							newKeywords = append(newKeywords, keyword)
+						}
+						
+						verificationLog = &VerificationLog{
+							DiscoveryReviewed:      discoveryReviewed,
+							CriticalFindings:       criticalFindings,
+							MissingFilesIdentified: missingFiles,
+							KeywordAssessment: KeywordAssessment{
+								DiscoveryKeywords: richVerificationResult.KeywordAssessment.DiscoveryIntentKeywords,
+								Effectiveness:     effectivenessMap,
+								NewKeywords:       newKeywords,
+								Recommendations:   allRecommendations,
+							},
+							VerificationMethod: "Code inspection and semantic analysis of discovery candidates",
+							TotalVerified:      richVerificationResult.VerificationSummary.VerifiedCandidatesCount,
+							Confidence:         richVerificationResult.SummaryAndRecommendations.Verdict,
+						}
+					}
+					
+					// Build verification summary
+					verificationSummary := &VerificationSummary{
+						SessionIntent:           richVerificationResult.VerificationSummary.SessionIntent,
+						TurnNumber:              richVerificationResult.VerificationSummary.TurnNumber,
+						TotalCandidatesReviewed: richVerificationResult.VerificationSummary.TotalCandidatesReviewed,
+						VerifiedCandidatesCount: richVerificationResult.VerificationSummary.VerifiedCandidatesCount,
+						CriticalFinding:         richVerificationResult.VerificationSummary.CriticalFinding,
+						TotalVerified:           richVerificationResult.VerificationSummary.VerifiedCandidatesCount,
+						CandidatesPromoted:      0, // Calculate from score changes
+						CandidatesDemoted:       0, // Calculate from score changes
+						CandidatesRemoved:       0, // Calculate from score changes
+						AverageVerifiedScore:    0.0, // Calculate from scores
+						TopCandidatesCount:      len(verifiedCandidates),
+						Duration:                &duration,
+						Cost:                    &cost,
+						Usage:                   &usage,
+						VerificationLog:         verificationLog,
+					}
+					
+					// Calculate statistics
+					var totalScore float64
+					for _, cand := range verifiedCandidates {
+						totalScore += cand.Score
+					}
+					if len(verifiedCandidates) > 0 {
+						verificationSummary.AverageVerifiedScore = totalScore / float64(len(verifiedCandidates))
+					}
+					
+					// Populate session state (verification)
+					m.populateTurnState(turn, verifiedCandidates, richVerificationResult.VerificationSummary.VerifiedCandidatesCount, usage, cost, duration, claudeSessionID, &TurnResults{
+						Candidates:          verifiedCandidates,
+						VerificationSummary: verificationSummary,
+					})
+
+					// DEBUG: Log after populateTurnState
+					m.debugLogger.Log("METRICS", fmt.Sprintf(
+						"AFTER populateTurnState (verification - rich format) - Duration: %dms, Cost: $%.6f, InputTokens: %d, OutputTokens: %d",
+						duration,
+						cost,
+						usage.InputTokens,
+						usage.OutputTokens,
+					))
+					
+					m.session.Status = "verification_complete"
+					m.writeSessionState()
+					break
+				}
+
+				// Try old verification format (backward compatibility)
+				var oldVerificationResult struct {
 					VerifiedCandidates []VerificationUpdate `json:"verified_candidates"`
 					VerificationSummary struct {
 						TotalCandidates      int     `json:"total_candidates"`
@@ -300,32 +446,38 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 						FilesNeededToChangeDefault []string `json:"files_needed_to_change_default"`
 						FilesForCustomRenewal     []string `json:"files_for_custom_renewal"`
 					} `json:"summary_and_confidence"`
-					Duration           *int64              `json:"duration,omitempty"`
-					Cost               *float64            `json:"cost,omitempty"`
-					Usage              *Usage              `json:"usage,omitempty"`
+					Summary struct {
+						TotalVerified        int     `json:"total_verified"`
+						CandidatesPromoted   int     `json:"candidates_promoted"`
+						CandidatesDemoted    int     `json:"candidates_demoted"`
+						CandidatesRemoved    int     `json:"candidates_removed"`
+						AverageVerifiedScore float64 `json:"average_verified_score"`
+						TopCandidatesCount   int     `json:"top_candidates_count"`
+					} `json:"summary"`
 				}
-				if err := json.Unmarshal([]byte(resultContent), &verificationResult); err == nil {
-					// Populate session state (verification)
-					// Note: Verification needs to merge with discovery candidates
-					verifiedCandidates := m.mergeVerificationUpdates(verificationResult.VerifiedCandidates)
+				if err := json.Unmarshal([]byte(resultContent), &oldVerificationResult); err == nil && len(oldVerificationResult.VerifiedCandidates) > 0 {
+					m.debugLogger.Log("METRICS", "Successfully parsed old verification format")
+					
+					// Merge verification updates with discovery candidates
+					verifiedCandidates := m.mergeVerificationUpdates(oldVerificationResult.VerifiedCandidates)
 					
 					// Build verification log from the parsed data
 					var verificationLog *VerificationLog
-					if verificationResult.VerificationSummary.TotalCandidates > 0 {
+					if oldVerificationResult.VerificationSummary.TotalCandidates > 0 {
 						// Build missing files list
 						var missingFiles []MissingFile
-						if verificationResult.CriticalMissingFile.FilePath != "" {
+						if oldVerificationResult.CriticalMissingFile.FilePath != "" {
 							missingFiles = append(missingFiles, MissingFile{
-								FilePath:  verificationResult.CriticalMissingFile.FilePath,
-								Reason:    verificationResult.CriticalMissingFile.Reason,
-								Evidence:  verificationResult.CriticalMissingFile.Evidence,
-								Relevance: verificationResult.CriticalMissingFile.Relevance,
+								FilePath:  oldVerificationResult.CriticalMissingFile.FilePath,
+								Reason:    oldVerificationResult.CriticalMissingFile.Reason,
+								Evidence:  oldVerificationResult.CriticalMissingFile.Evidence,
+								Relevance: oldVerificationResult.CriticalMissingFile.Relevance,
 							})
 						}
 						
 						// Build keyword effectiveness map
 						effectivenessMap := make(map[string]KeywordEffectiveness)
-						for keyword, eff := range verificationResult.KeywordEffectivenessAssessment.Effectiveness {
+						for keyword, eff := range oldVerificationResult.KeywordEffectivenessAssessment.Effectiveness {
 							effectivenessMap[keyword] = KeywordEffectiveness{
 								Rating:     eff.Rating,
 								Explanation: eff.Explanation,
@@ -335,22 +487,22 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 						
 						// Combine recommendations
 						var allRecommendations []string
-						allRecommendations = append(allRecommendations, verificationResult.KeywordEffectivenessAssessment.Recommendations.ForFutureDiscovery...)
-						allRecommendations = append(allRecommendations, verificationResult.KeywordEffectivenessAssessment.Recommendations.ImprovementActions...)
+						allRecommendations = append(allRecommendations, oldVerificationResult.KeywordEffectivenessAssessment.Recommendations.ForFutureDiscovery...)
+						allRecommendations = append(allRecommendations, oldVerificationResult.KeywordEffectivenessAssessment.Recommendations.ImprovementActions...)
 						
 						// Build discovery reviewed list from verified candidates
 						var discoveryReviewed []string
-						for _, cand := range verificationResult.VerifiedCandidates {
+						for _, cand := range oldVerificationResult.VerifiedCandidates {
 							discoveryReviewed = append(discoveryReviewed, cand.FilePath)
 						}
 						
 						// Build critical findings
 						var criticalFindings []string
-						if verificationResult.VerificationSummary.CriticalFinding != "" {
-							criticalFindings = append(criticalFindings, verificationResult.VerificationSummary.CriticalFinding)
+						if oldVerificationResult.VerificationSummary.CriticalFinding != "" {
+							criticalFindings = append(criticalFindings, oldVerificationResult.VerificationSummary.CriticalFinding)
 						}
-						if verificationResult.SummaryAndConfidence.Conclusion != "" {
-							criticalFindings = append(criticalFindings, verificationResult.SummaryAndConfidence.Conclusion)
+						if oldVerificationResult.SummaryAndConfidence.Conclusion != "" {
+							criticalFindings = append(criticalFindings, oldVerificationResult.SummaryAndConfidence.Conclusion)
 						}
 						
 						verificationLog = &VerificationLog{
@@ -358,26 +510,27 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 							CriticalFindings:       criticalFindings,
 							MissingFilesIdentified: missingFiles,
 							KeywordAssessment: KeywordAssessment{
-								DiscoveryKeywords: verificationResult.KeywordEffectivenessAssessment.DiscoveryKeywords,
+								DiscoveryKeywords: oldVerificationResult.KeywordEffectivenessAssessment.DiscoveryKeywords,
 								Effectiveness:     effectivenessMap,
-								NewKeywords:       verificationResult.KeywordEffectivenessAssessment.NewKeywordsDiscovered,
+								NewKeywords:       oldVerificationResult.KeywordEffectivenessAssessment.NewKeywordsDiscovered,
 								Recommendations:   allRecommendations,
 							},
 							VerificationMethod: "Code inspection and semantic analysis of discovery candidates",
-							TotalVerified:      verificationResult.VerificationSummary.Verified,
-							Confidence:         verificationResult.SummaryAndConfidence.Confidence,
+							TotalVerified:      oldVerificationResult.VerificationSummary.Verified,
+							Confidence:         oldVerificationResult.SummaryAndConfidence.Confidence,
 						}
 					}
 					
-					m.populateTurnState(turn, verifiedCandidates, verificationResult.VerificationSummary.Verified, usage, cost, duration, claudeSessionID, &TurnResults{
+					// Populate session state (verification)
+					m.populateTurnState(turn, verifiedCandidates, oldVerificationResult.VerificationSummary.Verified, usage, cost, duration, claudeSessionID, &TurnResults{
 						Candidates: verifiedCandidates,
 						VerificationSummary: &VerificationSummary{
-							TotalVerified:        verificationResult.VerificationSummary.Verified,
-							CandidatesPromoted:   verificationResult.VerificationSummary.HighlyRelevant,
-							CandidatesDemoted:    verificationResult.VerificationSummary.Relevant,
-							CandidatesRemoved:    verificationResult.VerificationSummary.TangentiallyRelevant,
-							AverageVerifiedScore: 0.0, // Not provided in new format
-							TopCandidatesCount:   verificationResult.VerificationSummary.TotalCandidates,
+							TotalVerified:        oldVerificationResult.VerificationSummary.Verified,
+							CandidatesPromoted:   oldVerificationResult.VerificationSummary.HighlyRelevant,
+							CandidatesDemoted:    oldVerificationResult.VerificationSummary.Relevant,
+							CandidatesRemoved:    oldVerificationResult.VerificationSummary.TangentiallyRelevant,
+							AverageVerifiedScore: oldVerificationResult.Summary.AverageVerifiedScore,
+							TopCandidatesCount:   oldVerificationResult.VerificationSummary.TotalCandidates,
 							Duration:             &duration,
 							Cost:                 &cost,
 							Usage:                &usage,
@@ -387,7 +540,7 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 
 					// DEBUG: Log after populateTurnState
 					m.debugLogger.Log("METRICS", fmt.Sprintf(
-						"AFTER populateTurnState (verification) - Duration: %dms, Cost: $%.6f, InputTokens: %d, OutputTokens: %d",
+						"AFTER populateTurnState (verification - old format) - Duration: %dms, Cost: $%.6f, InputTokens: %d, OutputTokens: %d",
 						duration,
 						cost,
 						usage.InputTokens,
@@ -690,8 +843,153 @@ func (m *Manager) processAssistantMessage(rawMessage string, turn int, usage Usa
 	// DEBUG: Log discovery format failed
 	m.debugLogger.Log("METRICS", "Discovery format parse failed, trying verification")
 	
-	// Try to parse as verification format
-	var verificationResult struct {
+	// Try to parse as rich verification format (new format)
+	var richVerificationResult struct {
+		VerificationSummary struct {
+			SessionIntent              string `json:"session_intent"`
+			TurnNumber                 int    `json:"turn_number"`
+			TotalCandidatesReviewed    int    `json:"total_candidates_reviewed"`
+			VerifiedCandidatesCount    int    `json:"verified_candidates_count"`
+			CriticalFinding            string `json:"critical_finding"`
+		} `json:"verification_summary"`
+		VerifiedCandidates []RichVerifiedCandidate `json:"verified_candidates"`
+		CriticalMissingCandidate *CriticalMissingCandidate `json:"critical_missing_candidate"`
+		KeywordAssessment RichKeywordAssessment `json:"keyword_assessment"`
+		SummaryAndRecommendations SummaryAndRecommendations `json:"summary_and_recommendations"`
+	}
+	
+	// DEBUG: Log trying rich verification format
+	m.debugLogger.Log("METRICS", "Trying rich verification format")
+	
+	if err := json.Unmarshal([]byte(jsonStr), &richVerificationResult); err == nil && len(richVerificationResult.VerifiedCandidates) > 0 {
+		m.debugLogger.Log("DEBUG", fmt.Sprintf("Parsed rich verification results: %d verified candidates", len(richVerificationResult.VerifiedCandidates)))
+		
+		// Convert rich candidates to simple candidates for storage
+		verifiedCandidates := make([]Candidate, len(richVerificationResult.VerifiedCandidates))
+		for i, richCand := range richVerificationResult.VerifiedCandidates {
+			verifiedCandidates[i] = Candidate{
+				FilePath:  richCand.FilePath,
+				Score:     richCand.VerifiedScore,
+				Reasoning: fmt.Sprintf("%s\n\n%s", richCand.Relevance, richCand.Reasoning),
+			}
+		}
+		
+		// Build verification log from rich data
+		var verificationLog *VerificationLog
+		if richVerificationResult.VerificationSummary.TotalCandidatesReviewed > 0 {
+			// Build missing files list
+			var missingFiles []MissingFile
+			if richVerificationResult.CriticalMissingCandidate != nil {
+				missingFiles = append(missingFiles, MissingFile{
+					FilePath:  richVerificationResult.CriticalMissingCandidate.FilePath,
+					Reason:    richVerificationResult.CriticalMissingCandidate.Reasoning,
+					Evidence:  richVerificationResult.CriticalMissingCandidate.CodeVerification.ConfirmedPattern,
+					Relevance: richVerificationResult.CriticalMissingCandidate.Relevance,
+				})
+			}
+			
+			// Build keyword effectiveness map
+			effectivenessMap := make(map[string]KeywordEffectiveness)
+			for keyword, eff := range richVerificationResult.KeywordAssessment.KeywordEffectiveness {
+				effectivenessMap[keyword] = KeywordEffectiveness{
+					Rating:     eff.Effectiveness,
+					Explanation: eff.Explanation,
+					Matches:    eff.ExampleMatches,
+				}
+			}
+			
+			// Combine recommendations
+			var allRecommendations []string
+			allRecommendations = append(allRecommendations, richVerificationResult.KeywordAssessment.KeywordRecommendations.ShouldAdd...)
+			allRecommendations = append(allRecommendations, richVerificationResult.KeywordAssessment.KeywordRecommendations.ShouldRefine...)
+			allRecommendations = append(allRecommendations, richVerificationResult.KeywordAssessment.KeywordRecommendations.FutureDiscoveryStrategy)
+			
+			// Build discovery reviewed list from verified candidates
+			var discoveryReviewed []string
+			for _, cand := range richVerificationResult.VerifiedCandidates {
+				discoveryReviewed = append(discoveryReviewed, cand.FilePath)
+			}
+			
+			// Build critical findings
+			var criticalFindings []string
+			if richVerificationResult.VerificationSummary.CriticalFinding != "" {
+				criticalFindings = append(criticalFindings, richVerificationResult.VerificationSummary.CriticalFinding)
+			}
+			if richVerificationResult.SummaryAndRecommendations.DiscoveryQualityAssessment != "" {
+				criticalFindings = append(criticalFindings, richVerificationResult.SummaryAndRecommendations.DiscoveryQualityAssessment)
+			}
+			if richVerificationResult.SummaryAndRecommendations.Verdict != "" {
+				criticalFindings = append(criticalFindings, fmt.Sprintf("Verdict: %s", richVerificationResult.SummaryAndRecommendations.Verdict))
+			}
+			
+			// Build new keywords list
+			var newKeywords []string
+			for keyword := range richVerificationResult.KeywordAssessment.NewKeywordsDiscovered {
+				newKeywords = append(newKeywords, keyword)
+			}
+			
+			verificationLog = &VerificationLog{
+				DiscoveryReviewed:      discoveryReviewed,
+				CriticalFindings:       criticalFindings,
+				MissingFilesIdentified: missingFiles,
+				KeywordAssessment: KeywordAssessment{
+					DiscoveryKeywords: richVerificationResult.KeywordAssessment.DiscoveryIntentKeywords,
+					Effectiveness:     effectivenessMap,
+					NewKeywords:       newKeywords,
+					Recommendations:   allRecommendations,
+				},
+				VerificationMethod: "Code inspection and semantic analysis of discovery candidates",
+				TotalVerified:      richVerificationResult.VerificationSummary.VerifiedCandidatesCount,
+				Confidence:         richVerificationResult.SummaryAndRecommendations.Verdict,
+			}
+		}
+		
+		// Build verification summary
+		verificationSummary := &VerificationSummary{
+			SessionIntent:           richVerificationResult.VerificationSummary.SessionIntent,
+			TurnNumber:              richVerificationResult.VerificationSummary.TurnNumber,
+			TotalCandidatesReviewed: richVerificationResult.VerificationSummary.TotalCandidatesReviewed,
+			VerifiedCandidatesCount: richVerificationResult.VerificationSummary.VerifiedCandidatesCount,
+			CriticalFinding:         richVerificationResult.VerificationSummary.CriticalFinding,
+			TotalVerified:           richVerificationResult.VerificationSummary.VerifiedCandidatesCount,
+			CandidatesPromoted:      0, // Calculate from score changes
+			CandidatesDemoted:       0, // Calculate from score changes
+			CandidatesRemoved:       0, // Calculate from score changes
+			AverageVerifiedScore:    0.0, // Calculate from scores
+			TopCandidatesCount:      len(verifiedCandidates),
+			Duration:                &duration,
+			Cost:                    &cost,
+			Usage:                   &usage,
+			VerificationLog:         verificationLog,
+		}
+		
+		// Calculate statistics
+		var totalScore float64
+		for _, cand := range verifiedCandidates {
+			totalScore += cand.Score
+		}
+		if len(verifiedCandidates) > 0 {
+			verificationSummary.AverageVerifiedScore = totalScore / float64(len(verifiedCandidates))
+		}
+		
+		// Populate session state (verification)
+		m.populateTurnState(turn, verifiedCandidates, richVerificationResult.VerificationSummary.VerifiedCandidatesCount, usage, cost, duration, claudeSessionID, &TurnResults{
+			Candidates:          verifiedCandidates,
+			VerificationSummary: verificationSummary,
+		})
+		
+		m.session.Status = "verification_complete"
+		m.writeSessionState()
+		
+		m.debugLogger.Log("DEBUG", "Rich verification results processed successfully")
+		return nil
+	}
+	
+	// DEBUG: Log rich verification format failed
+	m.debugLogger.Log("METRICS", "Rich verification format parse failed, trying old verification format")
+	
+	// Try to parse as old verification format
+	var oldVerificationResult struct {
 		VerifiedCandidates []VerificationUpdate `json:"verified_candidates"`
 		VerificationSummary struct {
 			TotalCandidates      int     `json:"total_candidates"`
@@ -736,120 +1034,96 @@ func (m *Manager) processAssistantMessage(rawMessage string, turn int, usage Usa
 		} `json:"summary"`
 	}
 	
-	// DEBUG: Log trying verification format
-	m.debugLogger.Log("METRICS", "Trying verification format")
+	// DEBUG: Log trying old verification format
+	m.debugLogger.Log("METRICS", "Trying old verification format")
 	
-	if err := json.Unmarshal([]byte(jsonStr), &verificationResult); err == nil && len(verificationResult.VerifiedCandidates) > 0 {
-		m.debugLogger.Log("DEBUG", fmt.Sprintf("Parsed verification results: %d verified candidates", len(verificationResult.VerifiedCandidates)))
+	if err := json.Unmarshal([]byte(jsonStr), &oldVerificationResult); err == nil && len(oldVerificationResult.VerifiedCandidates) > 0 {
+		m.debugLogger.Log("DEBUG", fmt.Sprintf("Parsed old verification results: %d verified candidates", len(oldVerificationResult.VerifiedCandidates)))
 		
-		// Try new format first (with verification_summary)
-		if verificationResult.VerificationSummary.TotalCandidates > 0 {
-			// Build verification log from the parsed data
-			var verificationLog *VerificationLog
-			if verificationResult.VerificationSummary.TotalCandidates > 0 {
-				// Build missing files list
-				var missingFiles []MissingFile
-				if verificationResult.CriticalMissingFile.FilePath != "" {
-					missingFiles = append(missingFiles, MissingFile{
-						FilePath:  verificationResult.CriticalMissingFile.FilePath,
-						Reason:    verificationResult.CriticalMissingFile.Reason,
-						Evidence:  verificationResult.CriticalMissingFile.Evidence,
-						Relevance: verificationResult.CriticalMissingFile.Relevance,
-					})
-				}
-				
-				// Build keyword effectiveness map
-				effectivenessMap := make(map[string]KeywordEffectiveness)
-				for keyword, eff := range verificationResult.KeywordEffectivenessAssessment.Effectiveness {
-					effectivenessMap[keyword] = KeywordEffectiveness{
-						Rating:     eff.Rating,
-						Explanation: eff.Explanation,
-						Matches:    eff.Matches,
-					}
-				}
-				
-				// Combine recommendations
-				var allRecommendations []string
-				allRecommendations = append(allRecommendations, verificationResult.KeywordEffectivenessAssessment.Recommendations.ForFutureDiscovery...)
-				allRecommendations = append(allRecommendations, verificationResult.KeywordEffectivenessAssessment.Recommendations.ImprovementActions...)
-				
-				// Build discovery reviewed list from verified candidates
-				var discoveryReviewed []string
-				for _, cand := range verificationResult.VerifiedCandidates {
-					discoveryReviewed = append(discoveryReviewed, cand.FilePath)
-				}
-				
-				// Build critical findings
-				var criticalFindings []string
-				if verificationResult.VerificationSummary.CriticalFinding != "" {
-					criticalFindings = append(criticalFindings, verificationResult.VerificationSummary.CriticalFinding)
-				}
-				if verificationResult.SummaryAndConfidence.Conclusion != "" {
-					criticalFindings = append(criticalFindings, verificationResult.SummaryAndConfidence.Conclusion)
-				}
-				
-				verificationLog = &VerificationLog{
-					DiscoveryReviewed:      discoveryReviewed,
-					CriticalFindings:       criticalFindings,
-					MissingFilesIdentified: missingFiles,
-					KeywordAssessment: KeywordAssessment{
-						DiscoveryKeywords: verificationResult.KeywordEffectivenessAssessment.DiscoveryKeywords,
-						Effectiveness:     effectivenessMap,
-						NewKeywords:       verificationResult.KeywordEffectivenessAssessment.NewKeywordsDiscovered,
-						Recommendations:   allRecommendations,
-					},
-					VerificationMethod: "Code inspection and semantic analysis of discovery candidates",
-					TotalVerified:      verificationResult.VerificationSummary.Verified,
-					Confidence:         verificationResult.SummaryAndConfidence.Confidence,
+		// Merge verification updates with discovery candidates
+		verifiedCandidates := m.mergeVerificationUpdates(oldVerificationResult.VerifiedCandidates)
+		
+		// Build verification log from the parsed data
+		var verificationLog *VerificationLog
+		if oldVerificationResult.VerificationSummary.TotalCandidates > 0 {
+			// Build missing files list
+			var missingFiles []MissingFile
+			if oldVerificationResult.CriticalMissingFile.FilePath != "" {
+				missingFiles = append(missingFiles, MissingFile{
+					FilePath:  oldVerificationResult.CriticalMissingFile.FilePath,
+					Reason:    oldVerificationResult.CriticalMissingFile.Reason,
+					Evidence:  oldVerificationResult.CriticalMissingFile.Evidence,
+					Relevance: oldVerificationResult.CriticalMissingFile.Relevance,
+				})
+			}
+			
+			// Build keyword effectiveness map
+			effectivenessMap := make(map[string]KeywordEffectiveness)
+			for keyword, eff := range oldVerificationResult.KeywordEffectivenessAssessment.Effectiveness {
+				effectivenessMap[keyword] = KeywordEffectiveness{
+					Rating:     eff.Rating,
+					Explanation: eff.Explanation,
+					Matches:    eff.Matches,
 				}
 			}
 			
-			// Populate session state (verification)
-			verifiedCandidates := m.mergeVerificationUpdates(verificationResult.VerifiedCandidates)
+			// Combine recommendations
+			var allRecommendations []string
+			allRecommendations = append(allRecommendations, oldVerificationResult.KeywordEffectivenessAssessment.Recommendations.ForFutureDiscovery...)
+			allRecommendations = append(allRecommendations, oldVerificationResult.KeywordEffectivenessAssessment.Recommendations.ImprovementActions...)
 			
-			m.populateTurnState(turn, verifiedCandidates, verificationResult.VerificationSummary.Verified, usage, cost, duration, claudeSessionID, &TurnResults{
-				Candidates: verifiedCandidates,
-				VerificationSummary: &VerificationSummary{
-					TotalVerified:        verificationResult.VerificationSummary.Verified,
-					CandidatesPromoted:   verificationResult.VerificationSummary.HighlyRelevant,
-					CandidatesDemoted:    verificationResult.VerificationSummary.Relevant,
-					CandidatesRemoved:    verificationResult.VerificationSummary.TangentiallyRelevant,
-					AverageVerifiedScore: 0.0, // Not provided in new format
-					TopCandidatesCount:   verificationResult.VerificationSummary.TotalCandidates,
-					Duration:             &duration,
-					Cost:                 &cost,
-					Usage:                &usage,
-					VerificationLog:      verificationLog,
+			// Build discovery reviewed list from verified candidates
+			var discoveryReviewed []string
+			for _, cand := range oldVerificationResult.VerifiedCandidates {
+				discoveryReviewed = append(discoveryReviewed, cand.FilePath)
+			}
+			
+			// Build critical findings
+			var criticalFindings []string
+			if oldVerificationResult.VerificationSummary.CriticalFinding != "" {
+				criticalFindings = append(criticalFindings, oldVerificationResult.VerificationSummary.CriticalFinding)
+			}
+			if oldVerificationResult.SummaryAndConfidence.Conclusion != "" {
+				criticalFindings = append(criticalFindings, oldVerificationResult.SummaryAndConfidence.Conclusion)
+			}
+			
+			verificationLog = &VerificationLog{
+				DiscoveryReviewed:      discoveryReviewed,
+				CriticalFindings:       criticalFindings,
+				MissingFilesIdentified: missingFiles,
+				KeywordAssessment: KeywordAssessment{
+					DiscoveryKeywords: oldVerificationResult.KeywordEffectivenessAssessment.DiscoveryKeywords,
+					Effectiveness:     effectivenessMap,
+					NewKeywords:       oldVerificationResult.KeywordEffectivenessAssessment.NewKeywordsDiscovered,
+					Recommendations:   allRecommendations,
 				},
-			})
-			
-			m.session.Status = "verification_complete"
-			m.writeSessionState()
-			
-			m.debugLogger.Log("DEBUG", "Verification results processed successfully (new format)")
-			return nil
+				VerificationMethod: "Code inspection and semantic analysis of discovery candidates",
+				TotalVerified:      oldVerificationResult.VerificationSummary.Verified,
+				Confidence:         oldVerificationResult.SummaryAndConfidence.Confidence,
+			}
 		}
 		
-		// Fall back to old format (with summary)
-		// Populate session state
-		verifiedCandidates := m.mergeVerificationUpdates(verificationResult.VerifiedCandidates)
-		
-		m.populateTurnState(turn, verifiedCandidates, verificationResult.Summary.TotalVerified, usage, cost, duration, claudeSessionID, &TurnResults{
+		// Populate session state (verification)
+		m.populateTurnState(turn, verifiedCandidates, oldVerificationResult.VerificationSummary.Verified, usage, cost, duration, claudeSessionID, &TurnResults{
 			Candidates: verifiedCandidates,
 			VerificationSummary: &VerificationSummary{
-				TotalVerified:        verificationResult.Summary.TotalVerified,
-				CandidatesPromoted:   verificationResult.Summary.CandidatesPromoted,
-				CandidatesDemoted:    verificationResult.Summary.CandidatesDemoted,
-				CandidatesRemoved:    verificationResult.Summary.CandidatesRemoved,
-				AverageVerifiedScore: verificationResult.Summary.AverageVerifiedScore,
-				TopCandidatesCount:   verificationResult.Summary.TopCandidatesCount,
+				TotalVerified:        oldVerificationResult.VerificationSummary.Verified,
+				CandidatesPromoted:   oldVerificationResult.VerificationSummary.HighlyRelevant,
+				CandidatesDemoted:    oldVerificationResult.VerificationSummary.Relevant,
+				CandidatesRemoved:    oldVerificationResult.VerificationSummary.TangentiallyRelevant,
+				AverageVerifiedScore: oldVerificationResult.Summary.AverageVerifiedScore,
+				TopCandidatesCount:   oldVerificationResult.VerificationSummary.TotalCandidates,
+				Duration:             &duration,
+				Cost:                 &cost,
+				Usage:                &usage,
+				VerificationLog:      verificationLog,
 			},
 		})
 		
 		m.session.Status = "verification_complete"
 		m.writeSessionState()
 		
-		m.debugLogger.Log("DEBUG", "Verification results processed successfully")
+		m.debugLogger.Log("DEBUG", "Old verification results processed successfully")
 		return nil
 	}
 	
