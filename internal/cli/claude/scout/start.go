@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Start Command
- * Block-UUID: f2c711d5-4748-4c37-8ed6-8d6e0e3fb247
- * Parent-UUID: 4edfb0ae-ee7d-472b-955e-55191abbfb56
- * Version: 1.10.0
+ * Block-UUID: 8c4645c0-ced5-400d-b9f2-846ebe393e09
+ * Parent-UUID: dd476dff-5dd9-4879-a859-cdf71574f685
+ * Version: 1.13.0
  * Description: Implements 'gsc claude scout start' command with turn-type aware session handling. Supports multiple discovery turns followed by verification. Handles session creation, loading, and background worker spawning for both discovery and verification phases.
  * Language: Go
- * Created-at: 2026-04-13T03:01:07.082Z
- * Authors: claude-haiku-4-5-20251001 (v1.2.1), GLM-4.7 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), claude-haiku-4-5-20251001 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0)
+ * Created-at: 2026-04-13T03:43:17.437Z
+ * Authors: claude-haiku-4-5-20251001 (v1.2.1), GLM-4.7 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), claude-haiku-4-5-20251001 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0)
  */
 
 
@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 
 	claudescout "github.com/gitsense/gsc-cli/internal/claude/scout"
 	"github.com/google/uuid"
@@ -252,6 +253,18 @@ func spawnBackgroundWorker(flags *StartFlags) (int, error) {
 		return 0, fmt.Errorf("failed to spawn worker: %w", err)
 	}
 
+	// Wait a moment and check if process is still alive
+	time.Sleep(100 * time.Millisecond)
+	process, err := os.FindProcess(cmd.Process.Pid)
+	if err != nil {
+		return 0, fmt.Errorf("failed to find worker process: %w", err)
+	}
+
+	if err := process.Signal(syscall.Signal(0)); err != nil {
+		// Process died immediately
+		return 0, fmt.Errorf("worker process died immediately (check debug.log for details)")
+	}
+
 	// Store worker PID in session state
 	manager, err := claudescout.LoadSession(flags.Session)
 	if err != nil {
@@ -267,30 +280,110 @@ func spawnBackgroundWorker(flags *StartFlags) (int, error) {
 
 // runBackgroundWorker executes the scout session in the background worker process
 func runBackgroundWorker(cmd *cobra.Command, flags *StartFlags) error {
+	// Create debug log immediately
+	config, err := claudescout.NewSessionConfig(flags.Session)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "FATAL: Failed to create session config: %v\n", err)
+		return fmt.Errorf("failed to create session config: %w", err)
+	}
+
+	debugLogger, err := claudescout.NewDebugLogger(config.GetSessionDir(), true)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "FATAL: Failed to create debug log: %v\n", err)
+		return fmt.Errorf("failed to create debug log: %w", err)
+	}
+	defer debugLogger.Close()
+
+	debugLogger.Log("WORKER", "Background worker started")
+	debugLogger.Log("WORKER", fmt.Sprintf("Session ID: %s", flags.Session))
+	debugLogger.Log("WORKER", fmt.Sprintf("Turn Type: %s", flags.TurnType))
+	debugLogger.Log("WORKER", fmt.Sprintf("Review Files: %s", flags.ReviewFiles))
+
 	// Load existing session
+	debugLogger.Log("WORKER", "Loading session...")
 	manager, err := claudescout.LoadSession(flags.Session)
 	if err != nil {
+		debugLogger.LogError("Failed to load session", err)
+		fmt.Fprintf(os.Stderr, "ERROR: Failed to load session: %v\n", err)
 		return fmt.Errorf("failed to load session: %w", err)
+	}
+	debugLogger.Log("WORKER", "Session loaded successfully")
+
+	// Validate session state
+	debugLogger.Log("WORKER", "Getting session status...")
+	status, err := manager.GetSessionStatus()
+	if err != nil {
+		debugLogger.LogError("Failed to get session status", err)
+		fmt.Fprintf(os.Stderr, "ERROR: Failed to get session status: %v\n", err)
+		return fmt.Errorf("failed to get session status: %w", err)
+	}
+	debugLogger.Log("WORKER", fmt.Sprintf("Session status: %s", status.Status))
+
+	// Validate session state for verification
+	if flags.TurnType == "verification" && status.Status != "discovery_complete" {
+		err := fmt.Errorf("session status is %s, expected discovery_complete for verification turn", status.Status)
+		debugLogger.LogError("Invalid session status", err)
+		fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
+		return err
+	}
+
+	debugLogger.Log("WORKER", fmt.Sprintf("Session has %d turns", len(status.Turns)))
+	if len(status.Turns) == 0 {
+		err := fmt.Errorf("session has no turns")
+		debugLogger.LogError("No turns found", err)
+		fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
+		return err
+	}
+
+	lastTurn := status.Turns[len(status.Turns)-1]
+	debugLogger.Log("WORKER", fmt.Sprintf("Last turn: %d (type: %s, status: %s)",
+		lastTurn.TurnNumber, lastTurn.TurnType, lastTurn.Status))
+
+	if lastTurn.Status != "complete" {
+		err := fmt.Errorf("last turn %d is not complete (status: %s)", lastTurn.TurnNumber, lastTurn.Status)
+		debugLogger.LogError("Last turn not complete", err)
+		fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
+		return err
 	}
 
 	// Parse review files if provided for verification
 	var selectedCandidates *claudescout.SelectedCandidates
 	if flags.TurnType == "verification" && flags.ReviewFiles != "" {
+		debugLogger.Log("WORKER", fmt.Sprintf("Reading review files from: %s", flags.ReviewFiles))
 		data, err := os.ReadFile(flags.ReviewFiles)
 		if err != nil {
+			debugLogger.LogError("Failed to read review files", err)
+			fmt.Fprintf(os.Stderr, "ERROR: Failed to read review files: %v\n", err)
 			return fmt.Errorf("failed to read review files: %w", err)
 		}
+		debugLogger.Log("WORKER", fmt.Sprintf("Review files size: %d bytes", len(data)))
+
 		var cand claudescout.SelectedCandidates
-		if err := json.Unmarshal(data, &cand); err != nil {
-			return fmt.Errorf("failed to parse review files: %w", err)
+		
+		// Try to parse as SelectedCandidates struct first (with "selected" field)
+		if err := json.Unmarshal(data, &cand); err == nil {
+			debugLogger.Log("WORKER", fmt.Sprintf("Parsed %d review candidates (struct format)", len(cand.Selected)))
+			selectedCandidates = &cand
+		} else {
+			// If that fails, try to parse as direct array
+			var candidates []claudescout.SelectedCandidate
+			if err := json.Unmarshal(data, &candidates); err != nil {
+				debugLogger.LogError("Failed to parse review files JSON", err)
+				fmt.Fprintf(os.Stderr, "ERROR: Failed to parse review files JSON: %v\n", err)
+				return fmt.Errorf("failed to parse review files: %w", err)
+			}
+			debugLogger.Log("WORKER", fmt.Sprintf("Parsed %d review candidates (array format)", len(candidates)))
+			selectedCandidates = &claudescout.SelectedCandidates{Selected: candidates}
 		}
-		selectedCandidates = &cand
 	}
 
 	// Execute the turn (this blocks until complete)
+	debugLogger.Log("WORKER", fmt.Sprintf("Starting %s turn...", flags.TurnType))
 	if flags.TurnType == "discovery" {
+		debugLogger.Log("WORKER", "Calling StartDiscoveryTurn")
 		return manager.StartDiscoveryTurn()
 	} else {
+		debugLogger.Log("WORKER", "Calling StartVerificationTurn")
 		return manager.StartVerificationTurn(selectedCandidates)
 	}
 }
