@@ -2,11 +2,11 @@
  * Component: Scout Models
  * Block-UUID: fead5c6c-a005-426e-9b7c-917cb2342cbe
  * Parent-UUID: a4a0f633-d391-4f87-bf94-35d18198472c
- * Version: 2.0.0
- * Description: Data structures for Scout feature (candidate discovery and verification). Updated to support rich verification format with critical missing files, keyword effectiveness assessment, and actionable recommendations.
+ * Version: 2.1.0
+ * Description: Data structures for Scout feature (candidate discovery and verification). Updated to support rich verification format with critical missing files, keyword effectiveness assessment, and actionable recommendations. Added RawJSON and ParseError fields to TurnResults for fail-safe storage of Claude's raw output.
  * Language: Go
  * Created-at: 2026-04-13T04:40:10.160Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.6), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v2.0.0)
+ * Authors: claude-haiku-4-5-20251001 (v1.0.6), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0)
  */
 
 
@@ -264,6 +264,8 @@ type TurnResults struct {
 	Duration             *int64              `json:"duration,omitempty"`
 	Cost                 *float64            `json:"cost,omitempty"`
 	Usage                *Usage              `json:"usage,omitempty"`
+	RawJSON              string              `json:"raw_json,omitempty"`      // Raw JSON output from Claude (fail-safe)
+	ParseError           string              `json:"parse_error,omitempty"`    // Parse error if parsing failed
 }
 
 // DiscoveryLog contains the discovery methodology and pivot checks
