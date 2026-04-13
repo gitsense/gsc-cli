@@ -1,12 +1,12 @@
 /**
  * Component: Scout Session Manager
- * Block-UUID: 76d47210-0aab-4418-adcb-39cf9028f6fb
- * Parent-UUID: c795d3cc-45d2-473b-9e18-37e635b37007
- * Version: 1.19.0
- * Description: Orchestrates Scout discovery and verification phases. Refactored to focus on session lifecycle and orchestration; subprocess management moved to subprocess.go, stream processing moved to stream.go. Fixed to set phase in writeNoBrainsError based on current turn. Updated LoadSession to populate WorkingDirectories and ReferenceFilesContext from StatusData. Removed GetFinalizedTurnResults() function as results are now stored in session.json. Updated GenerateStatusData() to read candidates from session state. Added lastAssistantMessage field to track assistant messages for post-processing. Updated comments to reflect turn-type based approach instead of turn numbers. Fixed critical issues with hardcoded turn numbers - now uses dynamic turn calculation to support multiple discovery turns. Added EnsureTurnDir() calls to create turn directories on-demand. Moved intent writing from InitializeSession to StartDiscoveryTurn and reordered EnsureTurnDir to run before PrepareCodebaseOverview to fix directory creation issues.
+ * Block-UUID: 7a2749da-a599-4454-9598-6bb75bd4aedc
+ * Parent-UUID: b92c5d3b-2a22-46f5-b936-a6ca57319798
+ * Version: 1.22.0
+ * Description: Orchestrates Scout discovery and verification phases. Refactored to focus on session lifecycle and orchestration; subprocess management moved to subprocess.go, stream processing moved to stream.go. Fixed to set phase in writeNoBrainsError based on current turn. Updated LoadSession to populate WorkingDirectories and ReferenceFilesContext from StatusData. Removed GetFinalizedTurnResults() function as results are now stored in session.json. Updated GenerateStatusData() to read candidates from session state. Added lastAssistantMessage field to track assistant messages for post-processing. Updated comments to reflect turn-type based approach instead of turn numbers. Fixed critical issues with hardcoded turn numbers - now uses dynamic turn calculation to support multiple discovery turns. Added EnsureTurnDir() calls to create turn directories on-demand. Moved intent writing from InitializeSession to StartDiscoveryTurn and reordered EnsureTurnDir to run before PrepareCodebaseOverview to fix directory creation issues. Simplified writeTurnHistory() to use entire turn object instead of manually extracting fields, making it future-proof. Added calls to writeTurnHistory() in both StartDiscoveryTurn() and StartVerificationTurn() to ensure turn-history.json is created and updated after each turn completes.
  * Language: Go
- * Created-at: 2026-04-08T23:05:22.521Z
- * Authors: ..., (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.19.0)
+ * Created-at: 2026-04-13T02:02:05.850Z
+ * Authors: ..., (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.19.0), GLM-4.7 (v1.20.0), GLM-4.7 (v1.21.0), GLM-4.7 (v1.22.0)
  */
 
 
@@ -252,8 +252,8 @@ func (m *Manager) writeNoBrainsError() error {
 	})
 }
 
-// getNextTurnNumber calculates the next turn number dynamically
-func (m *Manager) getNextTurnNumber() int {
+// GetNextTurnNumber calculates the next turn number dynamically
+func (m *Manager) GetNextTurnNumber() int {
 	if len(m.session.Turns) == 0 {
 		return 1
 	}
@@ -275,7 +275,7 @@ func (m *Manager) StartDiscoveryTurn() error {
 	}
 
 	// Calculate next turn number dynamically
-	nextTurn := m.getNextTurnNumber()
+	nextTurn := m.GetNextTurnNumber()
 	m.currentTurn = nextTurn
 	m.session.Status = "discovery"
 
@@ -354,6 +354,11 @@ func (m *Manager) StartDiscoveryTurn() error {
 	// Wait for stream processing to complete (blocking for worker process)
 	m.wg.Wait()
 
+	// Write turn history to disk
+	if err := m.writeTurnHistory(m.currentTurn); err != nil {
+		m.debugLogger.LogError("Failed to write turn history", err)
+	}
+
 	return m.writeSessionState()
 }
 
@@ -371,7 +376,7 @@ func (m *Manager) StartVerificationTurn(selectedCandidates *SelectedCandidates) 
 	}
 
 	// Calculate next turn number dynamically
-	nextTurn := m.getNextTurnNumber()
+	nextTurn := m.GetNextTurnNumber()
 	m.currentTurn = nextTurn
 	m.session.Status = "verification"
 
@@ -400,14 +405,6 @@ func (m *Manager) StartVerificationTurn(selectedCandidates *SelectedCandidates) 
 	}
 	m.debugLogger.Log("DEBUG", fmt.Sprintf("Created event writer: %s", logPath))
 
-	// Mark last turn as complete
-	if len(m.session.Turns) > 0 {
-		lastTurnIndex := len(m.session.Turns) - 1
-		m.session.Turns[lastTurnIndex].Status = "complete"
-		m.session.Turns[lastTurnIndex].CompletedAt = &[]time.Time{time.Now()}[0]
-		m.session.Turns[lastTurnIndex].ProcessInfo.Running = false
-	}
-	
 	// Create new turn state and append to turns slice
 	newTurn := TurnState{
 		TurnNumber:  nextTurn,
@@ -447,6 +444,11 @@ func (m *Manager) StartVerificationTurn(selectedCandidates *SelectedCandidates) 
 
 	// Wait for stream processing to complete (blocking for worker process)
 	m.wg.Wait()
+
+	// Write turn history to disk
+	if err := m.writeTurnHistory(m.currentTurn); err != nil {
+		m.debugLogger.LogError("Failed to write turn history", err)
+	}
 
 	return m.writeSessionState()
 }
@@ -628,33 +630,11 @@ func (m *Manager) writeTurnHistory(turnNumber int) error {
 		return fmt.Errorf("turn %d not found", turnNumber)
 	}
 	
-	// Build turn history entry
+	// Build turn history entry with session-level context
+	// Use the entire turn object to be future-proof
 	historyEntry := map[string]interface{}{
-		"turn_number": turn.TurnNumber,
-		"turn_type":   turn.TurnType,
-		"intent":      m.session.Intent,
-		"started_at":  turn.StartedAt.Format(time.RFC3339),
-	}
-	
-	if turn.CompletedAt != nil {
-		historyEntry["completed_at"] = turn.CompletedAt.Format(time.RFC3339)
-	}
-	
-	if turn.Error != nil {
-		historyEntry["error"] = *turn.Error
-	}
-	
-	// Add results if available
-	if turn.Results != nil {
-		historyEntry["candidates"] = turn.Results.Candidates
-		
-		if turn.Results.DiscoveryLog != nil {
-			historyEntry["discovery_log"] = turn.Results.DiscoveryLog
-		}
-		
-		if turn.Results.VerificationSummary != nil {
-			historyEntry["verification_summary"] = turn.Results.VerificationSummary
-		}
+		"session_intent": m.session.Intent,
+		"turn":           turn,
 	}
 	
 	// Read existing history
@@ -670,7 +650,7 @@ func (m *Manager) writeTurnHistory(turnNumber int) error {
 	// Add or update this turn
 	found := false
 	for i, entry := range history {
-		if entry["turn_number"] == turnNumber {
+		if entry["turn"].(map[string]interface{})["turn_number"] == float64(turnNumber) {
 			history[i] = historyEntry
 			found = true
 			break

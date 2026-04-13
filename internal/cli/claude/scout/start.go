@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Start Command
- * Block-UUID: d8f593dd-7ffb-4958-a8b8-2bab0cfb2432
- * Parent-UUID: 917988e1-2083-44b2-9346-60cb95cb8e23
- * Version: 1.7.0
+ * Block-UUID: f2c711d5-4748-4c37-8ed6-8d6e0e3fb247
+ * Parent-UUID: 4edfb0ae-ee7d-472b-955e-55191abbfb56
+ * Version: 1.10.0
  * Description: Implements 'gsc claude scout start' command with turn-type aware session handling. Supports multiple discovery turns followed by verification. Handles session creation, loading, and background worker spawning for both discovery and verification phases.
  * Language: Go
- * Created-at: 2026-04-12T03:17:22.362Z
- * Authors: claude-haiku-4-5-20251001 (v1.2.1), GLM-4.7 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), claude-haiku-4-5-20251001 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0)
+ * Created-at: 2026-04-13T03:01:07.082Z
+ * Authors: claude-haiku-4-5-20251001 (v1.2.1), GLM-4.7 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), claude-haiku-4-5-20251001 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0)
  */
 
 
@@ -98,58 +98,10 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 	if sessionID == "" {
 		// Auto-generate if not provided
 		sessionID = uuid.New().String()[:12]
-	} else {
-		// Validate session ID format (already done in ValidateStartFlags)
-		// Check if session already exists
-		config, _ := claudescout.NewSessionConfig(sessionID)
-
-		// TURN-TYPE-AWARE SESSION HANDLING
-		if flags.TurnType == "discovery" {
-			// Turn 1: Error if session exists (unless --force)
-			if config.SessionExists() {
-				if !flags.Force {
-					cmd.SilenceUsage = true
-					return fmt.Errorf("session '%s' already exists. Use --force to overwrite", sessionID)
-				}
-				// Delete existing session only for Turn 1
-				if err := config.CleanupSessionDir(); err != nil {
-					cmd.SilenceUsage = true
-					return fmt.Errorf("failed to cleanup existing session: %w", err)
-				}
-			}
-		} else if flags.TurnType == "verification" {
-			// Verification: Session must exist (will load it)
-			if !config.SessionExists() {
-				cmd.SilenceUsage = true
-				return fmt.Errorf(
-					"session '%s' not found. Please run discovery turn first:\n"+
-						"  gsc claude scout start --session-id %s --turn-type discovery --intent-file <intent-file> --workdir <workdir>",
-					sessionID, sessionID,
-				)
-			}
-			// For verification, load existing session instead of creating new
-			tempManager, err := claudescout.LoadSession(sessionID)
-			if err != nil {
-				cmd.SilenceUsage = true
-				return fmt.Errorf("failed to load existing session: %w", err)
-			}
-
-			// Validate Turn 1 is complete
-			lastCompleted, err := tempManager.GetLastCompletedTurn()
-			if err != nil {
-				cmd.SilenceUsage = true
-				return fmt.Errorf("failed to check session status: %w", err)
-			}
-			if lastCompleted < 1 {
-				cmd.SilenceUsage = true
-				return fmt.Errorf(
-					"Discovery turn has not completed yet. Check status with:\n"+
-						"  gsc claude scout status -s %s",
-					sessionID,
-				)
-			}
-		}
 	}
+
+	// Create session config to check if session exists
+	config, _ := claudescout.NewSessionConfig(sessionID)
 
 	// Parse working directories and reference files
 	workdirs, err := ParseWorkdirs(flags.WorkingDirectories)
@@ -166,54 +118,82 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 
 	// Create or load scout manager based on turn
 	var manager *claudescout.Manager
+	
 	if flags.TurnType == "discovery" {
-		// Discovery: Create new manager with debug logging enabled if requested
-		var err error
-		manager, err = claudescout.NewManagerWithDebug(sessionID, flags.Debug)
-		if err != nil {
-			cmd.SilenceUsage = true
-			return fmt.Errorf("failed to create scout manager: %w", err)
-		}
-
-		// Initialize the session for Turn 1
-		if err := manager.InitializeSession(intent, workdirs, refFilesContext, flags.AutoReview, flags.Model); err != nil {
-			cmd.SilenceUsage = true
-			return fmt.Errorf("failed to initialize session: %w", err)
+		// Discovery: Check if session already exists
+		if config.SessionExists() {
+			// Session exists: load it (this is turn 3, 5, etc.)
+			var err error
+			manager, err = claudescout.LoadSession(sessionID)
+			if err != nil {
+				cmd.SilenceUsage = true
+				return fmt.Errorf("failed to load existing session: %w", err)
+			}
+		} else {
+			// Session doesn't exist: create new (this is turn 1)
+			var err error
+			manager, err = claudescout.NewManagerWithDebug(sessionID, flags.Debug)
+			if err != nil {
+				cmd.SilenceUsage = true
+				return fmt.Errorf("failed to create scout manager: %w", err)
+			}
+			
+			// Initialize the session (only for turn 1)
+			if err := manager.InitializeSession(intent, workdirs, refFilesContext, flags.AutoReview, flags.Model); err != nil {
+				cmd.SilenceUsage = true
+				return fmt.Errorf("failed to initialize session: %w", err)
+			}
 		}
 	} else if flags.TurnType == "verification" {
-		// Verification: Load existing manager
+		// Verification: Session must exist
+		if !config.SessionExists() {
+			cmd.SilenceUsage = true
+			return fmt.Errorf(
+				"session '%s' not found. Please run discovery turn first:\n"+
+					"  gsc claude scout start --session-id %s --turn-type discovery --intent-file <intent-file> --workdir <workdir>",
+				sessionID, sessionID,
+			)
+		}
+		
+		// Load existing session
 		var err error
 		manager, err = claudescout.LoadSession(sessionID)
 		if err != nil {
 			cmd.SilenceUsage = true
 			return fmt.Errorf("failed to load session: %w", err)
 		}
-		// Verification will use existing session data from discovery
+		
+		// Validate last turn is complete
+		lastCompleted, err := manager.GetLastCompletedTurn()
+		if err != nil {
+			cmd.SilenceUsage = true
+			return fmt.Errorf("failed to check session status: %w", err)
+		}
+		if lastCompleted < 1 {
+			cmd.SilenceUsage = true
+			return fmt.Errorf(
+				"Last turn has not completed yet. Check status with:\n"+
+					"  gsc claude scout status -s %s",
+				sessionID,
+			)
+		}
 	}
 
 	// Spawn background worker with --watch-worker flag
 	// The background worker will execute the turn (StartDiscoveryTurn or StartVerificationTurn)
-	if err := spawnBackgroundWorker(flags); err != nil {
+	workerPID, err := spawnBackgroundWorker(flags)
+	if err != nil {
 		cmd.SilenceUsage = true
 		return fmt.Errorf("failed to spawn background worker: %w", err)
-	}
-
-	// Get process info for JSON output
-	var processPID int
-	if flags.Format == "json" {
-		status, err := manager.GetSessionStatus()
-		if err == nil && status.ProcessInfo.Running {
-			processPID = status.ProcessInfo.PID
-		}
 	}
 
 	// Output based on format
 	if flags.Format == "json" {
 		response := StartResponse{
 			SessionID:  sessionID,
-			Turn:       1, // Will be updated from session state
+			Turn:       manager.GetNextTurnNumber(),
 			Status:     "in_progress",
-			ProcessPID: processPID,
+			ProcessPID: workerPID,
 			Message:    "Scout session started successfully",
 		}
 
@@ -251,7 +231,8 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 }
 
 // spawnBackgroundWorker spawns a background worker process to handle the scout session
-func spawnBackgroundWorker(flags *StartFlags) error {
+// Returns the worker PID immediately (non-blocking)
+func spawnBackgroundWorker(flags *StartFlags) (int, error) {
 	// Build args for worker
 	args := []string{"claude", "scout", "start"}
 	args = append(args, "--session", flags.Session)
@@ -268,20 +249,20 @@ func spawnBackgroundWorker(flags *StartFlags) error {
 	}
 
 	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("failed to spawn worker: %w", err)
+		return 0, fmt.Errorf("failed to spawn worker: %w", err)
 	}
 
 	// Store worker PID in session state
 	manager, err := claudescout.LoadSession(flags.Session)
 	if err != nil {
-		return fmt.Errorf("failed to load session to store watcher PID: %w", err)
+		return cmd.Process.Pid, fmt.Errorf("failed to load session to store watcher PID: %w", err)
 	}
 	manager.SetWatcherPID(cmd.Process.Pid)
 	if err := manager.WriteSessionState(); err != nil {
-		return fmt.Errorf("failed to write session state: %w", err)
+		return cmd.Process.Pid, fmt.Errorf("failed to write session state: %w", err)
 	}
 
-	return nil
+	return cmd.Process.Pid, nil
 }
 
 // runBackgroundWorker executes the scout session in the background worker process
