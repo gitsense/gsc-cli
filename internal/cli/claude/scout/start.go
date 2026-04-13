@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Start Command
- * Block-UUID: 8c4645c0-ced5-400d-b9f2-846ebe393e09
- * Parent-UUID: dd476dff-5dd9-4879-a859-cdf71574f685
- * Version: 1.13.0
+ * Block-UUID: 0545ee74-2913-4d99-8834-43058776ce58
+ * Parent-UUID: 8c4645c0-ced5-400d-b9f2-846ebe393e09
+ * Version: 1.14.0
  * Description: Implements 'gsc claude scout start' command with turn-type aware session handling. Supports multiple discovery turns followed by verification. Handles session creation, loading, and background worker spawning for both discovery and verification phases.
  * Language: Go
- * Created-at: 2026-04-13T03:43:17.437Z
- * Authors: claude-haiku-4-5-20251001 (v1.2.1), GLM-4.7 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), claude-haiku-4-5-20251001 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0)
+ * Created-at: 2026-04-13T14:04:01.074Z
+ * Authors: claude-haiku-4-5-20251001 (v1.2.1), GLM-4.7 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), claude-haiku-4-5-20251001 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0)
  */
 
 
@@ -328,22 +328,25 @@ func runBackgroundWorker(cmd *cobra.Command, flags *StartFlags) error {
 	}
 
 	debugLogger.Log("WORKER", fmt.Sprintf("Session has %d turns", len(status.Turns)))
-	if len(status.Turns) == 0 {
-		err := fmt.Errorf("session has no turns")
-		debugLogger.LogError("No turns found", err)
-		fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
-		return err
-	}
 
-	lastTurn := status.Turns[len(status.Turns)-1]
-	debugLogger.Log("WORKER", fmt.Sprintf("Last turn: %d (type: %s, status: %s)",
-		lastTurn.TurnNumber, lastTurn.TurnType, lastTurn.Status))
+	nextTurn := manager.GetNextTurnNumber()
 
-	if lastTurn.Status != "complete" {
-		err := fmt.Errorf("last turn %d is not complete (status: %s)", lastTurn.TurnNumber, lastTurn.Status)
-		debugLogger.LogError("Last turn not complete", err)
-		fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
-		return err
+	// If this is Turn 1, no previous turn validation needed (new session)
+	if nextTurn == 1 {
+		debugLogger.Log("WORKER", "Starting Turn 1 (new session)")
+	} else {
+		// For Turn 2+, validate that the last turn is complete
+		lastTurn := status.Turns[len(status.Turns)-1]
+		debugLogger.Log("WORKER", fmt.Sprintf("Last turn: %d (type: %s, status: %s)",
+			lastTurn.TurnNumber, lastTurn.TurnType, lastTurn.Status))
+
+		if lastTurn.Status != "complete" {
+			err := fmt.Errorf("last turn %d is not complete (status: %s)", lastTurn.TurnNumber, lastTurn.Status)
+			debugLogger.LogError("Last turn not complete", err)
+			fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
+			return err
+		}
+		debugLogger.Log("WORKER", fmt.Sprintf("Starting Turn %d (previous turn complete)", nextTurn))
 	}
 
 	// Parse review files if provided for verification
