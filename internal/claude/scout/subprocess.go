@@ -1,12 +1,12 @@
 /**
  * Component: Scout Subprocess Manager
- * Block-UUID: 5b13fbbe-0a6f-4cd8-a6eb-b8e9cf0ab842
- * Parent-UUID: 5bef2a3b-dbea-4192-bdce-7fa4b857331f
- * Version: 2.13.0
- * Description: Manages subprocess spawning, process lifecycle, signal handling, and resource cleanup for Scout Claude sessions. Updated to find gsc location using exec.LookPath and add its directory to PATH in subprocess. Fixed intent file reading to read from turn directory instead of session directory.
+ * Block-UUID: 70ddc5ab-9b69-4651-bad4-8d844cd1c8d8
+ * Parent-UUID: 5b13fbbe-0a6f-4cd8-a6eb-b8e9cf0ab842
+ * Version: 2.14.0
+ * Description: Manages subprocess spawning, process lifecycle, signal handling, and resource cleanup for Scout Claude sessions. Updated to find gsc location using exec.LookPath and add its directory to PATH in subprocess. Fixed intent file reading to read from turn directory instead of session directory. Added CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS environment variable to increase file reading limit to 15000 tokens (user-overridable).
  * Language: Go
  * Created-at: 2026-04-13T14:45:45.510Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), GLM-4.7 (v2.5.0), GLM-4.7 (v2.6.0), GLM-4.7 (v2.7.0), GLM-4.7 (v2.8.0), GLM-4.7 (v2.9.0), GLM-4.7 (v2.10.0), GLM-4.7 (v2.11.0), GLM-4.7 (v2.12.0), GLM-4.7 (v2.13.0)
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), GLM-4.7 (v2.5.0), GLM-4.7 (v2.6.0), GLM-4.7 (v2.7.0), GLM-4.7 (v2.8.0), GLM-4.7 (v2.9.0), GLM-4.7 (v2.10.0), GLM-4.7 (v2.11.0), GLM-4.7 (v2.12.0), GLM-4.7 (v2.13.0), GLM-4.7 (v2.14.0)
  */
 
 
@@ -174,6 +174,9 @@ func (m *Manager) spawnClaudeSubprocess(turn int, turnType string) error {
 		scriptContent := fmt.Sprintf(`#!/bin/bash
 set -e
 
+# Set Claude Code file reading max tokens (default: 15000, user-overridable)
+export CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS="${CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS:-%d}"
+
 # Add gsc directory to PATH
 export PATH="%s:$PATH"
 
@@ -207,7 +210,7 @@ echo "=== Claude subprocess completed ==="
 exit_code=$?
 echo "Exit code: $exit_code"
 exit $exit_code
-`, gscDir, gscPath, turn, m.session.SessionID, addDirFlagsStr, modelFlag, string(taskContent))
+`, defaultClaudeFileReadMaxTokens, gscDir, gscPath, turn, m.session.SessionID, addDirFlagsStr, modelFlag, string(taskContent))
 
 		// Write bash script to turn directory
 		scriptPath := filepath.Join(m.config.GetTurnDir(turn), "run-claude.sh")
