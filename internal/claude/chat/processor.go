@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Chat Stream Event Processor
- * Block-UUID: fb5b3a35-7c2e-41ea-a198-71ad51d32249
- * Parent-UUID: a4ffef85-9544-45d2-a8f9-149d415e44ab
- * Version: 1.2.1
+ * Block-UUID: 529c3037-f4cb-4846-8ad8-56f5fd3aed21
+ * Parent-UUID: fb5b3a35-7c2e-41ea-a198-71ad51d32249
+ * Version: 1.2.2
  * Description: Extract stream processing logic into dedicated processor module for improved separation of concerns and reusability. Moved StreamResult and StreamProcessor to types.go. Added structured event logging, dual output streams, and comprehensive debug logging for improved stream handling.
  * Language: Go
  * Created-at: 2026-04-14T13:53:36.563Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.2.1)
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.2.1), Gemini 2.5 Flash Lite (v1.2.2)
  */
 
 
@@ -418,6 +418,7 @@ func (sp *StreamProcessor) handleStreamWrapper(line string, fullResponse, respon
 		if wrapperEvent.Event.Delta.Type == "text_delta" {
 			modifiedText := replacePlaceholders(wrapperEvent.Event.Delta.Text, sp.EffectiveModel, sp.CurrentTime)
 
+			fullResponse.WriteString(modifiedText)
 			if !*toolsFinished {
 				responseBuffer.WriteString(modifiedText)
 			} else {

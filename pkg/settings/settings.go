@@ -1,12 +1,12 @@
 /**
  * Component: Settings and Configuration Manager
- * Block-UUID: 4adf1be7-cd09-4656-ae82-eb4db38b421f
- * Parent-UUID: fee33255-45b9-4596-8c0b-2c3b81925f7f
- * Version: 3.21.0
+ * Block-UUID: a7409c44-4017-4f36-b127-707e98eb8fe2
+ * Parent-UUID: 4adf1be7-cd09-4656-ae82-eb4db38b421f
+ * Version: 3.22.0
  * Description: Exported TemplateFS to allow other packages to access embedded templates, resolving embed path restrictions.
  * Language: Go
- * Created-at: 2026-03-27T04:37:18.189Z
- * Authors: GLM-4.7 (v3.5.0), claude-haiku-4-5-20251001 (v3.20.0), claude-haiku-4-5-20251001 (v3.21.0)
+ * Created-at: 2026-04-14T19:28:21.887Z
+ * Authors: GLM-4.7 (v3.5.0), claude-haiku-4-5-20251001 (v3.20.0), claude-haiku-4-5-20251001 (v3.21.0), GLM-4.7 (v3.22.0)
  */
 
 
@@ -93,7 +93,7 @@ const DefaultExecTimeout = 60
 
 // Claude Code Integration Constants
 const ClaudeCodeDirRelPath = "data/claude-code"
-const ClaudeTemplatesPath = "data/templates/claude"
+const ClaudeTemplatesPath = "data/templates/claude/chat"
 const ClaudeMetricsDBName = "claude.sqlite3"
 const ClaudeChatsDirRelPath = "chats"
 const DefaultClaudeChunkSize = 5

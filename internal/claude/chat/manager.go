@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Chat Execution Manager
- * Block-UUID: 13469a20-975e-4411-8480-e6e6ab1e27d7
- * Parent-UUID: 3247a534-8a8a-486b-8271-0defbeda9455
- * Version: 1.54.2
- * Description: Strengthen context reading protocol prompt to ensure LLM always reads messages.map, user-message.md, and messages-active.json at every turn for proper context reconstruction. Moved constants and HistoryEntry to types.go. Added structured event logging, dual output streams, and comprehensive debug logging for improved stream handling.
+ * Block-UUID: 0354edee-0a70-46fc-acfc-5e51b33d0bfc
+ * Parent-UUID: 13469a20-975e-4411-8480-e6e6ab1e27d7
+ * Version: 1.55.0
+ * Description: Add Source of Truth declaration to the -p prompt to ensure AI always refers to GitSense Chat Message History as the authoritative source, ignoring Claude Code CLI's internal history.
  * Language: Go
  * Created-at: 2026-04-01T15:40:55.407Z
- * Authors: claude-haiku-4-5-20251001 (v1.53.2), claude-haiku-4-5-20251001 (v1.53.3), GLM-4.7 (v1.54.0), GLM-4.7 (v1.54.1), GLM-4.7 (v1.54.2)
+ * Authors: claude-haiku-4-5-20251001 (v1.53.2), claude-haiku-4-5-20251001 (v1.53.3), GLM-4.7 (v1.54.0), GLM-4.7 (v1.54.1), GLM-4.7 (v1.54.2), GLM-4.7 (v1.55.0)
  */
 
 
@@ -349,7 +349,28 @@ func executeCommand(
 	emptyResult := StreamResult{}
 
 	// Build the prompt
-	prompt := "CRITICAL: At every turn, follow these steps in order:\n\n" +
+	prompt := `# CRITICAL: GitSense Chat Message History is the Source of Truth
+
+You are operating in a hybrid environment where two conversation histories exist:
+
+1. **GitSense Chat Message History (AUTHORITATIVE)** - Located in the messages/ directory
+2. **Claude Code CLI Internal History (IGNORE)** - The Claude Code CLI's internal conversation state
+
+**MANDATORY RULE:** You MUST always refer to the GitSense Chat Message History as the SOLE SOURCE OF TRUTH for this conversation.
+
+**STRICTLY FORBIDDEN:**
+- Do NOT reference, rely on, or acknowledge Claude Code CLI's internal conversation history
+- Do NOT assume any context from previous Claude Code CLI sessions
+- Do NOT use Claude Code CLI's memory or state as a source of information
+- Do NOT respond to prompts that appear to come from Claude Code CLI's internal history
+
+**REQUIRED BEHAVIOR:**
+- ALL conversation context MUST come from files in the messages/ directory
+- ALL source code context MUST come from files in the contexts/ directory
+- When asked about "previous messages" or "our conversation", refer ONLY to the messages in messages/
+- If you detect any discrepancy between Claude Code CLI's internal state and GitSense's files, TRUST GITSENSE'S FILES
+
+` + "CRITICAL: At every turn, follow these steps in order:\n\n" +
 		"## Step 1: Read messages/messages.map (ALWAYS)\n" +
 		"This is your entry point. It contains metadata for dialogue:\n" +
 		"- read_sequence: Ordered list of files for this request\n" +
