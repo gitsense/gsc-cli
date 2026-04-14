@@ -2,11 +2,11 @@
  * Component: Claude Code Chat Execution Manager
  * Block-UUID: 13469a20-975e-4411-8480-e6e6ab1e27d7
  * Parent-UUID: 3247a534-8a8a-486b-8271-0defbeda9455
- * Version: 1.54.1
- * Description: Strengthen context reading protocol prompt to ensure LLM always reads messages.map, user-message.md, and messages-active.json at every turn for proper context reconstruction. Moved constants and HistoryEntry to types.go.
+ * Version: 1.54.2
+ * Description: Strengthen context reading protocol prompt to ensure LLM always reads messages.map, user-message.md, and messages-active.json at every turn for proper context reconstruction. Moved constants and HistoryEntry to types.go. Added structured event logging, dual output streams, and comprehensive debug logging for improved stream handling.
  * Language: Go
  * Created-at: 2026-04-01T15:40:55.407Z
- * Authors: claude-haiku-4-5-20251001 (v1.53.2), claude-haiku-4-5-20251001 (v1.53.3), GLM-4.7 (v1.54.0), GLM-4.7 (v1.54.1)
+ * Authors: claude-haiku-4-5-20251001 (v1.53.2), claude-haiku-4-5-20251001 (v1.53.3), GLM-4.7 (v1.54.0), GLM-4.7 (v1.54.1), GLM-4.7 (v1.54.2)
  */
 
 

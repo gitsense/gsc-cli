@@ -2,11 +2,11 @@
  * Component: Claude Code Chat Stream Event Processor
  * Block-UUID: a4ffef85-9544-45d2-a8f9-149d415e44ab
  * Parent-UUID: N/A
- * Version: 1.1.0
- * Description: Extract stream processing logic into dedicated processor module for improved separation of concerns and reusability. Moved StreamResult and StreamProcessor to types.go.
+ * Version: 1.2.0
+ * Description: Extract stream processing logic into dedicated processor module for improved separation of concerns and reusability. Moved StreamResult and StreamProcessor to types.go. Added structured event logging, dual output streams, and comprehensive debug logging for improved stream handling.
  * Language: Go
  * Created-at: 2026-03-25T14:59:14.364Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0)
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -105,6 +105,41 @@ func (sp *StreamProcessor) processStream(stdout io.Reader, logDir string) (Strea
 		ExitCode: 0,
 	}
 
+	// NEW: Initialize debug logger (disabled by default, can be enabled via flag)
+	debugLogger, err := NewChatDebugLogger(logDir, false) // Set to true to enable
+	if err != nil {
+		logger.Warning("Failed to create debug logger", "error", err)
+	}
+	sp.DebugLogger = debugLogger
+	defer debugLogger.Close()
+
+	// NEW: Initialize event writer
+	eventLogFilename := fmt.Sprintf("events-%s.ndjson", time.Now().Format("20060102-150405"))
+	eventLogPath := filepath.Join(logDir, eventLogFilename)
+	eventWriter, err := NewChatEventWriter(eventLogPath)
+	if err != nil {
+		logger.Warning("Failed to create event writer", "error", err)
+	}
+	sp.EventWriter = eventWriter
+	defer eventWriter.Close()
+
+	// NEW: Open raw output log for dual stream output
+	outputLogFilename := fmt.Sprintf("output-%s.log", time.Now().Format("20060102-150405"))
+	outputLogPath := filepath.Join(logDir, outputLogFilename)
+	outputLogFile, err := os.OpenFile(outputLogPath, os.O_WRONLY|os.O_APPEND|os.O_CREATE, FilePermissions)
+	if err != nil {
+		logger.Warning("Failed to create output log", "error", err)
+	}
+	defer outputLogFile.Close()
+
+	// Helper function to write to output log
+	writeToOutputLog := func(line string) {
+		if outputLogFile != nil {
+			timestamp := time.Now().UTC().Format(time.RFC3339Nano)
+			outputLogFile.WriteString(fmt.Sprintf("[%s] %s\n", timestamp, line))
+		}
+	}
+
 	scanner := bufio.NewScanner(stdout)
 	buf := make([]byte, 0, InitialBufSize)
 	scanner.Buffer(buf, MaxTokenSize)
@@ -141,6 +176,9 @@ func (sp *StreamProcessor) processStream(stdout io.Reader, logDir string) (Strea
 			continue
 		}
 
+		// NEW: Write raw line to output log
+		writeToOutputLog(line)
+
 		// Write raw line to log file
 		if _, err := sp.LogFile.WriteString(line + "\n"); err != nil {
 			logger.Warning("Failed to write to raw stream log", "error", err)
@@ -149,14 +187,30 @@ func (sp *StreamProcessor) processStream(stdout io.Reader, logDir string) (Strea
 		// Parse event
 		var baseEvent claude.StreamEvent
 		if err := json.Unmarshal([]byte(line), &baseEvent); err != nil {
+			// NEW: Log parsing error
+			sp.DebugLogger.LogStreamEvent("JSON_PARSE_ERROR", fmt.Sprintf("Failed to parse: %v", err))
 			logger.Warning("Failed to parse stream event line", "line", line, "error", err)
 			nonJSONOutput.WriteString(line + "\n")
 			continue
 		}
 
+		// NEW: Log successful parse
+		sp.DebugLogger.LogStreamEvent("EVENT_PARSED", fmt.Sprintf("Type: %s", baseEvent.Type))
+
 		// Handle Init Event
 		if isFirstLine && baseEvent.Type == "system" {
 			sp.handleInitEvent(line, &result)
+			
+			// NEW: Write structured init event
+			if sp.EventWriter != nil {
+				sp.EventWriter.WriteInitEvent(ChatInitEvent{
+					ChatUUID:  "", // Need to pass this in or extract from context
+					Model:     sp.EffectiveModel,
+					SessionID: result.SessionID,
+					Format:    sp.Format,
+				})
+			}
+			
 			isFirstLine = false
 			continue
 		}
@@ -164,6 +218,17 @@ func (sp *StreamProcessor) processStream(stdout io.Reader, logDir string) (Strea
 		// Handle Text Delta
 		if baseEvent.Type == "text_delta" {
 			sp.handleTextDelta(line, &fullResponse, &responseBuffer, &toolsFinished)
+			
+			// NEW: Write structured text delta event
+			if sp.EventWriter != nil {
+				var deltaEvent TextDeltaEvent
+				if err := json.Unmarshal([]byte(line), &deltaEvent); err == nil {
+					sp.EventWriter.WriteTextDeltaEvent(ChatTextDeltaEvent{
+						Delta: deltaEvent.Delta,
+					})
+				}
+			}
+			
 			continue
 		}
 
@@ -183,10 +248,46 @@ func (sp *StreamProcessor) processStream(stdout io.Reader, logDir string) (Strea
 		switch baseEvent.Type {
 		case "usage":
 			sp.handleUsageEvent(line, &result)
+			
+			// NEW: Write structured usage event
+			if sp.EventWriter != nil {
+				var usageEvent StreamUsageEvent
+				if err := json.Unmarshal([]byte(line), &usageEvent); err == nil {
+					sp.EventWriter.WriteUsageEvent(ChatUsageEvent{
+						InputTokens:         usageEvent.Usage.InputTokens,
+						OutputTokens:        usageEvent.Usage.OutputTokens,
+						CacheCreationTokens: usageEvent.Usage.CacheCreationTokens,
+						CacheReadTokens:     usageEvent.Usage.CacheReadTokens,
+						Cost:                usageEvent.Cost,
+					})
+				}
+			}
+			
 		case "error":
 			logger.Error("Claude CLI stream error", "data", line)
+			
+			// NEW: Write structured error event
+			if sp.EventWriter != nil {
+				sp.EventWriter.WriteErrorEvent(ChatErrorEvent{
+					Type:    "stream_error",
+					Message: line,
+				})
+			}
+			
 		case "result":
 			sp.handleResultEvent(line, &result)
+			
+			// NEW: Write structured result event
+			if sp.EventWriter != nil {
+				var resultEvent StreamResultEvent
+				if err := json.Unmarshal([]byte(line), &resultEvent); err == nil {
+					sp.EventWriter.WriteResultEvent(ChatResultEvent{
+						Result:     resultEvent.Result,
+						StopReason: resultEvent.StopReason,
+						DurationMs: resultEvent.DurationMs,
+					})
+				}
+			}
 		}
 
 		// Handle User Event - Signals end of thinking phase
@@ -196,6 +297,8 @@ func (sp *StreamProcessor) processStream(stdout io.Reader, logDir string) (Strea
 	}
 
 	if err := scanner.Err(); err != nil {
+		// NEW: Log scanner error
+		sp.DebugLogger.LogError("Scanner error", err)
 		logger.Error("Stream scanner encountered an error", "error", err)
 		fmt.Fprintln(os.Stderr, "Stream Error:", err)
 		return result, fmt.Errorf("error reading claude output: %w", err)
@@ -203,6 +306,15 @@ func (sp *StreamProcessor) processStream(stdout io.Reader, logDir string) (Strea
 
 	result.FullResponse = fullResponse.String()
 	metricsWritten = true
+
+	// NEW: Log final metrics
+	sp.DebugLogger.LogMetrics(fmt.Sprintf(
+		"Final Metrics - Duration: %dms, Cost: $%.6f, InputTokens: %d, OutputTokens: %d",
+		0, // Need to track duration
+		result.Cost,
+		result.Usage.InputTokens,
+		result.Usage.OutputTokens,
+	))
 
 	return result, nil
 }
