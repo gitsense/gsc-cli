@@ -32,8 +32,7 @@ var claudeCmd = &cobra.Command{
 	Use:   "claude",
 	Short: "Manage Claude Code CLI integration for traceable API replacement",
 	Long: `The claude command group provides tools to initialize the Claude Code environment
-and execute chat sessions using the Claude Code CLI as a backend API. This integration
-enables cost-effective, traceable coding assistance with strict context isolation.`,
+and execute chat sessions using the Claude Code CLI.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// If no subcommand is provided, print help
 		cmd.Help()
