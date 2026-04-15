@@ -1,16 +1,16 @@
 /**
- * Component: Scout Session Manager
+ * Component: Agent Session Manager
  * Block-UUID: a7c4a74f-3de1-4523-b71c-6d9ce7d697f8
  * Parent-UUID: ddf3b51c-8e1e-4069-bd95-cf3d40f4b1da
  * Version: 1.26.0
- * Description: Orchestrates Scout discovery and verification phases. Refactored to focus on session lifecycle and orchestration; subprocess management moved to subprocess.go, stream processing moved to stream.go. Fixed to set phase in writeNoBrainsError based on current turn. Updated LoadSession to populate WorkingDirectories and ReferenceFilesContext from StatusData. Removed GetFinalizedTurnResults() function as results are now stored in session.json. Updated GenerateStatusData() to read candidates from session state. Added lastAssistantMessage field to track assistant messages for post-processing. Updated comments to reflect turn-type based approach instead of turn numbers. Fixed critical issues with hardcoded turn numbers - now uses dynamic turn calculation to support multiple discovery turns. Added EnsureTurnDir() calls to create turn directories on-demand. Moved intent writing from InitializeSession to StartDiscoveryTurn and reordered EnsureTurnDir to run before PrepareCodebaseOverview to fix directory creation issues. Simplified writeTurnHistory() to use entire turn object instead of manually extracting fields, making it future-proof. Added calls to writeTurnHistory() in both StartDiscoveryTurn() and StartVerificationTurn() to ensure turn-history.json is created and updated after each turn completes.
+ * Description: TODO: Update when refactoring is done.
  * Language: Go
  * Created-at: 2026-04-15T04:11:59.353Z
  * Authors: ..., (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.19.0), GLM-4.7 (v1.20.0), GLM-4.7 (v1.21.0), GLM-4.7 (v1.22.0), GLM-4.7 (v1.23.0), GLM-4.7 (v1.24.0), GLM-4.7 (v1.25.0), GLM-4.7 (v1.26.0)
  */
 
 
-package scout
+package agent
 
 import (
 	"encoding/json"

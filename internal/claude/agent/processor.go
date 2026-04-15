@@ -1,16 +1,16 @@
 /**
- * Component: Scout Stream Event Processor
+ * Component: Agent Stream Event Processor
  * Block-UUID: b94d264f-7a19-4a60-b13a-565b3e5bda55
  * Parent-UUID: 824b538b-eedf-4163-b6ef-c98c52ef4e43
  * Version: 1.1.5
- * Description: JSONL event streaming, parsing, and file I/O for Scout sessions. Fixed type mismatch by removing direct assignment of []QuickCandidate to []Candidate.
+ * Description: TODO: Update when refactoring is done.
  * Language: Go
  * Created-at: 2026-04-08T19:00:09.545Z
  * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), GLM-4.7 (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.1.2), GLM-4.7 (v1.1.3), GLM-4.7 (v1.1.4), claude-haiku-4-5-20251001 (v1.1.5)
  */
 
 
-package scout
+package agent
 
 import (
 	"bufio"

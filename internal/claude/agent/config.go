@@ -1,16 +1,16 @@
 /**
- * Component: Scout Session Configuration Helper
+ * Component: Agent Session Configuration Helper
  * Block-UUID: c2091662-401e-478f-971e-bbe5cd14a85c
  * Parent-UUID: 612d2411-6795-4796-9bb0-94d6b67594cc
  * Version: 1.2.0
- * Description: Path resolution and session directory helpers for Scout operations
+ * Description: TODO: Update when refactoring is done.
  * Language: Go
  * Created-at: 2026-04-05T15:47:01.233Z
  * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
-package scout
+package agent
 
 import (
 	"fmt"

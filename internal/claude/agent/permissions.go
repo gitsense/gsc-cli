@@ -1,16 +1,16 @@
 /*
- * Component: Scout Permissions Configuration
+ * Component: Agent Permissions Configuration
  * Block-UUID: dab89f10-c685-4293-9419-3ec02e253aa6
  * Parent-UUID: N/A
  * Version: 1.0.0
- * Description: Creates Claude Code permission settings for Scout sessions, restricting Bash to gsc commands only
+ * Description: TODO: Update when refactoring is done.
  * Language: Go
  * Created-at: 2026-03-27T16:12:50.000Z
  * Authors: claude-haiku-4-5-20251001 (v1.0.0)
  */
 
 
-package scout
+package agent
 
 import (
 	"encoding/json"

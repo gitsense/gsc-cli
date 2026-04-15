@@ -1,16 +1,16 @@
 /**
- * Component: Scout Stream Event Processor
+ * Component: Agent Stream Event Processor
  * Block-UUID: cd1fe6f8-0463-4c43-9df4-f2326b16e1f5
  * Parent-UUID: 80b56b78-45ff-42d4-b03d-9ba4c35aad9b
  * Version: 2.1.0
- * Description: Manages Claude output stream parsing, event handling, and state updates from streaming JSONL responses. Handles discovery, verification, and change result parsing, error capture, and turn state updates. Supports multiple discovery turns with dynamic turn number calculation. Updated to parse change turn results with git diff generation and file modification tracking.
+ * Description: TODO: Update when refactoring is done.
  * Language: Go
  * Created-at: 2026-04-15T04:05:28.123Z
  * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), claude-sonnet-4-6 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), claude-haiku-4-5-20251001 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0)
  */
 
 
-package scout
+package agent
 
 import (
 	"bufio"

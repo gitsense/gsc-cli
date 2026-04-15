@@ -1,16 +1,16 @@
 /**
- * Component: Scout Debug Logger
+ * Component: Agent Debug Logger
  * Block-UUID: 88277edb-7321-4ef5-9bbb-3deb3113616d
  * Parent-UUID: N/A
  * Version: 1.0.0
- * Description: Debug logging for Scout sessions to diagnose subprocess and stream processing issues
+ * Description: TODO: Update when refactoring is done.
  * Language: Go
  * Created-at: 2026-04-01T03:15:24.540Z
  * Authors: GLM-4.7 (v1.0.0)
  */
 
 
-package scout
+package agent
 
 import (
 	"fmt"

@@ -1,16 +1,16 @@
 /**
- * Component: Scout Subprocess Manager
+ * Component: Agent Subprocess Manager
  * Block-UUID: 70ddc5ab-9b69-4651-bad4-8d844cd1c8d8
  * Parent-UUID: 5b13fbbe-0a6f-4cd8-a6eb-b8e9cf0ab842
  * Version: 2.15.0
- * Description: Manages subprocess spawning, process lifecycle, signal handling, and resource cleanup for Scout Claude sessions. Updated to support change turn type with templates from pkg/settings/templates/claude/change/ directory. Fixed intent file reading to read from turn directory instead of session directory. Added CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS environment variable to increase file reading limit to 15000 tokens (user-overridable).
+ * Description: TODO: Update when refactoring is done.
  * Language: Go
  * Created-at: 2026-04-15T04:02:15.445Z
  * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), GLM-4.7 (v2.5.0), GLM-4.7 (v2.6.0), GLM-4.7 (v2.7.0), GLM-4.7 (v2.8.0), GLM-4.7 (v2.9.0), GLM-4.7 (v2.10.0), GLM-4.7 (v2.11.0), GLM-4.7 (v2.12.0), GLM-4.7 (v2.13.0), GLM-4.7 (v2.14.0), GLM-4.7 (v2.15.0)
  */
 
 
-package scout
+package agent
 
 import (
 	"bytes"
