@@ -1,12 +1,12 @@
 /**
  * Component: Scout Setup and Configuration Validator
- * Block-UUID: c4a2ede0-ba98-4531-a63a-411a0b06203f
- * Parent-UUID: e25d5f20-1b68-4e85-854b-7f79ac54696e
- * Version: 1.8.0
+ * Block-UUID: c647c4bf-b526-4733-bc42-ff291eacd249
+ * Parent-UUID: c4a2ede0-ba98-4531-a63a-411a0b06203f
+ * Version: 1.9.0
  * Description: Validates scout session prerequisites (brain database, working directories). Updated to execute gsc brains command in working directory for both availability check and field validation.
  * Language: Go
- * Created-at: 2026-04-15T14:58:30.005Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), claude-haiku-4-5-20251001 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0)
+ * Created-at: 2026-04-15T15:30:51.012Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), claude-haiku-4-5-20251001 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0)
  */
 
 
@@ -16,6 +16,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"github.com/gitsense/gsc-cli/internal/claude/agent"
 	"os/exec"
 	"strings"
 )
@@ -36,7 +37,7 @@ var RequiredFields = []string{
 }
 
 // ValidateSetup checks all prerequisites for a scout session
-func ValidateSetup(workdirs []WorkingDirectory, refFilesContext []ReferenceFileContext) ([]ValidationError, error) {
+func ValidateSetup(workdirs []agent.WorkingDirectory, refFilesContext []agent.ReferenceFileContext) ([]ValidationError, error) {
 	var errors []ValidationError
 
 	// Validate working directories
@@ -50,7 +51,7 @@ func ValidateSetup(workdirs []WorkingDirectory, refFilesContext []ReferenceFileC
 }
 
 // ValidateWorkdir checks that a working directory has required files
-func ValidateWorkdir(wd WorkingDirectory) ([]ValidationError, error) {
+func ValidateWorkdir(wd agent.WorkingDirectory) ([]ValidationError, error) {
 	var errors []ValidationError
 
 	// Check directory exists

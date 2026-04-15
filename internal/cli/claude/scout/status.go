@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Status Command
- * Block-UUID: 16567356-7fc1-4a4e-9459-584157a73431
- * Parent-UUID: 2a2d3911-a719-4c25-a442-5bc4a531d62b
- * Version: 1.9.1
- * Description: Implements 'gsc claude scout status' command for monitoring Scout sessions. Updated to show phase display name instead of turn number.
+ * Block-UUID: c9b72698-a1fd-40a2-858d-cb1bcf78977b
+ * Parent-UUID: 16567356-7fc1-4a4e-9459-584157a73431
+ * Version: 1.10.0
+ * Description: Implements 'gsc claude scout status' command for monitoring Scout sessions. Updated to import from agent package instead of scout.
  * Language: Go
  * Created-at: 2026-04-13T15:28:47.677Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), GLM-4.7 (v1.0.8), GLM-4.7 (v1.0.9), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), claude-sonnet-4-6 (v1.9.1)
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), GLM-4.7 (v1.0.8), GLM-4.7 (v1.0.9), claude-sonnet-4-6 (v1.9.1), GLM-4.7 (v1.10.0)
  */
 
 
@@ -18,7 +18,7 @@ import (
 	"sort"
 	"time"
 
-	claudescout "github.com/gitsense/gsc-cli/internal/claude/scout"
+	agent "github.com/gitsense/gsc-cli/internal/claude/agent"
 	"github.com/spf13/cobra"
 )
 
@@ -30,7 +30,7 @@ type FileScoreTracking struct {
 	LatestDiscoveryTurn      int
 	LatestVerificationTurn   int
 	Reasoning                string
-	Metadata                 claudescout.CandidateMetadata
+	Metadata                 agent.CandidateMetadata
 }
 
 // ConsolidatedCandidates represents all unique candidates with their latest scores
@@ -73,7 +73,7 @@ func runStatusCommand(cmd *cobra.Command, flags *StatusFlags) error {
 	}
 
 	// Load the session
-	manager, err := claudescout.LoadSession(flags.Session)
+	manager, err := agent.LoadSession(flags.Session)
 	if err != nil {
 		return fmt.Errorf("failed to load session: %w", err)
 	}
@@ -98,7 +98,7 @@ func runStatusCommand(cmd *cobra.Command, flags *StatusFlags) error {
 }
 
 // displayStatus outputs status in the requested format
-func displayStatus(cmd *cobra.Command, status *claudescout.StatusData, format string, verbose bool) error {
+func displayStatus(cmd *cobra.Command, status *agent.StatusData, format string, verbose bool) error {
 	switch format {
 	case "json":
 		return displayStatusJSON(cmd, status, verbose)
@@ -112,7 +112,7 @@ func displayStatus(cmd *cobra.Command, status *claudescout.StatusData, format st
 }
 
 // displayStatusJSON outputs status as JSON
-func displayStatusJSON(cmd *cobra.Command, status *claudescout.StatusData, verbose bool) error {
+func displayStatusJSON(cmd *cobra.Command, status *agent.StatusData, verbose bool) error {
 	data, err := json.MarshalIndent(status, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal status: %w", err)
@@ -123,7 +123,7 @@ func displayStatusJSON(cmd *cobra.Command, status *claudescout.StatusData, verbo
 }
 
 // displayStatusTable outputs status in table format
-func displayStatusTable(cmd *cobra.Command, status *claudescout.StatusData, verbose bool) error {
+func displayStatusTable(cmd *cobra.Command, status *agent.StatusData, verbose bool) error {
 	fmt.Fprintf(cmd.OutOrStdout(), "Session: %s\n", status.SessionID)
 	fmt.Fprintf(cmd.OutOrStdout(), "Status: %s\n", status.Status)
 	fmt.Fprintf(cmd.OutOrStdout(), "Phase: %s\n", status.Phase)
@@ -176,7 +176,7 @@ func displayStatusTable(cmd *cobra.Command, status *claudescout.StatusData, verb
 }
 
 // displayStatusPretty outputs status in a user-friendly format
-func displayStatusPretty(cmd *cobra.Command, status *claudescout.StatusData, verbose bool) error {
+func displayStatusPretty(cmd *cobra.Command, status *agent.StatusData, verbose bool) error {
 	fmt.Fprintf(cmd.OutOrStdout(), "\n  Scout Session: %s\n", status.SessionID)
 	fmt.Fprintf(cmd.OutOrStdout(), "  ===================================================\n")
 	fmt.Fprintf(cmd.OutOrStdout(), "  Status: %s\n", colorizeStatus(getDisplayStatus(status)))
@@ -245,7 +245,7 @@ func displayStatusPretty(cmd *cobra.Command, status *claudescout.StatusData, ver
 		// Find the current turn
 		consolidated := buildConsolidatedCandidates(status.Turns)
 		
-		var currentTurn *claudescout.TurnState
+		var currentTurn *agent.TurnState
 		for i := range status.Turns {
 			if status.Turns[i].TurnNumber == status.CurrentTurn {
 				currentTurn = &status.Turns[i]
@@ -392,7 +392,7 @@ func colorizeStatus(status string) string {
 
 // getDisplayStatus returns the appropriate status string for display
 // If status is empty but error is present, returns "Error"
-func getDisplayStatus(status *claudescout.StatusData) string {
+func getDisplayStatus(status *agent.StatusData) string {
 	if status.Status == "" && status.Error != nil {
 		return "Error"
 	}
@@ -416,7 +416,7 @@ func getTurnDisplayName(phase string) string {
 }
 
 // followSessionEvents streams events from the log file as they arrive
-func followSessionEvents(cmd *cobra.Command, config *claudescout.SessionConfig) error {
+func followSessionEvents(cmd *cobra.Command, config *agent.SessionConfig) error {
 	fmt.Fprintf(cmd.OutOrStdout(), "Following session events (Ctrl+C to stop)...\n\n")
 
 	startTime := time.Now()
@@ -440,7 +440,7 @@ func followSessionEvents(cmd *cobra.Command, config *claudescout.SessionConfig) 
 			}
 
 			// Read session.json to get the current turn's log path
-			session, err := claudescout.NewProcessorHelper(config).ReadSession(config.SessionID)
+			session, err := agent.NewProcessorHelper(config).ReadSession(config.SessionID)
 			if err != nil {
 				// Session file not yet created
 				continue
@@ -465,7 +465,7 @@ func followSessionEvents(cmd *cobra.Command, config *claudescout.SessionConfig) 
 				continue
 			}
 
-			reader, err := claudescout.NewEventReader(logFile)
+			reader, err := agent.NewEventReader(logFile)
 			if err != nil {
 				continue
 			}
@@ -509,7 +509,7 @@ func truncateTimestamp(ts string) string {
 }
 
 // displayEvent displays a single event in the stream
-func displayEvent(cmd *cobra.Command, event *claudescout.StreamEvent) {
+func displayEvent(cmd *cobra.Command, event *agent.StreamEvent) {
 	timestamp := truncateTimestamp(event.Timestamp)
 
 	fmt.Fprintf(cmd.OutOrStdout(), "[%s] %s\n", timestamp, event.Type)
@@ -551,7 +551,7 @@ func displayEvent(cmd *cobra.Command, event *claudescout.StreamEvent) {
 
 // buildConsolidatedCandidates builds a consolidated list of candidates with per-file score tracking
 // Iterates turns in reverse to capture the latest scores for each file
-func buildConsolidatedCandidates(turns []claudescout.TurnState) *ConsolidatedCandidates {
+func buildConsolidatedCandidates(turns []agent.TurnState) *ConsolidatedCandidates {
 	fileScores := make(map[string]*FileScoreTracking)
 	
 	// Iterate turns in reverse (newest first)

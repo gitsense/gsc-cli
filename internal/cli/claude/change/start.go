@@ -1,12 +1,12 @@
 /**
  * Component: Change CLI Start Command
- * Block-UUID: 7a8f9c2d-3e4f-4a5b-9c6d-7e8f9a0b1c2d
- * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: Implements 'gsc claude change start' command for in-place code editing with git diff generation. Validates verification completion, spawns change turn, generates git diffs per working directory, and writes result.json with change summary.
+ * Block-UUID: aa473d5e-3aff-4888-b3c2-21cc3c17e56c
+ * Parent-UUID: 7a8f9c2d-3e4f-4a5b-9c6d-7e8f9a0b1c2d
+ * Version: 1.1.0
+ * Description: Implements 'gsc claude change start' command for in-place code editing with git diff generation. Updated to import from agent package instead of scout.
  * Language: Go
  * Created-at: 2026-04-15T04:08:45.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0)
  */
 
 
@@ -22,7 +22,7 @@ import (
 	"syscall"
 	"time"
 
-	claudescout "github.com/gitsense/gsc-cli/internal/claude/scout"
+	agent "github.com/gitsense/gsc-cli/internal/claude/agent"
 	"github.com/spf13/cobra"
 )
 
@@ -100,7 +100,7 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 	}
 
 	// Create session config to check if session exists
-	config, _ := claudescout.NewSessionConfig(sessionID)
+	config, _ := agent.NewSessionConfig(sessionID)
 
 	// Change turn requires existing session
 	if !config.SessionExists() {
@@ -114,7 +114,7 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 	}
 
 	// Load existing session
-	manager, err := claudescout.LoadSession(sessionID)
+	manager, err := agent.LoadSession(sessionID)
 	if err != nil {
 		cmd.SilenceUsage = true
 		return fmt.Errorf("failed to load session: %w", err)
@@ -214,7 +214,7 @@ func spawnBackgroundWorker(flags *StartFlags) (int, error) {
 	}
 
 	// Store worker PID in session state
-	manager, err := claudescout.LoadSession(flags.Session)
+	manager, err := agent.LoadSession(flags.Session)
 	if err != nil {
 		return cmd.Process.Pid, fmt.Errorf("failed to load session to store watcher PID: %w", err)
 	}
@@ -229,13 +229,13 @@ func spawnBackgroundWorker(flags *StartFlags) (int, error) {
 // runBackgroundWorker executes the change turn in the background worker process
 func runBackgroundWorker(cmd *cobra.Command, flags *StartFlags) error {
 	// Create debug log immediately
-	config, err := claudescout.NewSessionConfig(flags.Session)
+	config, err := agent.NewSessionConfig(flags.Session)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "FATAL: Failed to create session config: %v\n", err)
 		return fmt.Errorf("failed to create session config: %w", err)
 	}
 
-	debugLogger, err := claudescout.NewDebugLogger(config.GetSessionDir(), true)
+	debugLogger, err := agent.NewDebugLogger(config.GetSessionDir(), true)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "FATAL: Failed to create debug log: %v\n", err)
 		return fmt.Errorf("failed to create debug log: %w", err)
@@ -248,7 +248,7 @@ func runBackgroundWorker(cmd *cobra.Command, flags *StartFlags) error {
 
 	// Load existing session
 	debugLogger.Log("WORKER", "Loading session...")
-	manager, err := claudescout.LoadSession(flags.Session)
+	manager, err := agent.LoadSession(flags.Session)
 	if err != nil {
 		debugLogger.LogError("Failed to load session", err)
 		fmt.Fprintf(os.Stderr, "ERROR: Failed to load session: %v\n", err)
@@ -353,7 +353,7 @@ func generateGitDiff(workdirPath string) (string, error) {
 }
 
 // writeChangeResult writes the change result JSON file
-func writeChangeResult(manager *claudescout.Manager, turn int, gitDiffs map[string]string) error {
+func writeChangeResult(manager *agent.Manager, turn int, gitDiffs map[string]string) error {
 	// Get the turn results
 	status, err := manager.GetSessionStatus()
 	if err != nil {
@@ -361,7 +361,7 @@ func writeChangeResult(manager *claudescout.Manager, turn int, gitDiffs map[stri
 	}
 
 	// Find the current turn
-	var currentTurn *claudescout.TurnState
+	var currentTurn *agent.TurnState
 	for i := range status.Turns {
 		if status.Turns[i].TurnNumber == turn {
 			currentTurn = &status.Turns[i]
@@ -374,17 +374,17 @@ func writeChangeResult(manager *claudescout.Manager, turn int, gitDiffs map[stri
 	}
 
 	// Extract change results from turn state
-	var changeResults *claudescout.ChangeResults
+	var changeResults *agent.ChangeResults
 	if currentTurn.Results != nil && currentTurn.Results.ChangeResults != nil {
 		changeResults = currentTurn.Results.ChangeResults
 	} else {
 		// Create empty change results if not present
-		changeResults = &claudescout.ChangeResults{
-			ChangeSummary: claudescout.ChangeSummary{
+		changeResults = &agent.ChangeResults{
+			ChangeSummary: agent.ChangeSummary{
 				TurnNumber:         turn,
 				ChangeRequest:      manager.GetSession().Intent,
 				FilesModifiedCount: 0,
-				FilesModified:      []claudescout.FileMod{},
+				FilesModified:      []agent.FileMod{},
 			},
 			GitDiff: gitDiffs,
 			Notes:   "",

@@ -1,12 +1,12 @@
 /**
  * Component: Agent Subprocess Manager
- * Block-UUID: 369c87d1-5b25-4926-95c9-8d838e002658
- * Parent-UUID: 46fb23e9-b326-4632-9070-04c955d06dac
- * Version: 2.17.0
- * Description: Generic subprocess management for agent turns including spawning, process lifecycle, signal handling, and resource cleanup.
+ * Block-UUID: d41be34b-2594-42af-8bc8-0efe2200218b
+ * Parent-UUID: 369c87d1-5b25-4926-95c9-8d838e002658
+ * Version: 2.18.0
+ * Description: Generic subprocess management for agent turns including spawning, process lifecycle, signal handling, and resource cleanup. Updated template paths to use claude/agent/[shared|discovery|verification|change] structure.
  * Language: Go
  * Created-at: 2026-04-15T04:02:15.445Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), GLM-4.7 (v2.5.0), GLM-4.7 (v2.6.0), GLM-4.7 (v2.7.0), GLM-4.7 (v2.8.0), GLM-4.7 (v2.9.0), GLM-4.7 (v2.10.0), GLM-4.7 (v2.11.0), GLM-4.7 (v2.12.0), GLM-4.7 (v2.13.0), GLM-4.7 (v2.14.0), GLM-4.7 (v2.15.0), GLM-4.7 (v2.16.0), GLM-4.7 (v2.17.0)
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), GLM-4.7 (v2.5.0), GLM-4.7 (v2.6.0), GLM-4.7 (v2.7.0), GLM-4.7 (v2.8.0), GLM-4.7 (v2.9.0), GLM-4.7 (v2.10.0), GLM-4.7 (v2.11.0), GLM-4.7 (v2.12.0), GLM-4.7 (v2.13.0), GLM-4.7 (v2.14.0), GLM-4.7 (v2.15.0), GLM-4.7 (v2.16.0), GLM-4.7 (v2.17.0), GLM-4.7 (v2.18.0)
  */
 
 
@@ -40,6 +40,9 @@ func (m *Manager) spawnClaudeSubprocess(turn int, turnType string) error {
 	}
 	m.debugLogger.Log("DEBUG", fmt.Sprintf("GSC_HOME: %s", gscHome))
 
+	// Define agent templates path
+	agentTemplatesPath := filepath.Join(gscHome, "data", "templates", "claude", "agent")
+
 	// Find gsc location to add to PATH
 	gscPath, err := exec.LookPath("gsc")
 	if err != nil {
@@ -66,7 +69,7 @@ func (m *Manager) spawnClaudeSubprocess(turn int, turnType string) error {
 
 	// Copy methodology files to turn directory (only for discovery and verification)
 	if turnType == "discovery" {
-		discoverySrc := filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "discovery.md")
+		discoverySrc := filepath.Join(agentTemplatesPath, "discovery", "discovery.md")
 		discoveryDest := filepath.Join(m.config.GetTurnDir(turn), "discovery.md")
 		if err := copyFile(discoverySrc, discoveryDest); err != nil {
 			m.debugLogger.LogError("Failed to copy discovery methodology", err)
@@ -74,7 +77,7 @@ func (m *Manager) spawnClaudeSubprocess(turn int, turnType string) error {
 		}
 		m.debugLogger.Log("DEBUG", "Discovery methodology copied successfully")
 	} else if turnType == "verification" {
-		verificationSrc := filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "verification.md")
+		verificationSrc := filepath.Join(agentTemplatesPath, "verification", "verification.md")
 		verificationDest := filepath.Join(m.config.GetTurnDir(turn), "verification.md")
 		if err := copyFile(verificationSrc, verificationDest); err != nil {
 			m.debugLogger.LogError("Failed to copy verification methodology", err)
@@ -571,8 +574,11 @@ func (m *Manager) formatWorkingDirectories() string {
 
 // buildSystemPrompt reads and combines shared + turn-specific prompts with embedded tool capabilities
 func buildSystemPrompt(gscHome string, turnType string) (string, error) {
+	// Define agent templates path
+	agentTemplatesPath := filepath.Join(gscHome, "data", "templates", "claude", "agent")
+
 	// Read shared prompt
-	sharedPath := filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "system_prompt_shared.md")
+	sharedPath := filepath.Join(agentTemplatesPath, "shared", "system_prompt_shared.md")
 	sharedContent, err := os.ReadFile(sharedPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to read shared system prompt: %w", err)
@@ -581,11 +587,11 @@ func buildSystemPrompt(gscHome string, turnType string) (string, error) {
 	// Read turn-specific prompt
 	var turnPromptPath string
 	if turnType == "discovery" {
-		turnPromptPath = filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "system_prompt_discovery.md")
+		turnPromptPath = filepath.Join(agentTemplatesPath, "discovery", "system_prompt.md")
 	} else if turnType == "verification" {
-		turnPromptPath = filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "system_prompt_verification.md")
+		turnPromptPath = filepath.Join(agentTemplatesPath, "verification", "system_prompt.md")
 	} else if turnType == "change" {
-		turnPromptPath = filepath.Join(gscHome, settings.ClaudeTemplatesPath, "change", "system_prompt.md")
+		turnPromptPath = filepath.Join(agentTemplatesPath, "change", "system_prompt.md")
 	} else {
 		return "", fmt.Errorf("unknown turn type: %s", turnType)
 	}
@@ -595,7 +601,7 @@ func buildSystemPrompt(gscHome string, turnType string) (string, error) {
 	}
 	
 	// Read tool capabilities
-	toolCapabilitiesPath := filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "tool_capabilities.md")
+	toolCapabilitiesPath := filepath.Join(agentTemplatesPath, "shared", "tool_capabilities.md")
 	toolCapabilitiesContent, err := os.ReadFile(toolCapabilitiesPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to read tool capabilities: %w", err)
@@ -643,14 +649,17 @@ func writePrompt(m *Manager, turnDir string, turn int, workdirsMarkdown string, 
 		return fmt.Errorf("failed to resolve GSC_HOME: %w", err)
 	}
 
+	// Define agent templates path
+	agentTemplatesPath := filepath.Join(gscHome, "data", "templates", "claude", "agent")
+
 	// Read task template
 	var templatePath string
 	if turnType == "discovery" {
-		templatePath = filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "task_discovery.md")
+		templatePath = filepath.Join(agentTemplatesPath, "discovery", "task.md")
 	} else if turnType == "verification" {
-		templatePath = filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "task_verification.md")
+		templatePath = filepath.Join(agentTemplatesPath, "verification", "task.md")
 	} else if turnType == "change" {
-		templatePath = filepath.Join(gscHome, settings.ClaudeTemplatesPath, "change", "task.md")
+		templatePath = filepath.Join(agentTemplatesPath, "change", "task.md")
 	} else {
 		return fmt.Errorf("unknown turn type: %s", turnType)
 	}

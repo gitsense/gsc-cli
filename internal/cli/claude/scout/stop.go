@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Stop Command
- * Block-UUID: 87366767-9319-4fe8-889a-26316215e780
- * Parent-UUID: 89367aef-a915-4407-825e-ec9722608de8
- * Version: 1.2.0
- * Description: Implements 'gsc claude scout stop' command for terminating Scout sessions
+ * Block-UUID: 4155e25a-76a5-42fe-99d3-c2316f73c1d5
+ * Parent-UUID: 87366767-9319-4fe8-889a-26316215e780
+ * Version: 1.3.0
+ * Description: Implements 'gsc claude scout stop' command for terminating Scout sessions. Updated to import from agent package instead of scout.
  * Language: Go
  * Created-at: 2026-04-08T23:26:20.403Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), claude-haiku-4-5-20251001 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), claude-haiku-4-5-20251001 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
  */
 
 
@@ -18,7 +18,7 @@ import (
 	"syscall"
 	"time"
 
-	claudescout "github.com/gitsense/gsc-cli/internal/claude/scout"
+	agent "github.com/gitsense/gsc-cli/internal/claude/agent"
 	"github.com/spf13/cobra"
 )
 
@@ -61,7 +61,7 @@ func runStopCommand(cmd *cobra.Command, flags *StopFlags) error {
 	}
 
 	// Load the session
-	manager, err := claudescout.LoadSession(flags.Session)
+	manager, err := agent.LoadSession(flags.Session)
 	if err != nil {
 		return fmt.Errorf("failed to load session: %w", err)
 	}
@@ -165,7 +165,7 @@ func findColonIndex(s string) int {
 
 // CanStopSession checks if a session can be stopped
 func CanStopSession(sessionID string) (bool, error) {
-	manager, err := claudescout.LoadSession(sessionID)
+	manager, err := agent.LoadSession(sessionID)
 	if err != nil {
 		return false, err
 	}
@@ -179,8 +179,8 @@ func CanStopSession(sessionID string) (bool, error) {
 }
 
 // GetSessionProcessInfo retrieves process information for a session
-func GetSessionProcessInfo(sessionID string) (*claudescout.ProcessInfo, error) {
-	manager, err := claudescout.LoadSession(sessionID)
+func GetSessionProcessInfo(sessionID string) (*agent.ProcessInfo, error) {
+	manager, err := agent.LoadSession(sessionID)
 	if err != nil {
 		return nil, err
 	}

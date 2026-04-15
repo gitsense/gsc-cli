@@ -1,12 +1,12 @@
 /**
  * Component: Change CLI Stop Command
- * Block-UUID: 8e9f0d3e-4f5a-5b6c-9d7e-8f9a0b1c2d3e
+ * Block-UUID: 94007be8-e9b9-47e8-a7a3-a24243d88641
  * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: Implements 'gsc claude change stop' command for terminating change turns. Sends SIGTERM to subprocess, records user_stopped reason, and writes closing marker.
+ * Version: 1.1.0
+ * Description: Implements 'gsc claude change stop' command for terminating change turns. Updated to import from agent package instead of scout.
  * Language: Go
  * Created-at: 2026-04-15T04:09:30.000Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0)
  */
 
 
@@ -18,7 +18,7 @@ import (
 	"syscall"
 	"time"
 
-	claudescout "github.com/gitsense/gsc-cli/internal/claude/scout"
+	agent "github.com/gitsense/gsc-cli/internal/claude/agent"
 	"github.com/spf13/cobra"
 )
 
@@ -61,7 +61,7 @@ func runStopCommand(cmd *cobra.Command, flags *StopFlags) error {
 	}
 
 	// Load the session
-	manager, err := claudescout.LoadSession(flags.Session)
+	manager, err := agent.LoadSession(flags.Session)
 	if err != nil {
 		return fmt.Errorf("failed to load session: %w", err)
 	}

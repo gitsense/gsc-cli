@@ -22,7 +22,7 @@ import (
 	"github.com/gitsense/gsc-cli/pkg/settings"
 )
 
-// CodebaseOverview represents the complete codebase overview for Discovery
+// CodebaseOverview represents the complete codebase overview
 type CodebaseOverview struct {
 	Metadata           OverviewMetadata     `json:"metadata"`
 	WorkingDirectories []WorkdirAnalysis `json:"working_directories"`

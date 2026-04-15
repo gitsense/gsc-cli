@@ -1,12 +1,12 @@
 /**
  * Component: Agent Session Manager
- * Block-UUID: b39f8b16-81d5-4faa-a6e3-545c52982415
- * Parent-UUID: a7c4a74f-3de1-4523-b71c-6d9ce7d697f8
- * Version: 1.27.0
+ * Block-UUID: 7ca67e6b-b322-42dc-96ad-6c05f291fea6
+ * Parent-UUID: f4064efb-f10e-4418-8717-bd055495f272
+ * Version: 1.29.0
  * Description: Generic session manager for agent turns including lifecycle management, turn orchestration, and state persistence.
  * Language: Go
- * Created-at: 2026-04-15T04:11:59.353Z
- * Authors: ..., (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.19.0), GLM-4.7 (v1.20.0), GLM-4.7 (v1.21.0), GLM-4.7 (v1.22.0), GLM-4.7 (v1.23.0), GLM-4.7 (v1.24.0), GLM-4.7 (v1.25.0), GLM-4.7 (v1.26.0), GLM-4.7 (v1.27.0)
+ * Created-at: 2026-04-15T15:35:06.070Z
+ * Authors: ..., (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.19.0), GLM-4.7 (v1.20.0), GLM-4.7 (v1.21.0), GLM-4.7 (v1.22.0), GLM-4.7 (v1.23.0), GLM-4.7 (v1.24.0), GLM-4.7 (v1.25.0), GLM-4.7 (v1.26.0), GLM-4.7 (v1.27.0), GLM-4.7 (v1.28.0), GLM-4.7 (v1.29.0)
  */
 
 
@@ -577,24 +577,29 @@ func (m *Manager) GetLastCompletedTurn() (int, error) {
 	return 0, nil
 }
 
-// MarkTurnComplete transitions to discovery_complete state
-func (m *Manager) MarkTurnComplete() error {
-	if m.session.Status != "discovery" {
-		return fmt.Errorf("cannot mark complete: not in discovery state, current status: %s", m.session.Status)
+// MarkTurnComplete transitions a turn to its complete state based on turn type
+func (m *Manager) MarkTurnComplete(turnType string) error {
+	switch turnType {
+	case "discovery":
+		if m.session.Status != "discovery" {
+			return fmt.Errorf("cannot mark complete: not in discovery state, current status: %s", m.session.Status)
+		}
+		m.session.Status = "discovery_complete"
+	case "verification":
+		if m.session.Status != "verification" {
+			return fmt.Errorf("cannot mark complete: not in verification state, current status: %s", m.session.Status)
+		}
+		m.session.Status = "verification_complete"
+		m.session.CompletedAt = &[]time.Time{time.Now()}[0]
+	case "change":
+		if m.session.Status != "change" {
+			return fmt.Errorf("cannot mark complete: not in change state, current status: %s", m.session.Status)
+		}
+		m.session.Status = "change_complete"
+		m.session.CompletedAt = &[]time.Time{time.Now()}[0]
+	default:
+		return fmt.Errorf("unknown turn type: %s", turnType)
 	}
-
-	m.session.Status = "discovery_complete"
-	return m.writeSessionState()
-}
-
-// MarkTurnComplete transitions to verification_complete state
-func (m *Manager) MarkTurnComplete() error {
-	if m.session.Status != "verification" {
-		return fmt.Errorf("cannot mark complete: not in verification state, current status: %s", m.session.Status)
-	}
-
-	m.session.Status = "verification_complete"
-	m.session.CompletedAt = &[]time.Time{time.Now()}[0]
 	return m.writeSessionState()
 }
 

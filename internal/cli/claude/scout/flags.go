@@ -1,12 +1,12 @@
 /**
  * Component: Scout CLI Flags and Options
- * Block-UUID: b642ddf0-d954-4ce0-a9c5-6bc90de606e0
- * Parent-UUID: a2933e36-1024-49c7-9d6d-1477a2cea8ff
- * Version: 1.14.0
- * Description: Shared flag definitions for Scout CLI commands (start, status, stop) with turn-type support. Supports multiple discovery turns followed by verification. Removed MarkFlagRequired("intent") to allow --intent-file as alternative. Added hidden WatchWorker flag for background worker process.
+ * Block-UUID: 444974de-24bf-4b73-bdfe-4c7e54e0d0fd
+ * Parent-UUID: b642ddf0-d954-4ce0-a9c5-6bc90de606e0
+ * Version: 1.15.0
+ * Description: Shared flag definitions for Scout CLI commands (start, status, stop) with turn-type support. Supports multiple discovery turns followed by verification. Removed MarkFlagRequired("intent") to allow --intent-file as alternative. Added hidden WatchWorker flag for background worker process. Updated to import from agent package.
  * Language: Go
  * Created-at: 2026-04-12T03:15:13.862Z
- * Authors: claude-haiku-4-5-20251001 (v1.8.0), GLM-4.7 (v1.8.1), GLM-4.7 (v1.8.2), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0)
+ * Authors: claude-haiku-4-5-20251001 (v1.8.0), GLM-4.7 (v1.8.1), GLM-4.7 (v1.8.2), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0)
  */
 
 
@@ -22,7 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	claudescout "github.com/gitsense/gsc-cli/internal/claude/scout"
+	agent "github.com/gitsense/gsc-cli/internal/claude/agent"
 )
 
 // StartFlags contains flags for the scout start command
@@ -467,14 +467,14 @@ func ParseWorkingDirectories(flags *pflag.FlagSet) ([]string, error) {
 }
 
 // ParseReferenceFilesJSON extracts and parses NDJSON reference files from flags
-func ParseReferenceFilesJSON(flags *pflag.FlagSet) ([]claudescout.ReferenceFileContext, error) {
+func ParseReferenceFilesJSON(flags *pflag.FlagSet) ([]agent.ReferenceFileContext, error) {
 	filePath, err := flags.GetString("reference-files")
 	if err != nil {
 		return nil, err
 	}
 
 	if filePath == "" {
-		return []claudescout.ReferenceFileContext{}, nil // Reference files are optional
+		return []agent.ReferenceFileContext{}, nil // Reference files are optional
 	}
 
 	file, err := os.Open(filePath)
@@ -483,11 +483,11 @@ func ParseReferenceFilesJSON(flags *pflag.FlagSet) ([]claudescout.ReferenceFileC
 	}
 	defer file.Close()
 
-	var refFiles []claudescout.ReferenceFileContext
+	var refFiles []agent.ReferenceFileContext
 	scanner := bufio.NewScanner(file)
 
 	for scanner.Scan() {
-		var ref claudescout.ReferenceFileContext
+		var ref agent.ReferenceFileContext
 		if err := json.Unmarshal(scanner.Bytes(), &ref); err != nil {
 			return nil, fmt.Errorf("invalid reference file line: %w", err)
 		}
@@ -510,7 +510,7 @@ func validateReferenceFilesJSON(filePath string) error {
 
 	for scanner.Scan() {
 		lineNum++
-		var ref claudescout.ReferenceFileContext
+		var ref agent.ReferenceFileContext
 		if err := json.Unmarshal(scanner.Bytes(), &ref); err != nil {
 			return fmt.Errorf("line %d: %w", lineNum, err)
 		}
