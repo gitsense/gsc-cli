@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Chat Archive Manager
- * Block-UUID: 5ec6ee72-20ce-4db3-8dba-cc80aa2fd26d
- * Parent-UUID: ee051126-9bb2-48cc-bd84-b6ce59ead743
- * Version: 1.13.2
+ * Block-UUID: ed198402-6fa9-4f00-83b0-4c4369cc0dd6
+ * Parent-UUID: f78136a5-8eb7-464a-8006-7ac8c0e217df
+ * Version: 1.15.0
  * Description: Updated type references to use claude. prefix for shared types (Settings, ArchiveFile, MapFile, Repository) after moving chat code to separate package.
  * Language: Go
- * Created-at: 2026-04-01T15:35:32.641Z
- * Authors: GLM-4.7 (v1.8.0), claude-haiku-4-5-20251001 (v1.8.1), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), claude-haiku-4-5-20251001 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.12.1), GLM-4.7 (v1.13.1), GLM-4.7 (v1.13.2)
+ * Created-at: 2026-04-14T21:10:05.141Z
+ * Authors: GLM-4.7 (v1.8.0), claude-haiku-4-5-20251001 (v1.8.1), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), claude-haiku-4-5-20251001 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.12.1), GLM-4.7 (v1.13.1), GLM-4.7 (v1.13.2), Gemini 2.5 Flash (v1.14.0), claude-sonnet-4-6 (v1.15.0)
  */
 
 
@@ -97,17 +97,35 @@ func SyncArchive(chatDir string, messages []db.Message, settings claude.Settings
 		return dialogueMessages[i].ID < dialogueMessages[j].ID
 	})
 
-	// Separate Active Window (last N messages)
-	activeCount := settings.ChunkSize
+	// Separate Active Window by token budget (falls back to message count)
 	var activeMessages []db.Message
 	var archiveMessages []db.Message
 
-	if len(dialogueMessages) > activeCount {
-		splitIndex := len(dialogueMessages) - activeCount
+	if settings.ActiveWindowTokens > 0 {
+		used := 0
+		splitIndex := len(dialogueMessages)
+		for i := len(dialogueMessages) - 1; i >= 0; i-- {
+			est := 0
+			if dialogueMessages[i].Message.Valid {
+				est = len(dialogueMessages[i].Message.String) / 4
+			}
+			if used+est > settings.ActiveWindowTokens {
+				break
+			}
+			used += est
+			splitIndex = i
+		}
 		archiveMessages = dialogueMessages[:splitIndex]
 		activeMessages = dialogueMessages[splitIndex:]
 	} else {
-		activeMessages = dialogueMessages
+		activeCount := settings.ChunkSize
+		if len(dialogueMessages) > activeCount {
+			splitIndex := len(dialogueMessages) - activeCount
+			archiveMessages = dialogueMessages[:splitIndex]
+			activeMessages = dialogueMessages[splitIndex:]
+		} else {
+			activeMessages = dialogueMessages
+		}
 	}
 
 	// 5. Write Archive Chunks
@@ -377,6 +395,9 @@ func writeMessagesMap(dir string, cliOutputMessages []db.Message, archiveFiles [
 	// Build read sequence (stable-to-volatile order)
 	var readSequence []string
 
+	// 1. User message (always exists - written before SyncArchive)
+	readSequence = append(readSequence, "user-message.md")
+
 	// 2. CLI output files (moderately volatile)
 	for _, cof := range cliOutputFiles {
 		readSequence = append(readSequence, cof.File)
@@ -387,8 +408,11 @@ func writeMessagesMap(dir string, cliOutputMessages []db.Message, archiveFiles [
 		readSequence = append(readSequence, archive)
 	}
 
-	// 4. Active window (most volatile)
-	readSequence = append(readSequence, "messages-active.json")
+	// 4. Active window (most volatile) - ONLY if it exists
+	activeWindowPath := filepath.Join(dir, "messages-active.json")
+	if _, err := os.Stat(activeWindowPath); err == nil {
+		readSequence = append(readSequence, "messages-active.json")
+	}
 
 	// Create map file structure
 	mapFile := claude.MapFile{

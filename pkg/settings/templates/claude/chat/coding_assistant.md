@@ -1,12 +1,12 @@
 <!--
 Component: GitSense Chat System Prompt
-Block-UUID: 15688eb8-5c7d-478d-ac49-364aa1b64f43
-Parent-UUID: f9cd3c79-09bd-4f91-bf77-d88bdc758377
-Version: 1.6.0
-Description: Add Source of Truth declaration at the top and Confusion Detection section to ensure AI always refers to GitSense Chat Message History as the authoritative source.
+Block-UUID: 2cb1ce65-7468-4a43-ba1b-0bfb6a4bd296
+Parent-UUID: 15688eb8-5c7d-478d-ac49-364aa1b64f43
+Version: 1.7.0
+Description: Update step-by-step instructions to defer to read_sequence instead of hardcoding file reads, ensuring consistency with the new read_sequence-driven protocol.
 Language: Markdown
-Created-at: 2026-04-14T19:24:47.441Z
-Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.1.1), Gemini 3 Flash (v1.1.2), GLM-4.7 (v1.2.0), claude-haiku-4-5-20251001 (v1.3.0), GLM-4.7 (v1.4.0), claude-haiku-4-5-20251001 (v1.5.0), GLM-4.7 (v1.6.0)
+Created-at: 2026-04-14T20:35:12.456Z
+Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), Gemini 3 Flash (v1.1.1), Gemini 3 Flash (v1.1.2), GLM-4.7 (v1.2.0), claude-haiku-4-5-20251001 (v1.3.0), GLM-4.7 (v1.4.0), claude-haiku-4-5-20251001 (v1.5.0), GLM-4.7 (v1.6.0), Gemini 2.5 Flash (v1.7.0)
 -->
 
 

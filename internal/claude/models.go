@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Data Models
- * Block-UUID: df720f1e-5a45-46d6-8bd3-99ec47129ef3
- * Parent-UUID: 06194d0f-7979-4b62-8b52-b19119581655
- * Version: 1.12.0
+ * Block-UUID: a1908e7e-e5f4-4e6d-91dc-2ba1d5fd04bf
+ * Parent-UUID: df720f1e-5a45-46d6-8bd3-99ec47129ef3
+ * Version: 1.13.0
  * Description: Updated to support cache-optimized context file construction with bucket-based organization. Added ContextFile struct reference and ensured compatibility with context parser and bucketer.
  * Language: Go
- * Created-at: 2026-03-28T04:02:25.885Z
- * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), ..., GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), claude-haiku-4-5-20251001 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0)
+ * Created-at: 2026-04-14T21:10:26.215Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), claude-haiku-4-5-20251001 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0)
  */
 
 
@@ -37,6 +37,7 @@ type Settings struct {
 	ChunkSize int    `json:"chunk_size"`
 	MaxFiles  int    `json:"max_files"`
 	Model     string `json:"model"` // New field
+	ActiveWindowTokens int `json:"active_window_tokens"` // Token budget for active window (0 = use ChunkSize)
 }
 
 // MessageFile represents a single message in the JSON files.

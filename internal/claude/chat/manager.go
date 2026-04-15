@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Chat Execution Manager
- * Block-UUID: 0354edee-0a70-46fc-acfc-5e51b33d0bfc
- * Parent-UUID: 13469a20-975e-4411-8480-e6e6ab1e27d7
- * Version: 1.55.0
+ * Block-UUID: 4ebb8886-aee2-4b17-bc38-ca9e81c1554b
+ * Parent-UUID: 0354edee-0a70-46fc-acfc-5e51b33d0bfc
+ * Version: 1.56.0
  * Description: Add Source of Truth declaration to the -p prompt to ensure AI always refers to GitSense Chat Message History as the authoritative source, ignoring Claude Code CLI's internal history.
  * Language: Go
- * Created-at: 2026-04-01T15:40:55.407Z
- * Authors: claude-haiku-4-5-20251001 (v1.53.2), claude-haiku-4-5-20251001 (v1.53.3), GLM-4.7 (v1.54.0), GLM-4.7 (v1.54.1), GLM-4.7 (v1.54.2), GLM-4.7 (v1.55.0)
+ * Created-at: 2026-04-14T20:24:06.301Z
+ * Authors: claude-haiku-4-5-20251001 (v1.53.2), claude-haiku-4-5-20251001 (v1.53.3), GLM-4.7 (v1.54.0), GLM-4.7 (v1.54.1), GLM-4.7 (v1.54.2), GLM-4.7 (v1.55.0), Gemini 2.5 Flash (v1.56.0)
  */
 
 
@@ -313,8 +313,8 @@ func setupAndPrepare(
 	prompt += "# Target-Version: 1.0.1\n"
 	prompt += "# Description: Fix bug\n"
 	prompt += "# Language: JavaScript\n"
-	prompt += "# Created-at: 2026-03-25T14:54:29.604Z\n"
-	prompt += "# Authors: User (v1.0.0), claude-haiku-4-5-20251001 (v1.0.1)\n"
+	prompt += "# Created-at: {{UTC-TIME}}\n"
+	prompt += "# Authors: User (v1.0.0), {{MODEL-NAME}} (v1.0.1)\n"
 	prompt += "\n"
 	prompt += "\n"
 	prompt += "# --- PATCH START MARKER ---\n"
@@ -349,87 +349,63 @@ func executeCommand(
 	emptyResult := StreamResult{}
 
 	// Build the prompt
-	prompt := `# CRITICAL: GitSense Chat Message History is the Source of Truth
+	prompt := `# GitSense Chat: Source of Truth
 
-You are operating in a hybrid environment where two conversation histories exist:
+You are the backend API for GitSense Chat. Two conversation histories exist:
+1. **GitSense Message History (AUTHORITATIVE)** - ` + "`messages/`" + ` directory
+2. **Claude Code CLI Internal State (IGNORE)** - discard entirely
 
-1. **GitSense Chat Message History (AUTHORITATIVE)** - Located in the messages/ directory
-2. **Claude Code CLI Internal History (IGNORE)** - The Claude Code CLI's internal conversation state
+ALL context comes from files in ` + "`messages/`" + ` and ` + "`contexts/`" + `. Never use
+Claude Code CLI's memory, session state, or internal history.
 
-**MANDATORY RULE:** You MUST always refer to the GitSense Chat Message History as the SOLE SOURCE OF TRUTH for this conversation.
+## Read Protocol
 
-**STRICTLY FORBIDDEN:**
-- Do NOT reference, rely on, or acknowledge Claude Code CLI's internal conversation history
-- Do NOT assume any context from previous Claude Code CLI sessions
-- Do NOT use Claude Code CLI's memory or state as a source of information
-- Do NOT respond to prompts that appear to come from Claude Code CLI's internal history
+Your entry point is always ` + "`messages/messages.map`" + `. It contains a
+` + "`read_sequence`" + ` array - an ordered list of files to read for this turn.
 
-**REQUIRED BEHAVIOR:**
-- ALL conversation context MUST come from files in the messages/ directory
-- ALL source code context MUST come from files in the contexts/ directory
-- When asked about "previous messages" or "our conversation", refer ONLY to the messages in messages/
-- If you detect any discrepancy between Claude Code CLI's internal state and GitSense's files, TRUST GITSENSE'S FILES
+**Rules:**
+- Read ` + "`messages/messages.map`" + ` first, every turn, no exceptions.
+- Read every file in ` + "`read_sequence`" + `, in order, before analyzing.
+- If a file listed in ` + "`read_sequence`" + ` does not exist, skip it silently.
+- Do not read files outside ` + "`read_sequence`" + ` unless the user references
+  source code, in which case read ` + "`contexts/contexts.map`" + ` first.
+- Emit ONLY Read tool calls until the full ` + "`read_sequence`" + ` is consumed.
+  Do not produce analysis or text until all reads are complete.
 
-` + "CRITICAL: At every turn, follow these steps in order:\n\n" +
-		"## Step 1: Read messages/messages.map (ALWAYS)\n" +
-		"This is your entry point. It contains metadata for dialogue:\n" +
-		"- read_sequence: Ordered list of files for this request\n" +
-		"- messages: Metadata for dialogue files\n\n" +
-		"## Step 2: Read messages/user-message.md (ALWAYS)\n" +
-		"This contains the current user's request. Read immediately after messages.map.\n\n" +
-		"## Step 3: Read messages-active.json (ALWAYS)\n" +
-		"This contains the recent conversation window.\n" +
-		"This is current context, not history. Always read it.\n\n" +
-		"## Step 4: Read Context Files (CONDITIONAL)\n" +
-		"ONLY if the user asks about code, references files, or mentions the codebase:\n" +
-		"- First read contexts/contexts.map to see available source files\n" +
-		"- Then read only the specific context-range-*.md files you need from contexts/ directory\n" +
-		"- context-range files are located in contexts/, NOT messages/\n\n" +
-		"## Step 5: Read Historical/Archive Files (AS NEEDED)\n" +
-		"Use messages.map to find relevant files:\n" +
-		"- messages-archive-*.json: Older conversation chunks (read if context requires it)\n" +
-		"- cli-output-*.md: CLI output (read only if relevant)\n\n" +
-		"## CRITICAL: Two-Directory Structure\n" +
-		"There are TWO separate directories:\n" +
-		"- messages/: Contains dialogue history and messages.map\n" +
-		"- contexts/: Contains source code context-range files and contexts.map\n" +
-		"contexts.map is NOT automatically read-only read it when the user mentions code.\n\n" +
-		"## CRITICAL: Do Not Emit Analysis Until After Step 3\n" +
-		"Emit ONLY Read tool calls for messages.map, user-message.md, and messages-active.json in your first response.\n" +
-		"Do not attempt to analyze the request or provide a partial answer until you have read all three.\n" +
-		"After reading these three files, you may selectively read additional archives or context files as needed.\n\n" +
-		"## Optimize for Cache Hit Rate\n" +
-		"The read_sequence in messages.map is pre-ordered for cache optimization.\n" +
-		"Only read additional files that are actually relevant to the current request.\n" +
-		"Unnecessary reads waste tokens and reduce cache efficiency.\n\n" +
-		"See CLAUDE.md for the complete protocol."
+## Context Files (Conditional)
 
-	prompt += "\n"
-	prompt += "REFERENCE EXAMPLE:\n"
-	prompt += "If your response includes a code modification (a patch), it must look EXACTLY like this:\n"
-	prompt += "\n"
-	prompt += "```diff\n"
-	prompt += "# Patch Metadata\n"
-	prompt += "# Component: Example\n"
-	prompt += "# Source-Block-UUID: 35d83f6a-4731-4831-a714-68b7df5af6dc\n"
-	prompt += "# Target-Block-UUID: {{GS-UUID}}\n"
-	prompt += "# Source-Version: 1.0.0\n"
-	prompt += "# Target-Version: 1.0.1\n"
-	prompt += "# Description: Fix bug\n"
-	prompt += "# Language: JavaScript\n"
-	prompt += "# Created-at: 2026-03-25T14:54:29.604Z\n"
-	prompt += "# Authors: User (v1.0.0), claude-haiku-4-5-20251001 (v1.0.1)\n"
-	prompt += "\n"
-	prompt += "\n"
-	prompt += "# --- PATCH START MARKER ---\n"
-	prompt += "--- Original\n"
-	prompt += "+++ Modified\n"
-	prompt += "@@ -1,1 +1,1 @@\n"
-	prompt += "-console.log(\"old\");\n"
-	prompt += "++console.log(\"new\");\n"
-	prompt += "# --- PATCH END MARKER ---\n"
-	prompt += "```\n\n"
-	prompt += "Follow the protocol in CLAUDE.md."
+` + "`contexts/`" + ` contains source code archives - NOT conversation history.
+Read ` + "`contexts/contexts.map`" + ` only when the user references a file,
+asks about code, or mentions the codebase. Then read only the specific
+` + "`context-range-*.md`" + ` file that contains the relevant code.
+`
+ 
+ 	prompt += "\n"
+ 	prompt += "REFERENCE EXAMPLE:\n"
+ 	prompt += "If your response includes a code modification (a patch), it must look EXACTLY like this:\n"
+ 	prompt += "\n"
+ 	prompt += "```diff\n"
+ 	prompt += "# Patch Metadata\n"
+ 	prompt += "# Component: Example\n"
+ 	prompt += "# Source-Block-UUID: 35d83f6a-4731-4831-a714-68b7df5af6dc\n"
+ 	prompt += "# Target-Block-UUID: {{GS-UUID}}\n"
+ 	prompt += "# Source-Version: 1.0.0\n"
+ 	prompt += "# Target-Version: 1.0.1\n"
+ 	prompt += "# Description: Fix bug\n"
+ 	prompt += "# Language: JavaScript\n"
+ 	prompt += "# Created-at: {{UTC-TIME}}\n"
+ 	prompt += "# Authors: User (v1.0.0), {{MODEL-NAME}} (v1.0.1)\n"
+ 	prompt += "\n"
+ 	prompt += "\n"
+ 	prompt += "# --- PATCH START MARKER ---\n"
+ 	prompt += "--- Original\n"
+ 	prompt += "+++ Modified\n"
+ 	prompt += "@@ -1,1 +1,1 @@\n"
+ 	prompt += "-console.log(\"old\");\n"
+ 	prompt += "++console.log(\"new\");\n"
+ 	prompt += "# --- PATCH END MARKER ---\n"
+ 	prompt += "```\n\n"
+ 	prompt += "Follow the protocol in CLAUDE.md."
 
 	// Build CLI flags
 	flags := []string{

@@ -1,12 +1,12 @@
 /**
  * Component: Claude Code Chat Stream Event Processor
- * Block-UUID: 529c3037-f4cb-4846-8ad8-56f5fd3aed21
- * Parent-UUID: fb5b3a35-7c2e-41ea-a198-71ad51d32249
- * Version: 1.2.2
+ * Block-UUID: 7f1d4e7f-1c2d-4751-b903-06e28e0d59ea
+ * Parent-UUID: 529c3037-f4cb-4846-8ad8-56f5fd3aed21
+ * Version: 1.2.3
  * Description: Extract stream processing logic into dedicated processor module for improved separation of concerns and reusability. Moved StreamResult and StreamProcessor to types.go. Added structured event logging, dual output streams, and comprehensive debug logging for improved stream handling.
  * Language: Go
- * Created-at: 2026-04-14T13:53:36.563Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.2.1), Gemini 2.5 Flash Lite (v1.2.2)
+ * Created-at: 2026-04-14T21:16:18.630Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.2.1), Gemini 2.5 Flash Lite (v1.2.2), GLM-4.7 (v1.2.3)
  */
 
 
@@ -406,13 +406,11 @@ func (sp *StreamProcessor) handleStreamWrapper(line string, fullResponse, respon
 	if err := json.Unmarshal([]byte(line), &wrapperEvent); err == nil {
 		if wrapperEvent.Event.Type == "content_block_delta" &&
 			wrapperEvent.Event.Delta.Type == "thinking_delta" {
-			if sp.Format == "json" {
-				cleanJSON, _ := json.Marshal(map[string]interface{}{
-					"event": "thinking",
-					"delta": wrapperEvent.Event.Delta.Thinking,
-				})
-				fmt.Println(string(cleanJSON))
-			}
+			cleanJSON, _ := json.Marshal(map[string]interface{}{
+				"event": "thinking",
+				"delta": wrapperEvent.Event.Delta.Thinking,
+			})
+			fmt.Println(string(cleanJSON))
 		}
 
 		if wrapperEvent.Event.Delta.Type == "text_delta" {
