@@ -1,12 +1,12 @@
 /**
  * Component: Agent Session Manager
- * Block-UUID: a7c4a74f-3de1-4523-b71c-6d9ce7d697f8
- * Parent-UUID: ddf3b51c-8e1e-4069-bd95-cf3d40f4b1da
- * Version: 1.26.0
- * Description: TODO: Update when refactoring is done.
+ * Block-UUID: b39f8b16-81d5-4faa-a6e3-545c52982415
+ * Parent-UUID: a7c4a74f-3de1-4523-b71c-6d9ce7d697f8
+ * Version: 1.27.0
+ * Description: Generic session manager for agent turns including lifecycle management, turn orchestration, and state persistence.
  * Language: Go
  * Created-at: 2026-04-15T04:11:59.353Z
- * Authors: ..., (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.19.0), GLM-4.7 (v1.20.0), GLM-4.7 (v1.21.0), GLM-4.7 (v1.22.0), GLM-4.7 (v1.23.0), GLM-4.7 (v1.24.0), GLM-4.7 (v1.25.0), GLM-4.7 (v1.26.0)
+ * Authors: ..., (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.19.0), GLM-4.7 (v1.20.0), GLM-4.7 (v1.21.0), GLM-4.7 (v1.22.0), GLM-4.7 (v1.23.0), GLM-4.7 (v1.24.0), GLM-4.7 (v1.25.0), GLM-4.7 (v1.26.0), GLM-4.7 (v1.27.0)
  */
 
 
@@ -177,42 +177,42 @@ func (m *Manager) InitializeSession(intent string, workdirs []WorkingDirectory, 
 	return m.writeSessionState()
 }
 
-// PrepareCodebaseOverview generates codebase overview and handles no-brains case
-func (m *Manager) PrepareCodebaseOverview() error {
+// PrepareContext generates context and handles no-context case
+func (m *Manager) PrepareContext() error {
 	m.debugLogger.Log("DEBUG", "Preparing discovery turn")
 
-	// 1. Build codebase overview
+	// 1. Build context
 	overview, err := BuildCodebaseOverview(m.session.SessionID, m.session.WorkingDirectories)
 	if err != nil {
-		m.debugLogger.LogError("Failed to build codebase overview", err)
+		m.debugLogger.LogError("Failed to build context", err)
 		return err
 	}
-	m.debugLogger.Log("DEBUG", "Codebase overview built successfully")
+	m.debugLogger.Log("DEBUG", "Context built successfully")
 
-	// 2. Write codebase overview to file
+	// 2. Write context to file
 	overviewPath := m.config.GetCodebaseOverviewFile()
 	overviewJSON, err := json.MarshalIndent(overview, "", "  ")
 	if err != nil {
-		m.debugLogger.LogError("Failed to marshal codebase overview", err)
-		return fmt.Errorf("failed to marshal codebase overview: %w", err)
+		m.debugLogger.LogError("Failed to marshal context", err)
+		return fmt.Errorf("failed to marshal context: %w", err)
 	}
 	if err := os.WriteFile(overviewPath, overviewJSON, 0644); err != nil {
-		m.debugLogger.LogError("Failed to write codebase overview", err)
-		return fmt.Errorf("failed to write codebase overview: %w", err)
+		m.debugLogger.LogError("Failed to write context", err)
+		return fmt.Errorf("failed to write context: %w", err)
 	}
-	m.debugLogger.Log("DEBUG", fmt.Sprintf("Codebase overview written to: %s", overviewPath))
+	m.debugLogger.Log("DEBUG", fmt.Sprintf("Context written to: %s", overviewPath))
 
-	// 3. Check if all brains unavailable
+	// 3. Check if all context unavailable
 	if checkAllBrainsUnavailable(overview.WorkingDirectories) {
-		m.debugLogger.Log("DEBUG", "All brains unavailable, writing error event")
+		m.debugLogger.Log("DEBUG", "All context unavailable, writing error event")
 		// Write error event to log
-		if err := m.writeNoBrainsError(); err != nil {
-			return fmt.Errorf("failed to write no-brains error: %w", err)
+		if err := m.writeContextError(); err != nil {
+			return fmt.Errorf("failed to write no-context error: %w", err)
 		}
 
 		// Update session status
 		m.session.Status = "error"
-		errMsg := "NO_BRAINS_AVAILABLE: No brains available in any working directory"
+		errMsg := "NO_CONTEXT_AVAILABLE: No context available in any working directory"
 		m.session.Error = &errMsg
 		completedAt := time.Now()
 		m.session.CompletedAt = &completedAt
@@ -224,14 +224,14 @@ func (m *Manager) PrepareCodebaseOverview() error {
 	return nil
 }
 
-// writeNoBrainsError writes error event to log when no brains available
-func (m *Manager) writeNoBrainsError() error {
+// writeContextError writes error event to log when no context available
+func (m *Manager) writeContextError() error {
 	logFilename := fmt.Sprintf("raw-stream-%d.ndjson", time.Now().Unix())
 	logPath := m.config.GetTurnLogFile(m.currentTurn, logFilename)
 
 	writer, err := NewEventWriter(logPath)
 	if err != nil {
-		m.debugLogger.LogError("Failed to create event writer for no-brains error", err)
+		m.debugLogger.LogError("Failed to create event writer for no-context error", err)
 		return err
 	}
 	defer writer.Close()
@@ -247,8 +247,8 @@ func (m *Manager) writeNoBrainsError() error {
 
 	return writer.WriteErrorEvent(ErrorEvent{
 		Phase:     phase,
-		ErrorCode: "NO_BRAINS_AVAILABLE",
-		Message:   "No brains available in any working directory",
+		ErrorCode: "NO_CONTEXT_AVAILABLE",
+		Message:   "No context available in any working directory",
 	})
 }
 
@@ -296,12 +296,12 @@ func (m *Manager) StartDiscoveryTurn() error {
 	m.debugLogger.Log("DEBUG", fmt.Sprintf("Intent written to: %s", intentPath))
 
 	// Prepare discovery turn (generate input schema)
-	if err := m.PrepareCodebaseOverview(); err != nil {
-		m.debugLogger.LogError("PrepareCodebaseOverview failed", err)
+	if err := m.PrepareContext(); err != nil {
+		m.debugLogger.LogError("PrepareContext failed", err)
 		return err
 	}
 
-	// Check if session already errored out (no brains)
+	// Check if session already errored out (no context)
 	if m.session.Status == "error" {
 		m.debugLogger.Log("DEBUG", "Session already in error state, not spawning subprocess")
 		return nil // Don't spawn Claude, already handled
@@ -577,8 +577,8 @@ func (m *Manager) GetLastCompletedTurn() (int, error) {
 	return 0, nil
 }
 
-// MarkDiscoveryComplete transitions to discovery_complete state
-func (m *Manager) MarkDiscoveryComplete() error {
+// MarkTurnComplete transitions to discovery_complete state
+func (m *Manager) MarkTurnComplete() error {
 	if m.session.Status != "discovery" {
 		return fmt.Errorf("cannot mark complete: not in discovery state, current status: %s", m.session.Status)
 	}
@@ -587,8 +587,8 @@ func (m *Manager) MarkDiscoveryComplete() error {
 	return m.writeSessionState()
 }
 
-// MarkVerificationComplete transitions to verification_complete state
-func (m *Manager) MarkVerificationComplete() error {
+// MarkTurnComplete transitions to verification_complete state
+func (m *Manager) MarkTurnComplete() error {
 	if m.session.Status != "verification" {
 		return fmt.Errorf("cannot mark complete: not in verification state, current status: %s", m.session.Status)
 	}

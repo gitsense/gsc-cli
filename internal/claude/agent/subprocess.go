@@ -1,12 +1,12 @@
 /**
  * Component: Agent Subprocess Manager
- * Block-UUID: 70ddc5ab-9b69-4651-bad4-8d844cd1c8d8
- * Parent-UUID: 5b13fbbe-0a6f-4cd8-a6eb-b8e9cf0ab842
- * Version: 2.15.0
- * Description: TODO: Update when refactoring is done.
+ * Block-UUID: 46fb23e9-b326-4632-9070-04c955d06dac
+ * Parent-UUID: 70ddc5ab-9b69-4651-bad4-8d844cd1c8d8
+ * Version: 2.16.0
+ * Description: Generic subprocess management for agent turns including spawning, process lifecycle, signal handling, and resource cleanup.
  * Language: Go
  * Created-at: 2026-04-15T04:02:15.445Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), GLM-4.7 (v2.5.0), GLM-4.7 (v2.6.0), GLM-4.7 (v2.7.0), GLM-4.7 (v2.8.0), GLM-4.7 (v2.9.0), GLM-4.7 (v2.10.0), GLM-4.7 (v2.11.0), GLM-4.7 (v2.12.0), GLM-4.7 (v2.13.0), GLM-4.7 (v2.14.0), GLM-4.7 (v2.15.0)
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), GLM-4.7 (v2.5.0), GLM-4.7 (v2.6.0), GLM-4.7 (v2.7.0), GLM-4.7 (v2.8.0), GLM-4.7 (v2.9.0), GLM-4.7 (v2.10.0), GLM-4.7 (v2.11.0), GLM-4.7 (v2.12.0), GLM-4.7 (v2.13.0), GLM-4.7 (v2.14.0), GLM-4.7 (v2.15.0), GLM-4.7 (v2.16.0)
  */
 
 
@@ -85,10 +85,10 @@ func (m *Manager) spawnClaudeSubprocess(turn int, turnType string) error {
 	// Change turns don't need methodology files
 
 	// Build and write combined system prompt
-	systemPrompt, err := buildCombinedSystemPrompt(gscHome, turnType)
+	systemPrompt, err := buildSystemPrompt(gscHome, turnType)
 	if err != nil {
-		m.debugLogger.LogError("Failed to build combined system prompt", err)
-		return fmt.Errorf("failed to build combined system prompt: %w", err)
+		m.debugLogger.LogError("Failed to build system prompt", err)
+		return fmt.Errorf("failed to build system prompt: %w", err)
 	}
 	
 	systemPromptFile := filepath.Join(m.config.GetTurnDir(turn), "system-prompt.md")
@@ -101,11 +101,11 @@ func (m *Manager) spawnClaudeSubprocess(turn int, turnType string) error {
 	// Write task prompt from template
 	workdirsMarkdown := m.formatWorkingDirectories()
 	refFilesMarkdown := m.formatReferenceFilesMetadata()
-	if err := writeTaskPrompt(m, m.config.GetTurnDir(turn), turn, workdirsMarkdown, refFilesMarkdown, turnType); err != nil {
-		m.debugLogger.LogError("Failed to write task prompt", err)
-		return fmt.Errorf("failed to write task prompt: %w", err)
+	if err := writePrompt(m, m.config.GetTurnDir(turn), turn, workdirsMarkdown, refFilesMarkdown, turnType); err != nil {
+		m.debugLogger.LogError("Failed to write prompt", err)
+		return fmt.Errorf("failed to write prompt: %w", err)
 	}
-	m.debugLogger.Log("DEBUG", "Task prompt written successfully")
+	m.debugLogger.Log("DEBUG", "Prompt written successfully")
 
 	var cmd *exec.Cmd
 
@@ -212,7 +212,7 @@ echo "=== Claude subprocess completed ==="
 exit_code=$?
 echo "Exit code: $exit_code"
 exit $exit_code
-`, defaultClaudeFileReadMaxTokens, gscDir, gscPath, turn, turnType, m.session.SessionID, addDirFlagsStr, modelFlag, string(taskContent))
+`, defaultFileReadMaxTokens, gscDir, gscPath, turn, turnType, m.session.SessionID, addDirFlagsStr, modelFlag, string(taskContent))
 
 		// Write bash script to turn directory
 		scriptPath := filepath.Join(m.config.GetTurnDir(turn), "run-claude.sh")
@@ -569,8 +569,8 @@ func (m *Manager) formatWorkingDirectories() string {
 	return sb.String()
 }
 
-// buildCombinedSystemPrompt reads and combines shared + turn-specific prompts with embedded tool capabilities
-func buildCombinedSystemPrompt(gscHome string, turnType string) (string, error) {
+// buildSystemPrompt reads and combines shared + turn-specific prompts with embedded tool capabilities
+func buildSystemPrompt(gscHome string, turnType string) (string, error) {
 	// Read shared prompt
 	sharedPath := filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "system_prompt_shared.md")
 	sharedContent, err := os.ReadFile(sharedPath)
@@ -635,8 +635,8 @@ func copyFile(src, dst string) error {
 	return os.WriteFile(dst, data, 0644)
 }
 
-// writeTaskPrompt writes the task prompt from template
-func writeTaskPrompt(m *Manager, turnDir string, turn int, workdirsMarkdown string, refFilesMarkdown string, turnType string) error {
+// writePrompt writes the prompt from template
+func writePrompt(m *Manager, turnDir string, turn int, workdirsMarkdown string, refFilesMarkdown string, turnType string) error {
 	// Get GSC_HOME
 	gscHome, err := settings.GetGSCHome(false)
 	if err != nil {

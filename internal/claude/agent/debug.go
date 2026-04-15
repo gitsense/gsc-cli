@@ -3,7 +3,7 @@
  * Block-UUID: 88277edb-7321-4ef5-9bbb-3deb3113616d
  * Parent-UUID: N/A
  * Version: 1.0.0
- * Description: TODO: Update when refactoring is done.
+ * Description: Thread-safe debug logging for agent sessions with timestamped entries and process lifecycle tracking.
  * Language: Go
  * Created-at: 2026-04-01T03:15:24.540Z
  * Authors: GLM-4.7 (v1.0.0)

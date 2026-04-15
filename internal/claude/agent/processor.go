@@ -1,12 +1,12 @@
 /**
  * Component: Agent Stream Event Processor
- * Block-UUID: b94d264f-7a19-4a60-b13a-565b3e5bda55
- * Parent-UUID: 824b538b-eedf-4163-b6ef-c98c52ef4e43
- * Version: 1.1.5
- * Description: TODO: Update when refactoring is done.
+ * Block-UUID: 752785a2-ffe7-46b1-a3d6-880734eb4c03
+ * Parent-UUID: b94d264f-7a19-4a60-b13a-565b3e5bda55
+ * Version: 1.2.0
+ * Description: Generic stream event processor for agent sessions including JSONL event writing, reading, and session status reconstruction.
  * Language: Go
  * Created-at: 2026-04-08T19:00:09.545Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), GLM-4.7 (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.1.2), GLM-4.7 (v1.1.3), GLM-4.7 (v1.1.4), claude-haiku-4-5-20251001 (v1.1.5)
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), Gemini 3 Flash (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), GLM-4.7 (v1.1.0), GLM-4.7 (v1.1.1), GLM-4.7 (v1.1.2), GLM-4.7 (v1.1.3), GLM-4.7 (v1.1.4), claude-haiku-4-5-20251001 (v1.1.5), GLM-4.7 (v1.2.0)
  */
 
 
@@ -384,16 +384,16 @@ func (ph *ProcessorHelper) ReadSessionStatusFromEvents(turn int) (*StatusData, e
 	return status, nil
 }
 
-// CopyReferenceFile copies a reference file into the session references directory
-func (ph *ProcessorHelper) CopyReferenceFile(sourceFile string, refType string) error {
+// CopyContextFile copies a context file into the session references directory
+func (ph *ProcessorHelper) CopyContextFile(sourceFile string, refType string) error {
 	data, err := os.ReadFile(sourceFile)
 	if err != nil {
-		return fmt.Errorf("failed to read reference file: %w", err)
+		return fmt.Errorf("failed to read context file: %w", err)
 	}
 
 	destFile := ph.sessionConfig.GetReferenceFile(refType)
 	if err := os.WriteFile(destFile, data, 0644); err != nil {
-		return fmt.Errorf("failed to write reference file: %w", err)
+		return fmt.Errorf("failed to write context file: %w", err)
 	}
 
 	return nil

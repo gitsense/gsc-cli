@@ -3,7 +3,7 @@
  * Block-UUID: e952a7c6-6f3f-42ff-8535-6a34b2abfbe4
  * Parent-UUID: fead5c6c-a005-426e-9b7c-917cb2342cbe
  * Version: 2.2.0
- * Description: TODO: Update when refactoring is done.
+ * Description: Core data structures and types for agent sessions including session state, turn management, candidates, and event models
  * Language: Go
  * Created-at: 2026-04-15T03:59:57.930Z
  * Authors: claude-haiku-4-5-20251001 (v1.0.6), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0)

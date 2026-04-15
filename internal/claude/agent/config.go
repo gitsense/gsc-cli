@@ -1,12 +1,12 @@
 /**
  * Component: Agent Session Configuration Helper
- * Block-UUID: c2091662-401e-478f-971e-bbe5cd14a85c
- * Parent-UUID: 612d2411-6795-4796-9bb0-94d6b67594cc
- * Version: 1.2.0
- * Description: TODO: Update when refactoring is done.
+ * Block-UUID: b5527092-51ea-441e-8efd-7e37554a2594
+ * Parent-UUID: c2091662-401e-478f-971e-bbe5cd14a85c
+ * Version: 1.3.0
+ * Description: Generic session configuration helper for agent packages including path resolution, session directory management, and file operations.
  * Language: Go
  * Created-at: 2026-04-05T15:47:01.233Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
  */
 
 
@@ -120,14 +120,14 @@ func (sc *SessionConfig) CleanupSessionDir() error {
 	return os.RemoveAll(sc.GetSessionDir())
 }
 
-// BaseScoutDir returns the base scout sessions directory
-func BaseScoutDir(gscHome string) string {
+// BaseAgentDir returns the base agent sessions directory
+func BaseAgentDir(gscHome string) string {
 	return filepath.Join(gscHome, settings.ScoutSessionsDirRelPath)
 }
 
 // ListSessions returns all session IDs in the scout directory
 func ListSessions(gscHome string) ([]string, error) {
-	baseDir := BaseScoutDir(gscHome)
+	baseDir := BaseAgentDir(gscHome)
 	entries, err := os.ReadDir(baseDir)
 	if err != nil {
 		if os.IsNotExist(err) {
