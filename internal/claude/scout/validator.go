@@ -1,12 +1,12 @@
 /**
  * Component: Scout Setup and Configuration Validator
- * Block-UUID: 3f60134d-5420-4336-b845-3b1d751bd0ce
- * Parent-UUID: b2458bd2-3b32-4e00-9d35-eeb06fe0c6f0
- * Version: 1.6.0
+ * Block-UUID: e25d5f20-1b68-4e85-854b-7f79ac54696e
+ * Parent-UUID: 3f60134d-5420-4336-b845-3b1d751bd0ce
+ * Version: 1.7.0
  * Description: Validates scout session prerequisites (brain database, working directories). Updated to execute gsc brains command in working directory for both availability check and field validation.
  * Language: Go
- * Created-at: 2026-04-08T16:35:21.209Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), claude-haiku-4-5-20251001 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0)
+ * Created-at: 2026-04-15T04:01:01.443Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), claude-haiku-4-5-20251001 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0)
  */
 
 
@@ -292,8 +292,8 @@ func getBrainFields(dbName string, workdirPath string) ([]string, error) {
 // ValidateTurnSequence checks if a turn type is valid given the current session state
 func ValidateTurnSequence(turnType string, turns []TurnState) error {
 	// Validate turn-type value
-	if turnType != "discovery" && turnType != "verification" {
-		return fmt.Errorf("turn-type must be 'discovery' or 'verification'")
+	if turnType != "discovery" && turnType != "verification" && turnType != "change" {
+		return fmt.Errorf("turn-type must be 'discovery', 'verification', or 'change'")
 	}
 	
 	// If no turns exist, first turn must be discovery
@@ -315,6 +315,16 @@ func ValidateTurnSequence(turnType string, turns []TurnState) error {
 	// Can't do verification → verification
 	if lastTurn.TurnType == "verification" && turnType == "verification" {
 		return fmt.Errorf("cannot run verification after verification. Run discovery first")
+	}
+	
+	// Change turn requires verification_complete status
+	if turnType == "change" {
+		if lastTurn.TurnType != "verification" {
+			return fmt.Errorf("cannot start change turn: last turn was not verification")
+		}
+		if lastTurn.Status != "complete" {
+			return fmt.Errorf("cannot start change turn: verification turn is not complete (status: %s)", lastTurn.Status)
+		}
 	}
 	
 	return nil

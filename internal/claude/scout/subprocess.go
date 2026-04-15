@@ -2,11 +2,11 @@
  * Component: Scout Subprocess Manager
  * Block-UUID: 70ddc5ab-9b69-4651-bad4-8d844cd1c8d8
  * Parent-UUID: 5b13fbbe-0a6f-4cd8-a6eb-b8e9cf0ab842
- * Version: 2.14.0
- * Description: Manages subprocess spawning, process lifecycle, signal handling, and resource cleanup for Scout Claude sessions. Updated to find gsc location using exec.LookPath and add its directory to PATH in subprocess. Fixed intent file reading to read from turn directory instead of session directory. Added CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS environment variable to increase file reading limit to 15000 tokens (user-overridable).
+ * Version: 2.15.0
+ * Description: Manages subprocess spawning, process lifecycle, signal handling, and resource cleanup for Scout Claude sessions. Updated to support change turn type with templates from pkg/settings/templates/claude/change/ directory. Fixed intent file reading to read from turn directory instead of session directory. Added CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS environment variable to increase file reading limit to 15000 tokens (user-overridable).
  * Language: Go
- * Created-at: 2026-04-13T14:45:45.510Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), GLM-4.7 (v2.5.0), GLM-4.7 (v2.6.0), GLM-4.7 (v2.7.0), GLM-4.7 (v2.8.0), GLM-4.7 (v2.9.0), GLM-4.7 (v2.10.0), GLM-4.7 (v2.11.0), GLM-4.7 (v2.12.0), GLM-4.7 (v2.13.0), GLM-4.7 (v2.14.0)
+ * Created-at: 2026-04-15T04:02:15.445Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), GLM-4.7 (v2.5.0), GLM-4.7 (v2.6.0), GLM-4.7 (v2.7.0), GLM-4.7 (v2.8.0), GLM-4.7 (v2.9.0), GLM-4.7 (v2.10.0), GLM-4.7 (v2.11.0), GLM-4.7 (v2.12.0), GLM-4.7 (v2.13.0), GLM-4.7 (v2.14.0), GLM-4.7 (v2.15.0)
  */
 
 
@@ -64,7 +64,7 @@ func (m *Manager) spawnClaudeSubprocess(turn int, turnType string) error {
 	}
 	m.debugLogger.Log("DEBUG", "Reference files written successfully")
 
-	// Copy methodology files to turn directory
+	// Copy methodology files to turn directory (only for discovery and verification)
 	if turnType == "discovery" {
 		discoverySrc := filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "discovery.md")
 		discoveryDest := filepath.Join(m.config.GetTurnDir(turn), "discovery.md")
@@ -73,7 +73,7 @@ func (m *Manager) spawnClaudeSubprocess(turn int, turnType string) error {
 			return fmt.Errorf("failed to copy discovery methodology: %w", err)
 		}
 		m.debugLogger.Log("DEBUG", "Discovery methodology copied successfully")
-	} else {
+	} else if turnType == "verification" {
 		verificationSrc := filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "verification.md")
 		verificationDest := filepath.Join(m.config.GetTurnDir(turn), "verification.md")
 		if err := copyFile(verificationSrc, verificationDest); err != nil {
@@ -82,6 +82,7 @@ func (m *Manager) spawnClaudeSubprocess(turn int, turnType string) error {
 		}
 		m.debugLogger.Log("DEBUG", "Verification methodology copied successfully")
 	}
+	// Change turns don't need methodology files
 
 	// Build and write combined system prompt
 	systemPrompt, err := buildCombinedSystemPrompt(gscHome, turnType)
@@ -191,6 +192,7 @@ fi
 echo "=== Starting Claude Scout subprocess ==="
 echo "Working directory: $(pwd)"
 echo "Turn: %d"
+echo "Turn Type: %s"
 echo "Session ID: %s"
 echo "gsc location: $(which gsc)"
 echo "=== Executing Claude command ==="
@@ -210,7 +212,7 @@ echo "=== Claude subprocess completed ==="
 exit_code=$?
 echo "Exit code: $exit_code"
 exit $exit_code
-`, defaultClaudeFileReadMaxTokens, gscDir, gscPath, turn, m.session.SessionID, addDirFlagsStr, modelFlag, string(taskContent))
+`, defaultClaudeFileReadMaxTokens, gscDir, gscPath, turn, turnType, m.session.SessionID, addDirFlagsStr, modelFlag, string(taskContent))
 
 		// Write bash script to turn directory
 		scriptPath := filepath.Join(m.config.GetTurnDir(turn), "run-claude.sh")
@@ -466,6 +468,8 @@ func (m *Manager) markAsStopped(errorCode, message string) {
 			lastTurn := m.session.Turns[len(m.session.Turns)-1]
 			if lastTurn.TurnType == "verification" {
 				phase = "verification"
+			} else if lastTurn.TurnType == "change" {
+				phase = "change"
 			}
 		}
 		m.eventWriter.WriteStatusEvent(StatusEvent{Phase: phase, Message: message})
@@ -578,8 +582,12 @@ func buildCombinedSystemPrompt(gscHome string, turnType string) (string, error) 
 	var turnPromptPath string
 	if turnType == "discovery" {
 		turnPromptPath = filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "system_prompt_discovery.md")
-	} else {
+	} else if turnType == "verification" {
 		turnPromptPath = filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "system_prompt_verification.md")
+	} else if turnType == "change" {
+		turnPromptPath = filepath.Join(gscHome, settings.ClaudeTemplatesPath, "change", "system_prompt.md")
+	} else {
+		return "", fmt.Errorf("unknown turn type: %s", turnType)
 	}
 	turnContent, err := os.ReadFile(turnPromptPath)
 	if err != nil {
@@ -639,8 +647,12 @@ func writeTaskPrompt(m *Manager, turnDir string, turn int, workdirsMarkdown stri
 	var templatePath string
 	if turnType == "discovery" {
 		templatePath = filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "task_discovery.md")
-	} else {
+	} else if turnType == "verification" {
 		templatePath = filepath.Join(gscHome, settings.ClaudeTemplatesPath, "scout", "task_verification.md")
+	} else if turnType == "change" {
+		templatePath = filepath.Join(gscHome, settings.ClaudeTemplatesPath, "change", "task.md")
+	} else {
+		return fmt.Errorf("unknown turn type: %s", turnType)
 	}
 
 	templateContent, err := os.ReadFile(templatePath)
@@ -651,8 +663,8 @@ func writeTaskPrompt(m *Manager, turnDir string, turn int, workdirsMarkdown stri
 	// Read intent.md file from turn directory
 	var intentContent []byte
 	
-	// For verification turns, use session intent (intent.md is only written for discovery turns)
-	if turnType == "verification" {
+	// For verification and change turns, use session intent (intent.md is only written for discovery turns)
+	if turnType == "verification" || turnType == "change" {
 		intentContent = []byte(m.session.Intent)
 	} else {
 		// For discovery turns, read from intent.md file

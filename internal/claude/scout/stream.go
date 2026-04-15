@@ -2,11 +2,11 @@
  * Component: Scout Stream Event Processor
  * Block-UUID: cd1fe6f8-0463-4c43-9df4-f2326b16e1f5
  * Parent-UUID: 80b56b78-45ff-42d4-b03d-9ba4c35aad9b
- * Version: 2.0.0
- * Description: Manages Claude output stream parsing, event handling, and state updates from streaming JSONL responses. Handles discovery and verification result parsing, error capture, and turn state updates. Supports multiple discovery turns with dynamic turn number calculation. Updated to parse rich verification format with critical missing files, keyword effectiveness assessment, and actionable recommendations.
+ * Version: 2.1.0
+ * Description: Manages Claude output stream parsing, event handling, and state updates from streaming JSONL responses. Handles discovery, verification, and change result parsing, error capture, and turn state updates. Supports multiple discovery turns with dynamic turn number calculation. Updated to parse change turn results with git diff generation and file modification tracking.
  * Language: Go
- * Created-at: 2026-04-08T18:30:15.527Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), claude-sonnet-4-6 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), claude-haiku-4-5-20251001 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v2.0.0)
+ * Created-at: 2026-04-15T04:05:28.123Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), claude-sonnet-4-6 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), claude-haiku-4-5-20251001 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0)
  */
 
 
@@ -548,6 +548,41 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 					))
 					
 					m.session.Status = "verification_complete"
+					m.writeSessionState()
+					break
+				}
+
+				// Try change format
+				var changeResult struct {
+					ChangeSummary ChangeSummary      `json:"change_summary"`
+					GitDiff       map[string]string `json:"git_diff"`
+					Notes         string             `json:"notes"`
+					Errors        string             `json:"errors"`
+				}
+				if err := json.Unmarshal([]byte(resultContent), &changeResult); err == nil {
+					// Successfully parsed change format
+					m.debugLogger.Log("METRICS", "Successfully parsed change format")
+					
+					// Populate session state (change)
+					m.populateTurnState(turn, nil, changeResult.ChangeSummary.FilesModifiedCount, usage, cost, duration, claudeSessionID, &TurnResults{
+						ChangeResults: &ChangeResults{
+							ChangeSummary: changeResult.ChangeSummary,
+							GitDiff:       changeResult.GitDiff,
+							Notes:         changeResult.Notes,
+							Errors:        changeResult.Errors,
+						},
+					})
+
+					// DEBUG: Log after populateTurnState
+					m.debugLogger.Log("METRICS", fmt.Sprintf(
+						"AFTER populateTurnState (change) - Duration: %dms, Cost: $%.6f, InputTokens: %d, OutputTokens: %d",
+						duration,
+						cost,
+						usage.InputTokens,
+						usage.OutputTokens,
+					))
+					
+					m.session.Status = "change_complete"
 					m.writeSessionState()
 					break
 				}

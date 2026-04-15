@@ -1,12 +1,12 @@
 /**
  * Component: Scout Models
- * Block-UUID: fead5c6c-a005-426e-9b7c-917cb2342cbe
- * Parent-UUID: a4a0f633-d391-4f87-bf94-35d18198472c
- * Version: 2.1.0
+ * Block-UUID: e952a7c6-6f3f-42ff-8535-6a34b2abfbe4
+ * Parent-UUID: fead5c6c-a005-426e-9b7c-917cb2342cbe
+ * Version: 2.2.0
  * Description: Data structures for Scout feature (candidate discovery and verification). Updated to support rich verification format with critical missing files, keyword effectiveness assessment, and actionable recommendations. Added RawJSON and ParseError fields to TurnResults for fail-safe storage of Claude's raw output.
  * Language: Go
- * Created-at: 2026-04-13T04:40:10.160Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.6), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0)
+ * Created-at: 2026-04-15T03:59:57.930Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.6), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0)
  */
 
 
@@ -265,6 +265,7 @@ type TurnResults struct {
 	Usage                *Usage              `json:"usage,omitempty"`
 	RawJSON              string              `json:"raw_json,omitempty"`      // Raw JSON output from Claude (fail-safe)
 	ParseError           string              `json:"parse_error,omitempty"`    // Parse error if parsing failed
+	ChangeResults        *ChangeResults      `json:"change_results,omitempty"` // Change turn results
 }
 
 // DiscoveryLog contains the discovery methodology and pivot checks
@@ -409,4 +410,27 @@ type FileModification struct {
 	Line     int    `json:"line"`
 	Change   string `json:"change"`
 	Reason   string `json:"reason"`
+}
+
+// ChangeSummary contains summary information about a change turn
+type ChangeSummary struct {
+	TurnNumber          int    `json:"turn_number"`
+	ChangeRequest       string `json:"change_request"`
+	FilesModifiedCount  int    `json:"files_modified_count"`
+	FilesModified       []FileMod `json:"files_modified"`
+}
+
+// FileMod represents a file that was modified during a change turn
+type FileMod struct {
+	WorkingDir string `json:"working_dir"`
+	Path       string `json:"path"`
+	Status     string `json:"status"` // "modified", "added", "deleted"
+}
+
+// ChangeResults contains the results of a change turn
+type ChangeResults struct {
+	ChangeSummary ChangeSummary      `json:"change_summary"`
+	GitDiff       map[string]string `json:"git_diff"` // Keyed by working_dir
+	Notes         string             `json:"notes"`
+	Errors        string             `json:"errors"`
 }

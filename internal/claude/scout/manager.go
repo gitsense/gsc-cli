@@ -1,12 +1,12 @@
 /**
  * Component: Scout Session Manager
- * Block-UUID: 2445a753-5cde-4529-ac7a-ac47b843dee3
- * Parent-UUID: df1471e5-5aed-482c-bc3d-72ce75a52889
- * Version: 1.24.0
+ * Block-UUID: a7c4a74f-3de1-4523-b71c-6d9ce7d697f8
+ * Parent-UUID: ddf3b51c-8e1e-4069-bd95-cf3d40f4b1da
+ * Version: 1.26.0
  * Description: Orchestrates Scout discovery and verification phases. Refactored to focus on session lifecycle and orchestration; subprocess management moved to subprocess.go, stream processing moved to stream.go. Fixed to set phase in writeNoBrainsError based on current turn. Updated LoadSession to populate WorkingDirectories and ReferenceFilesContext from StatusData. Removed GetFinalizedTurnResults() function as results are now stored in session.json. Updated GenerateStatusData() to read candidates from session state. Added lastAssistantMessage field to track assistant messages for post-processing. Updated comments to reflect turn-type based approach instead of turn numbers. Fixed critical issues with hardcoded turn numbers - now uses dynamic turn calculation to support multiple discovery turns. Added EnsureTurnDir() calls to create turn directories on-demand. Moved intent writing from InitializeSession to StartDiscoveryTurn and reordered EnsureTurnDir to run before PrepareCodebaseOverview to fix directory creation issues. Simplified writeTurnHistory() to use entire turn object instead of manually extracting fields, making it future-proof. Added calls to writeTurnHistory() in both StartDiscoveryTurn() and StartVerificationTurn() to ensure turn-history.json is created and updated after each turn completes.
  * Language: Go
- * Created-at: 2026-04-13T04:25:25.046Z
- * Authors: ..., (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.19.0), GLM-4.7 (v1.20.0), GLM-4.7 (v1.21.0), GLM-4.7 (v1.22.0), GLM-4.7 (v1.23.0), GLM-4.7 (v1.24.0)
+ * Created-at: 2026-04-15T04:11:59.353Z
+ * Authors: ..., (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.19.0), GLM-4.7 (v1.20.0), GLM-4.7 (v1.21.0), GLM-4.7 (v1.22.0), GLM-4.7 (v1.23.0), GLM-4.7 (v1.24.0), GLM-4.7 (v1.25.0), GLM-4.7 (v1.26.0)
  */
 
 
@@ -451,6 +451,101 @@ func (m *Manager) StartVerificationTurn(selectedCandidates *SelectedCandidates) 
 	m.wg.Wait()
 
 	return m.writeSessionState()
+}
+
+// StartChangeTurn initiates the change phase for in-place code editing
+func (m *Manager) StartChangeTurn(intent string) error {
+	if m.session == nil {
+		return fmt.Errorf("session not initialized")
+	}
+
+	m.debugLogger.Log("DEBUG", "Starting change turn")
+	m.debugLogger.Log("DEBUG", fmt.Sprintf("Session status: %s", m.session.Status))
+	m.debugLogger.Log("DEBUG", fmt.Sprintf("Change intent: %s", m.truncateForLog(intent, 100)))
+
+	if m.session.Status != "verification_complete" {
+		return fmt.Errorf("cannot start change: verification not complete (current status: %s)", m.session.Status)
+	}
+
+	// Calculate next turn number dynamically
+	nextTurn := m.GetNextTurnNumber()
+	m.currentTurn = nextTurn
+	m.session.Status = "change"
+
+	// Ensure turn directory exists
+	if err := m.config.EnsureTurnDir(nextTurn); err != nil {
+		m.debugLogger.LogError("Failed to create turn directory", err)
+		m.markAsStopped("DIR_CREATE_FAILED", fmt.Sprintf("Failed to create turn directory: %v", err))
+		return err
+	}
+
+	// Write intent to turn directory
+	intentPath := filepath.Join(m.config.GetTurnDir(nextTurn), "intent.md")
+	if err := os.WriteFile(intentPath, []byte(intent), 0644); err != nil {
+		m.debugLogger.LogError("Failed to write intent file", err)
+		m.markAsStopped("INTENT_WRITE_FAILED", fmt.Sprintf("Failed to write intent file: %v", err))
+		return err
+	}
+	m.debugLogger.Log("DEBUG", fmt.Sprintf("Intent written to: %s", intentPath))
+
+	// Close previous eventWriter if it exists to prevent resource leaks
+	if m.eventWriter != nil {
+		m.eventWriter.Close()
+	}
+
+	// Create log file for this turn
+	logFilename := fmt.Sprintf("raw-stream-%d.ndjson", time.Now().Unix())
+	logPath := m.config.GetTurnLogFile(m.currentTurn, logFilename)
+
+	var err error
+	m.eventWriter, err = NewEventWriter(logPath)
+	if err != nil {
+		m.debugLogger.LogError("Failed to create event writer", err)
+		m.markAsStopped("INIT_FAILED", fmt.Sprintf("Failed to create event writer: %v", err))
+		return err
+	}
+	m.debugLogger.Log("DEBUG", fmt.Sprintf("Created event writer: %s", logPath))
+
+	// Create new turn state and append to turns slice
+	newTurn := TurnState{
+		TurnNumber:  nextTurn,
+		TurnType:    "change",
+		Status:      "running",
+		StartedAt:   time.Now(),
+		LogPath:     logPath,
+		ProcessInfo: ProcessInfo{Running: true},
+	}
+	m.session.Turns = append(m.session.Turns, newTurn)
+	
+	// Write session state to persist log paths
+	if err := m.writeSessionState(); err != nil {
+		m.debugLogger.LogError("Failed to write session state", err)
+		return err
+	}
+	m.debugLogger.Log("DEBUG", "Log paths stored in session state")
+
+	// Write turn history to disk
+	if err := m.writeTurnHistory(m.currentTurn); err != nil {
+		m.debugLogger.LogError("Failed to write turn history", err)
+	}
+
+	// Spawn subprocess for change turn (defined in subprocess.go)
+	if err := m.spawnClaudeSubprocess(m.currentTurn, "change"); err != nil {
+		m.debugLogger.LogError("Failed to spawn subprocess", err)
+		m.markAsStopped("SPAWN_FAILED", fmt.Sprintf("Failed to spawn subprocess: %v", err))
+		return err
+	}
+	m.debugLogger.Log("DEBUG", "Subprocess spawned successfully")
+
+	// Wait for stream processing to complete (blocking for worker process)
+	m.wg.Wait()
+
+	return m.writeSessionState()
+}
+
+// GetSession returns the current session state
+func (m *Manager) GetSession() *Session {
+	return m.session
 }
 
 // GetSessionStatus reconstructs the current session status
