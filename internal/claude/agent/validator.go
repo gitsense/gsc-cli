@@ -1,31 +1,25 @@
 /**
- * Component: Scout Setup and Configuration Validator
- * Block-UUID: c4a2ede0-ba98-4531-a63a-411a0b06203f
- * Parent-UUID: e25d5f20-1b68-4e85-854b-7f79ac54696e
- * Version: 1.8.0
- * Description: Validates scout session prerequisites (brain database, working directories). Updated to execute gsc brains command in working directory for both availability check and field validation.
+ * Component: Agent Session Validator
+ * Block-UUID: b55ca2b2-f5f1-4a9a-bf54-fb1559849df2
+ * Parent-UUID: 20c6ed66-0374-47ec-b14c-9252d892ea24
+ * Version: 1.1.0
+ * Description: Generic validation functions for agent sessions including intent validation, status transitions, and turn sequence validation.
  * Language: Go
- * Created-at: 2026-04-15T14:58:30.005Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), claude-haiku-4-5-20251001 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.5.1), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0)
+ * Created-at: 2026-04-15T15:02:00.358Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0)
  */
 
 
-package scout
+package agent
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
 )
-
-// ValidationError represents a validation failure
-type ValidationError struct {
-	Type    string // "missing_brain", "invalid_workdir", "invalid_reference", "missing_fields"
-	Message string
-	Details string
-}
 
 // RequiredFields for the Code Intent brain
 var RequiredFields = []string{
@@ -35,7 +29,155 @@ var RequiredFields = []string{
 	"purpose",
 }
 
-// ValidateSetup checks all prerequisites for a scout session
+// ValidationError represents a validation failure
+type ValidationError struct {
+	Type    string // "missing_brain", "invalid_workdir", "invalid_reference", "missing_fields"
+	Message string
+	Details string
+}
+
+// ValidateIntent checks that the intent string is non-empty and reasonable
+func ValidateIntent(intent string) error {
+	if intent == "" {
+		return fmt.Errorf("intent cannot be empty")
+	}
+
+	if len(intent) > 10000 {
+		return fmt.Errorf("intent is too long (max 10000 characters)")
+	}
+
+	return nil
+}
+
+// IsValidSessionStatus checks if a session status is a valid state
+func IsValidSessionStatus(status string) bool {
+	validStatuses := map[string]bool{
+		"discovery":              true,
+		"discovery_complete":     true,
+		"verification":           true,
+		"verification_complete":  true,
+		"stopped":                true,
+		"error":                  true,
+	}
+	return validStatuses[status]
+}
+
+// CanTransitionStatus checks if a status transition is allowed
+func CanTransitionStatus(from, to string) bool {
+	transitions := map[string][]string{
+		"discovery": {"discovery_complete", "stopped", "error"},
+		"discovery_complete": {"verification", "stopped"},
+		"verification": {"verification_complete", "stopped", "error"},
+		"verification_complete": {"stopped"},
+		"stopped": {},
+		"error": {"stopped"},
+	}
+
+	allowed, exists := transitions[from]
+	if !exists {
+		return false
+	}
+
+	for _, s := range allowed {
+		if s == to {
+			return true
+		}
+	}
+	return false
+}
+
+// ValidateTurnSequence checks if a turn type is valid given the current session state
+func ValidateTurnSequence(turnType string, turns []TurnState) error {
+	// Validate turn-type value
+	if turnType != "discovery" && turnType != "verification" && turnType != "change" {
+		return fmt.Errorf("turn-type must be 'discovery', 'verification', or 'change'")
+	}
+	
+	// If no turns exist, first turn must be discovery
+	if len(turns) == 0 {
+		if turnType != "discovery" {
+			return fmt.Errorf("first turn must be discovery")
+		}
+		return nil
+	}
+	
+	// Get the last turn
+	lastTurn := turns[len(turns)-1]
+	
+	// Can't start new turn if last turn failed
+	if lastTurn.Status == "error" {
+		return fmt.Errorf("cannot start new turn: previous turn failed. Please retry the failed turn")
+	}
+	
+	// Can't do verification → verification
+	if lastTurn.TurnType == "verification" && turnType == "verification" {
+		return fmt.Errorf("cannot run verification after verification. Run discovery first")
+	}
+	
+	// Change turn requires verification_complete status
+	if turnType == "change" {
+		if lastTurn.TurnType != "verification" {
+			return fmt.Errorf("cannot start change turn: last turn was not verification")
+		}
+		if lastTurn.Status != "complete" {
+			return fmt.Errorf("cannot start change turn: verification turn is not complete (status: %s)", lastTurn.Status)
+		}
+	}
+	
+	return nil
+}
+
+// ValidateReferenceFilesJSON checks that a reference files JSON file is valid NDJSON format
+func ValidateReferenceFilesJSON(filePath string) *ValidationError {
+	if filePath == "" {
+		return nil // Reference files are optional
+	}
+
+	if _, err := os.Stat(filePath); err != nil {
+		return &ValidationError{
+			Type:    "invalid_reference",
+			Message: fmt.Sprintf("Reference files JSON not found: %s", filePath),
+			Details: err.Error(),
+		}
+	}
+
+	// Verify it's readable and valid NDJSON
+	file, err := os.Open(filePath)
+	if err != nil {
+		return &ValidationError{
+			Type:    "invalid_reference",
+			Message: fmt.Sprintf("Cannot read reference files JSON: %s", filePath),
+			Details: err.Error(),
+		}
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	lineNum := 0
+	for scanner.Scan() {
+		lineNum++
+		var ref map[string]interface{}
+		if err := json.Unmarshal(scanner.Bytes(), &ref); err != nil {
+			return &ValidationError{
+				Type:    "invalid_reference",
+				Message: fmt.Sprintf("Invalid JSON at line %d: %v", lineNum, err),
+				Details: err.Error(),
+			}
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return &ValidationError{
+			Type:    "invalid_reference",
+			Message: "Error reading reference files JSON",
+			Details: err.Error(),
+		}
+	}
+
+	return nil
+}
+
+// ValidateSetup checks all prerequisites for an agent session
 func ValidateSetup(workdirs []WorkingDirectory, refFilesContext []ReferenceFileContext) ([]ValidationError, error) {
 	var errors []ValidationError
 

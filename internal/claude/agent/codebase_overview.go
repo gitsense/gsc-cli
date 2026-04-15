@@ -1,16 +1,16 @@
 /**
- * Component: Scout Codebase Overview Builder
- * Block-UUID: c6308729-9bef-4602-8d0c-63fe59948218
- * Parent-UUID: 7994b817-ddb7-40d8-98e8-ec3298d0d608
- * Version: 1.3.0
- * Description: Generates codebase overview for Scout discovery turns by running gsc brains and gsc insights commands
+ * Component: Agent Codebase Overview Builder
+ * Block-UUID: 233a1134-3170-49aa-a8e4-c2e0c29b1c46
+ * Parent-UUID: c6308729-9bef-4602-8d0c-63fe59948218
+ * Version: 1.4.0
+ * Description: Generates codebase overview by running gsc brains and gsc insights commands
  * Language: Go
- * Created-at: 2026-04-08T22:45:48.369Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
+ * Created-at: 2026-04-15T14:53:04.837Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
  */
 
 
-package scout
+package agent
 
 import (
 	"encoding/json"
@@ -32,7 +32,7 @@ type CodebaseOverview struct {
 type OverviewMetadata struct {
 	Version        string `json:"version"`
 	CreatedAt      string `json:"created_at"`
-	ScoutSessionID string `json:"scout_session_id"`
+	AgentSessionID string `json:"agent_session_id"`
 	GSCHome        string `json:"gsc_home"`
 }
 
@@ -123,7 +123,7 @@ func BuildCodebaseOverview(sessionID string, workdirs []WorkingDirectory) (*Code
 		Metadata: OverviewMetadata{
 			Version:        "1.0.0",
 			CreatedAt:      time.Now().UTC().Format(time.RFC3339),
-			ScoutSessionID: sessionID,
+			AgentSessionID: sessionID,
 			GSCHome:        gscHome,
 		},
 		WorkingDirectories: []WorkdirAnalysis{},

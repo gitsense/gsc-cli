@@ -1,12 +1,12 @@
 /**
  * Component: Settings and Configuration Manager
- * Block-UUID: a7409c44-4017-4f36-b127-707e98eb8fe2
- * Parent-UUID: 4adf1be7-cd09-4656-ae82-eb4db38b421f
- * Version: 3.22.0
- * Description: Exported TemplateFS to allow other packages to access embedded templates, resolving embed path restrictions.
+ * Block-UUID: 3e84a2d1-507c-483f-97f2-85870212bd0c
+ * Parent-UUID: a7409c44-4017-4f36-b127-707e98eb8fe2
+ * Version: 3.23.0
+ * Description: Replaced scout-specific constants and functions with generic agent equivalents. Removed backward compatibility to leverage compiler for migration.
  * Language: Go
  * Created-at: 2026-04-14T19:28:21.887Z
- * Authors: GLM-4.7 (v3.5.0), claude-haiku-4-5-20251001 (v3.20.0), claude-haiku-4-5-20251001 (v3.21.0), GLM-4.7 (v3.22.0)
+ * Authors: GLM-4.7 (v3.5.0), claude-haiku-4-5-20251001 (v3.20.0), claude-haiku-4-5-20251001 (v3.21.0), GLM-4.7 (v3.22.0), GLM-4.7 (v3.23.0)
  */
 
 
@@ -103,11 +103,11 @@ const ClaudeSettingsFileName = "settings.json"
 const ClaudeContextsDirRelPath = "contexts"
 const ClaudeContextsMapFileName = "contexts.map"
 
-// Scout Feature Constants
-const ScoutSessionsDirRelPath = "data/claude-code/scout"
-const ScoutStatusFileName = "status.json"
-const ScoutIntentFileName = "intent.md"
-const ScoutReferenceDirName = "references"
+// Agent Feature Constants
+const AgentSessionsDirRelPath = "data/claude-code/agent"
+const AgentStatusFileName = "status.json"
+const AgentIntentFileName = "intent.md"
+const AgentReferenceDirName = "references"
 
 // Sort Modes for the 'merged' dump type
 const SortRecency = "recency"
@@ -321,38 +321,38 @@ func GetReviewStagingDir() (string, error) {
 	return filepath.Join(gscHome, ReviewStagingRelPath), nil
 }
 
-// GetScoutSessionDir returns the absolute path to a specific scout session directory.
-func GetScoutSessionDir(sessionID string) (string, error) {
+// GetAgentSessionDir returns the absolute path to a specific agent session directory.
+func GetAgentSessionDir(sessionID string) (string, error) {
 	gscHome, err := GetGSCHome(false)
 	if err != nil {
-		return "", fmt.Errorf("failed to resolve GSC_HOME for scout session: %w", err)
+		return "", fmt.Errorf("failed to resolve GSC_HOME for agent session: %w", err)
 	}
-	return filepath.Join(gscHome, ScoutSessionsDirRelPath, sessionID), nil
+	return filepath.Join(gscHome, AgentSessionsDirRelPath, sessionID), nil
 }
 
-// GetScoutLogPath returns the absolute path to a scout session's status file.
-func GetScoutLogPath(sessionID string) (string, error) {
-	sessionDir, err := GetScoutSessionDir(sessionID)
+// GetAgentLogPath returns the absolute path to an agent session's status file.
+func GetAgentLogPath(sessionID string) (string, error) {
+	sessionDir, err := GetAgentSessionDir(sessionID)
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(sessionDir, ScoutStatusFileName), nil
+	return filepath.Join(sessionDir, AgentStatusFileName), nil
 }
 
-// GetScoutTurnDir returns the absolute path to a specific turn directory within a scout session.
-func GetScoutTurnDir(sessionID string, turnNum int) (string, error) {
-	sessionDir, err := GetScoutSessionDir(sessionID)
+// GetAgentTurnDir returns the absolute path to a specific turn directory within an agent session.
+func GetAgentTurnDir(sessionID string, turnNum int) (string, error) {
+	sessionDir, err := GetAgentSessionDir(sessionID)
 	if err != nil {
 		return "", err
 	}
 	return filepath.Join(sessionDir, fmt.Sprintf("turn-%d", turnNum)), nil
 }
 
-// GetScoutReferencesDir returns the absolute path to the references directory for a scout session.
-func GetScoutReferencesDir(sessionID string) (string, error) {
-	turnDir, err := GetScoutTurnDir(sessionID, 1)
+// GetAgentReferencesDir returns the absolute path to the references directory for an agent session.
+func GetAgentReferencesDir(sessionID string) (string, error) {
+	turnDir, err := GetAgentTurnDir(sessionID, 1)
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(turnDir, ScoutReferenceDirName), nil
+	return filepath.Join(turnDir, AgentReferenceDirName), nil
 }

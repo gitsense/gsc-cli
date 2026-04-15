@@ -2,11 +2,11 @@
  * Component: Agent Session Configuration Helper
  * Block-UUID: 65297147-0adf-4587-aef6-c824162579a3
  * Parent-UUID: b5527092-51ea-441e-8efd-7e37554a2594
- * Version: 1.4.0
- * Description: Generic session configuration helper for agent packages including path resolution, session directory management, and file operations.
+ * Version: 1.5.0
+ * Description: Generic session configuration helper for agent packages including path resolution, session directory management, and file operations. Updated to use generic agent constants.
  * Language: Go
  * Created-at: 2026-04-05T15:47:01.233Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0)
  */
 
 
@@ -41,7 +41,7 @@ func NewSessionConfig(sessionID string) (*SessionConfig, error) {
 
 // GetSessionDir returns the absolute path to the session directory
 func (sc *SessionConfig) GetSessionDir() string {
-	return filepath.Join(sc.GSCHome, settings.ScoutSessionsDirRelPath, sc.SessionID)
+	return filepath.Join(sc.GSCHome, settings.AgentSessionsDirRelPath, sc.SessionID)
 }
 
 // GetSessionFile returns the absolute path to the session.json file
@@ -51,12 +51,12 @@ func (sc *SessionConfig) GetSessionFile() string {
 
 // GetIntentFile returns the absolute path to the intent.json file
 func (sc *SessionConfig) GetIntentFile(turn int) string {
-	return filepath.Join(sc.GetTurnDir(turn), settings.ScoutIntentFileName)
+	return filepath.Join(sc.GetTurnDir(turn), settings.AgentIntentFileName)
 }
 
 // GetReferencesDir returns the absolute path to the references directory
 func (sc *SessionConfig) GetReferencesDir() string {
-	return filepath.Join(sc.GetSessionDir(), settings.ScoutReferenceDirName)
+	return filepath.Join(sc.GetSessionDir(), settings.AgentReferenceDirName)
 }
 
 // GetTurnDir returns the absolute path to a specific turn directory
@@ -122,7 +122,7 @@ func (sc *SessionConfig) CleanupSessionDir() error {
 
 // BaseAgentDir returns the base agent sessions directory
 func BaseAgentDir(gscHome string) string {
-	return filepath.Join(gscHome, settings.ScoutSessionsDirRelPath)
+	return filepath.Join(gscHome, settings.AgentSessionsDirRelPath)
 }
 
 // ListSessions returns all session IDs in the agent directory
