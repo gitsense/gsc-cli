@@ -1,12 +1,12 @@
 /**
  * Component: Agent Session Configuration Helper
- * Block-UUID: b5527092-51ea-441e-8efd-7e37554a2594
- * Parent-UUID: c2091662-401e-478f-971e-bbe5cd14a85c
- * Version: 1.3.0
+ * Block-UUID: 65297147-0adf-4587-aef6-c824162579a3
+ * Parent-UUID: b5527092-51ea-441e-8efd-7e37554a2594
+ * Version: 1.4.0
  * Description: Generic session configuration helper for agent packages including path resolution, session directory management, and file operations.
  * Language: Go
  * Created-at: 2026-04-05T15:47:01.233Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)
  */
 
 
@@ -20,7 +20,7 @@ import (
 	"github.com/gitsense/gsc-cli/pkg/settings"
 )
 
-// SessionConfig holds path configuration for a scout session
+// SessionConfig holds path configuration for an agent session
 type SessionConfig struct {
 	SessionID string
 	GSCHome   string
@@ -87,7 +87,7 @@ func (sc *SessionConfig) SessionExists() bool {
 	return err == nil
 }
 
-// InitializeSessionDirs creates all necessary directories for a scout session
+// InitializeSessionDirs creates all necessary directories for an agent session
 func (sc *SessionConfig) InitializeSessionDirs() error {
 	dirs := []string{
 		sc.GetSessionDir(),
@@ -112,7 +112,7 @@ func (sc *SessionConfig) EnsureTurnDir(turn int) error {
 	return nil
 }
 
-// CleanupSessionDir removes a scout session directory
+// CleanupSessionDir removes an agent session directory
 func (sc *SessionConfig) CleanupSessionDir() error {
 	if !sc.SessionExists() {
 		return nil // Already doesn't exist
@@ -125,7 +125,7 @@ func BaseAgentDir(gscHome string) string {
 	return filepath.Join(gscHome, settings.ScoutSessionsDirRelPath)
 }
 
-// ListSessions returns all session IDs in the scout directory
+// ListSessions returns all session IDs in the agent directory
 func ListSessions(gscHome string) ([]string, error) {
 	baseDir := BaseAgentDir(gscHome)
 	entries, err := os.ReadDir(baseDir)
@@ -133,7 +133,7 @@ func ListSessions(gscHome string) ([]string, error) {
 		if os.IsNotExist(err) {
 			return []string{}, nil
 		}
-		return nil, fmt.Errorf("failed to read scout directory: %w", err)
+		return nil, fmt.Errorf("failed to read agent directory: %w", err)
 	}
 
 	var sessions []string

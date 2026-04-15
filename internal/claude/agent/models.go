@@ -1,12 +1,12 @@
 /**
  * Component: Agent Models
- * Block-UUID: e952a7c6-6f3f-42ff-8535-6a34b2abfbe4
- * Parent-UUID: fead5c6c-a005-426e-9b7c-917cb2342cbe
- * Version: 2.2.0
+ * Block-UUID: 1c951a6b-c236-415e-9a91-014e672c3903
+ * Parent-UUID: e952a7c6-6f3f-42ff-8535-6a34b2abfbe4
+ * Version: 2.3.0
  * Description: Core data structures and types for agent sessions including session state, turn management, candidates, and event models
  * Language: Go
  * Created-at: 2026-04-15T03:59:57.930Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.6), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0)
+ * Authors: claude-haiku-4-5-20251001 (v1.0.6), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0)
  */
 
 
@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-// Session represents a Scout discovery/verification session
+// Session represents an agent discovery/verification/change/etc. session
 type Session struct {
 	SessionDir            string              `json:"session_dir"`
 	SessionID             string              `json:"session_id"`
@@ -43,7 +43,7 @@ type WorkingDirectory struct {
 // ReferenceFile represents a user-provided reference file
 type ReferenceFile struct {
 	OriginalPath string
-	LocalPath    string // Path in scout session directory
+	LocalPath    string // Path in agent session directory
 }
 
 // ReferenceFileContext represents a reference file from the NDJSON input with chat metadata
@@ -90,7 +90,7 @@ type QuickCandidate struct {
 	Score       float64 `json:"score"`
 }
 
-// StatusData represents the complete status of a scout session
+// StatusData represents the complete status of an agent session
 type StatusData struct {
 	SessionID            string               `json:"session_id"`
 	Status               string               `json:"status"` // "in_progress", "discovery_complete", "verification_complete", "stopped", "error"
@@ -142,7 +142,7 @@ type StreamEvent struct {
 	Data      interface{} `json:"data"`
 }
 
-// InitEvent is the first event written when scout starts
+// InitEvent is the first event written when agent starts
 type InitEvent struct {
 	SessionID              string             `json:"session_id"`
 	Intent                 string             `json:"intent"`
@@ -151,7 +151,7 @@ type InitEvent struct {
 	Options                InitOptions        `json:"options"`
 }
 
-// InitOptions contains options passed to scout
+// InitOptions contains options passed to agent
 type InitOptions struct {
 	AutoReview bool `json:"auto_review"`
 	Turn       int  `json:"turn"`
@@ -206,7 +206,7 @@ type DoneEvent struct {
 	ClaudeSessionID  *string                   `json:"claude_session_id,omitempty"`
 }
 
-// CompletionSummary provides statistics about the completed scout session
+// CompletionSummary provides statistics about the completed agent session
 type CompletionSummary struct {
 	FilesFound                 int `json:"files_found"`
 	Coverage                   string `json:"coverage"`
@@ -235,7 +235,7 @@ type SelectedCandidate struct {
 	WorkdirID   int     `json:"workdir_id"`
 }
 
-// TurnState represents the state of a single turn in a Scout session
+// TurnState represents the state of a single turn in an Agent session
 type TurnState struct {
 	TurnNumber           int                 `json:"turn_number"`
 	TurnType             string              `json:"turn_type"` // "discovery" or "verification"
@@ -306,9 +306,9 @@ type KeywordAssessment struct {
 
 // KeywordEffectiveness describes how well a keyword performed
 type KeywordEffectiveness struct {
-	Rating     string   `json:"rating"`     // High/Medium/Low
-	Explanation string  `json:"explanation"`
-	Matches    []string `json:"matches"`
+	Rating      string   `json:"rating"`     // High/Medium/Low
+	Explanation string   `json:"explanation"`
+	Matches     []string `json:"matches"`
 }
 
 // VerificationSummary contains verification phase statistics (rich format)

@@ -1,12 +1,12 @@
 /**
  * Component: Agent Permissions Configuration
- * Block-UUID: 7403c8f5-d7a0-4c7b-b16c-61cb1eb5d26b
- * Parent-UUID: dab89f10-c685-4293-9419-3ec02e253aa6
- * Version: 1.1.0
+ * Block-UUID: ea8b432c-f463-4ce3-86c4-d9daa5406bf9
+ * Parent-UUID: 7403c8f5-d7a0-4c7b-b16c-61cb1eb5d26b
+ * Version: 1.2.0
  * Description: Generic permissions configuration for agent sessions including restricted command execution and file access controls.
  * Language: Go
  * Created-at: 2026-03-27T16:12:50.000Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0)
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 

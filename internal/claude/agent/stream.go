@@ -1,12 +1,12 @@
 /**
  * Component: Agent Stream Event Processor
- * Block-UUID: cd1fe6f8-0463-4c43-9df4-f2326b16e1f5
- * Parent-UUID: 80b56b78-45ff-42d4-b03d-9ba4c35aad9b
- * Version: 2.1.0
+ * Block-UUID: 0e5a6b98-49d5-4a9f-818a-2e00f04c0514
+ * Parent-UUID: cd1fe6f8-0463-4c43-9df4-f2326b16e1f5
+ * Version: 2.2.0
  * Description: Stream event processor for agent sessions that parses Claude's streaming JSONL output, handles events, and updates session state.
  * Language: Go
  * Created-at: 2026-04-15T04:05:28.123Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), claude-sonnet-4-6 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), claude-haiku-4-5-20251001 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0)
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), claude-sonnet-4-6 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), claude-haiku-4-5-20251001 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0)
  */
 
 
@@ -57,9 +57,9 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 
 	// 1. WRITE START MARKER
 	startMarker := map[string]interface{}{
-		"type":       "gsc-scout-stream-start",
+		"type":       "gsc-agent-stream-start",
 		"timestamp":  time.Now().UTC().Format(time.RFC3339Nano),
-		"source":     "gsc-scout",
+		"source":     "gsc-agent",
 		"session_id": m.session.SessionID,
 		"turn":       turn,
 	}
@@ -629,9 +629,9 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 	
 	// 3. WRITE END MARKER
 	endMarker := map[string]interface{}{
-		"type":       "gsc-scout-stream-end",
+		"type":       "gsc-agent-stream-end",
 		"timestamp":  time.Now().UTC().Format(time.RFC3339Nano),
-		"source":     "gsc-scout",
+		"source":     "gsc-agent",
 		"session_id": m.session.SessionID,
 		"turn":       turn,
 	}

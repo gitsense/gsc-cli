@@ -1,12 +1,12 @@
 /**
  * Component: Agent Subprocess Manager
- * Block-UUID: 46fb23e9-b326-4632-9070-04c955d06dac
- * Parent-UUID: 70ddc5ab-9b69-4651-bad4-8d844cd1c8d8
- * Version: 2.16.0
+ * Block-UUID: 369c87d1-5b25-4926-95c9-8d838e002658
+ * Parent-UUID: 46fb23e9-b326-4632-9070-04c955d06dac
+ * Version: 2.17.0
  * Description: Generic subprocess management for agent turns including spawning, process lifecycle, signal handling, and resource cleanup.
  * Language: Go
  * Created-at: 2026-04-15T04:02:15.445Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), GLM-4.7 (v2.5.0), GLM-4.7 (v2.6.0), GLM-4.7 (v2.7.0), GLM-4.7 (v2.8.0), GLM-4.7 (v2.9.0), GLM-4.7 (v2.10.0), GLM-4.7 (v2.11.0), GLM-4.7 (v2.12.0), GLM-4.7 (v2.13.0), GLM-4.7 (v2.14.0), GLM-4.7 (v2.15.0), GLM-4.7 (v2.16.0)
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), GLM-4.7 (v2.5.0), GLM-4.7 (v2.6.0), GLM-4.7 (v2.7.0), GLM-4.7 (v2.8.0), GLM-4.7 (v2.9.0), GLM-4.7 (v2.10.0), GLM-4.7 (v2.11.0), GLM-4.7 (v2.12.0), GLM-4.7 (v2.13.0), GLM-4.7 (v2.14.0), GLM-4.7 (v2.15.0), GLM-4.7 (v2.16.0), GLM-4.7 (v2.17.0)
  */
 
 
@@ -50,8 +50,8 @@ func (m *Manager) spawnClaudeSubprocess(turn int, turnType string) error {
 	m.debugLogger.Log("DEBUG", fmt.Sprintf("Found gsc at: %s", gscPath))
 	m.debugLogger.Log("DEBUG", fmt.Sprintf("Adding to PATH: %s", gscDir))
 
-	// Write Scout permissions to restrict Bash to gsc commands only
-	if err := WriteScoutPermissions(m.config.GetTurnDir(turn)); err != nil {
+	// Write agent permissions to restrict Bash to gsc commands only
+	if err := WriteAgentPermissions(m.config.GetTurnDir(turn)); err != nil {
 		m.debugLogger.LogError("Failed to write permissions", err)
 		return fmt.Errorf("failed to write permissions: %w", err)
 	}
@@ -189,7 +189,7 @@ if ! command -v gsc &> /dev/null; then
     exit 1
 fi
 
-echo "=== Starting Claude Scout subprocess ==="
+echo "=== Starting Claude Agent subprocess ==="
 echo "Working directory: $(pwd)"
 echo "Turn: %d"
 echo "Turn Type: %s"
@@ -346,7 +346,7 @@ func (m *Manager) CheckProcessStatus() (bool, error) {
 	return true, nil
 }
 
-// StopSession stops the current scout session and cleanup
+// StopSession stops the current agent session and cleanup
 // Implements graceful shutdown with SIGTERM → wait 5s → SIGKILL pattern
 func (m *Manager) StopSession() error {
 	m.debugLogger.Log("DEBUG", "StopSession called")
@@ -396,7 +396,7 @@ func (m *Manager) StopSession() error {
 	case <-gracefulExit:
 		// Process exited gracefully
 		m.debugLogger.Log("DEBUG", "Process exited gracefully")
-		m.markAsStopped("USER_STOPPED", "Scout session stopped by user")
+		m.markAsStopped("USER_STOPPED", "Agent session stopped by user")
 		m.closeDebugLogger()
 		return nil
 
@@ -602,7 +602,7 @@ func buildSystemPrompt(gscHome string, turnType string) (string, error) {
 	}
 	
 	// Combine with tool capabilities embedded
-	combined := fmt.Sprintf(`# Scout System Prompt
+	combined := fmt.Sprintf(`# Agent System Prompt
 
 This file combines shared principles with turn-specific instructions.
 
