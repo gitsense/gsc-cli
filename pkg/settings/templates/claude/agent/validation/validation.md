@@ -1,29 +1,29 @@
 <!--
-Component: Scout Verification Methodology
+Component: Scout Validation Methodology
 Block-UUID: b8fab98f-bc2d-4c71-95d6-e0e7263a15b5
 Parent-UUID: 60a8f724-9261-4cd7-b2d3-7526614eb19f
 Version: 3.0.0
-Description: Detailed verification methodology for Scout verification. Updated to reflect rich verification format with critical missing files, keyword effectiveness assessment, and actionable recommendations.
+Description: Detailed validation methodology for Scout validation. Updated to reflect rich validation format with critical missing files, keyword effectiveness assessment, and actionable recommendations.
 Language: Markdown
 Created-at: 2026-04-03T03:45:00.000Z
 Authors: GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v3.0.0)
 -->
 
 
-## Verification Execution: Step-by-Step
+## Validation Execution: Step-by-Step
 
 ### Step 1: Review Discovery Results
 Review the candidates discovered in the last discovery turn:
 - Read the candidates from the discovery phase
 - Understand the original scores and reasoning
-- Identify which candidates need verification
+- Identify which candidates need validation
 - Note the keywords used in discovery
 
-### Step 2: Read Code for Verification
-For each candidate that needs verification:
+### Step 2: Read Code for Validation
+For each candidate that needs validation:
 - Read the actual code content
 - Understand the implementation details
-- Verify the semantic fit with the user's intent
+- Validate the semantic fit with the user's intent
 - Look for specific patterns, functions, or constants
 - Identify line numbers where relevant code exists
 
@@ -70,21 +70,21 @@ Return ONLY valid JSON (no additional text):
 
 \```json
 {
-  "verification_summary": {
+  "validation_summary": {
     "session_intent": "The original intent for this session",
     "turn_number": 2,
     "total_candidates_reviewed": 7,
-    "verified_candidates_count": 7,
+    "validated_candidates_count": 7,
     "critical_finding": "The most important discovery (e.g., missing critical file)"
   },
-  "verified_candidates": [
+  "validated_candidates": [
     {
       "file_path": "internal/contract/manager.go",
       "original_score": 0.95,
-      "verified_score": 0.95,
+      "validated_score": 0.95,
       "relevance": "HIGHLY RELEVANT - Core lifecycle operations",
       "reasoning": "This file contains the CreateContract function which sets the default expiration time at line 73. Also contains RenewContract function for extending existing contracts.",
-      "code_verification": {
+      "code_validation": {
         "confirmed_patterns": [
           "CreateContract function with TTL calculation",
           "RenewContract function for extending contracts",
@@ -104,7 +104,7 @@ Return ONLY valid JSON (no additional text):
     "score": 0.99,
     "relevance": "CRITICAL - Source of truth",
     "reasoning": "This file contains 'const DefaultContractTTL = 4' (line 91) which is THE PRIMARY CONSTANT that controls the default contract expiration time. To change the default from 4 hours, you would modify this constant.",
-    "code_verification": {
+    "code_validation": {
       "confirmed_pattern": "const DefaultContractTTL = 4"
     },
     "action_required": "Change 'const DefaultContractTTL = 4' to desired hours (e.g., 8 for 8 hours)"

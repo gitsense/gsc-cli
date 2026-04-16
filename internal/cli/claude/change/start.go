@@ -43,10 +43,10 @@ func StartCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "start",
 		Short: "Start a change turn for in-place code editing",
-		Long: `Start a change turn to apply code changes based on verified discovery results.
+		Long: `Start a change turn to apply code changes based on validated discovery results.
 
 The change turn will:
-1. Validate that verification is complete
+1. Validate that validation is complete
 2. Spawn Claude subprocess to edit files in place
 3. Generate git diffs for each working directory
 4. Write result.json with change summary and git diffs
@@ -106,9 +106,9 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 	if !config.SessionExists() {
 		cmd.SilenceUsage = true
 		return fmt.Errorf(
-			"session '%s' not found. Please run discovery and verification turns first:\n"+
+			"session '%s' not found. Please run discovery and validation turns first:\n"+
 				"  gsc claude scout start --session-id %s --turn-type discovery --intent-file <intent-file> --workdir <workdir>\n"+
-				"  gsc claude scout start --session-id %s --turn-type verification",
+				"  gsc claude scout start --session-id %s --turn-type validation",
 			sessionID, sessionID, sessionID,
 		)
 	}
@@ -127,11 +127,11 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 		return fmt.Errorf("failed to get session status: %w", err)
 	}
 
-	if status.Status != "verification_complete" {
+	if status.Status != "validation_complete" {
 		cmd.SilenceUsage = true
 		return fmt.Errorf(
-			"session status is %s, expected verification_complete. Please complete verification first:\n"+
-				"  gsc claude scout start --session-id %s --turn-type verification",
+			"session status is %s, expected validation_complete. Please complete validation first:\n"+
+				"  gsc claude scout start --session-id %s --turn-type validation",
 			status.Status, sessionID,
 		)
 	}
@@ -267,8 +267,8 @@ func runBackgroundWorker(cmd *cobra.Command, flags *StartFlags) error {
 	debugLogger.Log("WORKER", fmt.Sprintf("Session status: %s", status.Status))
 
 	// Validate session state for change
-	if status.Status != "verification_complete" {
-		err := fmt.Errorf("session status is %s, expected verification_complete for change turn", status.Status)
+	if status.Status != "validation_complete" {
+		err := fmt.Errorf("session status is %s, expected validation_complete for change turn", status.Status)
 		debugLogger.LogError("Invalid session status", err)
 		fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
 		return err

@@ -226,8 +226,8 @@ func (m *Manager) processStream(stdout io.Reader, turn int) {
 				switch turnType {
 				case "discovery":
 					results, parseErr = ParseDiscoveryResult(resultContent)
-				case "verification":
-					results, parseErr = ParseVerificationResult(resultContent)
+				case "validation":
+					results, parseErr = ParseValidationResult(resultContent)
 				case "change":
 					results, parseErr = ParseChangeResult(resultContent)
 				default:
@@ -535,8 +535,8 @@ func (m *Manager) processAssistantMessage(rawMessage string, turn int, usage Usa
 	switch turnType {
 	case "discovery":
 		results, parseErr = ParseDiscoveryResult(jsonStr)
-	case "verification":
-		results, parseErr = ParseVerificationResult(jsonStr)
+	case "validation":
+		results, parseErr = ParseValidationResult(jsonStr)
 	case "change":
 		results, parseErr = ParseChangeResult(jsonStr)
 	default:

@@ -23,7 +23,7 @@ import (
 )
 
 // FinalizedTurnResults represents the lightweight results for a completed turn
-// For verification turns, Candidates contains only verified/relevant candidates (score > 0.0)
+// For validation turns, Candidates contains only validated/relevant candidates (score > 0.0)
 // OriginalCandidates contains all discovery results for comparison
 type FinalizedTurnResults struct {
 	SessionID          string      `json:"session_id"`
@@ -240,8 +240,8 @@ func (m *Manager) writeContextError() error {
 	phase := "discovery"
 	if len(m.session.Turns) > 0 {
 		lastTurn := m.session.Turns[len(m.session.Turns)-1]
-		if lastTurn.TurnType == "verification" {
-			phase = "verification"
+		if lastTurn.TurnType == "validation" {
+			phase = "validation"
 		}
 	}
 
@@ -362,23 +362,23 @@ func (m *Manager) StartDiscoveryTurn() error {
 	return m.writeSessionState()
 }
 
-// StartVerificationTurn initiates the verification phase
-func (m *Manager) StartVerificationTurn(selectedCandidates *SelectedCandidates) error {
+// StartValidationTurn initiates the validation phase
+func (m *Manager) StartValidationTurn(selectedCandidates *SelectedCandidates) error {
 	if m.session == nil {
 		return fmt.Errorf("session not initialized")
 	}
 
-	m.debugLogger.Log("DEBUG", "Starting verification turn")
+	m.debugLogger.Log("DEBUG", "Starting validation turn")
 	m.debugLogger.Log("DEBUG", fmt.Sprintf("Session status: %s", m.session.Status))
 
 	if m.session.Status != "discovery_complete" {
-		return fmt.Errorf("cannot start verification: discovery not complete")
+		return fmt.Errorf("cannot start validation: discovery not complete")
 	}
 
 	// Calculate next turn number dynamically
 	nextTurn := m.GetNextTurnNumber()
 	m.currentTurn = nextTurn
-	m.session.Status = "verification"
+	m.session.Status = "validation"
 
 	// Ensure turn directory exists
 	if err := m.config.EnsureTurnDir(nextTurn); err != nil {
@@ -408,7 +408,7 @@ func (m *Manager) StartVerificationTurn(selectedCandidates *SelectedCandidates) 
 	// Create new turn state and append to turns slice
 	newTurn := TurnState{
 		TurnNumber:  nextTurn,
-		TurnType:    "verification",
+		TurnType:    "validation",
 		Status:      "running",
 		StartedAt:   time.Now(),
 		LogPath:     logPath,
@@ -439,8 +439,8 @@ func (m *Manager) StartVerificationTurn(selectedCandidates *SelectedCandidates) 
 		m.debugLogger.LogError("Failed to write turn history", err)
 	}
 
-	// Spawn subprocess for verification turn (defined in subprocess.go)
-	if err := m.spawnClaudeSubprocess(m.currentTurn, "verification"); err != nil {
+	// Spawn subprocess for validation turn (defined in subprocess.go)
+	if err := m.spawnClaudeSubprocess(m.currentTurn, "validation"); err != nil {
 		m.debugLogger.LogError("Failed to spawn subprocess", err)
 		m.markAsStopped("SPAWN_FAILED", fmt.Sprintf("Failed to spawn subprocess: %v", err))
 		return err
@@ -463,8 +463,8 @@ func (m *Manager) StartChangeTurn(intent string) error {
 	m.debugLogger.Log("DEBUG", fmt.Sprintf("Session status: %s", m.session.Status))
 	m.debugLogger.Log("DEBUG", fmt.Sprintf("Change intent: %s", m.truncateForLog(intent, 100)))
 
-	if m.session.Status != "verification_complete" {
-		return fmt.Errorf("cannot start change: verification not complete (current status: %s)", m.session.Status)
+	if m.session.Status != "validation_complete" {
+		return fmt.Errorf("cannot start change: validation not complete (current status: %s)", m.session.Status)
 	}
 
 	// Calculate next turn number dynamically
@@ -585,11 +585,11 @@ func (m *Manager) MarkTurnComplete(turnType string) error {
 			return fmt.Errorf("cannot mark complete: not in discovery state, current status: %s", m.session.Status)
 		}
 		m.session.Status = "discovery_complete"
-	case "verification":
-		if m.session.Status != "verification" {
-			return fmt.Errorf("cannot mark complete: not in verification state, current status: %s", m.session.Status)
+	case "validation":
+		if m.session.Status != "validation" {
+			return fmt.Errorf("cannot mark complete: not in validation state, current status: %s", m.session.Status)
 		}
-		m.session.Status = "verification_complete"
+		m.session.Status = "validation_complete"
 		m.session.CompletedAt = &[]time.Time{time.Now()}[0]
 	case "change":
 		if m.session.Status != "change" {

@@ -1,16 +1,16 @@
 /**
- * Component: Scout CLI Status Command
- * Block-UUID: c9b72698-a1fd-40a2-858d-cb1bcf78977b
- * Parent-UUID: 16567356-7fc1-4a4e-9459-584157a73431
- * Version: 1.10.0
- * Description: Implements 'gsc claude scout status' command for monitoring Scout sessions. Updated to import from agent package instead of scout.
+ * Component: Agent CLI Status Command
+ * Block-UUID: bdf6433d-2b50-4df8-9f39-ce252cee761b
+ * Parent-UUID: N/A
+ * Version: 1.0.0
+ * Description: Implements 'gsc claude agent status' command for monitoring Agent sessions. Generic version that works with all agent session types (discovery, validation, change).
  * Language: Go
- * Created-at: 2026-04-13T15:28:47.677Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), Gemini 3 Flash (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4), GLM-4.7 (v1.0.5), GLM-4.7 (v1.0.6), GLM-4.7 (v1.0.7), GLM-4.7 (v1.0.8), GLM-4.7 (v1.0.9), claude-sonnet-4-6 (v1.9.1), GLM-4.7 (v1.10.0)
+ * Created-at: 2026-04-16T15:32:15.847Z
+ * Authors: GLM-4.7 (v1.0.0)
  */
 
 
-package scoutcli
+package agentcli
 
 import (
 	"encoding/json"
@@ -24,29 +24,29 @@ import (
 
 // FileScoreTracking tracks scores for a file across turns
 type FileScoreTracking struct {
-	FilePath                 string
-	LatestDiscoveryScore     float64
-	LatestVerificationScore  float64
-	LatestDiscoveryTurn      int
-	LatestVerificationTurn   int
-	Reasoning                string
-	Metadata                 agent.CandidateMetadata
+	FilePath               string
+	LatestDiscoveryScore   float64
+	LatestValidationScore  float64
+	LatestDiscoveryTurn    int
+	LatestValidationTurn   int
+	Reasoning              string
+	Metadata               agent.CandidateMetadata
 }
 
 // ConsolidatedCandidates represents all unique candidates with their latest scores
 type ConsolidatedCandidates struct {
-	DiscoveryCandidates    []FileScoreTracking
-	VerificationCandidates []FileScoreTracking
+	DiscoveryCandidates  []FileScoreTracking
+	ValidationCandidates []FileScoreTracking
 }
 
-// StatusCmd creates the "scout status" subcommand
+// StatusCmd creates the "agent status" subcommand
 func StatusCmd() *cobra.Command {
 	flags := &StatusFlags{}
 
 	cmd := &cobra.Command{
 		Use:   "status",
-		Short: "Monitor a Scout discovery session",
-		Long: `Display status and progress of a running Scout session.
+		Short: "Monitor an Agent session",
+		Long: `Display status and progress of a running Agent session.
 
 Use -f/--follow to stream events in real-time as the session progresses.
 Use --format to control output format (json, table, pretty).`,
@@ -62,11 +62,6 @@ Use --format to control output format (json, table, pretty).`,
 
 // runStatusCommand executes the status command logic
 func runStatusCommand(cmd *cobra.Command, flags *StatusFlags) error {
-	// Validate that unsupported flags are not set
-	if err := ValidateScoutFlags(cmd); err != nil {
-		return err
-	}
-
 	// Validate flags
 	if err := ValidateStatusFlags(flags); err != nil {
 		return fmt.Errorf("invalid flags: %w", err)
@@ -177,7 +172,7 @@ func displayStatusTable(cmd *cobra.Command, status *agent.StatusData, verbose bo
 
 // displayStatusPretty outputs status in a user-friendly format
 func displayStatusPretty(cmd *cobra.Command, status *agent.StatusData, verbose bool) error {
-	fmt.Fprintf(cmd.OutOrStdout(), "\n  Scout Session: %s\n", status.SessionID)
+	fmt.Fprintf(cmd.OutOrStdout(), "\n  Agent Session: %s\n", status.SessionID)
 	fmt.Fprintf(cmd.OutOrStdout(), "  ===================================================\n")
 	fmt.Fprintf(cmd.OutOrStdout(), "  Status: %s\n", colorizeStatus(getDisplayStatus(status)))
 	
@@ -270,14 +265,14 @@ func displayStatusPretty(cmd *cobra.Command, status *agent.StatusData, verbose b
 				}
 			}
 			
-			// Show verification summary if available
-			if currentTurn.Results.VerificationSummary != nil {
-				fmt.Fprintf(cmd.OutOrStdout(), "\n  Verification Summary:\n")
-				fmt.Fprintf(cmd.OutOrStdout(), "    Total Verified: %d\n", currentTurn.Results.VerificationSummary.TotalVerified)
-				fmt.Fprintf(cmd.OutOrStdout(), "    Promoted: %d\n", currentTurn.Results.VerificationSummary.CandidatesPromoted)
-				fmt.Fprintf(cmd.OutOrStdout(), "    Demoted: %d\n", currentTurn.Results.VerificationSummary.CandidatesDemoted)
-				fmt.Fprintf(cmd.OutOrStdout(), "    Removed: %d\n", currentTurn.Results.VerificationSummary.CandidatesRemoved)
-				fmt.Fprintf(cmd.OutOrStdout(), "    Average Score: %.2f\n", currentTurn.Results.VerificationSummary.AverageVerifiedScore)
+			// Show validation summary if available
+			if currentTurn.Results.ValidationSummary != nil {
+				fmt.Fprintf(cmd.OutOrStdout(), "\n  Validation Summary:\n")
+				fmt.Fprintf(cmd.OutOrStdout(), "    Total Validated: %d\n", currentTurn.Results.ValidationSummary.TotalValidated)
+				fmt.Fprintf(cmd.OutOrStdout(), "    Promoted: %d\n", currentTurn.Results.ValidationSummary.CandidatesPromoted)
+				fmt.Fprintf(cmd.OutOrStdout(), "    Demoted: %d\n", currentTurn.Results.ValidationSummary.CandidatesDemoted)
+				fmt.Fprintf(cmd.OutOrStdout(), "    Removed: %d\n", currentTurn.Results.ValidationSummary.CandidatesRemoved)
+				fmt.Fprintf(cmd.OutOrStdout(), "    Average Score: %.2f\n", currentTurn.Results.ValidationSummary.AverageValidatedScore)
 			}
 			
 			// Show coverage if available
@@ -314,17 +309,17 @@ func displayStatusPretty(cmd *cobra.Command, status *agent.StatusData, verbose b
 			
 			// Show detailed candidates with reasoning
 			fmt.Fprintf(cmd.OutOrStdout(), "\n  Detailed Candidates:\n")
-			for i, cand := range consolidated.VerificationCandidates {
+			for i, cand := range consolidated.ValidationCandidates {
 				fmt.Fprintf(cmd.OutOrStdout(), "\n  %d. %s\n", i+1, cand.FilePath)
-				fmt.Fprintf(cmd.OutOrStdout(), "     Score: %.2f\n", cand.LatestVerificationScore)
+				fmt.Fprintf(cmd.OutOrStdout(), "     Score: %.2f\n", cand.LatestValidationScore)
 				
 				if cand.Reasoning != "" {
 					fmt.Fprintf(cmd.OutOrStdout(), "     Reasoning: %s\n", cand.Reasoning)
 				}
 				
-				// Show score comparison if both discovery and verification scores exist
+				// Show score comparison if both discovery and validation scores exist
 				if cand.LatestDiscoveryScore > 0 {
-					change := cand.LatestVerificationScore - cand.LatestDiscoveryScore
+					change := cand.LatestValidationScore - cand.LatestDiscoveryScore
 					if change > 0 {
 						fmt.Fprintf(cmd.OutOrStdout(), "     Score Change: ↑ %.1f%% (from %.1f%% in discovery turn %d)\n", 
 							change*100, cand.LatestDiscoveryScore*100, cand.LatestDiscoveryTurn)
@@ -365,8 +360,10 @@ func getPhaseDisplayName(phase string) string {
 	switch phase {
 	case "discovery":
 		return "Discovery"
-	case "verification":
-		return "Verification"
+	case "validation":
+		return "Validation"
+	case "change":
+		return "Change"
 	default:
 		return phase
 	}
@@ -375,7 +372,7 @@ func getPhaseDisplayName(phase string) string {
 // colorizeStatus returns a colorized status string using ANSI codes
 func colorizeStatus(status string) string {
 	switch status {
-	case "discovery", "discovery_complete", "verification", "verification_complete":
+	case "discovery", "discovery_complete", "validation", "validation_complete", "change", "change_complete":
 		// Green for active/completed states
 		return fmt.Sprintf("\033[32m%s\033[0m", status)
 	case "stopped":
@@ -400,19 +397,6 @@ func getDisplayStatus(status *agent.StatusData) string {
 		return "Error"
 	}
 	return status.Status
-}
-
-// getTurnDisplayName returns a friendly name for the turn/phase
-// Maps "discovery" -> "Discovery", "verification" -> "Verification"
-func getTurnDisplayName(phase string) string {
-	switch phase {
-	case "discovery":
-		return "Discovery"
-	case "verification":
-		return "Verification"
-	default:
-		return phase
-	}
 }
 
 // followSessionEvents streams events from the log file as they arrive
@@ -574,11 +558,11 @@ func buildConsolidatedCandidates(turns []agent.TurnState) *ConsolidatedCandidate
 					fileScores[key].LatestDiscoveryScore = cand.Score
 					fileScores[key].LatestDiscoveryTurn = turn.TurnNumber
 				}
-			} else if turn.TurnType == "verification" {
-				// Only record if we haven't seen a verification score yet (going backwards)
-				if fileScores[key].LatestVerificationTurn == 0 {
-					fileScores[key].LatestVerificationScore = cand.Score
-					fileScores[key].LatestVerificationTurn = turn.TurnNumber
+			} else if turn.TurnType == "validation" {
+				// Only record if we haven't seen a validation score yet (going backwards)
+				if fileScores[key].LatestValidationTurn == 0 {
+					fileScores[key].LatestValidationScore = cand.Score
+					fileScores[key].LatestValidationTurn = turn.TurnNumber
 				}
 			}
 		}
@@ -608,15 +592,15 @@ func buildConsolidatedCandidates(turns []agent.TurnState) *ConsolidatedCandidate
 	// Build consolidated lists
 	result := &ConsolidatedCandidates{
 		DiscoveryCandidates:    []FileScoreTracking{},
-		VerificationCandidates: []FileScoreTracking{},
+		ValidationCandidates: []FileScoreTracking{},
 	}
 	
 	for _, tracking := range fileScores {
 		if tracking.LatestDiscoveryScore > 0 {
 			result.DiscoveryCandidates = append(result.DiscoveryCandidates, *tracking)
 		}
-		if tracking.LatestVerificationScore > 0 {
-			result.VerificationCandidates = append(result.VerificationCandidates, *tracking)
+		if tracking.LatestValidationScore > 0 {
+			result.ValidationCandidates = append(result.ValidationCandidates, *tracking)
 		}
 	}
 	
@@ -624,8 +608,8 @@ func buildConsolidatedCandidates(turns []agent.TurnState) *ConsolidatedCandidate
 	sort.Slice(result.DiscoveryCandidates, func(i, j int) bool {
 		return result.DiscoveryCandidates[i].LatestDiscoveryScore > result.DiscoveryCandidates[j].LatestDiscoveryScore
 	})
-	sort.Slice(result.VerificationCandidates, func(i, j int) bool {
-		return result.VerificationCandidates[i].LatestVerificationScore > result.VerificationCandidates[j].LatestVerificationScore
+	sort.Slice(result.ValidationCandidates, func(i, j int) bool {
+		return result.ValidationCandidates[i].LatestValidationScore > result.ValidationCandidates[j].LatestValidationScore
 	})
 	
 	return result

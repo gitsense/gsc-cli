@@ -79,9 +79,9 @@ func (ew *EventWriter) WriteCandidatesEvent(candidates CandidatesEvent) error {
 	return ew.WriteEvent("candidates", candidates)
 }
 
-// WriteVerifiedEvent writes verified/re-scored candidates
-func (ew *EventWriter) WriteVerifiedEvent(verified VerifiedEvent) error {
-	return ew.WriteEvent("verified", verified)
+// WriteValidatedEvent writes validated/re-scored candidates
+func (ew *EventWriter) WriteValidatedEvent(validated ValidatedEvent) error {
+	return ew.WriteEvent("validated", validated)
 }
 
 // WriteDoneEvent writes completion event
@@ -344,15 +344,15 @@ func (ph *ProcessorHelper) ReadSessionStatusFromEvents(turn int) (*StatusData, e
 				status.TotalFound = candEvent.TotalFound
 			}
 
-		case "verified":
-			var verifiedEvent VerifiedEvent
+		case "validated":
+			var validatedEvent ValidatedEvent
 			if data, err := json.Marshal(event.Data); err == nil {
-				json.Unmarshal(data, &verifiedEvent)
-				// Update candidates with verified scores and reasoning
-				for _, update := range verifiedEvent.UpdatedCandidates {
+				json.Unmarshal(data, &validatedEvent)
+				// Update candidates with validated scores and reasoning
+				for _, update := range validatedEvent.UpdatedCandidates {
 					for j, cand := range status.Candidates {
 						if cand.FilePath == update.FilePath && cand.WorkdirID == update.WorkdirID {
-							status.Candidates[j].Score = update.VerifiedScore
+							status.Candidates[j].Score = update.ValidatedScore
 							status.Candidates[j].Reasoning = update.Reason
 						}
 					}
@@ -437,8 +437,8 @@ func (ph *ProcessorHelper) GenerateStatusData(session *Session, currentTurn int)
 
 	// Determine phase name
 	phase := "discovery"
-	if currentTurnState != nil && currentTurnState.TurnType == "verification" {
-		phase = "verification"
+	if currentTurnState != nil && currentTurnState.TurnType == "validation" {
+		phase = "validation"
 	}
 
 	// Build StatusData

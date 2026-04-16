@@ -3,7 +3,7 @@
  * Block-UUID: 444974de-24bf-4b73-bdfe-4c7e54e0d0fd
  * Parent-UUID: b642ddf0-d954-4ce0-a9c5-6bc90de606e0
  * Version: 1.15.0
- * Description: Shared flag definitions for Scout CLI commands (start, status, stop) with turn-type support. Supports multiple discovery turns followed by verification. Removed MarkFlagRequired("intent") to allow --intent-file as alternative. Added hidden WatchWorker flag for background worker process. Updated to import from agent package.
+ * Description: Shared flag definitions for Scout CLI commands (start, status, stop) with turn-type support. Supports multiple discovery turns followed by validation. Removed MarkFlagRequired("intent") to allow --intent-file as alternative. Added hidden WatchWorker flag for background worker process. Updated to import from agent package.
  * Language: Go
  * Created-at: 2026-04-12T03:15:13.862Z
  * Authors: claude-haiku-4-5-20251001 (v1.8.0), GLM-4.7 (v1.8.1), GLM-4.7 (v1.8.2), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0)
@@ -35,7 +35,7 @@ type StartFlags struct {
 	WorkingDirectories []string
 	ReferenceFilesJSON string
 	Session            string // Optional session ID
-	TurnType           string // Required: "discovery" or "verification"
+	TurnType           string // Required: "discovery" or "validation"
 	Force              bool   // Force overwrite existing session
 	Format             string // Output format: text or json
 	Model              string // Claude model family: haiku, sonnet, opus
@@ -83,7 +83,7 @@ func RegisterStartFlags(cmd *cobra.Command, flags *StartFlags) {
 		&flags.AutoReview,
 		"auto-review",
 		false,
-		"Automatically proceed to verification without user selection",
+		"Automatically proceed to validation without user selection",
 	)
 
 	cmd.Flags().StringSliceVarP(
@@ -111,7 +111,7 @@ func RegisterStartFlags(cmd *cobra.Command, flags *StartFlags) {
 		&flags.TurnType,
 		"turn-type",
 		"",
-		"Turn type: discovery or verification",
+		"Turn type: discovery or validation",
 	)
 	cmd.MarkFlagRequired("turn-type")
 
@@ -155,7 +155,7 @@ func RegisterStartFlags(cmd *cobra.Command, flags *StartFlags) {
 		&flags.ReviewFiles,
 		"review-files",
 		"",
-		"Path to JSON file containing files to review (for selective verification)",
+		"Path to JSON file containing files to review (for selective validation)",
 	)
 }
 
@@ -216,7 +216,7 @@ func RegisterResultsFlags(cmd *cobra.Command, flags *ResultsFlags) {
 		&flags.Turn,
 		"turn",
 		0,
-		"Turn number to retrieve results for (odd=discovery, even=verification)",
+		"Turn number to retrieve results for (odd=discovery, even=validation)",
 	)
 	cmd.MarkFlagRequired("turn")
 
@@ -246,8 +246,8 @@ func ValidateStartFlags(flags *StartFlags) error {
 		}
 	}
 
-	if flags.TurnType != "discovery" && flags.TurnType != "verification" {
-		return &FlagError{Flag: "turn-type", Message: "turn-type must be 'discovery' or 'verification'"}
+	if flags.TurnType != "discovery" && flags.TurnType != "validation" {
+		return &FlagError{Flag: "turn-type", Message: "turn-type must be 'discovery' or 'validation'"}
 	}
 
 	// For Turn 1, workdirs are required; for Turn 2, they're loaded from existing session

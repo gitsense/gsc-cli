@@ -54,8 +54,8 @@ func IsValidSessionStatus(status string) bool {
 	validStatuses := map[string]bool{
 		"discovery":              true,
 		"discovery_complete":     true,
-		"verification":           true,
-		"verification_complete":  true,
+		"validation":           true,
+		"validation_complete":  true,
 		"stopped":                true,
 		"error":                  true,
 	}
@@ -66,9 +66,9 @@ func IsValidSessionStatus(status string) bool {
 func CanTransitionStatus(from, to string) bool {
 	transitions := map[string][]string{
 		"discovery": {"discovery_complete", "stopped", "error"},
-		"discovery_complete": {"verification", "stopped"},
-		"verification": {"verification_complete", "stopped", "error"},
-		"verification_complete": {"stopped"},
+		"discovery_complete": {"validation", "stopped"},
+		"validation": {"validation_complete", "stopped", "error"},
+		"validation_complete": {"stopped"},
 		"stopped": {},
 		"error": {"stopped"},
 	}
@@ -89,8 +89,8 @@ func CanTransitionStatus(from, to string) bool {
 // ValidateTurnSequence checks if a turn type is valid given the current session state
 func ValidateTurnSequence(turnType string, turns []TurnState) error {
 	// Validate turn-type value
-	if turnType != "discovery" && turnType != "verification" && turnType != "change" {
-		return fmt.Errorf("turn-type must be 'discovery', 'verification', or 'change'")
+	if turnType != "discovery" && turnType != "validation" && turnType != "change" {
+		return fmt.Errorf("turn-type must be 'discovery', 'validation', or 'change'")
 	}
 	
 	// If no turns exist, first turn must be discovery
@@ -109,18 +109,18 @@ func ValidateTurnSequence(turnType string, turns []TurnState) error {
 		return fmt.Errorf("cannot start new turn: previous turn failed. Please retry the failed turn")
 	}
 	
-	// Can't do verification → verification
-	if lastTurn.TurnType == "verification" && turnType == "verification" {
-		return fmt.Errorf("cannot run verification after verification. Run discovery first")
+	// Can't do validation → validation
+	if lastTurn.TurnType == "validation" && turnType == "validation" {
+		return fmt.Errorf("cannot run validation after validation. Run discovery first")
 	}
 	
-	// Change turn requires verification_complete status
+	// Change turn requires validation_complete status
 	if turnType == "change" {
-		if lastTurn.TurnType != "verification" {
-			return fmt.Errorf("cannot start change turn: last turn was not verification")
+		if lastTurn.TurnType != "validation" {
+			return fmt.Errorf("cannot start change turn: last turn was not validation")
 		}
 		if lastTurn.Status != "complete" {
-			return fmt.Errorf("cannot start change turn: verification turn is not complete (status: %s)", lastTurn.Status)
+			return fmt.Errorf("cannot start change turn: validation turn is not complete (status: %s)", lastTurn.Status)
 		}
 	}
 	

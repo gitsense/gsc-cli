@@ -1,16 +1,16 @@
 <!--
-Component: Scout Verification Task Prompt
+Component: Scout Validation Task Prompt
 Block-UUID: ab9a9a5c-e1c3-43cf-9e96-e4da8548ad86
 Parent-UUID: 6ca20d04-52c4-4c7d-b812-eac5486fa1b8
 Version: 2.0.0
-Description: Task prompt for Scout verification turns. Updated to request rich verification format with critical missing files, keyword effectiveness assessment, and actionable recommendations.
+Description: Task prompt for Scout validation turns. Updated to request rich validation format with critical missing files, keyword effectiveness assessment, and actionable recommendations.
 Language: Markdown
 Created-at: 2026-04-12T03:21:06.830Z
 Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v2.0.0)
 -->
 
 
-# Scout Verification Task
+# Scout Validation Task
 
 ## Your Intent
 
@@ -27,7 +27,7 @@ The following discovery turn provides context from previous turns:
 
 {{if .HasReviewFiles}}
 **User Selection:**
-The user has selected the following files for verification review:
+The user has selected the following files for validation review:
 
 \```json
 {{.ReviewFilesJSON}}
@@ -36,7 +36,7 @@ The user has selected the following files for verification review:
 **Your task:**
 - Review ONLY the files listed in "User Selection" above (full file paths)
 - Use the discovery context to understand the original intent and methodology
-- Read the code for each selected file to verify relevance
+- Read the code for each selected file to validate relevance
 - Re-score based on actual implementation (0.0-1.0)
 - Provide detailed reasoning for score changes
 - Identify false positives (score = 0.0)
@@ -46,7 +46,7 @@ The user has selected the following files for verification review:
 {{else}}
 **Your task:**
 - Review each candidate from the last discovery turn
-- Read their code to verify relevance to the original intent
+- Read their code to validate relevance to the original intent
 - Re-score based on actual implementation (0.0-1.0)
 - Provide detailed reasoning for score changes
 - Identify false positives (score = 0.0)
@@ -57,14 +57,14 @@ The user has selected the following files for verification review:
 {{else}}
 ## Previous Discovery Context
 
-**No previous discovery context available** - cannot proceed with verification.
+**No previous discovery context available** - cannot proceed with validation.
 
-Please run a discovery turn first to generate candidates for verification.
+Please run a discovery turn first to generate candidates for validation.
 {{end}}
 
 ## Your Task
 
-Verify the candidates by:
+Validate the candidates by:
 1. Reading their code
 2. Assessing relevance to the original intent
 3. Re-scoring based on actual implementation
@@ -79,21 +79,21 @@ Return ONLY valid JSON (no additional text) with the following structure:
 
 \```json
 {
-  "verification_summary": {
+  "validation_summary": {
     "session_intent": "The original intent for this session",
     "turn_number": 2,
     "total_candidates_reviewed": 7,
-    "verified_candidates_count": 7,
+    "validated_candidates_count": 7,
     "critical_finding": "The most important discovery (e.g., missing critical file)"
   },
-  "verified_candidates": [
+  "validated_candidates": [
     {
       "file_path": "path/to/file.go",
       "original_score": 0.95,
-      "verified_score": 0.95,
+      "validated_score": 0.95,
       "relevance": "HIGHLY RELEVANT - Core lifecycle operations",
       "reasoning": "Detailed explanation of why this score was assigned",
-      "code_verification": {
+      "code_validation": {
         "confirmed_patterns": [
           "Pattern 1 found in code",
           "Pattern 2 found in code"
@@ -114,7 +114,7 @@ Return ONLY valid JSON (no additional text) with the following structure:
     "score": 0.99,
     "relevance": "CRITICAL - Source of truth",
     "reasoning": "Why this file is critical and was missed",
-    "code_verification": {
+    "code_validation": {
       "confirmed_pattern": "The key pattern found in this file"
     },
     "action_required": "What the user should do with this file"

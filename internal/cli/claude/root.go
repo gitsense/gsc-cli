@@ -1,12 +1,12 @@
 /**
  * Component: Claude Root Command
- * Block-UUID: 196e44ad-42f7-4530-9770-16ad020c60df
- * Parent-UUID: 8b2f4e9a-5c7d-4a3b-9e1f-6d7c8a5b3e2f
- * Version: 1.0.3
+ * Block-UUID: 1ed31564-2d2b-4cd7-857b-52ef82512259
+ * Parent-UUID: 196e44ad-42f7-4530-9770-16ad020c60df
+ * Version: 1.0.4
  * Description: Fixed invalid operation error by passing ChatCmd variable directly instead of calling it as a function.
  * Language: Go
- * Created-at: 2026-04-15T04:06:59.528Z
- * Authors: Gemini 3 Flash (v1.0.0), claude-haiku-4-5-20251001 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3)
+ * Created-at: 2026-04-16T15:33:28.224Z
+ * Authors: Gemini 3 Flash (v1.0.0), claude-haiku-4-5-20251001 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), GLM-4.7 (v1.0.4)
  */
 
 
@@ -16,9 +16,10 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/gitsense/gsc-cli/pkg/logger"
-	claudescout "github.com/gitsense/gsc-cli/internal/cli/claude/scout"
-	claudechat "github.com/gitsense/gsc-cli/internal/cli/claude/chat"
-	claudechange "github.com/gitsense/gsc-cli/internal/cli/claude/change"
+	scoutcli "github.com/gitsense/gsc-cli/internal/cli/claude/scout"
+	chatcli "github.com/gitsense/gsc-cli/internal/cli/claude/chat"
+	changecli "github.com/gitsense/gsc-cli/internal/cli/claude/change"
+	agentcli "github.com/gitsense/gsc-cli/internal/cli/claude/agent"
 )
 
 // Global flags
@@ -46,9 +47,10 @@ func init() {
 
 	// Register subcommands
 	claudeCmd.AddCommand(initCmd)
-	claudeCmd.AddCommand(claudechat.ChatCmd)
-	claudeCmd.AddCommand(claudescout.RootCmd())
-	claudeCmd.AddCommand(claudechange.ChangeCmd())
+	claudeCmd.AddCommand(chatcli.ChatCmd)
+	claudeCmd.AddCommand(scoutcli.RootCmd())
+	claudeCmd.AddCommand(changecli.ChangeCmd())
+	claudeCmd.AddCommand(agentcli.RootCmd())
 
 	logger.Debug("Claude root command initialized")
 }

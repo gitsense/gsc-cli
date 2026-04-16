@@ -3,7 +3,7 @@
  * Block-UUID: 9be8fa65-fd21-4b2b-acd6-e9b5d5c3009f
  * Parent-UUID: af34d0d5-db3b-43d4-b0ca-cde15364820c
  * Version: 1.16.0
- * Description: Implements 'gsc claude scout start' command with turn-type aware session handling. Supports multiple discovery turns followed by verification. Handles session creation, loading, and background worker spawning for both discovery and verification phases. Fully updated to import from agent package.
+ * Description: Implements 'gsc claude scout start' command with turn-type aware session handling. Supports multiple discovery turns followed by validation. Handles session creation, loading, and background worker spawning for both discovery and validation phases. Fully updated to import from agent package.
  * Language: Go
  * Created-at: 2026-04-13T14:04:01.074Z
  * Authors: claude-haiku-4-5-20251001 (v1.2.1), GLM-4.7 (v1.2.2), GLM-4.7 (v1.2.3), GLM-4.7 (v1.2.4), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), claude-haiku-4-5-20251001 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0)
@@ -51,7 +51,7 @@ The Scout will:
 1. Search working directories using gsc insights and gsc grep
 2. Discover candidate files using the Code Intent brain
 3. Score and rank candidates by relevance
-4. Optionally proceed to verification (re-scoring with Claude)
+4. Optionally proceed to validation (re-scoring with Claude)
 
 The session runs as a background subprocess and can be monitored with 'gsc claude scout status'.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -145,8 +145,8 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 				return fmt.Errorf("failed to initialize session: %w", err)
 			}
 		}
-	} else if flags.TurnType == "verification" {
-		// Verification: Session must exist
+	} else if flags.TurnType == "validation" {
+		// Validation: Session must exist
 		if !config.SessionExists() {
 			cmd.SilenceUsage = true
 			return fmt.Errorf(
@@ -181,7 +181,7 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 	}
 
 	// Spawn background worker with --watch-worker flag
-	// The background worker will execute the turn (StartDiscoveryTurn or StartVerificationTurn)
+	// The background worker will execute the turn (StartDiscoveryTurn or StartValidationTurn)
 	workerPID, err := spawnBackgroundWorker(flags)
 	if err != nil {
 		cmd.SilenceUsage = true
@@ -215,10 +215,10 @@ func runStartCommand(cmd *cobra.Command, flags *StartFlags) error {
 			fmt.Fprintf(cmd.OutOrStdout(), "  gsc claude scout status -s %s\n", sessionID)
 			fmt.Fprintf(cmd.OutOrStdout(), "\nFollow in real-time with:\n")
 			fmt.Fprintf(cmd.OutOrStdout(), "  gsc claude scout status -s %s -f\n", sessionID)
-			fmt.Fprintf(cmd.OutOrStdout(), "\nWhen discovery completes, proceed to verification with:\n")
-			fmt.Fprintf(cmd.OutOrStdout(), "  gsc claude scout start --session-id %s --turn-type verification\n", sessionID)
-		} else if flags.TurnType == "verification" {
-			fmt.Fprintf(cmd.OutOrStdout(), "\nMonitor verification progress with:\n")
+			fmt.Fprintf(cmd.OutOrStdout(), "\nWhen discovery completes, proceed to validation with:\n")
+			fmt.Fprintf(cmd.OutOrStdout(), "  gsc claude scout start --session-id %s --turn-type validation\n", sessionID)
+		} else if flags.TurnType == "validation" {
+			fmt.Fprintf(cmd.OutOrStdout(), "\nMonitor validation progress with:\n")
 			fmt.Fprintf(cmd.OutOrStdout(), "  gsc claude scout status -s %s\n", sessionID)
 			fmt.Fprintf(cmd.OutOrStdout(), "\nFollow in real-time with:\n")
 			fmt.Fprintf(cmd.OutOrStdout(), "  gsc claude scout status -s %s -f\n", sessionID)
@@ -319,9 +319,9 @@ func runBackgroundWorker(cmd *cobra.Command, flags *StartFlags) error {
 	}
 	debugLogger.Log("WORKER", fmt.Sprintf("Session status: %s", status.Status))
 
-	// Validate session state for verification
-	if flags.TurnType == "verification" && status.Status != "discovery_complete" {
-		err := fmt.Errorf("session status is %s, expected discovery_complete for verification turn", status.Status)
+	// Validate session state for validation
+	if flags.TurnType == "validation" && status.Status != "discovery_complete" {
+		err := fmt.Errorf("session status is %s, expected discovery_complete for validation turn", status.Status)
 		debugLogger.LogError("Invalid session status", err)
 		fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
 		return err
@@ -349,9 +349,9 @@ func runBackgroundWorker(cmd *cobra.Command, flags *StartFlags) error {
 		debugLogger.Log("WORKER", fmt.Sprintf("Starting Turn %d (previous turn complete)", nextTurn))
 	}
 
-	// Parse review files if provided for verification
+	// Parse review files if provided for validation
 	var selectedCandidates *agent.SelectedCandidates
-	if flags.TurnType == "verification" && flags.ReviewFiles != "" {
+	if flags.TurnType == "validation" && flags.ReviewFiles != "" {
 		debugLogger.Log("WORKER", fmt.Sprintf("Reading review files from: %s", flags.ReviewFiles))
 		data, err := os.ReadFile(flags.ReviewFiles)
 		if err != nil {
@@ -386,8 +386,8 @@ func runBackgroundWorker(cmd *cobra.Command, flags *StartFlags) error {
 		debugLogger.Log("WORKER", "Calling StartDiscoveryTurn")
 		return manager.StartDiscoveryTurn()
 	} else {
-		debugLogger.Log("WORKER", "Calling StartVerificationTurn")
-		return manager.StartVerificationTurn(selectedCandidates)
+		debugLogger.Log("WORKER", "Calling StartValidationTurn")
+		return manager.StartValidationTurn(selectedCandidates)
 	}
 }
 

@@ -29,7 +29,7 @@ func StopCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "stop",
 		Short: "Stop a running Scout session",
-		Long: `Stop a Scout discovery or verification session.
+		Long: `Stop a Scout discovery or validation session.
 
 This will:
 1. Terminate the background Scout process

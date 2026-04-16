@@ -31,7 +31,7 @@ Your mission is to discover a broad but high-quality set of candidate files (5-2
 
 - **Brain Requirement**: Scout REQUIRES brains to function. If `brain_available` is false for any working directory, the session will fail. Do not attempt fallback searches.
 
-- **Stop After Scoring**: This is discovery, not verification. Do not perform deep code analysis in this turn unless metadata is missing.
+- **Stop After Scoring**: This is discovery, not validation. Do not perform deep code analysis in this turn unless metadata is missing.
 
 - **Reference File Seeding**: If `REFERENCE_FILES` are provided, extract technical terms or library names to use as initial search anchors.
 
@@ -41,7 +41,7 @@ Your mission is to discover a broad but high-quality set of candidate files (5-2
 
 - **0.9-1.0**: Highly central (The "Source of Truth" for the intent)
 - **0.7-0.8**: Clearly relevant and supporting
-- **0.4-0.6**: Possibly relevant; needs verification
+- **0.4-0.6**: Possibly relevant; needs validation
 - **<0.4**: False positive or tangential
 
 ## Output Format

@@ -16,21 +16,21 @@ import (
 	"time"
 )
 
-// Session represents an agent discovery/verification/change/etc. session
+// Session represents an agent discovery/validation/change/etc. session
 type Session struct {
-	SessionDir            string              `json:"session_dir"`
-	SessionID             string              `json:"session_id"`
-	Intent                string              `json:"intent"`
-	Model                 string              `json:"model"`
-	WorkingDirectories    []WorkingDirectory   `json:"working_directories"`
+	SessionDir            string                 `json:"session_dir"`
+	SessionID             string                 `json:"session_id"`
+	Intent                string                 `json:"intent"`
+	Model                 string                 `json:"model"`
+	WorkingDirectories    []WorkingDirectory     `json:"working_directories"`
 	ReferenceFilesContext []ReferenceFileContext `json:"reference_files_context"`
-	AutoReview            bool                `json:"auto_review"`
-	Status                string              `json:"status"` // "discovery", "discovery_complete", "verification", "verification_complete", "stopped", "error"
-	StartedAt             time.Time           `json:"started_at"`
-	CompletedAt           *time.Time          `json:"completed_at,omitempty"`
-	Error                 *string             `json:"error,omitempty"`
-	WatcherPID            *int `json:"watcher_pid,omitempty"`
-	Turns                 []TurnState         `json:"turns"`
+	AutoReview            bool                   `json:"auto_review"`
+	Status                string                 `json:"status"` // "discovery", "discovery_complete", "validation", "validation_complete", "stopped", "error"
+	StartedAt             time.Time              `json:"started_at"`
+	CompletedAt           *time.Time             `json:"completed_at,omitempty"`
+	Error                 *string                `json:"error,omitempty"`
+	WatcherPID            *int 					 `json:"watcher_pid,omitempty"`
+	Turns                 []TurnState            `json:"turns"`
 }
 
 // WorkingDirectory represents a directory in the contract being searched
@@ -93,8 +93,8 @@ type QuickCandidate struct {
 // StatusData represents the complete status of an agent session
 type StatusData struct {
 	SessionID            string               `json:"session_id"`
-	Status               string               `json:"status"` // "in_progress", "discovery_complete", "verification_complete", "stopped", "error"
-	Phase                string               `json:"phase"`  // "discovery", "verification"
+	Status               string               `json:"status"` // "in_progress", "discovery_complete", "validation_complete", "stopped", "error"
+	Phase                string               `json:"phase"`  // "discovery", "validation"
 	StartedAt            time.Time            `json:"started_at"`
 	CompletedAt          *time.Time           `json:"completed_at,omitempty"`
 	ElapsedSeconds       int64                `json:"elapsed_seconds"`
@@ -138,7 +138,7 @@ type NextAction struct {
 // StreamEvent represents a JSONL event written to the log file
 type StreamEvent struct {
 	Timestamp string      `json:"timestamp"`
-	Type      string      `json:"type"` // "init", "status", "candidates", "verified", "done", "error"
+	Type      string      `json:"type"` // "init", "status", "candidates", "validated", "done", "error"
 	Data      interface{} `json:"data"`
 }
 
@@ -158,7 +158,7 @@ type InitOptions struct {
 	Model      string `json:"model"`
 }
 
-// StatusEvent indicates progress during discovery/verification
+// StatusEvent indicates progress during discovery/validation
 type StatusEvent struct {
 	Phase   string `json:"phase"`
 	Message string `json:"message"`
@@ -178,19 +178,19 @@ type CandidatesEvent struct {
 	Candidates []Candidate `json:"candidates"`
 }
 
-// VerifiedEvent is emitted when candidates are re-scored after verification
-type VerifiedEvent struct {
+// ValidatedEvent is emitted when candidates are re-scored after validation
+type ValidatedEvent struct {
 	Phase              string                    `json:"phase"`
-	TotalVerified      int                       `json:"total_verified"`
-	UpdatedCandidates  []VerificationUpdate      `json:"updated_candidates"`
+	TotalValidated      int                       `json:"total_validated"`
+	UpdatedCandidates  []ValidationUpdate      `json:"updated_candidates"`
 }
 
-// VerificationUpdate represents a candidate after re-verification (simple format for backward compatibility)
-type VerificationUpdate struct {
+// ValidationUpdate represents a candidate after re-validation (simple format for backward compatibility)
+type ValidationUpdate struct {
 	FilePath       string  `json:"file_path"`
 	WorkdirID      int     `json:"workdir_id"`
 	OriginalScore  float64 `json:"original_score"`
-	VerifiedScore  float64 `json:"verified_score"`
+	ValidatedScore  float64 `json:"validated_score"`
 	Reason         string  `json:"reason"`
 }
 
@@ -238,7 +238,7 @@ type SelectedCandidate struct {
 // TurnState represents the state of a single turn in an Agent session
 type TurnState struct {
 	TurnNumber           int                 `json:"turn_number"`
-	TurnType             string              `json:"turn_type"` // "discovery" or "verification"
+	TurnType             string              `json:"turn_type"` // "discovery" or "validation"
 	Status               string              `json:"status"` // "pending", "running", "complete", "error"
 	StartedAt            time.Time           `json:"started_at"`
 	CompletedAt          *time.Time          `json:"completed_at,omitempty"`
@@ -258,7 +258,7 @@ type TurnState struct {
 type TurnResults struct {
 	Candidates           []Candidate         `json:"candidates"`
 	DiscoveryLog         *DiscoveryLog       `json:"discovery_log,omitempty"`
-	VerificationSummary  *VerificationSummary `json:"verification_summary,omitempty"`
+	ValidationSummary  *ValidationSummary `json:"validation_summary,omitempty"`
 	Coverage             string              `json:"coverage,omitempty"`
 	Duration             *int64              `json:"duration,omitempty"`
 	Cost                 *float64            `json:"cost,omitempty"`
@@ -277,18 +277,18 @@ type DiscoveryLog struct {
 	TopCandidatesReturned int                 `json:"top_candidates_returned"`
 }
 
-// VerificationLog contains the verification methodology and findings
-type VerificationLog struct {
+// ValidationLog contains the validation methodology and findings
+type ValidationLog struct {
 	DiscoveryReviewed      []string            `json:"discovery_reviewed"`       // Files from discovery that were reviewed
 	CriticalFindings       []string            `json:"critical_findings"`        // Key discoveries (e.g., missed files)
 	MissingFilesIdentified []MissingFile       `json:"missing_files_identified"` // Files discovery missed
 	KeywordAssessment      KeywordAssessment   `json:"keyword_assessment"`       // Effectiveness of discovery keywords
-	VerificationMethod     string              `json:"verification_method"`      // How verification was performed
-	TotalVerified          int                 `json:"total_verified"`
+	ValidationMethod     string              `json:"validation_method"`      // How validation was performed
+	TotalValidated          int                 `json:"total_validated"`
 	Confidence             string              `json:"confidence"`               // Confidence level in results
 }
 
-// MissingFile represents a file that was missed by discovery but found during verification
+// MissingFile represents a file that was missed by discovery but found during validation
 type MissingFile struct {
 	FilePath    string `json:"file_path"`
 	Reason      string `json:"reason"`
@@ -311,38 +311,38 @@ type KeywordEffectiveness struct {
 	Matches     []string `json:"matches"`
 }
 
-// VerificationSummary contains verification phase statistics (rich format)
-type VerificationSummary struct {
-	SessionIntent              string                      `json:"session_intent"`
-	TurnNumber                 int                         `json:"turn_number"`
-	TotalCandidatesReviewed    int                         `json:"total_candidates_reviewed"`
-	VerifiedCandidatesCount    int                         `json:"verified_candidates_count"`
-	CriticalFinding            string                      `json:"critical_finding"`
-	TotalVerified              int                         `json:"total_verified"`
-	CandidatesPromoted         int                         `json:"candidates_promoted"`
-	CandidatesDemoted          int                         `json:"candidates_demoted"`
-	CandidatesRemoved          int                         `json:"candidates_removed"`
-	AverageVerifiedScore       float64                     `json:"average_verified_score"`
-	TopCandidatesCount         int                         `json:"top_candidates_count"`
-	Duration                   *int64                      `json:"duration,omitempty"`
-	Cost                       *float64                    `json:"cost,omitempty"`
-	Usage                      *Usage                      `json:"usage,omitempty"`
-	VerificationLog            *VerificationLog            `json:"verification_log,omitempty"`
+// ValidationSummary contains validation phase statistics (rich format)
+type ValidationSummary struct {
+	SessionIntent            string                    `json:"session_intent"`
+	TurnNumber               int                       `json:"turn_number"`
+	TotalCandidatesReviewed  int                       `json:"total_candidates_reviewed"`
+	ValidatedCandidatesCount int                       `json:"validated_candidates_count"`
+	CriticalFinding          string                    `json:"critical_finding"`
+	TotalValidated           int                       `json:"total_validated"`
+	CandidatesPromoted       int                       `json:"candidates_promoted"`
+	CandidatesDemoted        int                       `json:"candidates_demoted"`
+	CandidatesRemoved        int                       `json:"candidates_removed"`
+	AverageValidatedScore    float64                   `json:"average_validated_score"`
+	TopCandidatesCount       int                       `json:"top_candidates_count"`
+	Duration                 *int64                    `json:"duration,omitempty"`
+	Cost                     *float64                  `json:"cost,omitempty"`
+	Usage                    *Usage                    `json:"usage,omitempty"`
+	ValidationLog            *ValidationLog            `json:"validation_log,omitempty"`
 }
 
-// RichVerifiedCandidate represents a verified candidate with detailed analysis
-type RichVerifiedCandidate struct {
-	FilePath         string              `json:"file_path"`
-	OriginalScore    float64             `json:"original_score"`
-	VerifiedScore    float64             `json:"verified_score"`
-	Relevance        string              `json:"relevance"`
-	Reasoning        string              `json:"reasoning"`
-	CodeVerification CodeVerification    `json:"code_verification"`
-	ActionRequired    string              `json:"action_required"`
+// RichValidatedCandidate represents a validated candidate with detailed analysis
+type RichValidatedCandidate struct {
+	FilePath         string          `json:"file_path"`
+	OriginalScore    float64         `json:"original_score"`
+	ValidatedScore    float64        `json:"validated_score"`
+	Relevance        string          `json:"relevance"`
+	Reasoning        string          `json:"reasoning"`
+	CodeValidation CodeValidation    `json:"code_validation"`
+	ActionRequired    string         `json:"action_required"`
 }
 
-// CodeVerification contains detailed code analysis
-type CodeVerification struct {
+// CodeValidation contains detailed code analysis
+type CodeValidation struct {
 	ConfirmedPatterns   []string `json:"confirmed_patterns"`
 	MissingPatterns     []string `json:"missing_patterns,omitempty"`
 	ImplementationDetails string  `json:"implementation_details"`
@@ -355,12 +355,12 @@ type CriticalMissingCandidate struct {
 	Score            float64           `json:"score"`
 	Relevance        string            `json:"relevance"`
 	Reasoning        string            `json:"reasoning"`
-	CodeVerification MissingFileCodeVerification `json:"code_verification"`
+	CodeValidation MissingFileCodeValidation `json:"code_validation"`
 	ActionRequired    string            `json:"action_required"`
 }
 
-// MissingFileCodeVerification contains code verification for missing files
-type MissingFileCodeVerification struct {
+// MissingFileCodeValidation contains code validation for missing files
+type MissingFileCodeValidation struct {
 	ConfirmedPattern string `json:"confirmed_pattern"`
 }
 
