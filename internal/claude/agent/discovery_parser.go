@@ -1,12 +1,12 @@
 /**
  * Component: Discovery Result Parser
- * Block-UUID: a5dcfd69-2db2-4dbd-9c98-2a4346f73ff7
- * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: Parses JSON results from Claude discovery turns into generic TurnResults.
+ * Block-UUID: 236e0b80-c2ed-4c0f-ba0e-c344b1cdc8a1
+ * Parent-UUID: a5dcfd69-2db2-4dbd-9c98-2a4346f73ff7
+ * Version: 2.0.0
+ * Description: Parses JSON results from Claude discovery turns into generic TurnResults. Updated to handle status field, missing files, keyword assessment, and validation method.
  * Language: Go
  * Created-at: 2026-04-15T16:10:04.265Z
- * Authors: GLM-4.7 (v1.0.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v2.0.0)
  */
 
 
@@ -20,13 +20,16 @@ import (
 
 // discoveryResult represents the JSON structure expected from a discovery turn
 type discoveryResult struct {
-	Candidates   []Candidate    `json:"candidates"`
-	Duration     *int64         `json:"duration,omitempty"`
-	Cost         *float64       `json:"cost,omitempty"`
-	Usage        *Usage         `json:"usage,omitempty"`
-	TotalFound   int            `json:"total_found"`
-	Coverage     string         `json:"coverage"`
-	DiscoveryLog *DiscoveryLog  `json:"discovery_log"`
+	Status            string              `json:"status,omitempty"` // "complete", "out_of_scope", "failed"
+	Candidates        []Candidate         `json:"candidates"`
+	MissingFiles      []MissingFile       `json:"missing_files,omitempty"`
+	KeywordAssessment *KeywordAssessment  `json:"keyword_assessment,omitempty"`
+	Duration          *int64              `json:"duration,omitempty"`
+	Cost              *float64            `json:"cost,omitempty"`
+	Usage             *Usage              `json:"usage,omitempty"`
+	TotalFound        int                 `json:"total_found"`
+	Coverage          string              `json:"coverage"`
+	DiscoveryLog      *DiscoveryLog       `json:"discovery_log"`
 }
 
 // ParseDiscoveryResult attempts to parse a JSON string as a discovery result.
@@ -54,12 +57,15 @@ func ParseDiscoveryResult(jsonContent string) (*TurnResults, error) {
 
 	// Build TurnResults
 	turnResults := &TurnResults{
-		Candidates:   result.Candidates,
-		DiscoveryLog: result.DiscoveryLog,
-		Coverage:     result.Coverage,
-		Duration:     result.Duration,
-		Cost:         result.Cost,
-		Usage:        result.Usage,
+		Status:            result.Status,
+		Candidates:        result.Candidates,
+		MissingFiles:      result.MissingFiles,
+		KeywordAssessment: result.KeywordAssessment,
+		DiscoveryLog:      result.DiscoveryLog,
+		Coverage:          result.Coverage,
+		Duration:          result.Duration,
+		Cost:              result.Cost,
+		Usage:             result.Usage,
 	}
 
 	return turnResults, nil

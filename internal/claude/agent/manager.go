@@ -1,12 +1,12 @@
 /**
  * Component: Agent Session Manager
- * Block-UUID: 7ca67e6b-b322-42dc-96ad-6c05f291fea6
- * Parent-UUID: f4064efb-f10e-4418-8717-bd055495f272
- * Version: 1.29.0
- * Description: Generic session manager for agent turns including lifecycle management, turn orchestration, and state persistence.
+ * Block-UUID: f6d89d19-2d68-4bbb-870a-b8874a633f8b
+ * Parent-UUID: 7ca67e6b-b322-42dc-96ad-6c05f291fea6
+ * Version: 1.30.0
+ * Description: Generic session manager for agent turns including lifecycle management, turn orchestration, and state persistence. Updated for Intent Workflow with discovery → change flow. Removed validation turn logic.
  * Language: Go
  * Created-at: 2026-04-15T15:35:06.070Z
- * Authors: ..., (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.19.0), GLM-4.7 (v1.20.0), GLM-4.7 (v1.21.0), GLM-4.7 (v1.22.0), GLM-4.7 (v1.23.0), GLM-4.7 (v1.24.0), GLM-4.7 (v1.25.0), GLM-4.7 (v1.26.0), GLM-4.7 (v1.27.0), GLM-4.7 (v1.28.0), GLM-4.7 (v1.29.0)
+ * Authors: ..., (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.19.0), GLM-4.7 (v1.20.0), GLM-4.7 (v1.21.0), GLM-4.7 (v1.22.0), GLM-4.7 (v1.23.0), GLM-4.7 (v1.24.0), GLM-4.7 (v1.25.0), GLM-4.7 (v1.26.0), GLM-4.7 (v1.27.0), GLM-4.7 (v1.28.0), GLM-4.7 (v1.29.0), GLM-4.7 (v1.30.0)
  */
 
 
@@ -23,14 +23,12 @@ import (
 )
 
 // FinalizedTurnResults represents the lightweight results for a completed turn
-// For validation turns, Candidates contains only validated/relevant candidates (score > 0.0)
-// OriginalCandidates contains all discovery results for comparison
+// For discovery turns, Candidates contains only validated candidates (score > 0.7)
 type FinalizedTurnResults struct {
 	SessionID          string      `json:"session_id"`
 	Turn               int         `json:"turn"`
 	Status             string      `json:"status"`
 	Candidates         []Candidate `json:"candidates"`
-	OriginalCandidates []Candidate `json:"original_candidates,omitempty"`
 	TotalFound         int         `json:"total_found"`
 	TotalDiscovered    int         `json:"total_discovered,omitempty"`
 }
@@ -240,8 +238,8 @@ func (m *Manager) writeContextError() error {
 	phase := "discovery"
 	if len(m.session.Turns) > 0 {
 		lastTurn := m.session.Turns[len(m.session.Turns)-1]
-		if lastTurn.TurnType == "validation" {
-			phase = "validation"
+		if lastTurn.TurnType == "change" {
+			phase = "change"
 		}
 	}
 
@@ -362,97 +360,6 @@ func (m *Manager) StartDiscoveryTurn() error {
 	return m.writeSessionState()
 }
 
-// StartValidationTurn initiates the validation phase
-func (m *Manager) StartValidationTurn(selectedCandidates *SelectedCandidates) error {
-	if m.session == nil {
-		return fmt.Errorf("session not initialized")
-	}
-
-	m.debugLogger.Log("DEBUG", "Starting validation turn")
-	m.debugLogger.Log("DEBUG", fmt.Sprintf("Session status: %s", m.session.Status))
-
-	if m.session.Status != "discovery_complete" {
-		return fmt.Errorf("cannot start validation: discovery not complete")
-	}
-
-	// Calculate next turn number dynamically
-	nextTurn := m.GetNextTurnNumber()
-	m.currentTurn = nextTurn
-	m.session.Status = "validation"
-
-	// Ensure turn directory exists
-	if err := m.config.EnsureTurnDir(nextTurn); err != nil {
-		m.debugLogger.LogError("Failed to create turn directory", err)
-		m.markAsStopped("DIR_CREATE_FAILED", fmt.Sprintf("Failed to create turn directory: %v", err))
-		return err
-	}
-
-	// Close previous eventWriter if it exists to prevent resource leaks
-	if m.eventWriter != nil {
-		m.eventWriter.Close()
-	}
-
-	// Create log file for this turn
-	logFilename := fmt.Sprintf("raw-stream-%d.ndjson", time.Now().Unix())
-	logPath := m.config.GetTurnLogFile(m.currentTurn, logFilename)
-
-	var err error
-	m.eventWriter, err = NewEventWriter(logPath)
-	if err != nil {
-		m.debugLogger.LogError("Failed to create event writer", err)
-		m.markAsStopped("INIT_FAILED", fmt.Sprintf("Failed to create event writer: %v", err))
-		return err
-	}
-	m.debugLogger.Log("DEBUG", fmt.Sprintf("Created event writer: %s", logPath))
-
-	// Create new turn state and append to turns slice
-	newTurn := TurnState{
-		TurnNumber:  nextTurn,
-		TurnType:    "validation",
-		Status:      "running",
-		StartedAt:   time.Now(),
-		LogPath:     logPath,
-		ProcessInfo: ProcessInfo{Running: true},
-	}
-	m.session.Turns = append(m.session.Turns, newTurn)
-	
-	// Write session state to persist log paths
-	if err := m.writeSessionState(); err != nil {
-		m.debugLogger.LogError("Failed to write session state", err)
-		return err
-	}
-	m.debugLogger.Log("DEBUG", "Log paths stored in session state")
-
-	// Save selected candidates for Claude to reference
-	if selectedCandidates != nil {
-		candData, _ := json.MarshalIndent(selectedCandidates, "", "  ")
-		candPath := filepath.Join(m.config.GetTurnDir(m.currentTurn), "selected-candidates.json")
-		if err := os.WriteFile(candPath, candData, 0644); err != nil {
-			m.debugLogger.LogError("Failed to save selected candidates", err)
-			m.markAsStopped("CANDIDATE_SAVE_FAILED", fmt.Sprintf("Failed to save selected candidates: %v", err))
-			return err
-		}
-	}
-
-	// Write turn history to disk
-	if err := m.writeTurnHistory(m.currentTurn); err != nil {
-		m.debugLogger.LogError("Failed to write turn history", err)
-	}
-
-	// Spawn subprocess for validation turn (defined in subprocess.go)
-	if err := m.spawnClaudeSubprocess(m.currentTurn, "validation"); err != nil {
-		m.debugLogger.LogError("Failed to spawn subprocess", err)
-		m.markAsStopped("SPAWN_FAILED", fmt.Sprintf("Failed to spawn subprocess: %v", err))
-		return err
-	}
-	m.debugLogger.Log("DEBUG", "Subprocess spawned successfully")
-
-	// Wait for stream processing to complete (blocking for worker process)
-	m.wg.Wait()
-
-	return m.writeSessionState()
-}
-
 // StartChangeTurn initiates the change phase for in-place code editing
 func (m *Manager) StartChangeTurn(intent string) error {
 	if m.session == nil {
@@ -463,8 +370,8 @@ func (m *Manager) StartChangeTurn(intent string) error {
 	m.debugLogger.Log("DEBUG", fmt.Sprintf("Session status: %s", m.session.Status))
 	m.debugLogger.Log("DEBUG", fmt.Sprintf("Change intent: %s", m.truncateForLog(intent, 100)))
 
-	if m.session.Status != "validation_complete" {
-		return fmt.Errorf("cannot start change: validation not complete (current status: %s)", m.session.Status)
+	if m.session.Status != "discovery_complete" {
+		return fmt.Errorf("cannot start change: discovery not complete (current status: %s)", m.session.Status)
 	}
 
 	// Calculate next turn number dynamically
@@ -585,12 +492,6 @@ func (m *Manager) MarkTurnComplete(turnType string) error {
 			return fmt.Errorf("cannot mark complete: not in discovery state, current status: %s", m.session.Status)
 		}
 		m.session.Status = "discovery_complete"
-	case "validation":
-		if m.session.Status != "validation" {
-			return fmt.Errorf("cannot mark complete: not in validation state, current status: %s", m.session.Status)
-		}
-		m.session.Status = "validation_complete"
-		m.session.CompletedAt = &[]time.Time{time.Now()}[0]
 	case "change":
 		if m.session.Status != "change" {
 			return fmt.Errorf("cannot mark complete: not in change state, current status: %s", m.session.Status)

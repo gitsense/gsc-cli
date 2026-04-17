@@ -1,12 +1,12 @@
 /**
  * Component: Agent Models
- * Block-UUID: 1c951a6b-c236-415e-9a91-014e672c3903
- * Parent-UUID: e952a7c6-6f3f-42ff-8535-6a34b2abfbe4
- * Version: 2.3.0
- * Description: Core data structures and types for agent sessions including session state, turn management, candidates, and event models
+ * Block-UUID: 6e059004-9aa4-442a-b6e8-1ccb7ac4c648
+ * Parent-UUID: 1c951a6b-c236-415e-9a91-014e672c3903
+ * Version: 2.4.0
+ * Description: Core data structures and types for agent sessions including session state, turn management, candidates, and event models. Added code validation fields, status field for out_of_scope detection, and updated DiscoveryLog structure.
  * Language: Go
  * Created-at: 2026-04-15T03:59:57.930Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.6), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0)
+ * Authors: claude-haiku-4-5-20251001 (v1.0.6), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v1.10.0), GLM-4.7 (v1.11.0), GLM-4.7 (v1.12.0), GLM-4.7 (v1.13.0), GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0)
  */
 
 
@@ -64,6 +64,7 @@ type Candidate struct {
 	Reasoning      string              `json:"reasoning"`
 	BrainMetadata  CandidateMetadata   `json:"metadata"`
 	MatchedKeyword string              `json:"matched_keyword,omitempty"` // From gsc grep
+	CodeValidation *CodeValidation     `json:"code_validation,omitempty"` // Code inspection results
 }
 
 // Usage represents token usage metrics from Claude
@@ -80,6 +81,12 @@ type CandidateMetadata struct {
 	FileExtension  string   `json:"file_extension"`
 	Keywords       []string `json:"keywords"`
 	ParentKeywords []string `json:"parent_keywords"`
+}
+
+// CodeValidation contains detailed code analysis for a candidate
+type CodeValidation struct {
+	ConfirmedPatterns     []string `json:"confirmed_patterns,omitempty"`
+	ImplementationDetails string   `json:"implementation_details,omitempty"`
 }
 
 // QuickCandidate represents a lightweight candidate for quick status display
@@ -256,7 +263,10 @@ type TurnState struct {
 
 // TurnResults contains full results with reasoning and metadata
 type TurnResults struct {
+	Status               string              `json:"status,omitempty"` // "complete", "out_of_scope", "failed"
 	Candidates           []Candidate         `json:"candidates"`
+	MissingFiles         []MissingFile       `json:"missing_files,omitempty"`
+	KeywordAssessment    *KeywordAssessment  `json:"keyword_assessment,omitempty"`
 	DiscoveryLog         *DiscoveryLog       `json:"discovery_log,omitempty"`
 	ValidationSummary  *ValidationSummary `json:"validation_summary,omitempty"`
 	Coverage             string              `json:"coverage,omitempty"`
@@ -275,25 +285,15 @@ type DiscoveryLog struct {
 	Methodology          string              `json:"methodology"`
 	TotalCandidatesFound int                 `json:"total_candidates_found"`
 	TopCandidatesReturned int                 `json:"top_candidates_returned"`
-}
-
-// ValidationLog contains the validation methodology and findings
-type ValidationLog struct {
-	DiscoveryReviewed      []string            `json:"discovery_reviewed"`       // Files from discovery that were reviewed
-	CriticalFindings       []string            `json:"critical_findings"`        // Key discoveries (e.g., missed files)
-	MissingFilesIdentified []MissingFile       `json:"missing_files_identified"` // Files discovery missed
-	KeywordAssessment      KeywordAssessment   `json:"keyword_assessment"`       // Effectiveness of discovery keywords
-	ValidationMethod     string              `json:"validation_method"`      // How validation was performed
-	TotalValidated          int                 `json:"total_validated"`
-	Confidence             string              `json:"confidence"`               // Confidence level in results
+	ValidationMethod     string              `json:"validation_method"` // How validation was performed
 }
 
 // MissingFile represents a file that was missed by discovery but found during validation
 type MissingFile struct {
-	FilePath    string `json:"file_path"`
-	Reason      string `json:"reason"`
-	Evidence    string `json:"evidence"`
-	Relevance   string `json:"relevance"`
+	FilePath        string          `json:"file_path"`
+	Score           float64         `json:"score"`
+	Reasoning       string          `json:"reasoning"`
+	CodeValidation  *CodeValidation `json:"code_validation,omitempty"`
 }
 
 // KeywordAssessment contains analysis of keyword effectiveness from discovery
@@ -309,6 +309,17 @@ type KeywordEffectiveness struct {
 	Rating      string   `json:"rating"`     // High/Medium/Low
 	Explanation string   `json:"explanation"`
 	Matches     []string `json:"matches"`
+}
+
+// ValidationLog contains the validation methodology and findings
+type ValidationLog struct {
+	DiscoveryReviewed      []string            `json:"discovery_reviewed"`       // Files from discovery that were reviewed
+	CriticalFindings       []string            `json:"critical_findings"`        // Key discoveries (e.g., missed files)
+	MissingFilesIdentified []MissingFile       `json:"missing_files_identified"` // Files discovery missed
+	KeywordAssessment      KeywordAssessment   `json:"keyword_assessment"`       // Effectiveness of discovery keywords
+	ValidationMethod     string              `json:"validation_method"`      // How validation was performed
+	TotalValidated          int                 `json:"total_validated"`
+	Confidence             string              `json:"confidence"`               // Confidence level in results
 }
 
 // ValidationSummary contains validation phase statistics (rich format)
@@ -339,14 +350,6 @@ type RichValidatedCandidate struct {
 	Reasoning        string          `json:"reasoning"`
 	CodeValidation CodeValidation    `json:"code_validation"`
 	ActionRequired    string         `json:"action_required"`
-}
-
-// CodeValidation contains detailed code analysis
-type CodeValidation struct {
-	ConfirmedPatterns   []string `json:"confirmed_patterns"`
-	MissingPatterns     []string `json:"missing_patterns,omitempty"`
-	ImplementationDetails string  `json:"implementation_details"`
-	Issues              []string `json:"issues,omitempty"`
 }
 
 // CriticalMissingCandidate represents a file that discovery missed

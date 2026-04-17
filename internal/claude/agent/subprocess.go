@@ -1,12 +1,12 @@
 /**
  * Component: Agent Subprocess Manager
- * Block-UUID: d41be34b-2594-42af-8bc8-0efe2200218b
- * Parent-UUID: 369c87d1-5b25-4926-95c9-8d838e002658
- * Version: 2.18.0
- * Description: Generic subprocess management for agent turns including spawning, process lifecycle, signal handling, and resource cleanup. Updated template paths to use claude/agent/[shared|discovery|validation|change] structure.
+ * Block-UUID: 2c2c5beb-8cc2-485a-b41e-a77b5ac2b8a3
+ * Parent-UUID: d41be34b-2594-42af-8bc8-0efe2200218b
+ * Version: 2.19.0
+ * Description: Generic subprocess management for agent turns including spawning, process lifecycle, signal handling, and resource cleanup. Updated buildSystemPrompt to include shared intent prompt for workflow governance.
  * Language: Go
  * Created-at: 2026-04-15T04:02:15.445Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), GLM-4.7 (v2.5.0), GLM-4.7 (v2.6.0), GLM-4.7 (v2.7.0), GLM-4.7 (v2.8.0), GLM-4.7 (v2.9.0), GLM-4.7 (v2.10.0), GLM-4.7 (v2.11.0), GLM-4.7 (v2.12.0), GLM-4.7 (v2.13.0), GLM-4.7 (v2.14.0), GLM-4.7 (v2.15.0), GLM-4.7 (v2.16.0), GLM-4.7 (v2.17.0), GLM-4.7 (v2.18.0)
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), GLM-4.7 (v2.5.0), GLM-4.7 (v2.6.0), GLM-4.7 (v2.7.0), GLM-4.7 (v2.8.0), GLM-4.7 (v2.9.0), GLM-4.7 (v2.10.0), GLM-4.7 (v2.11.0), GLM-4.7 (v2.12.0), GLM-4.7 (v2.13.0), GLM-4.7 (v2.14.0), GLM-4.7 (v2.15.0), GLM-4.7 (v2.16.0), GLM-4.7 (v2.17.0), GLM-4.7 (v2.18.0), GLM-4.7 (v2.19.0)
  */
 
 
@@ -572,11 +572,18 @@ func (m *Manager) formatWorkingDirectories() string {
 	return sb.String()
 }
 
-// buildSystemPrompt reads and combines shared + turn-specific prompts with embedded tool capabilities
+// buildSystemPrompt reads and combines intent + shared + turn-specific prompts with embedded tool capabilities
 func buildSystemPrompt(gscHome string, turnType string) (string, error) {
 	// Define agent templates path
 	agentTemplatesPath := filepath.Join(gscHome, "data", "templates", "claude", "agent")
 
+	// Read intent prompt (workflow governance)
+	intentPromptPath := filepath.Join(agentTemplatesPath, "shared", "intent_prompt.md")
+	intentContent, err := os.ReadFile(intentPromptPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read intent prompt: %w", err)
+	}
+	
 	// Read shared prompt
 	sharedPath := filepath.Join(agentTemplatesPath, "shared", "system_prompt_shared.md")
 	sharedContent, err := os.ReadFile(sharedPath)
@@ -610,9 +617,15 @@ func buildSystemPrompt(gscHome string, turnType string) (string, error) {
 	// Combine with tool capabilities embedded
 	combined := fmt.Sprintf(`# Agent System Prompt
 
-This file combines shared principles with turn-specific instructions.
+This file combines intent workflow governance, shared principles, and turn-specific instructions.
 
 ## Tool Capabilities
+
+%s
+
+---
+
+# Intent Workflow
 
 %s
 
@@ -627,7 +640,7 @@ This file combines shared principles with turn-specific instructions.
 # %s Mission
 
 %s
-`, string(toolCapabilitiesContent), string(sharedContent), turnType, string(turnContent))
+`, string(toolCapabilitiesContent), string(intentContent), string(sharedContent), turnType, string(turnContent))
 	
 	return combined, nil
 }

@@ -1,12 +1,12 @@
 /**
  * Component: Agent Session Validator
- * Block-UUID: b55ca2b2-f5f1-4a9a-bf54-fb1559849df2
- * Parent-UUID: 20c6ed66-0374-47ec-b14c-9252d892ea24
- * Version: 1.1.0
- * Description: Generic validation functions for agent sessions including intent validation, status transitions, and turn sequence validation.
+ * Block-UUID: 65dd6d0f-4e5a-455e-bd42-1a3dc5b31268
+ * Parent-UUID: b55ca2b2-f5f1-4a9a-bf54-fb1559849df2
+ * Version: 1.2.0
+ * Description: Generic validation functions for agent sessions including intent validation, status transitions, and turn sequence validation. Updated for Intent Workflow with discovery → change flow.
  * Language: Go
  * Created-at: 2026-04-15T15:02:00.358Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0)
  */
 
 
@@ -66,9 +66,11 @@ func IsValidSessionStatus(status string) bool {
 func CanTransitionStatus(from, to string) bool {
 	transitions := map[string][]string{
 		"discovery": {"discovery_complete", "stopped", "error"},
-		"discovery_complete": {"validation", "stopped"},
+		"discovery_complete": {"change", "stopped"},
 		"validation": {"validation_complete", "stopped", "error"},
 		"validation_complete": {"stopped"},
+		"change": {"change_complete", "stopped", "error"},
+		"change_complete": {"stopped"},
 		"stopped": {},
 		"error": {"stopped"},
 	}
@@ -89,8 +91,8 @@ func CanTransitionStatus(from, to string) bool {
 // ValidateTurnSequence checks if a turn type is valid given the current session state
 func ValidateTurnSequence(turnType string, turns []TurnState) error {
 	// Validate turn-type value
-	if turnType != "discovery" && turnType != "validation" && turnType != "change" {
-		return fmt.Errorf("turn-type must be 'discovery', 'validation', or 'change'")
+	if turnType != "discovery" && turnType != "change" {
+		return fmt.Errorf("turn-type must be 'discovery' or 'change'")
 	}
 	
 	// If no turns exist, first turn must be discovery
@@ -109,18 +111,13 @@ func ValidateTurnSequence(turnType string, turns []TurnState) error {
 		return fmt.Errorf("cannot start new turn: previous turn failed. Please retry the failed turn")
 	}
 	
-	// Can't do validation → validation
-	if lastTurn.TurnType == "validation" && turnType == "validation" {
-		return fmt.Errorf("cannot run validation after validation. Run discovery first")
-	}
-	
-	// Change turn requires validation_complete status
+	// Change turn requires discovery_complete status
 	if turnType == "change" {
-		if lastTurn.TurnType != "validation" {
-			return fmt.Errorf("cannot start change turn: last turn was not validation")
+		if lastTurn.TurnType != "discovery" {
+			return fmt.Errorf("cannot start change turn: last turn was not discovery")
 		}
 		if lastTurn.Status != "complete" {
-			return fmt.Errorf("cannot start change turn: validation turn is not complete (status: %s)", lastTurn.Status)
+			return fmt.Errorf("cannot start change turn: discovery turn is not complete (status: %s)", lastTurn.Status)
 		}
 	}
 	
