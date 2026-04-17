@@ -1,12 +1,12 @@
 /**
  * Component: Agent Subprocess Manager
- * Block-UUID: 2c2c5beb-8cc2-485a-b41e-a77b5ac2b8a3
- * Parent-UUID: d41be34b-2594-42af-8bc8-0efe2200218b
- * Version: 2.19.0
+ * Block-UUID: e1309b0f-b0ac-4dd5-84e1-8689c0c9f488
+ * Parent-UUID: b2191b73-d11f-49da-8a0e-699b1cc0154a
+ * Version: 2.22.0
  * Description: Generic subprocess management for agent turns including spawning, process lifecycle, signal handling, and resource cleanup. Updated buildSystemPrompt to include shared intent prompt for workflow governance.
  * Language: Go
- * Created-at: 2026-04-15T04:02:15.445Z
- * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), GLM-4.7 (v2.5.0), GLM-4.7 (v2.6.0), GLM-4.7 (v2.7.0), GLM-4.7 (v2.8.0), GLM-4.7 (v2.9.0), GLM-4.7 (v2.10.0), GLM-4.7 (v2.11.0), GLM-4.7 (v2.12.0), GLM-4.7 (v2.13.0), GLM-4.7 (v2.14.0), GLM-4.7 (v2.15.0), GLM-4.7 (v2.16.0), GLM-4.7 (v2.17.0), GLM-4.7 (v2.18.0), GLM-4.7 (v2.19.0)
+ * Created-at: 2026-04-17T17:18:52.855Z
+ * Authors: claude-haiku-4-5-20251001 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), GLM-4.7 (v2.3.0), GLM-4.7 (v2.4.0), GLM-4.7 (v2.5.0), GLM-4.7 (v2.6.0), GLM-4.7 (v2.7.0), GLM-4.7 (v2.8.0), GLM-4.7 (v2.9.0), GLM-4.7 (v2.10.0), GLM-4.7 (v2.11.0), GLM-4.7 (v2.12.0), GLM-4.7 (v2.13.0), GLM-4.7 (v2.14.0), GLM-4.7 (v2.15.0), GLM-4.7 (v2.16.0), GLM-4.7 (v2.17.0), GLM-4.7 (v2.18.0), GLM-4.7 (v2.19.0), GLM-4.7 (v2.20.0), GLM-4.7 (v2.21.0), GLM-4.7 (v2.22.0)
  */
 
 
@@ -67,7 +67,7 @@ func (m *Manager) spawnClaudeSubprocess(turn int, turnType string) error {
 	}
 	m.debugLogger.Log("DEBUG", "Reference files written successfully")
 
-	// Copy methodology files to turn directory (only for discovery and validation)
+	// Copy methodology files to turn directory (only for discovery)
 	if turnType == "discovery" {
 		discoverySrc := filepath.Join(agentTemplatesPath, "discovery", "discovery.md")
 		discoveryDest := filepath.Join(m.config.GetTurnDir(turn), "discovery.md")
@@ -76,14 +76,6 @@ func (m *Manager) spawnClaudeSubprocess(turn int, turnType string) error {
 			return fmt.Errorf("failed to copy discovery methodology: %w", err)
 		}
 		m.debugLogger.Log("DEBUG", "Discovery methodology copied successfully")
-	} else if turnType == "validation" {
-		validationSrc := filepath.Join(agentTemplatesPath, "validation", "validation.md")
-		validationDest := filepath.Join(m.config.GetTurnDir(turn), "validation.md")
-		if err := copyFile(validationSrc, validationDest); err != nil {
-			m.debugLogger.LogError("Failed to copy validation methodology", err)
-			return fmt.Errorf("failed to copy validation methodology: %w", err)
-		}
-		m.debugLogger.Log("DEBUG", "Validation methodology copied successfully")
 	}
 	// Change turns don't need methodology files
 
@@ -595,8 +587,6 @@ func buildSystemPrompt(gscHome string, turnType string) (string, error) {
 	var turnPromptPath string
 	if turnType == "discovery" {
 		turnPromptPath = filepath.Join(agentTemplatesPath, "discovery", "system_prompt.md")
-	} else if turnType == "validation" {
-		turnPromptPath = filepath.Join(agentTemplatesPath, "validation", "system_prompt.md")
 	} else if turnType == "change" {
 		turnPromptPath = filepath.Join(agentTemplatesPath, "change", "system_prompt.md")
 	} else {
@@ -669,8 +659,6 @@ func writePrompt(m *Manager, turnDir string, turn int, workdirsMarkdown string, 
 	var templatePath string
 	if turnType == "discovery" {
 		templatePath = filepath.Join(agentTemplatesPath, "discovery", "task.md")
-	} else if turnType == "validation" {
-		templatePath = filepath.Join(agentTemplatesPath, "validation", "task.md")
 	} else if turnType == "change" {
 		templatePath = filepath.Join(agentTemplatesPath, "change", "task.md")
 	} else {

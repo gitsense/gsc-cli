@@ -1,12 +1,12 @@
 /**
  * Component: Validation Result Parser
- * Block-UUID: 4a068996-bd7b-448b-bd68-1a090a2ec5f6
- * Parent-UUID: 01198ac0-d534-4ede-8f4e-0f23b7cffdfe
- * Version: 1.1.0
+ * Block-UUID: 4ecea211-1740-4666-b921-37955305c84b
+ * Parent-UUID: 4a068996-bd7b-448b-bd68-1a090a2ec5f6
+ * Version: 1.2.0
  * Description: Parses JSON results from Claude validation turns (both rich and legacy formats) into generic TurnResults. Fixed struct field access errors.
  * Language: Go
- * Created-at: 2026-04-15T16:10:27.942Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0)
+ * Created-at: 2026-04-17T16:51:19.898Z
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), Gemini 2.5 Flash Lite (v1.2.0)
  */
 
 
@@ -128,9 +128,12 @@ func parseRichValidation(result richValidationResult) (*TurnResults, error) {
 		if result.CriticalMissingCandidate != nil {
 			missingFiles = append(missingFiles, MissingFile{
 				FilePath:  result.CriticalMissingCandidate.FilePath,
-				Reason:    result.CriticalMissingCandidate.Reasoning,
-				Evidence:  result.CriticalMissingCandidate.CodeValidation.ConfirmedPattern,
-				Relevance: result.CriticalMissingCandidate.Relevance,
+				Score:     result.CriticalMissingCandidate.Score,
+				Reasoning: result.CriticalMissingCandidate.Reasoning,
+				CodeValidation: &CodeValidation{
+					ConfirmedPatterns:     []string{result.CriticalMissingCandidate.CodeValidation.ConfirmedPattern},
+					ImplementationDetails: result.CriticalMissingCandidate.Relevance,
+				},
 			})
 		}
 
@@ -227,9 +230,11 @@ func parseOldValidation(result oldValidationResult) (*TurnResults, error) {
 		if result.CriticalMissingFile.FilePath != "" {
 			missingFiles = append(missingFiles, MissingFile{
 				FilePath:  result.CriticalMissingFile.FilePath,
-				Reason:    result.CriticalMissingFile.Reason,
-				Evidence:  result.CriticalMissingFile.Evidence,
-				Relevance: result.CriticalMissingFile.Relevance,
+				Reasoning: result.CriticalMissingFile.Reason,
+				CodeValidation: &CodeValidation{
+					ConfirmedPatterns:     []string{result.CriticalMissingFile.Evidence},
+					ImplementationDetails: result.CriticalMissingFile.Relevance,
+				},
 			})
 		}
 
