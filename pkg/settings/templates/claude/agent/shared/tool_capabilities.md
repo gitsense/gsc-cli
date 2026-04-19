@@ -1,12 +1,12 @@
 <!--
 Component: Scout Tool Capabilities
-Block-UUID: f418ab5e-1343-4f8b-b7ca-84efdadf1283
-Parent-UUID: N/A
-Version: 1.0.0
+Block-UUID: 06ea4428-76f9-47ac-a167-d6825c612b6b
+Parent-UUID: f418ab5e-1343-4f8b-b7ca-84efdadf1283
+Version: 1.1.0
 Description: Practical reference guide for gsc tools with discovery-focused examples.
 Language: Markdown
-Created-at: 2026-04-03T02:02:47.526Z
-Authors: Gemini 3 Flash (v1.0.0)
+Created-at: 2026-04-19T15:23:45.295Z
+Authors: Gemini 3 Flash (v1.0.0), Gemini 2.5 Flash Lite (v1.1.0)
 -->
 
 
@@ -42,9 +42,25 @@ Lead with `gsc insights` to build your mental map, then use `gsc query` and `gsc
 ## Secondary: gsc grep
 **What it does**: Searches code content and enriches with metadata. Use when the intent involves specific code patterns (e.g., function names).
 
-**Examples**:
-1. **Discovery Grep (Token Saver)**: `gsc grep --summary --fields purpose,keywords --db code-intent --format json "buildIntelligence"` (Returns metadata only, no code snippets).
-2. **Filtered Grep**: `gsc grep --filter "keywords in (auth)" --format json "validateToken"` (Searches code only within the auth domain).
+**Examples** (ordered by complexity):
+1. **Simple identifier**: `gsc grep --summary --fields purpose,keywords --db code-intent --format json "buildIntelligence"` (Returns metadata only, no code snippets).
+2. **Partial match / wildcard**: `gsc grep --summary --fields purpose,keywords --db code-intent --format json "contract.*TTL"` (Regex wildcard for compound terms).
+3. **Domain-scoped search**: `gsc grep --filter "keywords in (auth)" --format json "validateToken"` (Searches code only within the auth domain).
+4. **Multi-concept - use sequential commands** (do NOT combine with `\|`):
+   - `gsc grep --summary --fields purpose,keywords --db code-intent --format json "DefaultContractTTL"`
+   - `gsc grep --summary --fields purpose,keywords --db code-intent --format json "contract.*expir"`
+
+### ⚠️ Multi-Pattern Pitfalls
+
+| Anti-pattern | Why it fails | Correct alternative |
+|---|---|---|
+| `"foo\|bar"` | `\|` is not supported as OR | Use two sequential `gsc grep` commands |
+| `"foo OR bar"` | Literal string match, not boolean | Use `--filter` with `in (...)` |
+
+### When to use `gsc query` instead of `gsc grep`
+- Use `gsc query` when you know a keyword domain but not a specific code pattern
+- Use `gsc grep` only when you need to match literal code content or identifiers
+- For multi-concept searches, prefer: `gsc query --filter "keywords in (contract, expiry, ttl)" --format json`
 
 ---
 
