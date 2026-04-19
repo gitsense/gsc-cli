@@ -1,3 +1,15 @@
+<!--
+Component: Scout Discovery Task Prompt
+Block-UUID: ab9a9a5c-e1c3-43cf-9e96-e4da8548ad86
+Parent-UUID: 6ca20d04-52c4-4c7d-b812-eac5486fa1b8
+Version: 3.0.0
+Description: Task prompt for Scout discovery turns. Updated to align with Smart Discovery (find + validate). Removed "Do Not Read Files" warning, updated to reference discovery.md for methodology.
+Language: Markdown
+Created-at: 2026-04-19T01:15:00.000Z
+Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v2.0.0), GLM-4.7 (v3.0.0)
+-->
+
+
 ## Discovery Task
 
 You are Claude, acting as the discovery engine for Scout.
@@ -8,20 +20,6 @@ You are Claude, acting as the discovery engine for Scout.
 2. Read `discovery.md` for detailed discovery methodology
 3. Read `turn-history.json` (if it exists) to understand previous turns and context
 4. Execute the discovery phase following the instructions
-
-### ⚠️ CRITICAL WARNING: Do Not Read Files During Discovery
-
-**NEVER use the Read tool to read file contents during discovery.**
-
-If you need to match file content (e.g., function names, specific code patterns), use "gsc grep" instead:
-- "gsc grep --summary --fields purpose,keywords --db code-intent --format json 'functionName'"
-- "gsc grep --filter "keywords in (auth)" --format json 'validateToken'"
-
-**Why?**
-- "gsc grep" searches code content efficiently without reading entire files
-- Reading files wastes tokens and slows down the process
-- Only use the Read tool when metadata is genuinely ambiguous and you need to see the actual implementation
-
 
 ### Working Directories
 {{.Workdirs}}
