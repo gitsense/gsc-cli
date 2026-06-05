@@ -1,0 +1,108 @@
+/**
+ * Component: Chat Database Models
+ * Block-UUID: 8138446f-59bb-48cc-80a3-4b77621d1d4a
+ * Parent-UUID: 8610baa0-6a3d-4b65-86fa-0631c1a058be
+ * Version: 1.9.0
+ * Description: Added PreferredReview field to ContractMessageData to support specialized review tools (e.g., vimdiff, zed --diff).
+ * Language: Go
+ * Created-at: 2026-03-26T15:22:50.544Z
+ * Authors: Gemini 3 Flash (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), Gemini 3 Flash (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0)
+ */
+
+
+package db
+
+import (
+	"github.com/gitsense/gsc-cli/internal/types/contract"
+	"database/sql"
+	"time"
+)
+
+// Chat represents a record in the 'chats' table.
+type Chat struct {
+	ID              int64          `json:"id"`
+	UUID            string         `json:"uuid"`
+	Type            string         `json:"type"`
+	Deleted         int            `json:"deleted"`
+	Visibility      string         `json:"visibility"`
+	Owner           string         `json:"owner"`
+	Name            string         `json:"name"`
+	ParentID        int64          `json:"parent_id"`
+	GroupID         int64          `json:"group_id"`
+	PromptID        int64          `json:"prompt_id"`
+	MainModel       string         `json:"main_model"`
+	Pinned          sql.NullInt64  `json:"pinned"`
+	Protected       sql.NullInt64  `json:"protected"`
+	OrderWeight     sql.NullInt64  `json:"order_weight"`
+	ForkedFromMsgID sql.NullInt64  `json:"forked_from_msg_id"`
+	Meta            sql.NullString `json:"meta"`
+	IsDefaultName   int            `json:"is_default_name"`
+	CreatedAt       time.Time      `json:"created_at"`
+	UpdatedAt       time.Time      `json:"updated_at"`
+	ModifiedAt       sql.NullTime   `json:"modified_at"`
+}
+
+// Message represents a record in the 'messages' table.
+// Fields use sql.Null types where the database schema allows NULL values.
+type Message struct {
+	ID                   int64           `json:"id"`
+	Type                 string          `json:"type"`
+	Deleted              int             `json:"deleted"`
+	Visibility           string          `json:"visibility"`
+	ChatID               int64           `json:"chat_id"`
+	ParentID             int64           `json:"parent_id"`
+	Level                int             `json:"level"`
+	Sample               sql.NullInt64   `json:"sample"`
+	Model                sql.NullString  `json:"model"`
+	RealModel            sql.NullString  `json:"real_model"`
+	Temperature          sql.NullFloat64 `json:"temperature"`
+	TopK                 sql.NullFloat64 `json:"top_k"`
+	TopP                 sql.NullFloat64 `json:"top_p"`
+	MaxTokens            sql.NullInt64   `json:"max_tokens"`
+	Role                 string          `json:"role"`
+	Message              sql.NullString  `json:"message"`
+	OriginalMessage      sql.NullString  `json:"original_message"`
+	Hash                 string          `json:"hash"`
+	CopiedFromMsgID      sql.NullInt64   `json:"copied_from_msg_id"`
+	Pinned               sql.NullInt64   `json:"pinned"`
+	ChatCompletionStats  sql.NullString  `json:"chat_completion_stats"`
+	Meta                 sql.NullString  `json:"meta"`
+	BlobID               sql.NullInt64   `json:"blob_id"`
+	Priority             sql.NullInt64   `json:"priority"`
+	JobID                sql.NullInt64   `json:"job_id"`
+	JobAttempts          sql.NullInt64   `json:"job_attempts"`
+	JobException         sql.NullString  `json:"job_exception"`
+	CreatedAt            time.Time       `json:"created_at"`
+	UpdatedAt            time.Time       `json:"updated_at"`
+	ModifiedAt           sql.NullTime    `json:"modified_at"`
+}
+
+// PublishedManifest represents a record in the 'published_manifests' table.
+type PublishedManifest struct {
+	ID                  int64          `json:"id"`
+	UUID                string         `json:"uuid"`
+	Owner               string         `json:"owner"`
+	Repo                string         `json:"repo"`
+	Branch              string         `json:"branch"`
+	Database            string         `json:"database"`
+	SchemaVersion       string         `json:"schema_version"`
+	GeneratedAt         time.Time      `json:"generated_at"`
+	ManifestName        string         `json:"manifest_name"`
+	ManifestDescription string         `json:"manifest_description"`
+	ManifestTags        string         `json:"manifest_tags"` // Stored as JSON string
+	Repositories        string         `json:"repositories"` // Stored as JSON string
+	Branches            string         `json:"branches"`     // Stored as JSON string
+	Hash                string         `json:"hash"`
+	PublishedAt         time.Time      `json:"published_at"`
+	Deleted             int            `json:"deleted"`
+	RootChatID          sql.NullInt64  `json:"root_chat_id"`
+	OwnerChatID         sql.NullInt64  `json:"owner_chat_id"`
+	RepoChatID          sql.NullInt64  `json:"repo_chat_id"`
+	ManifestCount       int            `json:"manifest_count"` // Used for UI summaries
+}
+
+// ContractMessageData holds the data required to generate a contract message.
+// It embeds the core ContractData schema to share the definition and unmarshalling logic.
+type ContractMessageData struct {
+	contract.ContractData
+}

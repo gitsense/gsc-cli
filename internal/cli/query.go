@@ -1,0 +1,801 @@
+/**
+ * Component: Query Command
+ * Block-UUID: c42a2fca-fecd-4117-a53a-819110c43f54
+ * Parent-UUID: 968d3650-7a0b-4895-9fbc-b4e02aad56c3
+ * Version: 3.27.0
+ * Description: Simplified 'gsc query' interface by hiding subcommands (list, insights, coverage, fields, brains) and legacy flags (--field, --value). Updated examples to promote the --filter syntax.
+ * Language: Go
+ * Created-at: 2026-04-05T20:54:52.564Z
+ * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v3.26.0), claude-haiku-4-5-20251001 (v3.27.0)
+ */
+
+
+package cli
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/spf13/cobra"
+	"github.com/gitsense/gsc-cli/internal/bridge"
+	"github.com/gitsense/gsc-cli/internal/git"
+	"github.com/gitsense/gsc-cli/internal/search"
+	"github.com/gitsense/gsc-cli/internal/manifest"
+	"github.com/gitsense/gsc-cli/internal/registry"
+	"github.com/gitsense/gsc-cli/pkg/logger"
+)
+
+var (
+	queryDB            string
+	queryField         string
+	queryValue         string
+	queryMatchAll      bool
+	queryFormat        string
+	queryQuiet         bool
+	queryScopeOverride string
+	queryInsightsLimit int
+	queryListDB        bool
+	queryListAll       bool
+	queryGlobs         []string
+	queryReport        bool
+	queryFields        []string
+	queryFieldSingular []string
+	brainsSchema       bool
+	queryFilters       []string
+	querySelectFields  []string
+)
+
+// queryCmd represents the base query command
+var queryCmd = &cobra.Command{
+	Use:   "query",
+	Short: "Find files by metadata value",
+	Long: `Find files in a database by matching a metadata field value.
+Supports exact matching, pattern matching, numeric comparisons, and list membership.
+If no filters are provided, it displays the current workspace context.`,
+	Example: `  # Exact match
+  gsc query --filter "intent_triggers=critical"
+
+  # Pattern matching (contains)
+  gsc query --filter "intent_triggers~connection"
+
+  # List membership (OR logic)
+  gsc query --filter "risk_level in (high,critical)"
+
+  # Numeric comparison
+  gsc query --filter "complexity>10"
+
+  # Multiple filters (AND logic)
+  gsc query --filter "language=go" --filter "complexity>5"`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		startTime := time.Now()
+
+		// Early Validation for Bridge
+		if bridgeCode != "" {
+			if err := bridge.ValidateCode(bridgeCode, bridge.StageDiscovery); err != nil {
+				cmd.SilenceUsage = true
+				return err
+			}
+		}
+
+		// Parse positional argument if provided (e.g., "keywords in (contract,expire)")
+		if len(args) > 0 {
+			if err := parseQueryExpression(args[0]); err != nil {
+				return fmt.Errorf("invalid query expression: %w", err)
+			}
+		}
+
+		// Parse filters
+		filters, err := search.ParseFilters(cmd.Context(), queryFilters, queryDB)
+		if err != nil {
+			return fmt.Errorf("failed to parse filters: %w", err)
+		}
+
+		outputStr, resolvedDB, err := handleQueryOrStatus(cmd.Context(), queryDB, queryField, queryValue, queryFormat, queryQuiet, queryMatchAll, querySelectFields, filters)
+		if err != nil {
+			return err
+		}
+
+		if bridgeCode != "" {
+			// 1. Print to stdout
+			fmt.Print(outputStr)
+
+			// 2. Hand off to bridge orchestrator
+			cmdStr := filepath.Base(os.Args[0]) + " " + strings.Join(os.Args[1:], " ")
+			return bridge.Execute(bridgeCode, outputStr, queryFormat, cmdStr, time.Since(startTime), resolvedDB, 0, forceInsert)
+		}
+
+		// Standard Output Mode
+		fmt.Println(outputStr)
+		return nil
+	},
+	SilenceUsage: true,
+}
+
+// queryListCmd represents the discovery subcommand
+var queryListCmd = &cobra.Command{
+	Use:   "list [field]",
+	Short: "Discover available databases, fields, or values",
+	Long: `Hierarchical discovery of the intelligence hub.
+1. No arguments: Lists fields in the default/active database.
+2. With [field]: Lists unique values for that specific field.
+3. With --all: Lists all databases and their fields (Intelligence Map).
+4. With --dbs: Lists all available databases.`,
+	Example: `  # List the full intelligence map (all DBs and fields)
+  gsc query list --all
+
+  # List all available databases
+  gsc query list --dbs
+
+  # List fields in the active database
+  gsc query list
+
+  # List values for a specific field
+  gsc query list risk_level`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		startTime := time.Now()
+
+		// Early Validation for Bridge
+		if bridgeCode != "" {
+			if err := bridge.ValidateCode(bridgeCode, bridge.StageDiscovery); err != nil {
+				cmd.SilenceUsage = true
+				return err
+			}
+		}
+
+		ctx := cmd.Context()
+		var outputStr, resolvedDB string
+		var err error
+
+		// Explicit Database List
+		if queryListDB {
+			config, err := manifest.GetEffectiveConfig()
+			if err != nil {
+				return fmt.Errorf("failed to load config: %w", err)
+			}
+			outputStr, resolvedDB, err = handleQueryList(ctx, "", "", queryFormat, queryQuiet, config, queryListAll)
+		} else {
+			fieldName := ""
+			if len(args) > 0 {
+				fieldName = args[0]
+			}
+			outputStr, resolvedDB, err = handleHierarchicalList(ctx, queryDB, fieldName, queryFormat, queryQuiet, queryListAll)
+		}
+
+		if err != nil {
+			return err
+		}
+
+		if bridgeCode != "" {
+			// 1. Print to stdout
+			fmt.Print(outputStr)
+
+			// 2. Hand off to bridge orchestrator
+			cmdStr := filepath.Base(os.Args[0]) + " " + strings.Join(os.Args[1:], " ")
+			return bridge.Execute(bridgeCode, outputStr, queryFormat, cmdStr, time.Since(startTime), resolvedDB, 0, forceInsert)
+		}
+
+		// Standard Output Mode
+		fmt.Println(outputStr)
+		return nil
+	},
+}
+
+// InsightsCmd represents the metadata distribution analysis command.
+var InsightsCmd = &cobra.Command{
+	Use:   "insights",
+	Short: "Analyze metadata distribution and completeness",
+	Long: `Provides a high-level overview of how metadata is distributed across the codebase.
+Useful for identifying common patterns or unanalyzed areas.`,
+	Example: `  # Get insights for specific fields
+  gsc insights --db security --fields risk_level,topic
+
+  # Also available as a query subcommand
+  gsc query insights --db security --fields risk_level,topic`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		startTime := time.Now()
+
+		// Early Validation for Bridge
+		if bridgeCode != "" {
+			if err := bridge.ValidateCode(bridgeCode, bridge.StageDiscovery); err != nil {
+				cmd.SilenceUsage = true
+				return err
+			}
+		}
+
+		outputStr, resolvedDB, err := handleInsights(cmd.Context(), queryDB, queryFields, queryInsightsLimit, queryScopeOverride, queryFormat, queryQuiet, queryReport)
+		if err != nil {
+			cmd.SilenceUsage = true
+			return err
+		}
+
+		if bridgeCode != "" {
+			// 1. Print to stdout
+			fmt.Print(outputStr)
+
+			// 2. Hand off to bridge orchestrator
+			cmdStr := filepath.Base(os.Args[0]) + " " + strings.Join(os.Args[1:], " ")
+			return bridge.Execute(bridgeCode, outputStr, queryFormat, cmdStr, time.Since(startTime), resolvedDB, 0, forceInsert)
+		}
+
+		// Standard Output Mode
+		fmt.Println(outputStr)
+		return nil
+	},
+}
+
+// CoverageCmd represents the analysis coverage command.
+var CoverageCmd = &cobra.Command{
+	Use:   "coverage",
+	Short: "Analyze analysis coverage and identify blind spots",
+	Long: `Compares Git tracked files against the manifest database to identify 
+files that have not yet been analyzed within the current focus scope.`,
+	Example: `  # Check coverage for the active database
+  gsc coverage
+
+  # Check coverage for the security database
+  gsc coverage --db security
+
+  # Check coverage with a temporary scope override
+  gsc coverage --db security --scope-override "include=src/**"
+
+  # Also available as a query subcommand
+  gsc query coverage`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		startTime := time.Now()
+
+		// Early Validation for Bridge
+		if bridgeCode != "" {
+			if err := bridge.ValidateCode(bridgeCode, bridge.StageDiscovery); err != nil {
+				cmd.SilenceUsage = true
+				return err
+			}
+		}
+
+		outputStr, resolvedDB, err := handleCoverage(cmd.Context(), queryDB, queryScopeOverride, queryFormat, queryQuiet)
+		if err != nil {
+			return err
+		}
+
+		if bridgeCode != "" {
+			// 1. Print to stdout
+			fmt.Print(outputStr)
+
+			// 2. Hand off to bridge orchestrator
+			cmdStr := filepath.Base(os.Args[0]) + " " + strings.Join(os.Args[1:], " ")
+			return bridge.Execute(bridgeCode, outputStr, queryFormat, cmdStr, time.Since(startTime), resolvedDB, 0, forceInsert)
+		}
+
+		// Standard Output Mode
+		fmt.Println(outputStr)
+		return nil
+	},
+}
+
+// FieldsCmd represents the command to list all databases and their fields.
+var FieldsCmd = &cobra.Command{
+	Use:   "fields",
+	Short: "List all available databases and their fields",
+	Long: `Displays the full intelligence map, showing all registered databases 
+and the metadata fields available in each. This is equivalent to running 
+'gsc query list --all'.`,
+	Example: `  # Show the full intelligence map
+  gsc fields
+
+  # Also available as a query subcommand
+  gsc query list --all`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		startTime := time.Now()
+
+		// Early Validation for Bridge
+		if bridgeCode != "" {
+			if err := bridge.ValidateCode(bridgeCode, bridge.StageDiscovery); err != nil {
+				cmd.SilenceUsage = true
+				return err
+			}
+		}
+
+		// Call handleHierarchicalList with all=true to get the full map
+		outputStr, resolvedDB, err := handleHierarchicalList(cmd.Context(), "", "", queryFormat, queryQuiet, true)
+		if err != nil {
+			return err
+		}
+
+		if bridgeCode != "" {
+			// 1. Print to stdout
+			fmt.Print(outputStr)
+
+			// 2. Hand off to bridge orchestrator
+			cmdStr := filepath.Base(os.Args[0]) + " " + strings.Join(os.Args[1:], " ")
+			return bridge.Execute(bridgeCode, outputStr, queryFormat, cmdStr, time.Since(startTime), resolvedDB, 0, forceInsert)
+		}
+
+		// Standard Output Mode
+		fmt.Println(outputStr)
+		return nil
+	},
+}
+
+// BrainsCmd represents the command to list brains or inspect schemas.
+var BrainsCmd = &cobra.Command{
+	Use:   "brains [brain]",
+	Short: "List available brains or inspect their schemas",
+	Long: `Provides a high-level overview of the intelligence hub.
+1. No arguments: Lists all registered manifest brains (databases).
+2. With [brain]: Shows the schema for that specific brain.
+3. With --schema: Shows the schema for every registered brain.`,
+	Example: `  # List all brains
+  gsc brains
+
+  # Show schema for the 'arch' brain
+  gsc brains arch
+
+  # Show schemas for all brains
+  gsc brains --schema`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		startTime := time.Now()
+
+		// Early Validation for Bridge
+		if bridgeCode != "" {
+			if err := bridge.ValidateCode(bridgeCode, bridge.StageDiscovery); err != nil {
+				cmd.SilenceUsage = true
+				return err
+			}
+		}
+
+		outputStr, resolvedDB, err := handleBrains(cmd.Context(), args, brainsSchema, queryFormat, queryQuiet)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found") {
+				cmd.SilenceUsage = true
+			}
+			return err
+		}
+
+		if bridgeCode != "" {
+			// 1. Print to stdout
+			fmt.Print(outputStr)
+
+			// 2. Hand off to bridge orchestrator
+			cmdStr := filepath.Base(os.Args[0]) + " " + strings.Join(os.Args[1:], " ")
+			return bridge.Execute(bridgeCode, outputStr, queryFormat, cmdStr, time.Since(startTime), resolvedDB, 0, forceInsert)
+		}
+
+		// Standard Output Mode
+		fmt.Println(outputStr)
+		return nil
+	},
+}
+
+func init() {
+	// Top-level Query Flags
+	queryCmd.Flags().StringVarP(&queryDB, "db", "d", "", "Database name (or use default)")
+	//queryCmd.Flags().StringVarP(&queryField, "field", "f", "", "Field name (or use default)").Hidden = true
+	//queryCmd.Flags().StringVarP(&queryValue, "value", "v", "", "Value to match (comma-separated for OR)").Hidden = true
+	queryCmd.Flags().StringSliceVar(&querySelectFields, "fields", []string{}, "Additional metadata fields to include in results (comma-separated)")
+	queryCmd.Flags().BoolVar(&queryMatchAll, "match-all", false, "Match all values (AND logic) instead of any (OR logic)")
+	queryCmd.Flags().StringVarP(&queryFormat, "format", "o", "table", "Output format (json, table)")
+	queryCmd.Flags().BoolVar(&queryQuiet, "quiet", false, "Suppress headers, footers, and hints")
+	queryCmd.Flags().StringArrayVar(&queryFilters, "filter", []string{}, "Metadata filter (e.g., --filter 'field:operator:value')")
+	queryCmd.Flags().StringArrayVar(&queryGlobs, "glob", []string{}, "Filter by file path pattern (e.g., 'src/**/*.go')")
+
+	// List Subcommand Flags
+	queryListCmd.Flags().BoolVar(&queryListDB, "dbs", false, "List all available databases")
+	queryListCmd.Flags().BoolVar(&queryListAll, "all", false, "Show all databases and their fields (Intelligence Map)")
+	queryListCmd.Flags().StringVarP(&queryDB, "db", "d", "", "Database to list fields from")
+	queryListCmd.Flags().StringVarP(&queryFormat, "format", "o", "table", "Output format")
+	queryListCmd.Flags().BoolVar(&queryQuiet, "quiet", false, "Suppress headers and hints")
+
+	// Insights Subcommand Flags
+	InsightsCmd.Flags().StringSliceVar(&queryFields, "fields", []string{}, "Field(s) to analyze (comma-separated if more than one)")
+	InsightsCmd.Flags().BoolP("help", "h", false, "Help for insights")
+	InsightsCmd.Flags().StringArrayVar(&queryFilters, "filter", []string{}, "Metadata filter (e.g., --filter 'field:operator:value')")
+	InsightsCmd.Flags().StringArrayVar(&queryGlobs, "glob", []string{}, "Filter by file path pattern (e.g., 'src/**/*.go')")
+	InsightsCmd.Flags().IntVar(&queryInsightsLimit, "limit", 10, "Limit top values (1-1000)")
+	InsightsCmd.Flags().StringVar(&queryScopeOverride, "scope-override", "", "Temporary scope override")
+	InsightsCmd.Flags().StringVarP(&queryDB, "db", "d", "", "Database override")
+	InsightsCmd.Flags().StringVarP(&queryFormat, "format", "o", "", "Output format (json/table)")
+	InsightsCmd.Flags().BoolVar(&queryQuiet, "quiet", false, "Suppress headers")
+
+	// Coverage Subcommand Flags
+	CoverageCmd.Flags().StringVar(&queryScopeOverride, "scope-override", "", "Temporary scope override")
+	CoverageCmd.Flags().StringVarP(&queryDB, "db", "d", "", "Database override")
+	CoverageCmd.Flags().StringArrayVar(&queryGlobs, "glob", []string{}, "Filter by file path pattern (e.g., 'src/**/*.go')")
+	CoverageCmd.Flags().StringVarP(&queryFormat, "format(o)", "o", "table", "Output format")
+	CoverageCmd.Flags().BoolVar(&queryQuiet, "quiet", false, "Suppress headers")
+
+	// Fields Subcommand Flags
+	FieldsCmd.Flags().StringVarP(&queryFormat, "format", "o", "table", "Output format")
+	FieldsCmd.Flags().BoolVar(&queryQuiet, "quiet", false, "Suppress headers and hints")
+
+	// Brains Subcommand Flags
+	BrainsCmd.Flags().BoolVar(&brainsSchema, "schema", false, "Show schema information")
+	BrainsCmd.Flags().StringVarP(&queryFormat, "format", "o", "table", "Output format")
+	BrainsCmd.Flags().BoolVar(&queryQuiet, "quiet", false, "Suppress headers and hints")
+
+	// Register Subcommands
+	queryListCmd.Hidden = true
+	queryCmd.AddCommand(queryListCmd)
+
+	InsightsCmd.Hidden = true
+	queryCmd.AddCommand(InsightsCmd)
+
+	CoverageCmd.Hidden = true
+	queryCmd.AddCommand(CoverageCmd)
+
+	FieldsCmd.Hidden = true
+	queryCmd.AddCommand(FieldsCmd)
+
+	BrainsCmd.Hidden = true
+	queryCmd.AddCommand(BrainsCmd)
+}
+
+// handleBrains orchestrates the brain listing and schema inspection.
+func handleBrains(ctx context.Context, args []string, showSchema bool, format string, quiet bool) (string, string, error) {
+	config, err := manifest.GetEffectiveConfig()
+	if err != nil {
+		return "", "", fmt.Errorf("failed to load config: %w", err)
+	}
+
+	// Case 1: Positional argument provided (Show schema for specific DB)
+	if len(args) > 0 {
+		resolvedDB, err := registry.ResolveDatabase(args[0])
+		if err != nil {
+			// Provide a more helpful error message for "not found" cases
+			if strings.Contains(err.Error(), "not found in registry") {
+				return "", "", fmt.Errorf("Brain '%s' not found. Run 'gsc brains' to list available brains.", args[0])
+			}
+			return "", "", err
+		}
+		schema, err := manifest.GetSchema(ctx, resolvedDB)
+		if err != nil {
+			return "", "", err
+		}
+		return manifest.FormatSchema(schema, format, quiet, config), resolvedDB, nil
+	}
+
+	// Case 2: --schema flag provided (Show schema for all DBs)
+	if showSchema {
+		databases, err := manifest.ListDatabases(ctx)
+		if err != nil {
+			return "", "", err
+		}
+		var outputs []string
+		for _, dbInfo := range databases {
+			schema, err := manifest.GetSchema(ctx, dbInfo.DatabaseName)
+			if err != nil {
+				logger.Warning("Failed to get schema for database", "db", dbInfo.DatabaseName, "error", err)
+				continue
+			}
+			output := manifest.FormatSchema(schema, format, quiet, config)
+			if quiet {
+				outputs = append(outputs, output)
+			} else {
+				outputs = append(outputs, fmt.Sprintf("--- Brain: %s ---\n%s", dbInfo.DatabaseName, output))
+			}
+		}
+		return strings.Join(outputs, "\n\n"), "", nil
+	}
+
+	// Case 3: Default (List all databases)
+	return handleQueryList(ctx, "", "", format, quiet, config, true)
+}
+
+// handleCoverage orchestrates the coverage analysis process.
+func handleCoverage(ctx context.Context, dbName string, scopeOverride string, format string, quiet bool) (string, string, error) {
+	config, err := manifest.GetEffectiveConfig()
+	if err != nil {
+		return "", "", fmt.Errorf("failed to load config: %w", err)
+	}
+
+	resolvedDB := dbName
+	if resolvedDB == "" {
+		resolvedDB = config.Global.DefaultDatabase
+	}
+
+	if resolvedDB == "" {
+		return "", "", fmt.Errorf("database is required for coverage analysis. Use --db flag.")
+	}
+
+	// Resolve database name to physical name
+	resolvedDB, err = registry.ResolveDatabase(resolvedDB)
+	if err != nil {
+		return "", "", err
+	}
+
+	repoRoot, err := git.FindGitRoot()
+	if err != nil {
+		return "", "", fmt.Errorf("failed to find git root: %w", err)
+	}
+
+	logger.Debug("Executing coverage analysis", "database", resolvedDB, "scope_override", scopeOverride, "globs", queryGlobs)
+	report, err := manifest.ExecuteCoverageAnalysis(ctx, resolvedDB, scopeOverride, repoRoot, config.ActiveProfile, queryGlobs)
+	if err != nil {
+		return "", "", err
+	}
+
+	output := manifest.FormatCoverageReport(report, format, quiet, config)
+	
+	// Append hint for simple extension patterns to the output
+	if format != "json" {
+		for _, pattern := range queryGlobs {
+			if isSimpleExtensionPattern(pattern) {
+				output += "\n\nHint: Pattern '" + pattern + "' matches files in the current directory only.\n"
+				output += "      Use '**/" + pattern + "' to match files in all subdirectories.\n"
+				break
+			}
+		}
+	}
+	
+	return output, resolvedDB, nil
+}
+
+ // handleInsights orchestrates the insights and report generation process.
+func handleInsights(ctx context.Context, dbName string, fields []string, limit int, scopeOverride string, format string, quiet bool, isReport bool) (string, string, error) {
+	config, err := manifest.GetEffectiveConfig()
+	if err != nil {
+		return "", "", fmt.Errorf("failed to load config: %w", err)
+	}
+
+	resolvedDB := dbName
+	if resolvedDB == "" {
+		resolvedDB = config.Global.DefaultDatabase
+	}
+
+	if resolvedDB == "" {
+		return "", "", fmt.Errorf("database is required for insights. Use --db flag.")
+	}
+
+	// Resolve database name to physical name
+	resolvedDB, err = registry.ResolveDatabase(resolvedDB)
+	if err != nil {
+		return "", "", err
+	}
+
+	if len(fields) == 0 {
+		return "", "", fmt.Errorf("--fields is required for insights/report mode")
+	}
+
+	if limit < 1 || limit > 1000 {
+		return "", "", fmt.Errorf("--limit must be between 1 and 1000")
+	}
+
+	repoRoot, err := git.FindGitRoot()
+	if err != nil {
+		return "", "", fmt.Errorf("failed to find git root: %w", err)
+	}
+
+	// Parse filters
+	filters, err := search.ParseFilters(ctx, queryFilters, resolvedDB)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to parse filters: %w", err)
+	}
+
+	logger.Debug("Executing insights analysis", "database", resolvedDB, "fields", fields, "limit", limit, "scope_override", scopeOverride, "globs", queryGlobs)
+	report, err := manifest.ExecuteInsightsAnalysis(ctx, resolvedDB, fields, limit, scopeOverride, repoRoot, config.ActiveProfile, filters, queryGlobs)
+	if err != nil {
+		return "", "", err
+	}
+
+	outputFormat := format
+	if outputFormat == "" {
+		if isReport {
+			outputFormat = "table"
+		} else {
+			outputFormat = "json"
+		}
+	}
+
+	var output string
+	if isReport {
+		output = manifest.FormatReport(report, outputFormat, quiet, config)
+	} else {
+		output = manifest.FormatInsightsReport(report, outputFormat, quiet, config)
+	}
+
+	// Append hint for simple extension patterns to the output
+	if outputFormat != "json" {
+		for _, pattern := range queryGlobs {
+			if isSimpleExtensionPattern(pattern) {
+				output += "\n\nHint: Pattern '" + pattern + "' matches files in the current directory only.\n"
+				output += "      Use '**/" + pattern + "' to match files in all subdirectories.\n"
+				break
+			}
+		}
+	}
+	
+	return output, resolvedDB, nil
+}
+
+// handleHierarchicalList resolves the database from defaults if not provided.
+func handleHierarchicalList(ctx context.Context, dbName string, fieldName string, format string, quiet bool, all bool) (string, string, error) {
+	config, err := manifest.GetEffectiveConfig()
+	if err != nil {
+		return "", "", fmt.Errorf("failed to load config: %w", err)
+	}
+
+	resolvedDB := dbName
+	if resolvedDB == "" {
+		resolvedDB = config.Global.DefaultDatabase
+	}
+
+	if resolvedDB != "" {
+		resolvedDB, err = registry.ResolveDatabase(resolvedDB)
+		if err != nil {
+			return "", "", err
+		}
+	}
+
+	resolvedField := fieldName
+	if resolvedField == "" {
+		resolvedField = config.Query.DefaultField
+	}
+
+	return handleQueryList(ctx, resolvedDB, resolvedField, format, quiet, config, all)
+}
+
+// handleQueryList performs the actual discovery call.
+// Renamed from handleList to avoid conflict with internal/cli/exec.go
+func handleQueryList(ctx context.Context, dbName string, fieldName string, format string, quiet bool, config *manifest.QueryConfig, all bool) (string, string, error) {
+	if dbName != "" {
+		var err error
+		dbName, err = registry.ResolveDatabase(dbName)
+		if err != nil {
+			return "", "", err
+		}
+	}
+
+	logger.Debug("Listing items", "database", dbName, "field", fieldName, "all", all)
+
+	result, err := manifest.GetListResult(ctx, dbName, fieldName, all)
+	if err != nil {
+		return "", "", err
+	}
+
+	output := manifest.FormatListResult(result, format, quiet, config)
+	return output, dbName, nil
+}
+
+// handleQueryOrStatus determines whether to show status or execute a query.
+func handleQueryOrStatus(ctx context.Context, dbName string, fieldName string, value string, format string, quiet bool, matchAll bool, selectFields []string, filters []search.FilterCondition) (string, string, error) {
+	config, err := manifest.GetEffectiveConfig()
+	if err != nil {
+		return "", "", fmt.Errorf("failed to load config: %w", err)
+	}
+
+	// If no value is provided, it displays the current workspace context.
+	if value == "" && len(filters) == 0 {
+		status := manifest.FormatStatusView(config, quiet)
+		return status, "", nil
+	}
+
+	resolvedDB := dbName
+	if resolvedDB == "" {
+		resolvedDB = config.Global.DefaultDatabase
+	}
+
+	if resolvedDB != "" {
+		resolvedDB, err = registry.ResolveDatabase(resolvedDB)
+		if err != nil {
+			return "", "", err
+		}
+	}
+
+	resolvedField := fieldName
+	if resolvedField == "" {
+		resolvedField = config.Query.DefaultField
+	}
+
+	resolvedFormat := format
+	if resolvedFormat == "" {
+		resolvedFormat = config.Query.DefaultFormat
+	}
+
+	if resolvedDB == "" {
+		return "", "", fmt.Errorf("database is required. Use --db flag.")
+	}
+	if resolvedField == "" && value != "" {
+		return "", "", fmt.Errorf("field is required. Use --field flag.")
+	}
+
+	// Get Repo Root for glob filtering
+	repoRoot, err := git.FindGitRoot()
+	if err != nil {
+		return "", "", fmt.Errorf("failed to find git root: %w", err)
+	}
+
+	logger.Debug("Executing query", "database", resolvedDB, "field", resolvedField, "value", value, "globs", queryGlobs)
+	results, err := manifest.ExecuteSimpleQuery(ctx, resolvedDB, resolvedField, value, matchAll, selectFields, filters, repoRoot, queryGlobs)
+	if err != nil {
+		return "", "", err
+	}
+
+	coverageReport, err := manifest.ExecuteCoverageAnalysis(ctx, resolvedDB, "", repoRoot, config.ActiveProfile, queryGlobs)
+	if err != nil {
+		logger.Warning("Failed to execute coverage analysis", "error", err)
+		coverageReport = &manifest.CoverageReport{
+			Percentages:    manifest.CoveragePercentages{FocusCoverage: 0},
+			AnalysisStatus: "Unknown",
+		}
+	}
+
+	response := &manifest.QueryResponse{
+		Query: manifest.SimpleQuery{
+			Database:   resolvedDB,
+			MatchField: resolvedField,
+			MatchValue: value,
+		},
+		Results: results,
+		Summary: manifest.QuerySummary{
+			TotalResults:    len(results),
+			CoveragePercent: coverageReport.Percentages.FocusCoverage,
+			Confidence:      coverageReport.AnalysisStatus,
+			Database:        resolvedDB,
+		},
+	}
+
+	output := manifest.FormatQueryResults(response, resolvedFormat, quiet, config)
+	
+	// Append hint for simple extension patterns to the output
+	if resolvedFormat != "json" {
+		for _, pattern := range queryGlobs {
+			if isSimpleExtensionPattern(pattern) {
+				output += "\n\nHint: Pattern '" + pattern + "' matches files in the current directory only.\n"
+				output += "      Use '**/" + pattern + "' to match files in all subdirectories.\n"
+				break
+			}
+		}
+	}
+	
+	return output, resolvedDB, nil
+}
+
+// isSimpleExtensionPattern checks if a glob pattern is a simple extension pattern
+// like "*.go" that only matches files in the current directory.
+func isSimpleExtensionPattern(pattern string) bool {
+	// Matches: *.go, *.js, *.md
+	// Does not match: **/*.go, internal/*.go, test_*.go
+	return strings.HasPrefix(pattern, "*.") &&
+		!strings.Contains(pattern, "/") &&
+		!strings.Contains(pattern, "\\") &&
+		len(pattern) > 2 // More than just "*."
+}
+
+// parseQueryExpression parses expressions like "field in (value1,value2)" or "field=value"
+// and populates the global queryField and queryValue variables.
+func parseQueryExpression(expr string) error {
+	// Try to parse "field in (values)" syntax
+	if strings.Contains(expr, " in (") {
+		parts := strings.SplitN(expr, " in (", 2)
+		if len(parts) != 2 {
+			return fmt.Errorf("invalid 'in' syntax, expected 'field in (value1,value2)'")
+		}
+		queryField = strings.TrimSpace(parts[0])
+		// Extract values from parentheses
+		valuesStr := strings.TrimSuffix(parts[1], ")")
+		queryValue = strings.TrimSpace(valuesStr)
+		return nil
+	}
+	
+	// Try to parse "field=value" syntax
+	if strings.Contains(expr, "=") {
+		parts := strings.SplitN(expr, "=", 2)
+		if len(parts) != 2 {
+			return fmt.Errorf("invalid '=' syntax, expected 'field=value'")
+		}
+		queryField = strings.TrimSpace(parts[0])
+		queryValue = strings.TrimSpace(parts[1])
+		return nil
+	}
+	
+	return fmt.Errorf("unsupported expression format. Use 'field in (values)' or 'field=value'")
+}
+
+// RegisterQueryCommand registers the query command with the root command.
+func RegisterQueryCommand(rootCmd *cobra.Command) {
+	rootCmd.AddCommand(queryCmd)
+}

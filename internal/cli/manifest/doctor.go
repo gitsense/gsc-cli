@@ -1,0 +1,98 @@
+/*
+ * Component: Doctor Command
+ * Block-UUID: 29887279-40a5-42b9-bd3e-568d7ba9bad7
+ * Parent-UUID: 1f783d29-a822-485a-8cff-6afa32f787dc
+ * Version: 1.3.0
+ * Description: CLI command for running health checks on the .gitsense environment and databases. Removed unused getter function. Refactored all logger calls to use structured Key-Value pairs instead of format strings. Updated to support professional CLI output: demoted progress Info logs to Debug, removed redundant Error logs, and set SilenceUsage to true.
+ * Language: Go
+ * Created-at: 2026-02-02T07:58:00.000Z
+ * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0)
+ */
+
+
+package manifest
+
+import (
+	"fmt"
+
+	"github.com/spf13/cobra"
+	"github.com/gitsense/gsc-cli/internal/manifest"
+	"github.com/gitsense/gsc-cli/pkg/logger"
+)
+
+var doctorFix bool
+var doctorVerbose bool
+
+// doctorCmd represents the doctor command
+var doctorCmd = &cobra.Command{
+	Use:   "doctor",
+	Short: "Run health checks on the .gitsense environment",
+	Long: `Run health checks on the .gitsense environment to diagnose issues with 
+the directory structure, registry file, and database connectivity.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		logger.Debug("Running health checks")
+
+		// Call the logic layer to run diagnostics
+		report, err := manifest.RunDoctor(cmd.Context(), doctorFix)
+		if err != nil {
+			// Error is returned to Cobra, which will print it cleanly via root.HandleExit
+			return err
+		}
+
+		// Format and output the results
+		printDoctorReport(report, doctorVerbose)
+
+		if !report.IsHealthy {
+			// Return an error code if issues were found
+			return fmt.Errorf("health checks failed")
+		}
+
+		return nil
+	},
+	SilenceUsage: true, // Silence usage output on logic errors
+}
+
+func init() {
+	// Add flags
+	doctorCmd.Flags().BoolVar(&doctorFix, "fix", false, "Attempt to automatically fix issues (experimental)")
+	doctorCmd.Flags().BoolVarP(&doctorVerbose, "verbose", "v", false, "Show detailed output for all checks")
+}
+
+// printDoctorReport formats and prints the doctor report
+func printDoctorReport(report *manifest.DoctorReport, verbose bool) {
+	if report.IsHealthy {
+		logger.Success("All health checks passed.")
+	} else {
+		logger.Error("Health checks failed. See details below.")
+	}
+
+	fmt.Println()
+
+	// Print individual checks
+	for _, check := range report.Checks {
+		// In non-verbose mode, only show warnings and errors
+		if !verbose && check.Status == "ok" {
+			continue
+		}
+
+		var statusIcon string
+		var statusColor string
+
+		switch check.Status {
+		case "ok":
+			statusIcon = "✓"
+			statusColor = "\033[32m" // Green
+		case "warning":
+			statusIcon = "⚠"
+			statusColor = "\033[33m" // Yellow
+		case "error":
+			statusIcon = "✗"
+			statusColor = "\033[31m" // Red
+		default:
+			statusIcon = "?"
+			statusColor = "\033[0m" // Reset
+		}
+
+		fmt.Printf("%s%s %s\033[0m %s\n", statusColor, statusIcon, check.Name, check.Message)
+	}
+}

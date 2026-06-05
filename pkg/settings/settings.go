@@ -1,0 +1,374 @@
+/**
+ * Component: Settings and Configuration Manager
+ * Block-UUID: a1cd89d6-6054-42f8-a495-d1a17ede02d7
+ * Parent-UUID: c10ec227-8f31-4d69-a11d-ea7d6f74df11
+ * Version: 3.29.0
+ * Description: Added ShadowReposRelPath constant to define the location of shadow repositories within the data directory structure.
+ * Language: Go
+ * Created-at: 2026-05-22T15:21:42.971Z
+ * Authors: ..., claude-haiku-4-5-20251001 (v3.20.0), claude-haiku-4-5-20251001 (v3.21.0), GLM-4.7 (v3.22.0), GLM-4.7 (v3.23.0), GLM-4.7 (v3.24.0), GLM-4.7 (v3.25.0), Gemini 3 Flash (v3.26.0), GLM-4.7 (v3.27.0), GLM-4.7 (v3.27.1), GLM-4.7 (v3.28.0), GLM-4.7 (v3.29.0)
+ */
+
+
+package settings
+
+import (
+	"embed"
+	"encoding/json"
+	"fmt"
+	"os"
+	"path"
+	"path/filepath"
+	"runtime"
+	"time"
+
+	"github.com/gitsense/gsc-cli/pkg/logger"
+)
+
+//go:embed templates/*
+var TemplateFS embed.FS // Exported for use in other packages
+
+// DefaultGitSenseDir is the default name of the directory where GitSense Chat stores its data
+const DefaultGitSenseDir = ".gitsense"
+
+// GitSenseDir is the name of the directory where GitSense Chat stores its data
+var GitSenseDir = DefaultGitSenseDir
+
+// DockerRootPrefix is the unique root path used in Docker environments to signal 
+// that paths require translation when accessed from a host machine.
+const DockerRootPrefix = "/gsc-docker-app"
+
+// DockerContextFileName is the hidden file used to track the active Docker proxy context.
+const DockerContextFileName = ".gsc-docker-context.json"
+
+// Docker Defaults
+const DefaultContainerName = "gitsense-chat"
+const DefaultImageName = "gitsense/chat"
+const DefaultAppPort = "3357"
+
+// DockerDataDirRelPath is the relative path within GSC_HOME for Docker-specific persistent data.
+// The 'docker/' prefix ensures isolation from native 'app/' installations.
+const DockerDataDirRelPath = "docker/data"
+
+// DockerReposDirRelPath is the relative path within GSC_HOME for the default Docker repository sandbox.
+// This sibling directory to 'data' ensures consistent path translation and isolation.
+const DockerReposDirRelPath = "docker/repos"
+
+// Native App Defaults
+// AppDataDirRelPath is the relative path within GSC_HOME for native app persistent data.
+const AppDataDirRelPath = "app/data"
+
+// ShadowReposRelPath is the relative path within GSC_HOME for shadow repositories.
+// Shadow repos are volatile, cache-like artifacts that can be regenerated.
+const ShadowReposRelPath = "data/shadow-repos"
+
+// App Lifecycle Management Constants
+const AppPIDFileName = "gsc.pid"
+const AppMaxRetries = 5
+const AppRetryWindow = 60 * time.Second
+const AppLogMaxSize = 10 * 1024 * 1024 // 10MB
+const AppLogMaxBackups = 3
+
+const RegistryFileName = "manifest.json"
+const DefaultDBExtension = ".db"
+const ManifestJSONExtension = ".json"
+const BackupsDir = "backups"
+const TempDBSuffix = ".db.tmp"
+const MaxBackups = 5
+const DefaultMaxBridgeSize = 1048576
+const BridgeCodeLength = 6
+const RealModelNotes = "GitSense Notes"
+const BridgeHandshakeDir = "data/codes"
+const ManifestStorageDir = "data/storage/manifests"
+const ChatDatabaseRelPath = "data/chats.sqlite3"
+const ExecOutputsRelPath = "data/exec/outputs"
+const ContractsRelPath = "data/contracts"
+
+// HomesRelPath is the relative path within GSC_HOME for contract homes
+const HomesRelPath = "data/homes"
+
+// ReviewStagingRelPath is the relative path within GSC_HOME for temporary review files
+const ReviewStagingRelPath = "data/review"
+
+const ProvenanceFileName = "provenance.log"
+const ContractHandshakeConsumer = "gsc-contract"
+const DefaultContractTTL = 168
+const DefaultExecTimeout = 60
+
+// Auth Code Defaults
+const AuthCodesRelPath = "data/auth"
+const DefaultAuthCodeTTL = 5
+const AuthCodeLength = 6
+const PermissionManifestPublish = "manifest:publish"
+
+// Default Terminal Constants
+// These represent the most commonly available terminals for each platform.
+const DefaultTerminalDarwin  = "terminal.app"
+const DefaultTerminalLinux   = "gnome-terminal"
+const DefaultTerminalWindows = "wt"
+
+// Claude Code Integration Constants
+const ClaudeCodeDirRelPath = "data/claude-code"
+const ClaudeTemplatesPath = "cli/templates/claude/chat"
+const ClaudeMetricsDBName = "claude.sqlite3"
+const ClaudeChatsDirRelPath = "chats"
+const DefaultClaudeChunkSize = 5
+const DefaultClaudeMaxFiles = 5
+const DefaultClaudeModel = "haiku"
+const ClaudeSettingsFileName = "settings.json"
+const ClaudeContextsDirRelPath = "contexts"
+const ClaudeContextsMapFileName = "contexts.map"
+
+// Session Feature Constants
+const SessionsDirRelPath = "data/claude-code/sessions"
+const SessionStatusFileName = "status.json"
+const SessionIntentFileName = "intent.md"
+const SessionReferenceDirName = "references"
+
+// Sort Modes for the 'merged' dump type
+const SortRecency = "recency"
+const SortPopularity = "popularity"
+const SortChronological = "chronological"
+
+// DefaultMaxSendSize is the default size limit (in bytes) for the 'gsc app ws send' command
+// before a warning is triggered. Default is 500KB.
+const DefaultMaxSendSize = 500 * 1024
+
+// DefaultSafeSet is the list of commands allowed by default when no whitelist is specified.
+var DefaultSafeSet = []string{
+	// Discovery
+	"gsc", "cat", "ls", "find", "tree", "stat", "du", "wc",
+	// Search
+	"grep", "rg", "awk", "sed",
+	// Sampling
+	"head", "tail",
+	// Version Control
+	"git",
+	// Build & Runtime
+	"npm", "make", "go", "cargo", "python", "pip", "mvn", "gradle",
+	// Network
+	"curl", "wget",
+	// System Context
+	"cd", "pwd", "date", "whoami", "env", "echo",
+	// File Manipulation
+	"mkdir", "touch", "cp", "mv",
+	// Launchers & Editors
+	"open", "osascript", "zed", "code", "vim", "vi",
+}
+
+// DefaultEditorTemplates maps editor aliases to their command templates.
+// This is populated by LoadTemplates() at runtime.
+var DefaultEditorTemplates = make(map[string]string)
+
+// DefaultTerminalTemplates maps terminal aliases to their command templates.
+// This is populated by LoadTemplates() at runtime.
+var DefaultTerminalTemplates = make(map[string]string)
+
+// TemplateConfig represents the structure of the commands.<os>.json file
+type TemplateConfig struct {
+	Editors   map[string]string `json:"editors"`
+	Terminals map[string]string `json:"terminals"`
+}
+
+func init() {
+	// Load templates from embedded files or local JSON files on package initialization
+	if err := LoadTemplates(); err != nil {
+		logger.Warning("Failed to load templates from configuration, falling back to internal defaults", "error", err)
+		// Fallback to hardcoded defaults if loading fails
+		loadHardcodedDefaults()
+	}
+}
+
+// LoadTemplates initializes the editor and terminal templates.
+// It recursively bootstraps the templates directory from the embedded filesystem.
+func LoadTemplates() error {
+	gscHome, err := GetGSCHome(false)
+	if err != nil {
+		return fmt.Errorf("failed to resolve GSC_HOME: %w", err)
+	}
+
+	localTemplatesDir := filepath.Join(gscHome, "cli", "templates")
+
+	// 1. Recursively bootstrap the entire templates directory
+	// This ensures help/, shells/, and commands/ subdirectories are created and populated.
+	if err := bootstrapTemplatesRecursive("templates", localTemplatesDir); err != nil {
+		return fmt.Errorf("failed to bootstrap templates: %w", err)
+	}
+
+	// 2. Load the OS-specific JSON configuration from the 'commands' subdirectory
+	osName := runtime.GOOS
+	// New path: templates/commands/<os>.json
+	jsonFileName := fmt.Sprintf("%s.json", osName)
+	localJsonPath := filepath.Join(localTemplatesDir, "commands", jsonFileName)
+
+	data, err := os.ReadFile(localJsonPath)
+	if err != nil {
+		return fmt.Errorf("failed to read local command template file %s: %w", localJsonPath)
+	}
+
+	var config TemplateConfig
+	if err := json.Unmarshal(data, &config); err != nil {
+		return fmt.Errorf("failed to parse local command template file: %w", err)
+	}
+
+	// 3. Populate global maps
+	if config.Editors != nil {
+		DefaultEditorTemplates = config.Editors
+	}
+	if config.Terminals != nil {
+		DefaultTerminalTemplates = config.Terminals
+	}
+
+	return nil
+}
+
+// bootstrapTemplatesRecursive walks the embedded filesystem and copies missing files to the local path.
+func bootstrapTemplatesRecursive(srcDir, destDir string) error {
+	entries, err := TemplateFS.ReadDir(srcDir)
+	if err != nil {
+		return err
+	}
+
+	// Ensure local directory exists
+	if err := os.MkdirAll(destDir, 0755); err != nil {
+		return err
+	}
+
+	for _, entry := range entries {
+		srcPath := path.Join(srcDir, entry.Name())
+		destPath := filepath.Join(destDir, entry.Name())
+
+		if entry.IsDir() {
+			// Recurse into subdirectory
+			if err := bootstrapTemplatesRecursive(srcPath, destPath); err != nil {
+				return err
+			}
+		} else {
+			// Copy file if it doesn't exist locally
+			if _, err := os.Stat(destPath); os.IsNotExist(err) {
+				logger.Info("Bootstrapping template file", "file", entry.Name(), "path", destPath)
+				if err := copyEmbeddedFile(srcPath, destPath); err != nil {
+					logger.Warning("Failed to bootstrap template file", "file", entry.Name(), "error", err)
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// copyEmbeddedFile reads a file from the embedded filesystem and writes it to the local path.
+func copyEmbeddedFile(embedPath, localPath string) error {
+	data, err := TemplateFS.ReadFile(embedPath)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(localPath, data, 0644)
+}
+
+// loadHardcodedDefaults sets the global maps to safe fallback values if JSON loading fails.
+func loadHardcodedDefaults() {
+	logger.Info("Loading hardcoded default templates")
+
+	// Common defaults that work across platforms
+	DefaultEditorTemplates = map[string]string{
+		"vim":  "vim %s",
+		"nano": "nano %s",
+		"code": "code %s", // VS Code
+	}
+
+	DefaultTerminalTemplates = map[string]string{
+		"bash": "bash -c 'cd %s && exec bash'",
+	}
+}
+
+// GetGSCHome resolves the GSC_HOME directory.
+// If create is true, the directory will be created if it doesn't exist.
+func GetGSCHome(required bool) (string, error) {
+	logger.Debug("GetGSCHome called", "required", required)
+	gscHome := os.Getenv("GSC_HOME")
+	logger.Debug("GSC_HOME env var check", "value", gscHome)
+
+	if gscHome != "" {
+		logger.Debug("Returning GSC_HOME from env", "path", gscHome)
+		return gscHome, nil
+	}
+
+	if required {
+		logger.Debug("GSC_HOME required but not set, returning error")
+		return "", fmt.Errorf("GSC_HOME environment variable is not set")
+	}
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve user home directory: %w", err)
+	}
+
+	fallbackPath := filepath.Join(homeDir, DefaultGitSenseDir)
+	logger.Debug("Returning fallback path", "path", fallbackPath)
+	return fallbackPath, nil
+}
+
+// GetChatDatabasePath returns the absolute path to the GitSense Chat database.
+func GetChatDatabasePath(gscHome string) string {
+	return filepath.Join(gscHome, ChatDatabaseRelPath)
+}
+
+// GetManifestStoragePath returns the absolute path to the manifest storage directory.
+func GetManifestStoragePath(gscHome string) string {
+	return filepath.Join(gscHome, ManifestStorageDir)
+}
+
+// GetExecOutputsDir returns the absolute path to the exec outputs directory.
+func GetExecOutputsDir() (string, error) {
+	gscHome, err := GetGSCHome(false)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve GSC_HOME for exec outputs: %w", err)
+	}
+	return filepath.Join(gscHome, ExecOutputsRelPath), nil
+}
+
+// GetReviewStagingDir returns the absolute path to the review staging directory.
+func GetReviewStagingDir() (string, error) {
+	gscHome, err := GetGSCHome(false)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve GSC_HOME for review staging: %w", err)
+	}
+	return filepath.Join(gscHome, ReviewStagingRelPath), nil
+}
+
+// GetSessionDir returns the absolute path to a specific intent workflow session directory.
+func GetSessionDir(sessionID string) (string, error) {
+	gscHome, err := GetGSCHome(false)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve GSC_HOME for session: %w", err)
+	}
+	return filepath.Join(gscHome, SessionsDirRelPath, sessionID), nil
+}
+
+// GetSessionLogPath returns the absolute path to an intent workflow session's status file.
+func GetSessionLogPath(sessionID string) (string, error) {
+	sessionDir, err := GetSessionDir(sessionID)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(sessionDir, SessionStatusFileName), nil
+}
+
+// GetSessionTurnDir returns the absolute path to a specific turn directory within an intent workflow session.
+func GetSessionTurnDir(sessionID string, turnNum int) (string, error) {
+	sessionDir, err := GetSessionDir(sessionID)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(sessionDir, fmt.Sprintf("turn-%d", turnNum)), nil
+}
+
+// GetSessionReferencesDir returns the absolute path to the references directory for an intent workflow session.
+func GetSessionReferencesDir(sessionID string) (string, error) {
+	turnDir, err := GetSessionTurnDir(sessionID, 1)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(turnDir, SessionReferenceDirName), nil
+}

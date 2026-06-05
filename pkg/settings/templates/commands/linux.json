@@ -1,0 +1,37 @@
+{
+  "_gsc_meta": {
+    "component": "Terminal and Editor Launch Templates",
+    "block_uuid": "a8b2c3d4-5e6f-7890-abcd-ef1234567890",
+    "parent_uuid": "7f740194-5486-43a2-98dd-08b803e48ec5",
+    "version": "1.4.0",
+    "description": "Updated workspace terminal commands to invoke 'gsc app ws <hash>' instead of manually spawning a shell with an init script.",
+    "language": "json",
+    "created_at": "2026-03-06T14:33:00.000Z",
+    "authors": "GLM-4.7 (v1.0.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0)"
+  },
+  "editors": {
+    "zed": "zed %s",
+    "vscode": "code %s",
+    "cursor": "cursor %s",
+    "vim": "vim %s",
+    "nvim": "nvim %s",
+    "nano": "nano %s",
+    "subl": "subl %s",
+    "gedit": "gedit %s",
+    "kate": "kate %s"
+  },
+  "terminals": {
+    "gnome-terminal": "gnome-terminal --working-directory=\"%s\"",
+    "konsole": "konsole --workdir \"%s\"",
+    "xfce4-terminal": "xfce4-terminal --working-directory=\"%s\"",
+    "alacritty": "alacritty --working-directory=\"%s\"",
+    "kitty": "kitty --directory \"%s\"",
+    "xterm": "xterm -e 'cd \"%s\" && bash'",
+    "gnome-terminal-ws": "gnome-terminal --working-directory=\"%s\" -- gsc app ws %s",
+    "konsole-ws": "konsole --workdir \"%s\" -e gsc app ws %s",
+    "xfce4-terminal-ws": "xfce4-terminal --working-directory=\"%s\" -e gsc app ws %s",
+    "alacritty-ws": "alacritty --working-directory=\"%s\" -e gsc app ws %s",
+    "kitty-ws": "kitty --directory \"%s\" gsc app ws %s",
+    "xterm-ws": "xterm -e 'cd \"%s\" && gsc app ws %s'"
+  }
+}

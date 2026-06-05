@@ -1,0 +1,447 @@
+/**
+ * Component: Workspace Root Command
+ * Block-UUID: 9b5d4e7f-3a2c-4d5e-8f9a-1b2c3d4e5f6a
+ * Parent-UUID: 8af4c3a1-234c-444b-a20f-f6f2a59059ed
+ * Version: 1.19.0
+ * Description: Updated template paths from data/templates to cli/templates to separate CLI-specific data from app-specific data.
+ * Language: Go
+ * Created-at: 2026-03-30T02:13:07.015Z
+ * Authors: GLM-4.7 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.18.1), GLM-4.7 (v1.19.0)
+ */
+
+
+package ws
+
+import (
+	typescontract "github.com/gitsense/gsc-cli/internal/types/contract"
+	"encoding/json"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strconv"
+	"strings"
+	"syscall"
+
+	"github.com/gitsense/gsc-cli/internal/contract"
+	"github.com/gitsense/gsc-cli/internal/manifest"
+	"github.com/gitsense/gsc-cli/pkg/settings"
+	"github.com/gitsense/gsc-cli/pkg/logger"
+	"github.com/spf13/cobra"
+)
+
+var (
+	wsID    string
+	wsShell bool
+	verbose int
+)
+
+// wsCmd represents the base command for workspace management
+var wsCmd = &cobra.Command{
+	Use:   "ws [workspace-id]",
+	Short: "Workspace management and entry",
+	Long: `The 'ws' command provides tools for interacting with shadow workspaces.
+It supports a "Shortcut" mode for quick entry and subcommands for specific actions.`,
+	// If no subcommand is provided, run the 'enter' logic (Shortcut Mode)
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) > 0 {
+			// Shortcut Mode: gsc app ws <workspace-id>
+			// Implies --shell is true
+			err := handleWorkspaceEntry(args[0], true, "")
+			if err != nil {
+				cmd.SilenceUsage = true
+			}
+			return err
+		}
+		return cmd.Help()
+	},
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		// Initialize logger based on verbose flag
+		// We must do this here because this PreRun overrides the parent's
+		if verbose >= 2 {
+			logger.SetLogLevel(logger.LevelDebug)
+		} else if verbose == 1 {
+			logger.SetLogLevel(logger.LevelInfo)
+		} else {
+			logger.SetLogLevel(logger.LevelError)
+		}
+
+		// Enforce GSC_HOME requirement
+		if _, err := settings.GetGSCHome(false); err != nil {
+			cmd.SilenceUsage = true
+			return err
+		}
+		return nil
+	},
+}
+
+// RegisterCommand adds the ws command and its subcommands to the root command
+func RegisterCommand(root *cobra.Command) {
+	wsCmd.PersistentFlags().StringVar(&wsID, "id", "", "Workspace hash-position context")
+	wsCmd.PersistentFlags().BoolVar(&wsShell, "shell", false, "Keep shell open after action")
+	wsCmd.PersistentFlags().CountVarP(&verbose, "verbose", "c", "Increase verbosity")
+
+	wsCmd.AddCommand(sendCmd)
+	wsCmd.AddCommand(ffpCmd)
+	wsCmd.AddCommand(mapCmd)
+	root.AddCommand(wsCmd)
+}
+
+// handleWorkspaceEntry resolves the workspace and spawns a shell
+func handleWorkspaceEntry(input string, keepShell bool, action string) error {
+	// 1. Parse Input
+	if strings.HasPrefix(input, "home-") {
+		prefix := strings.TrimPrefix(input, "home-")
+		return handleContractHomeEntry(prefix, keepShell)
+	}
+
+	parts := strings.Split(input, "-")
+	workspaceID := parts[0] // This is the Composite Hash (Workspace ID)
+	position := -1
+
+	if len(parts) > 1 {
+		pos, err := strconv.Atoi(parts[1])
+		if err != nil {
+			return fmt.Errorf("invalid position format: %s", parts[1])
+		}
+		position = pos
+	}
+
+	// 2. Locate Workspace via Registry
+	// We scan contract JSON files to find which contract owns this workspace ID
+	meta, _, err := findWorkspaceByID(workspaceID)
+	if err != nil {
+		return err
+	}
+
+	// 3. Resolve Target Directory
+	gscHome, _ := settings.GetGSCHome(false)
+	homesRoot := filepath.Join(gscHome, settings.HomesRelPath)
+	
+	// Construct path directly: homes/<contract-uuid>/mapped/<workspace-id>
+	workspaceRoot := filepath.Join(homesRoot, meta.UUID, "mapped", workspaceID)
+	
+	targetDir := workspaceRoot
+	if position >= 0 {
+		manifestPath := filepath.Join(workspaceRoot, "workspace.json")
+		data, err := os.ReadFile(manifestPath)
+		if err != nil {
+			return fmt.Errorf("failed to read workspace manifest: %w", err)
+		}
+
+		var ws contract.ShadowWorkspace
+		if err := json.Unmarshal(data, &ws); err != nil {
+			return fmt.Errorf("corrupted workspace manifest: %w", err)
+		}
+
+		for _, f := range ws.Files {
+			if f.Position == position {
+				if f.Status == contract.MappedStatusMapped {
+					targetDir = filepath.Join(workspaceRoot, "mapped", f.Path)
+				} else if f.Path != "" {
+					targetDir = filepath.Join(workspaceRoot, "unmapped", "components", f.Path)
+				} else {
+					targetDir = filepath.Join(workspaceRoot, "unmapped", "snippets")
+				}
+				break
+			}
+		}
+	}
+
+	// 4. Execute Shell
+	if keepShell {
+		return executeShell(workspaceRoot, targetDir, meta)
+	}
+
+	return nil
+}
+
+// findWorkspaceByID scans the contract registry (JSON files) to find the workspace.
+// This implements the "Registry-First" strategy.
+func findWorkspaceByID(workspaceID string) (*contract.ContractMetadata, contract.WorkspaceEntry, error) {
+	contractDir, err := manifest.ResolveGlobalContractDir()
+	if err != nil {
+		return nil, contract.WorkspaceEntry{}, fmt.Errorf("failed to resolve contract directory: %w", err)
+	}
+	logger.Debug("Scanning for workspace", "workspace_id", workspaceID, "contract_dir", contractDir)
+
+	files, err := filepath.Glob(filepath.Join(contractDir, "*.json"))
+	if err != nil {
+		return nil, contract.WorkspaceEntry{}, fmt.Errorf("failed to scan contracts directory: %w", err)
+	}
+	logger.Debug("Found contract files", "count", len(files))
+
+	for _, file := range files {
+		// Extract UUID from filename
+		uuid := filepath.Base(file)
+		uuid = strings.TrimSuffix(uuid, ".json")
+		logger.Debug("Checking contract", "uuid", uuid)
+
+		meta, err := contract.GetContract(uuid)
+		if err != nil {
+			// Skip corrupt/unreadable contracts
+			logger.Debug("Failed to load contract", "uuid", uuid, "error", err)
+			continue
+		}
+
+		// Check Workspaces map
+		if meta.Workspaces != nil {
+			logger.Debug("Contract workspaces", "uuid", uuid, "count", len(meta.Workspaces))
+			if entry, exists := meta.Workspaces[workspaceID]; exists {
+				logger.Info("Workspace found", "workspace_id", workspaceID, "contract_uuid", uuid)
+				return meta, entry, nil
+			}
+		} else {
+			logger.Debug("Contract has no workspaces map", "uuid", uuid)
+		}
+	}
+
+	return nil, contract.WorkspaceEntry{}, fmt.Errorf("workspace '%s' not found in any active contract", workspaceID)
+}
+
+// handleContractHomeEntry resolves a contract by UUID prefix and spawns a shell in its home directory.
+func handleContractHomeEntry(prefix string, keepShell bool) error {
+	// 1. Locate Contract via Prefix
+	meta, err := findContractByPrefix(prefix)
+	if err != nil {
+		return err
+	}
+
+	// 2. Resolve Target Directory (Contract Home)
+	homeDir := contract.GetDefaultHomeDir(meta.UUID, "")
+
+	// 3. Execute Shell
+	if keepShell {
+		return executeContractHomeShell(homeDir, meta)
+	}
+
+	return nil
+}
+
+// findContractByPrefix scans active contracts to find one matching the UUID prefix.
+func findContractByPrefix(prefix string) (*contract.ContractMetadata, error) {
+	contracts, err := contract.ListContracts()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list contracts: %w", err)
+	}
+
+	var matches []*contract.ContractMetadata
+	for _, c := range contracts {
+		// Only consider active contracts
+		if c.Status != typescontract.ContractActive {
+			continue
+		}
+		if strings.HasPrefix(c.UUID, prefix) {
+			matches = append(matches, &c)
+		}
+	}
+
+	if len(matches) == 0 {
+		return nil, fmt.Errorf("no active contract found with UUID prefix '%s'", prefix)
+	}
+
+	if len(matches) > 1 {
+		return nil, fmt.Errorf("multiple active contracts match UUID prefix '%s'. Please be more specific.", prefix)
+	}
+
+	return matches[0], nil
+}
+
+// executeContractHomeShell spawns a sub-shell in the contract home directory.
+// This is a specialized version of executeShell that does not rely on workspace.json.
+func executeContractHomeShell(homeDir string, meta *contract.ContractMetadata) error {
+	shell := os.Getenv("SHELL")
+	if shell == "" {
+		if runtime.GOOS == "windows" {
+			shell = "powershell"
+		} else {
+			shell = "/bin/bash"
+		}
+	}
+
+	// 1. Prepare Template Replacements
+	// In the contract home, the mapped root is the home dir itself.
+	replacements := map[string]string{
+		"{{GSC_CHAT_ID}}":       fmt.Sprintf("%d", meta.ChatID),
+		"{{GSC_PROJECT_ROOT}}": func() string {
+			if len(meta.Workdirs) > 0 {
+				return meta.Workdirs[0].Path
+			}
+			return ""
+		}(),
+		"{{GSC_CONTRACT_UUID}}":       meta.UUID,
+		"{{GSC_CONTRACT_MAPPED_ROOT}}": homeDir,
+		"{{GSC_SCRIPTS_DIR}}":         homeDir,
+		"{{TARGET_DIR}}":              homeDir,
+	}
+
+	// 2. Process Shell Template
+	shellName := filepath.Base(shell)
+	ext := "sh"
+	if strings.HasSuffix(shellName, "zsh") {
+		ext = "zsh"
+	} else if strings.HasSuffix(shellName, "powershell") || strings.HasSuffix(shellName, "pwsh") {
+		ext = "ps1"
+	}
+
+	gscHome, _ := settings.GetGSCHome(false)
+	templatePath := filepath.Join(gscHome, "cli", "templates", "shells", "ws", runtime.GOOS, "init."+ext)
+	templateContent, err := os.ReadFile(templatePath)
+	if err != nil {
+		return fmt.Errorf("failed to read shell init template: %w", err)
+	}
+
+	processedContent := string(templateContent)
+	for key, val := range replacements {
+		processedContent = strings.ReplaceAll(processedContent, key, val)
+	}
+
+	// 3. Write Init Script and Prepare Execution
+	fmt.Printf("Entering contract home: %s\n", meta.UUID)
+	fmt.Printf("Location: %s\n", homeDir)
+	fmt.Println("Type 'exit' to return to your project.")
+
+	var args []string
+	var env []string = os.Environ()
+
+	if ext == "ps1" {
+		// Windows/PowerShell Strategy
+		initScript := filepath.Join(homeDir, ".gsc-init.ps1")
+		if err := os.WriteFile(initScript, []byte(processedContent), 0755); err != nil {
+			return fmt.Errorf("failed to write .gsc-init.ps1: %w", err)
+		}
+		args = []string{shell, "-NoExit", "-Command", fmt.Sprintf(". \"%s\"", initScript)}
+		cmd := exec.Command(args[0], args[1:]...)
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		return cmd.Run()
+	} else if ext == "zsh" {
+		// Zsh Strategy: Use ZDOTDIR to point to our generated .zshrc
+		zshrcPath := filepath.Join(homeDir, ".zshrc")
+		if err := os.WriteFile(zshrcPath, []byte(processedContent), 0644); err != nil {
+			return fmt.Errorf("failed to write workspace .zshrc: %w", err)
+		}
+		env = append(env, fmt.Sprintf("ZDOTDIR=%s", homeDir))
+		args = []string{shell}
+	} else {
+		// Bash Strategy: Use --rcfile
+		initScript := filepath.Join(homeDir, ".gsc-init.sh")
+		if err := os.WriteFile(initScript, []byte(processedContent), 0755); err != nil {
+			return fmt.Errorf("failed to write .gsc-init.sh: %w", err)
+		}
+		args = []string{shell, "--rcfile", initScript}
+	}
+
+	binary, err := exec.LookPath(shell)
+	if err != nil {
+		return fmt.Errorf("shell not found: %w", err)
+	}
+
+	return syscall.Exec(binary, args, env)
+}
+
+// executeShell spawns a sub-shell in the target directory
+func executeShell(workspaceRoot, targetDir string, meta *contract.ContractMetadata) error {
+	shell := os.Getenv("SHELL")
+	if shell == "" {
+		if runtime.GOOS == "windows" {
+			shell = "powershell"
+		} else {
+			shell = "/bin/bash"
+		}
+	}
+
+	// 1. Load Workspace Metadata
+	manifestPath := filepath.Join(workspaceRoot, "workspace.json")
+	manifestData, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return fmt.Errorf("failed to read workspace manifest: %w", err)
+	}
+	var ws contract.ShadowWorkspace
+	if err := json.Unmarshal(manifestData, &ws); err != nil {
+		return fmt.Errorf("corrupted workspace manifest: %w", err)
+	}
+
+	// 2. Prepare Template Replacements
+	mappedDir := filepath.Dir(workspaceRoot)
+	replacements := map[string]string{
+		"{{GSC_CHAT_ID}}":       fmt.Sprintf("%d", meta.ChatID),
+		"{{GSC_PROJECT_ROOT}}": func() string {
+			if len(meta.Workdirs) > 0 {
+				return meta.Workdirs[0].Path
+			}
+			return ""
+		}(),
+		"{{GSC_CONTRACT_UUID}}":       meta.UUID,
+		"{{GSC_CONTRACT_MAPPED_ROOT}}": mappedDir,
+		"{{GSC_SCRIPTS_DIR}}":         mappedDir,
+		"{{TARGET_DIR}}":              targetDir,
+	}
+
+	// 3. Process Shell Template
+	shellName := filepath.Base(shell)
+	ext := "sh"
+	if strings.HasSuffix(shellName, "zsh") {
+		ext = "zsh"
+	} else if strings.HasSuffix(shellName, "powershell") || strings.HasSuffix(shellName, "pwsh") {
+		ext = "ps1"
+	}
+
+	gscHome, _ := settings.GetGSCHome(false)
+	templatePath := filepath.Join(gscHome, "cli", "templates", "shells", "ws", runtime.GOOS, "init."+ext)
+	templateContent, err := os.ReadFile(templatePath)
+	if err != nil {
+		return fmt.Errorf("failed to read shell init template: %w", err)
+	}
+
+	processedContent := string(templateContent)
+	for key, val := range replacements {
+		processedContent = strings.ReplaceAll(processedContent, key, val)
+	}
+
+	// 5. Write Init Script and Prepare Execution
+	fmt.Printf("Entering workspace: %s\n", filepath.Base(workspaceRoot))
+	fmt.Printf("Location: %s\n", targetDir)
+	fmt.Println("Type 'exit' to return to your project.")
+
+	var args []string
+	var env []string = os.Environ()
+
+	if ext == "ps1" {
+		// Windows/PowerShell Strategy
+		initScript := filepath.Join(mappedDir, ".gsc-init.ps1")
+		if err := os.WriteFile(initScript, []byte(processedContent), 0755); err != nil {
+			return fmt.Errorf("failed to write .gsc-init.ps1: %w", err)
+		}
+		args = []string{shell, "-NoExit", "-Command", fmt.Sprintf(". \"%s\"", initScript)}
+		cmd := exec.Command(args[0], args[1:]...)
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		return cmd.Run()
+	} else if ext == "zsh" {
+		// Zsh Strategy: Use ZDOTDIR to point to our generated .zshrc
+		zshrcPath := filepath.Join(mappedDir, ".zshrc")
+		if err := os.WriteFile(zshrcPath, []byte(processedContent), 0644); err != nil {
+			return fmt.Errorf("failed to write workspace .zshrc: %w", err)
+		}
+		env = append(env, fmt.Sprintf("ZDOTDIR=%s", mappedDir))
+		args = []string{shell}
+	} else {
+		// Bash Strategy: Use --rcfile
+		initScript := filepath.Join(mappedDir, ".gsc-init.sh")
+		if err := os.WriteFile(initScript, []byte(processedContent), 0755); err != nil {
+			return fmt.Errorf("failed to write .gsc-init.sh: %w", err)
+		}
+		args = []string{shell, "--rcfile", initScript}
+	}
+
+	binary, err := exec.LookPath(shell)
+	if err != nil {
+		return fmt.Errorf("shell not found: %w", err)
+	}
+
+	return syscall.Exec(binary, args, env)
+}

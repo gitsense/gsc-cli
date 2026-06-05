@@ -1,0 +1,177 @@
+/**
+ * Component: Claude Code Chat Metrics Database
+ * Block-UUID: 9222f7a0-bec7-4c4b-ac67-04b9cd6c9812
+ * Parent-UUID: 50d6d90e-97cb-4dc3-83c0-001258e34a04
+ * Version: 1.1.2
+ * Description: Re-added import of parent claude package for Usage type. Usage is a shared type defined in internal/claude/models.go.
+ * Language: Go
+ * Created-at: 2026-03-24T15:54:35.067Z
+ * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.1.1), GLM-4.7 (v1.1.2)
+ */
+
+
+package chat
+
+import (
+	"database/sql"
+	"fmt"
+	"os"
+	"path/filepath"
+	"time"
+
+	_ "modernc.org/sqlite" // Pure Go SQLite driver
+
+	"github.com/gitsense/gsc-cli/internal/claude"
+	"github.com/gitsense/gsc-cli/pkg/logger"
+	"github.com/gitsense/gsc-cli/pkg/settings"
+)
+
+// OpenMetricsDB opens or creates the Claude Code metrics database.
+func OpenMetricsDB() (*sql.DB, error) {
+	gscHome, err := settings.GetGSCHome(false)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve GSC_HOME: %w", err)
+	}
+
+	dbPath := filepath.Join(gscHome, settings.ClaudeCodeDirRelPath, settings.ClaudeMetricsDBName)
+	
+	// Ensure directory exists
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
+		return nil, fmt.Errorf("failed to create metrics directory: %w", err)
+	}
+
+	// Connection string with optimizations
+	connStr := fmt.Sprintf("%s?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_timeout=5000", dbPath)
+	db, err := sql.Open("sqlite", connStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open metrics database: %w", err)
+	}
+
+	if err := db.Ping(); err != nil {
+		return nil, fmt.Errorf("failed to ping metrics database: %w", err)
+	}
+
+	// Initialize Schema
+	if err := initSchema(db); err != nil {
+		return nil, fmt.Errorf("failed to initialize schema: %w", err)
+	}
+
+	return db, nil
+}
+
+// initSchema creates the necessary tables if they don't exist.
+func initSchema(db *sql.DB) error {
+	schema := `
+	CREATE TABLE IF NOT EXISTS completions (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		chat_uuid TEXT NOT NULL,
+		message_id INTEGER,
+		claude_session_id TEXT,
+		model TEXT NOT NULL,
+		input_tokens INTEGER DEFAULT 0,
+		output_tokens INTEGER DEFAULT 0,
+		cache_creation_tokens INTEGER DEFAULT 0,
+		cache_read_tokens INTEGER DEFAULT 0,
+		cost_usd REAL DEFAULT 0.0,
+		duration_ms INTEGER,
+		raw_json TEXT,
+		exit_code INTEGER,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	);
+
+	CREATE TABLE IF NOT EXISTS sessions (
+		claude_session_id TEXT PRIMARY KEY,
+		chat_uuid TEXT NOT NULL,
+		first_request_at TIMESTAMP,
+		last_request_at TIMESTAMP,
+		total_requests INTEGER DEFAULT 0,
+		total_input_tokens INTEGER DEFAULT 0,
+		total_output_tokens INTEGER DEFAULT 0,
+		total_cost_usd REAL DEFAULT 0.0
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_completions_chat_uuid ON completions(chat_uuid);
+	CREATE INDEX IF NOT EXISTS idx_completions_session_id ON completions(claude_session_id);
+	`
+
+	_, err := db.Exec(schema)
+	return err
+}
+
+// InsertCompletion saves a single completion record to the database.
+func InsertCompletion(db *sql.DB, chatUUID string, messageID int64, sessionID string, model string, usage claude.Usage, cost float64, durationMs int, rawJSON string, exitCode int) error {
+	query := `
+	INSERT INTO completions (
+		chat_uuid, message_id, claude_session_id, model,
+		input_tokens, output_tokens, cache_creation_tokens, cache_read_tokens,
+		cost_usd, duration_ms, raw_json, exit_code
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`
+
+	_, err := db.Exec(
+		query,
+		chatUUID, messageID, sessionID, model,
+		usage.InputTokens, usage.OutputTokens, usage.CacheCreationTokens, usage.CacheReadTokens,
+		cost, durationMs, rawJSON, exitCode,
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to insert completion: %w", err)
+	}
+
+	logger.Debug("Completion metrics saved", "session_id", sessionID, "cost", cost)
+	return nil
+}
+
+// UpsertSession updates or creates a session aggregate record.
+func UpsertSession(db *sql.DB, sessionID string, chatUUID string, usage claude.Usage, cost float64) error {
+	now := time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
+
+	query := `
+	INSERT INTO sessions (
+		claude_session_id, chat_uuid, first_request_at, last_request_at,
+		total_requests, total_input_tokens, total_output_tokens, total_cost_usd
+	) VALUES (?, ?, ?, ?, 1, ?, ?, ?)
+	ON CONFLICT(claude_session_id) DO UPDATE SET
+		last_request_at = excluded.last_request_at,
+		total_requests = total_requests + 1,
+		total_input_tokens = total_input_tokens + excluded.total_input_tokens,
+		total_output_tokens = total_output_tokens + excluded.total_output_tokens,
+		total_cost_usd = total_cost_usd + excluded.total_cost_usd
+	`
+
+	_, err := db.Exec(
+		query,
+		sessionID, chatUUID, now, now,
+		usage.InputTokens, usage.OutputTokens, cost,
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to upsert session: %w", err)
+	}
+
+	return nil
+}
+
+// GetSessionByChatUUID retrieves the most recent session ID for a given chat UUID.
+// Returns empty string if no session exists for this chat.
+func GetSessionByChatUUID(db *sql.DB, chatUUID string) (string, error) {
+	query := `
+	SELECT claude_session_id 
+	FROM sessions 
+	WHERE chat_uuid = ? 
+	ORDER BY last_request_at DESC 
+	LIMIT 1
+	`
+	
+	var sessionID string
+	err := db.QueryRow(query, chatUUID).Scan(&sessionID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", nil // No session found, return empty string
+		}
+		return "", fmt.Errorf("failed to query session: %w", err)
+	}
+	
+	return sessionID, nil
+}

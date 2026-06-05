@@ -1,0 +1,104 @@
+# Component: GSC CLI Makefile
+# Block-UUID: 61a6127d-a28d-4e57-929a-0b5419a2374d
+# Parent-UUID: 07fed727-0f26-4c8f-9cd8-d070edb2c5e5
+# Version: 1.3.0
+# Description: Added build-all target to compile for Linux, macOS (Intel/ARM), and Windows simultaneously.
+# Language: Makefile
+# Created-at: 2026-02-02T06:50:00.000Z
+# Authors: GLM-4.7 (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0)
+
+
+# GSC CLI Makefile
+# This makefile provides commands for building, installing, and testing the gsc-cli tool.
+
+.PHONY: build install go-install clean test run help build-all
+
+# Binary name
+BINARY_NAME=gsc
+# Build directory
+DIST_DIR=dist
+# Installation paths
+PREFIX ?= /usr/local
+BINDIR ?= $(PREFIX)/bin
+
+# Main package path (changed to ./cmd/gsc to avoid stdlib confusion)
+MAIN_PATH=./cmd/gsc
+
+# Go parameters
+GOCMD=go
+GOBUILD=$(GOCMD) build
+GOCLEAN=$(GOCMD) clean
+GOTEST=$(GOCMD) test
+GOGET=$(GOCMD) get
+GOMOD=$(GOCMD) mod
+
+# Metadata for injection
+VERSION=$(shell grep 'Version =' internal/version/version.go | cut -d '"' -f 2)
+COMMIT=$(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+BUILD_TIME=$(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+LDFLAGS=-ldflags "-X github.com/gitsense/gsc-cli/internal/version.Version=$(VERSION) -X github.com/gitsense/gsc-cli/internal/version.GitCommit=$(COMMIT) -X github.com/gitsense/gsc-cli/internal/version.BuildTime=$(BUILD_TIME)"
+
+help: ## Display this help screen
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+
+build: ## Build the binary for the current platform
+	@echo "Building $(BINARY_NAME)..."
+	@mkdir -p $(DIST_DIR)
+	$(GOBUILD) $(LDFLAGS) -o $(DIST_DIR)/$(BINARY_NAME) $(MAIN_PATH)
+	@echo "Build complete: $(DIST_DIR)/$(BINARY_NAME)"
+
+install: build ## Install the binary to $(BINDIR) (may require sudo)
+	@echo "Installing $(BINARY_NAME) to $(BINDIR)..."
+	@mkdir -p $(BINDIR)
+	@cp $(DIST_DIR)/$(BINARY_NAME) $(BINDIR)/$(BINARY_NAME)
+	@echo "Installed to $(BINDIR)/$(BINARY_NAME)"
+
+go-install: ## Install using 'go install' to $GOPATH/bin
+	@echo "Installing via go install..."
+	$(GOCMD) install $(LDFLAGS) $(MAIN_PATH)
+
+clean: ## Remove build artifacts
+	@echo "Cleaning..."
+	@$(GOCLEAN)
+	@rm -rf $(DIST_DIR)
+	@echo "Clean complete"
+
+test: ## Run tests
+	@echo "Running tests..."
+	$(GOTEST) -v ./...
+
+deps: ## Download dependencies
+	@echo "Downloading dependencies..."
+	$(GOMOD) download
+	$(GOMOD) tidy
+
+run: ## Run the CLI (useful for quick testing)
+	@echo "Running $(BINARY_NAME)..."
+	$(GOBUILD) $(LDFLAGS) -o $(DIST_DIR)/$(BINARY_NAME) $(MAIN_PATH)
+	./$(DIST_DIR)/$(BINARY_NAME) $(ARGS)
+
+# Cross-compilation targets
+build-linux: ## Build for Linux
+	@mkdir -p $(DIST_DIR)
+	GOOS=linux GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o $(DIST_DIR)/$(BINARY_NAME)-linux-amd64 $(MAIN_PATH)
+
+build-darwin: ## Build for macOS (Intel)
+	@mkdir -p $(DIST_DIR)
+	GOOS=darwin GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o $(DIST_DIR)/$(BINARY_NAME)-darwin-amd64 $(MAIN_PATH)
+
+build-darwin-arm: ## Build for macOS (Apple Silicon)
+	@mkdir -p $(DIST_DIR)
+	GOOS=darwin GOARCH=arm64 $(GOBUILD) $(LDFLAGS) -o $(DIST_DIR)/$(BINARY_NAME)-darwin-arm64 $(MAIN_PATH)
+
+build-windows: ## Build for Windows
+	@mkdir -p $(DIST_DIR)
+	GOOS=windows GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o $(DIST_DIR)/$(BINARY_NAME)-windows-amd64.exe $(MAIN_PATH)
+
+build-all: ## Build for all supported platforms (Linux, macOS Intel/ARM, Windows)
+	@echo "Building for all platforms..."
+	@mkdir -p $(DIST_DIR)
+	GOOS=linux GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o $(DIST_DIR)/$(BINARY_NAME)-linux-amd64 $(MAIN_PATH)
+	GOOS=darwin GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o $(DIST_DIR)/$(BINARY_NAME)-darwin-amd64 $(MAIN_PATH)
+	GOOS=darwin GOARCH=arm64 $(GOBUILD) $(LDFLAGS) -o $(DIST_DIR)/$(BINARY_NAME)-darwin-arm64 $(MAIN_PATH)
+	GOOS=windows GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o $(DIST_DIR)/$(BINARY_NAME)-windows-amd64.exe $(MAIN_PATH)
+	@echo "Build complete. Artifacts in ./$(DIST_DIR)"
