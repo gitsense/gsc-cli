@@ -64,7 +64,7 @@ Manifests are what teams distribute. Brains are what developers and agents use l
 
 ### Intelligence Commands
 
-These commands work once a Manifest has been imported into a repository.
+These commands work once a Manifest has been converted to a GitSense Brain (SQLite database).
 
 | Command | Purpose |
 | :--- | :--- |
