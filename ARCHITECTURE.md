@@ -132,7 +132,7 @@ The `gsc query` command supports glob-style wildcards (`*`) in the `--value` arg
 
 This project distinguishes between the **Product Version** and the **LLM Version**.
 
-*   **Product Version:** (e.g., v0.1.0) Tracks the release maturity and feature set of the CLI tool as a whole.
+*   **Product Version:** (e.g., v0.2.0) Tracks the release maturity and feature set of the CLI tool as a whole.
 *   **LLM Version:** (e.g., v1.2.0 in file headers) Tracks the iterative generation and refinement of a specific code component by an AI.
 
 ### Metadata Attribution

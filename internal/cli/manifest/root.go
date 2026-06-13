@@ -9,12 +9,11 @@
  * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.4.5 (v1.1.0), GLM-4.7 (v1.2.0), Claude Haiku 4.4.5 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), Gemini 3 Flash (v1.8.0), GLM-4.7 (v1.9.0)
  */
 
-
 package manifest
 
 import (
-	"github.com/spf13/cobra"
 	"github.com/gitsense/gsc-cli/pkg/logger"
+	"github.com/spf13/cobra"
 )
 
 var manifestCode string
@@ -41,7 +40,9 @@ func init() {
 
 	// Register subcommands
 	Cmd.AddCommand(initCmd)
+	Cmd.AddCommand(exampleCmd)
 	Cmd.AddCommand(importCmd)
+	Cmd.AddCommand(validateCmd)
 	Cmd.AddCommand(listCmd)
 
 	// Subcommands for GitSense Chat app integration

@@ -2,8 +2,8 @@
 Component: GSC Overview
 Block-UUID: 4950ddb6-c920-4cf2-b9e5-1dbc95109db8
 Parent-UUID: 520b5510-a610-40d3-b46e-dd691a3f5f63
-Version: 1.3.0
-Description: Hub document for the gsc claude experts AI reference system. Updated to include the new 'guide' command in the routing table and capability groups.
+Version: 1.4.0
+Description: Hub document for the gsc claude experts AI reference system. Clarified query routing so metadata concepts use --filter while known file/path metadata projection may use --glob without --filter.
 Language: Markdown
 Created-at: 2026-04-30T23:51:56.570Z
 Authors: Gemini 2.5 Flash Lite (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), Gemini 2.5 Flash Lite (v1.3.0)
@@ -14,14 +14,11 @@ Authors: Gemini 2.5 Flash Lite (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.
 
 ## What is gsc?
 
-`gsc` (GitSense CLI) transforms any Git repository into a queryable knowledge
-base. It enriches the file tree with structured metadata stored in **Brains**,
-enabling AI agents to find and understand code using intent and domain
-attributes rather than text patterns.
+`gsc` (GitSense CLI) is a repository intelligence tool. With **Brains** (SQLite databases), it enriches file trees and searches with structured metadata. Without Brains, it still provides AI-facing guidance and ripgrep-backed repository search, but metadata commands are unavailable until a Manifest is imported.
 
 ## What is a Brain?
 
-A Brain is a **constructed knowledge base** (a SQLite database) that serves as the Expert Persona's memory. It is built by importing a Manifest containing Analyzer results. Once constructed, it provides the Expert Persona with the structured intelligence needed to answer questions about your code.
+A Brain is a **constructed knowledge base** (a SQLite database) that serves as the Expert Persona's memory. It is built by importing a Manifest containing Analyzer results. Once constructed, it provides structured intelligence for metadata queries. A repository may have zero Brains; in that case, `gsc experts init` should still work and the agent should say that no metadata intelligence is active.
 
 ## Capability Groups
 
@@ -37,10 +34,12 @@ A Brain is a **constructed knowledge base** (a SQLite database) that serves as t
 Distinguish between **Concepts** and **Symbols** before choosing a tool.
 
 - **Concepts/Intents:** Use `gsc query --filter`. (e.g., "Find files that handle authentication").
-- **Symbols/Strings:** Use `gsc grep`. (e.g., "Where is `DEFAULT_TTL` defined?").
+- **Known files/path scopes:** Use `gsc query --glob ... --fields ...` without `--filter` to retrieve metadata for explicit files or directories.
+- **Symbols/Strings:** Use `gsc rg`. (e.g., "Where is `DEFAULT_TTL` defined?").
 
-Never perform a "blind grep." When using `gsc grep`, always enrich results
-with metadata (`--fields purpose`) to eliminate noise.
+Prefer `gsc rg` for repository-wide searches to leverage metadata context. Use standard `grep` or `rg` for targeted pattern matching within specific files where metadata is not required.
+
+Only open a file when `gsc rg` or `gsc query` metadata is insufficient to answer the question. Reading files that metadata already describes consumes tokens without providing additional value.
 
 ## Transparent Execution & Education
 
@@ -53,11 +52,14 @@ tool, and self-serve to save tokens.
 At the start of every session, run:
 
 ```bash
-gsc brains
+gsc brains --json
 ```
 
-Read the `Description` and `Fields` of each Brain returned. If the list is
-empty, guide the user to run `gsc manifest import <uri>` before proceeding.
+Read the `description` and `fields` of each active Brain returned in
+`databases`. If the active list is empty, tell the user there are no active
+Brains, then proceed with text/path search when possible. If
+`inactive_databases` is present, those entries are manifests the user can
+activate with their `import_command`.
 
 ## The README for AI
 

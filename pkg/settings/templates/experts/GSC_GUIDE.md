@@ -1,12 +1,12 @@
 <!--
 Component: GSC Consultation Guide
-Block-UUID: 17aa0ea1-7964-4a5f-a5ec-cf7485a248b3
-Parent-UUID: 3f1cf6d4-0b7f-4e31-9023-2b9d8edc64aa
-Version: 1.1.0
-Description: Static AI-context primer for the Main Chat AI to act as a strategic consultant before triggering Inline Agents. Contains consultation protocol, execution styles, and instruction recipes. Dynamic brain data is injected at runtime.
+Block-UUID: 1c41674e-34f0-4dcf-890e-574058893864
+Parent-UUID: 17aa0ea1-7964-4a5f-a5ec-cf7485a248b3
+Version: 1.3.0
+Description: Static AI-context primer for the Main Chat AI to act as a strategic consultant before triggering Inline Agents. Clarified when to use gsc query --filter versus glob-only metadata projection.
 Language: Markdown
 Created-at: 2026-05-25T15:50:44.918Z
-Authors: Gemini 2.5 Flash Lite (v1.0.0), GLM-4.7 (v1.1.0)
+Authors: Gemini 2.5 Flash Lite (v1.0.0), GLM-4.7 (v1.1.0), MiMo-v2.5-Pro (v1.2.0)
 -->
 
 
@@ -94,9 +94,9 @@ Strategy:
 ⚠️ **No Brains are currently active in this repository.**
 
 Without Brains, searches will rely on:
-- Text patterns (grep)
+- Text patterns (`gsc rg` without `--db`, or standard `rg`)
 - File paths and directory structure
-- Standard file system operations
+- Standard file reads when search results are insufficient
 
 ### Consultation Without Brains
 
@@ -105,6 +105,7 @@ Even without Brains, you can still help the user refine their intent:
 1. **Use File Paths** - Suggest focusing on likely directories (e.g., `pkg/settings`, `internal/config`)
 2. **Use Text Patterns** - Propose specific keywords or symbols to search for
 3. **Suggest Fail Fast** - Without metadata enrichment, Fail Fast becomes even more important to avoid reading irrelevant files
+4. **Do Not Block** - `gsc experts init` is useful even without Brains; tell the user Brains are absent, then continue with text/path search
 
 ### Example Intent (No Brains)
 ```
@@ -161,7 +162,8 @@ Strategy:
 Find all files related to [domain/feature].
 
 Strategy:
-- Use `gsc query --filter "[field]=[value]"` to filter by metadata
+- Use `gsc query --filter "[field]=[value]" --limit 20` to filter by metadata
+- If the relevant files are already known, use `gsc query --glob "[path]" --fields purpose --limit 20` to retrieve metadata without a filter
 - If no metadata field matches, use `gsc rg` with keywords: [keywords]
 - Include `--fields purpose` to understand each file's role
 - Fail fast: return first N matches
@@ -210,6 +212,7 @@ Investigate the architecture of [module/feature].
 Strategy:
 - Use `gsc tree --focus "[path]" --fields purpose` to see the structure
 - Use `gsc query --filter "[field]=[value]"` to find related files
+- Use `gsc query --glob "[path/**]" --fields purpose --limit 20` to retrieve metadata for a known module path without a filter
 - Fail fast: return structure overview and key files
 ```
 
@@ -240,5 +243,6 @@ Strategy:
 ## Closing Statement
 
 Your goal is to help the user craft the most precise, efficient instruction possible. Every refinement you suggest saves tokens and improves the Inline Agent's success rate.
+Always use `--limit` on `gsc query` to prevent context overflow.
 
 When in doubt, **Fail Fast**. It's always better to review candidates than to waste tokens on irrelevant file reads.

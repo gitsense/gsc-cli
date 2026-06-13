@@ -549,6 +549,28 @@ func UpdateManifestTimestamp(db *sql.DB, id int64) error {
 	return nil
 }
 
+// DeletePublishedManifestsByOwnerRepo soft-deletes all published manifests matching an owner and repo.
+func DeletePublishedManifestsByOwnerRepo(db *sql.DB, owner, repo string) (int64, error) {
+	query := `UPDATE published_manifests SET deleted = 1 WHERE owner = ? AND repo = ? AND deleted = 0`
+	result, err := db.Exec(query, owner, repo)
+	if err != nil {
+		return 0, fmt.Errorf("failed to delete published manifests for %s/%s: %w", owner, repo, err)
+	}
+	rowsAffected, _ := result.RowsAffected()
+	return rowsAffected, nil
+}
+
+// DeletePublishedManifestsByOwner soft-deletes all published manifests for an owner (all repos).
+func DeletePublishedManifestsByOwner(db *sql.DB, owner string) (int64, error) {
+	query := `UPDATE published_manifests SET deleted = 1 WHERE owner = ? AND deleted = 0`
+	result, err := db.Exec(query, owner)
+	if err != nil {
+		return 0, fmt.Errorf("failed to delete published manifests for owner %s: %w", owner, err)
+	}
+	rowsAffected, _ := result.RowsAffected()
+	return rowsAffected, nil
+}
+
 // DeletePublishedManifest performs a soft delete on a manifest record.
 func DeletePublishedManifest(db *sql.DB, uuidStr string) error {
 	query := `UPDATE published_manifests SET deleted = 1 WHERE uuid = ? AND deleted = 0`
@@ -573,7 +595,7 @@ func GetActiveManifests(db *sql.DB, owner, repo string) ([]PublishedManifest, er
 		args = append(args, owner)
 	} else {
 		// Repo level: Get all branches for repo
-		query = `SELECT uuid, branch, database, manifest_name, published_at FROM published_manifests WHERE owner = ? AND repo = ? AND deleted = 0 ORDER BY published_at DESC`
+		query = `SELECT uuid, branch, database, manifest_name, manifest_description, published_at FROM published_manifests WHERE owner = ? AND repo = ? AND deleted = 0 ORDER BY published_at DESC`
 		args = append(args, owner, repo)
 	}
 
@@ -592,7 +614,7 @@ func GetActiveManifests(db *sql.DB, owner, repo string) ([]PublishedManifest, er
 			err = rows.Scan(&m.Repo, &m.ManifestCount)
 		} else {
 			var publishedAtStr string
-			err = rows.Scan(&m.UUID, &m.Branch, &m.Database, &m.ManifestName, &publishedAtStr)
+			err = rows.Scan(&m.UUID, &m.Branch, &m.Database, &m.ManifestName, &m.ManifestDescription, &publishedAtStr)
 			if err == nil {
 				m.PublishedAt, _ = time.Parse("2006-01-02T15:04:05.000Z", publishedAtStr)
 			}

@@ -1,14 +1,13 @@
 /**
  * Component: Root CLI Command
- * Block-UUID: f31e3478-033a-4dc4-be11-f93e57d3ee93
- * Parent-UUID: c03d511a-9ff2-4f6b-9e64-35dc84437ed8
- * Version: 1.50.0
- * Description: Fixed gitignore command registration to use parent command structure. Changed from registering update command directly to registering gitignore.Cmd parent command, enabling 'gsc gitignore update' syntax.
+ * Block-UUID: 31e4f003-b411-4160-8a8e-774fcc30fa85
+ * Parent-UUID: f31e3478-033a-4dc4-be11-f93e57d3ee93
+ * Version: 1.51.0
+ * Description: Registered the top-level lessons command group and excluded it from workspace preflight so lesson drafts can initialize GitSense state.
  * Language: Go
- * Created-at: 2026-05-01T23:31:04.152Z
- * Authors: GLM-4.7 (v1.34.0), Gemini 3 Flash (v1.35.0), Gemini 3 Flash (v1.36.0), GLM-4.7 (v1.37.0), Gemini 3 Flash (v1.38.0), Gemini 3 Flash (v1.39.0), Gemini 3 Flash (v1.40.0), claude-haiku-4-5-20251001 (v1.40.1), GLM-4.7 (v1.41.0), GLM-4.7 (v1.42.0), GLM-4.7 (v1.43.0), GLM-4.7 (v1.44.0), GLM-4.7 (v1.45.0), GLM-4.7 (v1.46.0), GLM-4.7 (v1.47.0), GLM-4.7 (v1.48.0), GLM-4.7 (v1.49.0), GLM-4.7 (v1.50.0)
+ * Created-at: 2026-06-12T12:44:13Z
+ * Authors: GLM-4.7 (v1.34.0), Gemini 3 Flash (v1.35.0), Gemini 3 Flash (v1.36.0), GLM-4.7 (v1.37.0), Gemini 3 Flash (v1.38.0), Gemini 3 Flash (v1.39.0), GLM-4.7 (v1.40.0), claude-haiku-4-5-20251001 (v1.40.1), GLM-4.7 (v1.41.0), GLM-4.7 (v1.42.0), GLM-4.7 (v1.43.0), GLM-4.7 (v1.44.0), GLM-4.7 (v1.45.0), GLM-4.7 (v1.46.0), GLM-4.7 (v1.47.0), GLM-4.7 (v1.48.0), GLM-4.7 (v1.49.0), GLM-4.7 (v1.50.0), Codex GPT-5 (v1.51.0)
  */
-
 
 package cli
 
@@ -18,17 +17,19 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/spf13/cobra"
 	"github.com/gitsense/gsc-cli/internal/bridge"
 	"github.com/gitsense/gsc-cli/internal/cli/app"
-	"github.com/gitsense/gsc-cli/internal/cli/manifest"
-	"github.com/gitsense/gsc-cli/internal/cli/experts"
-	"github.com/gitsense/gsc-cli/internal/cli/docs"
-	"github.com/gitsense/gsc-cli/internal/cli/gitignore"
-	manifestpkg "github.com/gitsense/gsc-cli/internal/manifest"
 	"github.com/gitsense/gsc-cli/internal/cli/claude"
+	"github.com/gitsense/gsc-cli/internal/cli/docs"
+	"github.com/gitsense/gsc-cli/internal/cli/experts"
+	"github.com/gitsense/gsc-cli/internal/cli/gitignore"
+	"github.com/gitsense/gsc-cli/internal/cli/lessons"
+	"github.com/gitsense/gsc-cli/internal/cli/manifest"
 	docker_internal "github.com/gitsense/gsc-cli/internal/docker"
+	manifestpkg "github.com/gitsense/gsc-cli/internal/manifest"
+	"github.com/gitsense/gsc-cli/internal/version"
 	"github.com/gitsense/gsc-cli/pkg/logger"
+	"github.com/spf13/cobra"
 )
 
 // Global flags
@@ -41,8 +42,9 @@ var (
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "gsc",
-	Short: "GitSense Chat CLI - Chat bridge and intelligence manager for AI-driven development.",
+	Use:     "gsc",
+	Short:   "GitSense Chat CLI - Chat bridge and intelligence manager for AI-driven development.",
+	Version: version.GetVersion(),
 	Long: `GitSense Chat CLI (gsc) is a chat bridge and intelligence manager for AI-driven development. 
 It enables deterministic code discovery via structured metadata and establishes auditable 
 "Traceability Contracts" between your local repository and the GitSense Chat app. 
@@ -51,7 +53,7 @@ AI ASSISTANT DISCOVERY:
   To discover structured capabilities and command patterns for this repository, run:
   gsc --examples --format json`,
 	CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
-	SilenceErrors: true,
+	SilenceErrors:     true,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// Debug: Log the command name and arguments
 		logger.Debug("PersistentPreRunE invoked", "cmd_name", cmd.Name(), "args", args)
@@ -108,7 +110,7 @@ AI ASSISTANT DISCOVERY:
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if showExamples {
 			startTime := time.Now()
-			
+
 			output, err := RenderExamples(rootFormat)
 			if err != nil {
 				return err
@@ -130,6 +132,8 @@ AI ASSISTANT DISCOVERY:
 }
 
 func init() {
+	rootCmd.SetVersionTemplate("{{.Version}}\n")
+
 	rootCmd.AddCommand(manifest.Cmd)
 	rootCmd.AddCommand(queryCmd)
 	rootCmd.AddCommand(valuesCmd)
@@ -139,26 +143,28 @@ func init() {
 	RegisterGrepCommand(rootCmd)
 	RegisterTreeCommand(rootCmd)
 	RegisterInfoCommand(rootCmd)
-	
+
 	// Commands moved to 'app' group are now registered there
 	// contract.RegisterContractCommand(rootCmd) // REMOVED
 	// ws.RegisterCommand(rootCmd)             // REMOVED
 	// RegisterExecCommand(rootCmd)            // REMOVED
-	
+
 	// docker.RegisterCommand(rootCmd) // Removed: docker is now nested under app
 	rootCmd.AddCommand(experts.NewCmd())
 	rootCmd.AddCommand(docs.NewCmd())
 	app.RegisterCommand(rootCmd)
 	claude.RegisterCommand(rootCmd)
-	
+
 	// Register gitignore command group
 	rootCmd.AddCommand(gitignore.Cmd)
-	
+	rootCmd.AddCommand(lessons.NewCmd())
+	rootCmd.AddCommand(newVersionCmd())
+
 	// Aliases removed
 	// rootCmd.AddCommand(contract.ChatsCmd)     // REMOVED
 	// rootCmd.AddCommand(contract.MessagesCmd)  // REMOVED
 	// rootCmd.AddCommand(contract.SendCmd)      // REMOVED
-	
+
 	rootCmd.PersistentFlags().CountP("verbose", "c", "Increase verbosity (-c for info, -cc for debug)")
 	rootCmd.PersistentFlags().Bool("quiet", false, "Suppress all output except errors")
 	rootCmd.PersistentFlags().StringVar(&bridgeCode, "code", "", "Bridge code for chat integration (6 digits)")
@@ -176,7 +182,7 @@ func init() {
 // as well as specific top-level commands (e.g., 'init', 'doctor').
 func isExcludedCommand(cmd *cobra.Command) bool {
 	// Removed "contract", "ws", "exec", "chats", "messages", "send" as they are now under "app"
-	excludedRoots := []string{"init", "doctor", "tree", "docker", "app", "claude", "import", "manifest", "docs", "gitignore"}
+	excludedRoots := []string{"init", "doctor", "tree", "docker", "app", "claude", "import", "manifest", "docs", "gitignore", "lessons", "brains", "version"}
 	current := cmd
 
 	for current != nil {

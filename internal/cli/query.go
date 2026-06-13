@@ -1,14 +1,13 @@
 /**
  * Component: Query Command
- * Block-UUID: c42a2fca-fecd-4117-a53a-819110c43f54
- * Parent-UUID: 968d3650-7a0b-4895-9fbc-b4e02aad56c3
- * Version: 3.27.0
+ * Block-UUID: 1c8fb385-b394-4448-b376-e0f2430b4cd5
+ * Parent-UUID: c42a2fca-fecd-4117-a53a-819110c43f54
+ * Version: 3.28.0
  * Description: Simplified 'gsc query' interface by hiding subcommands (list, insights, coverage, fields, brains) and legacy flags (--field, --value). Updated examples to promote the --filter syntax.
  * Language: Go
  * Created-at: 2026-04-05T20:54:52.564Z
- * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v3.26.0), claude-haiku-4-5-20251001 (v3.27.0)
+ * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v3.26.0), claude-haiku-4-5-20251001 (v3.27.0), MiMo-v2.5-Pro (v3.28.0)
  */
-
 
 package cli
 
@@ -20,13 +19,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spf13/cobra"
 	"github.com/gitsense/gsc-cli/internal/bridge"
 	"github.com/gitsense/gsc-cli/internal/git"
-	"github.com/gitsense/gsc-cli/internal/search"
 	"github.com/gitsense/gsc-cli/internal/manifest"
 	"github.com/gitsense/gsc-cli/internal/registry"
+	"github.com/gitsense/gsc-cli/internal/search"
 	"github.com/gitsense/gsc-cli/pkg/logger"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -45,8 +44,10 @@ var (
 	queryFields        []string
 	queryFieldSingular []string
 	brainsSchema       bool
+	brainsJSON         bool
 	queryFilters       []string
 	querySelectFields  []string
+	queryLimit         int
 )
 
 // queryCmd represents the base query command
@@ -94,7 +95,7 @@ If no filters are provided, it displays the current workspace context.`,
 			return fmt.Errorf("failed to parse filters: %w", err)
 		}
 
-		outputStr, resolvedDB, err := handleQueryOrStatus(cmd.Context(), queryDB, queryField, queryValue, queryFormat, queryQuiet, queryMatchAll, querySelectFields, filters)
+		outputStr, resolvedDB, err := handleQueryOrStatus(cmd.Context(), queryDB, queryField, queryValue, queryFormat, queryQuiet, queryMatchAll, querySelectFields, filters, queryLimit, queryFilters, queryGlobs)
 		if err != nil {
 			return err
 		}
@@ -335,7 +336,10 @@ var BrainsCmd = &cobra.Command{
   gsc brains arch
 
   # Show schemas for all brains
-  gsc brains --schema`,
+  gsc brains --schema
+
+  # Show rich structured output for coding agents
+  gsc brains --json`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		startTime := time.Now()
@@ -348,7 +352,12 @@ var BrainsCmd = &cobra.Command{
 			}
 		}
 
-		outputStr, resolvedDB, err := handleBrains(cmd.Context(), args, brainsSchema, queryFormat, queryQuiet)
+		format := queryFormat
+		if brainsJSON {
+			format = "json"
+		}
+
+		outputStr, resolvedDB, err := handleBrains(cmd.Context(), args, brainsSchema, format, queryQuiet)
 		if err != nil {
 			if strings.Contains(err.Error(), "not found") {
 				cmd.SilenceUsage = true
@@ -382,6 +391,7 @@ func init() {
 	queryCmd.Flags().BoolVar(&queryQuiet, "quiet", false, "Suppress headers, footers, and hints")
 	queryCmd.Flags().StringArrayVar(&queryFilters, "filter", []string{}, "Metadata filter (e.g., --filter 'field:operator:value')")
 	queryCmd.Flags().StringArrayVar(&queryGlobs, "glob", []string{}, "Filter by file path pattern (e.g., 'src/**/*.go')")
+	queryCmd.Flags().IntVar(&queryLimit, "limit", 0, "Maximum number of results to return (0 = unlimited)")
 
 	// List Subcommand Flags
 	queryListCmd.Flags().BoolVar(&queryListDB, "dbs", false, "List all available databases")
@@ -414,6 +424,7 @@ func init() {
 
 	// Brains Subcommand Flags
 	BrainsCmd.Flags().BoolVar(&brainsSchema, "schema", false, "Show schema information")
+	BrainsCmd.Flags().BoolVar(&brainsJSON, "json", false, "Output rich JSON for coding agents")
 	BrainsCmd.Flags().StringVarP(&queryFormat, "format", "o", "table", "Output format")
 	BrainsCmd.Flags().BoolVar(&queryQuiet, "quiet", false, "Suppress headers and hints")
 
@@ -482,7 +493,30 @@ func handleBrains(ctx context.Context, args []string, showSchema bool, format st
 	}
 
 	// Case 3: Default (List all databases)
-	return handleQueryList(ctx, "", "", format, quiet, config, true)
+	result, err := manifest.GetListResult(ctx, "", "", true)
+	if err != nil {
+		return "", "", err
+	}
+
+	inactive, err := manifest.ListInactiveDatabases(ctx)
+	if err != nil {
+		return "", "", err
+	}
+	result.InactiveDatabases = inactive
+	result.Hints = []string{}
+	if len(result.Databases) > 0 {
+		result.Hints = append(result.Hints, "Use 'gsc brains <name>' to inspect an active Brain in full detail.")
+	}
+	if len(inactive) > 0 {
+		result.Hints = append(result.Hints, "Inactive Brains are importable manifests in .gitsense/manifests.")
+		result.Hints = append(result.Hints, "Use an inactive Brain's import command to activate it.")
+	}
+	if len(result.Databases) == 0 && len(inactive) == 0 {
+		result.Hints = append(result.Hints, "No active Brains or inactive manifests found. Add a manifest to .gitsense/manifests or run 'gsc manifest import <manifest-path-or-url>'.")
+	}
+	result.Hints = append(result.Hints, "Coding agents should use 'gsc brains --json' for richer structured discovery.")
+
+	return manifest.FormatListResult(result, format, quiet, config), "", nil
 }
 
 // handleCoverage orchestrates the coverage analysis process.
@@ -519,7 +553,7 @@ func handleCoverage(ctx context.Context, dbName string, scopeOverride string, fo
 	}
 
 	output := manifest.FormatCoverageReport(report, format, quiet, config)
-	
+
 	// Append hint for simple extension patterns to the output
 	if format != "json" {
 		for _, pattern := range queryGlobs {
@@ -530,11 +564,11 @@ func handleCoverage(ctx context.Context, dbName string, scopeOverride string, fo
 			}
 		}
 	}
-	
+
 	return output, resolvedDB, nil
 }
 
- // handleInsights orchestrates the insights and report generation process.
+// handleInsights orchestrates the insights and report generation process.
 func handleInsights(ctx context.Context, dbName string, fields []string, limit int, scopeOverride string, format string, quiet bool, isReport bool) (string, string, error) {
 	config, err := manifest.GetEffectiveConfig()
 	if err != nil {
@@ -607,7 +641,7 @@ func handleInsights(ctx context.Context, dbName string, fields []string, limit i
 			}
 		}
 	}
-	
+
 	return output, resolvedDB, nil
 }
 
@@ -661,14 +695,14 @@ func handleQueryList(ctx context.Context, dbName string, fieldName string, forma
 }
 
 // handleQueryOrStatus determines whether to show status or execute a query.
-func handleQueryOrStatus(ctx context.Context, dbName string, fieldName string, value string, format string, quiet bool, matchAll bool, selectFields []string, filters []search.FilterCondition) (string, string, error) {
+func handleQueryOrStatus(ctx context.Context, dbName string, fieldName string, value string, format string, quiet bool, matchAll bool, selectFields []string, filters []search.FilterCondition, limit int, rawFilters []string, globPatterns []string) (string, string, error) {
 	config, err := manifest.GetEffectiveConfig()
 	if err != nil {
 		return "", "", fmt.Errorf("failed to load config: %w", err)
 	}
 
-	// If no value is provided, it displays the current workspace context.
-	if value == "" && len(filters) == 0 {
+	// If no value, filters, or path scope is provided, display the current workspace context.
+	if value == "" && len(filters) == 0 && len(globPatterns) == 0 {
 		status := manifest.FormatStatusView(config, quiet)
 		return status, "", nil
 	}
@@ -708,13 +742,13 @@ func handleQueryOrStatus(ctx context.Context, dbName string, fieldName string, v
 		return "", "", fmt.Errorf("failed to find git root: %w", err)
 	}
 
-	logger.Debug("Executing query", "database", resolvedDB, "field", resolvedField, "value", value, "globs", queryGlobs)
-	results, err := manifest.ExecuteSimpleQuery(ctx, resolvedDB, resolvedField, value, matchAll, selectFields, filters, repoRoot, queryGlobs)
+	logger.Debug("Executing query", "database", resolvedDB, "field", resolvedField, "value", value, "globs", globPatterns)
+	results, err := manifest.ExecuteSimpleQuery(ctx, resolvedDB, resolvedField, value, matchAll, selectFields, filters, repoRoot, globPatterns, limit)
 	if err != nil {
 		return "", "", err
 	}
 
-	coverageReport, err := manifest.ExecuteCoverageAnalysis(ctx, resolvedDB, "", repoRoot, config.ActiveProfile, queryGlobs)
+	coverageReport, err := manifest.ExecuteCoverageAnalysis(ctx, resolvedDB, "", repoRoot, config.ActiveProfile, globPatterns)
 	if err != nil {
 		logger.Warning("Failed to execute coverage analysis", "error", err)
 		coverageReport = &manifest.CoverageReport{
@@ -728,10 +762,13 @@ func handleQueryOrStatus(ctx context.Context, dbName string, fieldName string, v
 			Database:   resolvedDB,
 			MatchField: resolvedField,
 			MatchValue: value,
+			Filters:    rawFilters,
 		},
 		Results: results,
 		Summary: manifest.QuerySummary{
 			TotalResults:    len(results),
+			Truncated:       limit > 0 && len(results) >= limit,
+			Limit:           limit,
 			CoveragePercent: coverageReport.Percentages.FocusCoverage,
 			Confidence:      coverageReport.AnalysisStatus,
 			Database:        resolvedDB,
@@ -739,10 +776,10 @@ func handleQueryOrStatus(ctx context.Context, dbName string, fieldName string, v
 	}
 
 	output := manifest.FormatQueryResults(response, resolvedFormat, quiet, config)
-	
+
 	// Append hint for simple extension patterns to the output
 	if resolvedFormat != "json" {
-		for _, pattern := range queryGlobs {
+		for _, pattern := range globPatterns {
 			if isSimpleExtensionPattern(pattern) {
 				output += "\n\nHint: Pattern '" + pattern + "' matches files in the current directory only.\n"
 				output += "      Use '**/" + pattern + "' to match files in all subdirectories.\n"
@@ -750,7 +787,7 @@ func handleQueryOrStatus(ctx context.Context, dbName string, fieldName string, v
 			}
 		}
 	}
-	
+
 	return output, resolvedDB, nil
 }
 
@@ -780,7 +817,7 @@ func parseQueryExpression(expr string) error {
 		queryValue = strings.TrimSpace(valuesStr)
 		return nil
 	}
-	
+
 	// Try to parse "field=value" syntax
 	if strings.Contains(expr, "=") {
 		parts := strings.SplitN(expr, "=", 2)
@@ -791,7 +828,7 @@ func parseQueryExpression(expr string) error {
 		queryValue = strings.TrimSpace(parts[1])
 		return nil
 	}
-	
+
 	return fmt.Errorf("unsupported expression format. Use 'field in (values)' or 'field=value'")
 }
 

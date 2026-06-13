@@ -1,12 +1,12 @@
 /**
  * Component: Simple Query Executor
- * Block-UUID: 74eb56e7-57a0-4b1b-8043-53ac25735706
- * Parent-UUID: e283006d-15ab-4a21-83a0-8074eec4c269
- * Version: 1.19.2
+ * Block-UUID: c3f715ec-879c-4956-8c7f-be53216031e0
+ * Parent-UUID: 74eb56e7-57a0-4b1b-8043-53ac25735706
+ * Version: 1.20.0
  * Description: Executes simple value-matching queries and hierarchical list operations. Updated to support metadata filtering via --filter flag. Modified ExecuteSimpleQuery to handle filter-only queries (where --value is omitted) by selecting all files and applying filters. Fixed SQL construction to correctly append filter clauses using WHERE or AND as appropriate. Fixed insights analysis to remove json_valid check from scalar field queries, which was incorrectly filtering out plain text values like file extensions. Added file type blind spot analysis to ExecuteCoverageAnalysis to track unanalyzed files by extension/language type.
  * Language: Go
  * Created-at: 2026-06-02T16:48:44.989Z
- * Authors: claude-haiku-4-5-20251001 (v1.12.2), GLM-4.7 (v1.12.3), GLM-4.7 (v1.13.0), claude-haiku-4-5-20251001 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.16.1), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.19.0), GLM-4.7 (v1.19.1), GLM-4.7 (v1.19.2)
+ * Authors: claude-haiku-4-5-20251001 (v1.12.2), GLM-4.7 (v1.12.3), GLM-4.7 (v1.13.0), claude-haiku-4-5-20251001 (v1.14.0), GLM-4.7 (v1.15.0), GLM-4.7 (v1.16.0), GLM-4.7 (v1.16.1), GLM-4.7 (v1.17.0), GLM-4.7 (v1.18.0), GLM-4.7 (v1.19.0), GLM-4.7 (v1.19.1), GLM-4.7 (v1.19.2), MiMo-v2.5-Pro (v1.20.0)
  */
 
 
@@ -32,7 +32,7 @@ import (
 // ExecuteSimpleQuery performs a simple value-matching query against the database.
 // It supports comma-separated values for OR logic, or AND logic if matchAll is true.
 // It also supports metadata filtering via the filters parameter.
-func ExecuteSimpleQuery(ctx context.Context, dbName string, fieldName string, value string, matchAll bool, selectFields []string, filters []search.FilterCondition, repoRoot string, globPatterns []string) ([]QueryResult, error) {
+func ExecuteSimpleQuery(ctx context.Context, dbName string, fieldName string, value string, matchAll bool, selectFields []string, filters []search.FilterCondition, repoRoot string, globPatterns []string, limit int) ([]QueryResult, error) {
 	// 1. Resolve DB Path
 	dbPath, err := db.ResolveManifestDBPath(dbName)
 	if err != nil {
@@ -190,6 +190,11 @@ func ExecuteSimpleQuery(ctx context.Context, dbName string, fieldName string, va
 			selectedFieldIDs = append(selectedFieldIDs, fID)
 			selectedFieldMap[fID] = fieldName
 		}
+	}
+
+	if limit > 0 {
+		query += " LIMIT ?"
+		args = append(args, limit)
 	}
 
 	rows, err := database.QueryContext(ctx, query, args...)

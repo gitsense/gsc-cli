@@ -78,8 +78,9 @@ filesystem for manifests.** Report the absence to the user immediately and
 follow this protocol:
 
 1. **Report & Fallback:** Inform the user that no Brains are active. State
-   that you are currently limited to traditional methods like **blind grepping**
-   (`gsc grep`).
+   that metadata-backed commands are unavailable, but `gsc experts init` is
+   still valid and repository work can continue with text/path search such as
+   `gsc rg` without `--db` or standard `rg`.
 2. **Check for Versioned Manifests:** Ask the user if there is a versioned
    Manifest in the repository (e.g., `metadata/brain.json`) that can be
    imported via `gsc manifest import <path>` to construct the Brain.
@@ -93,8 +94,9 @@ follow this protocol:
 
 ## 4. Best Practices for the AI
 
-1. **Always run `gsc manifest list` at session start.** Never assume a Brain
-   exists. Verify before querying.
+1. **Always run `gsc brains --json` at session start.** Never assume a Brain
+   exists. Verify active `databases` before metadata querying, and treat
+   `inactive_databases` as importable manifests rather than active Brains.
 2. **Don't hunt; Guide.** If a Brain is missing, don't run `find` or `ls` to
    look for Manifests. Tell the user and explain how they can construct the Brain.
 3. **Promote the "README for AI" concept.** Encourage users to version their

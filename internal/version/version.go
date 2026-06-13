@@ -9,7 +9,6 @@
  * Authors: GLM-4.7 (v1.0.0), Gemini 3 Flash (v1.0.1)
  */
 
-
 package version
 
 import "fmt"
@@ -17,7 +16,7 @@ import "fmt"
 // These variables are set at build time using ldflags
 var (
 	// Version is the current version of the application
-	Version = "0.1.0"
+	Version = "0.2.0"
 	// GitCommit is the git commit hash
 	GitCommit = "unknown"
 	// BuildTime is the timestamp when the binary was built

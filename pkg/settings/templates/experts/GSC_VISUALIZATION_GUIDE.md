@@ -21,6 +21,7 @@ Authors: Gemini 2.5 Flash Lite (v1.0.0), Gemini 2.5 Flash Lite (v1.1.0), GLM-4.7
 | `gsc tree --focus "<path>"` | Restrict tree to a specific subtree |
 | `gsc tree --no-prune` | Heat map: show all files, highlight matches |
 | `gsc rg <pattern> --db <db>` | Search code + enrich matches with metadata (recommended) |
+| `gsc rg <pattern>` | Search code without metadata when no Brain is active |
 | `gsc grep <pattern> --db <db>` | Legacy alias (uses ripgrep syntax) |
 | `gsc rg <pattern> --summary` | Aggregate match counts (no code snippets) |
 
@@ -30,6 +31,10 @@ Authors: Gemini 2.5 Flash Lite (v1.0.0), Gemini 2.5 Flash Lite (v1.1.0), GLM-4.7
 
 `gsc tree` builds the repository hierarchy from Git-tracked files and enriches
 each node with metadata from a Brain.
+
+When no Brain is active, do not request metadata fields or metadata filters.
+Use path-focused tree/file inspection where available, then switch to
+`gsc rg` or standard `rg` for text search.
 
 ### Visualization Modes
 
@@ -74,9 +79,10 @@ Filters can be combined: `--filter`, `--focus`, and `--glob` are AND-joined.
 
 ## 2. Searching Code: `gsc rg` (Recommended)
 
-`gsc rg` eliminates blind searching. Standard `grep` returns a line of code.
-`gsc rg` returns the line of code **plus the metadata context of every
-matched file** - letting you immediately discard irrelevant matches.
+Standard `grep` returns a line of code. `gsc rg` can return the line of code
+**plus the metadata context of every matched file** when a Brain is supplied.
+Without an active Brain, use `gsc rg <pattern>` as a ripgrep-backed search
+without metadata enrichment.
 
 ```bash
 # Find a symbol and see the purpose of every file that contains it
@@ -142,6 +148,9 @@ This prevents silent failures and guides you to the correct syntax immediately.
 1. **Discovery Pass** - Runs `ripgrep` to find all files containing the pattern.
 2. **Enrichment Pass** - Looks up each matched file in the Brain; applies
    metadata filters; attaches requested fields.
+
+If no Brain is active, only the discovery pass is available. Do not pass
+`--db`, `--fields`, or metadata `--filter` flags.
 
 ### Filtering Search Results
 
@@ -221,9 +230,9 @@ Use `gsc rg` to locate *specific symbols, strings, or patterns*.
    giving you clean JSON with lower token cost.
 2. **Use `--summary` before full grep.** If you only need to know whether
    a symbol exists, run with `--summary` first to avoid loading code snippets.
-3. **Combine text + metadata.** Always add `--fields purpose` to `gsc rg`
-   calls - it tells you *why* the matched file exists, so you can filter out
-   irrelevant hits without reading the code.
+3. **Combine text + metadata when Brains exist.** Add `--fields purpose` to
+   `gsc rg` calls only after confirming a Brain has that field. Without Brains,
+   use plain `gsc rg` and explain that no metadata context is available.
 4. **Prefer `gsc tree --focus` over a top-level tree.** Large repos can
    generate very large trees. Restrict with `--focus` when you know the area.
 5. **Empty grep results may mean low coverage.** If `gsc rg` returns nothing,

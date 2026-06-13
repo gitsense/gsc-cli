@@ -9,12 +9,15 @@
  * Authors: GLM-4.7 (v1.0.0), Claude Haiku 4.5 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), Gemini 3 Flash (v1.6.0), GLM-4.7 (v1.7.0)
  */
 
-
 package manifest
 
 import (
 	"context"
+	"encoding/json"
+	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 
 	"github.com/gitsense/gsc-cli/internal/db"
 	"github.com/gitsense/gsc-cli/internal/git"
@@ -24,12 +27,12 @@ import (
 
 // DatabaseInfo represents summary information about a manifest database
 type DatabaseInfo struct {
-	DatabaseName  string   `json:"database_name"`  // The physical slug/ID
-	ManifestName  string   `json:"name"`           // The human-readable manifest name
-	Description   string   `json:"description"`
-	Tags          []string `json:"tags"`
-	DBPath        string   `json:"db_path"`
-	EntryCount    int      `json:"entry_count"`
+	DatabaseName string   `json:"database_name"` // The physical slug/ID
+	ManifestName string   `json:"name"`          // The human-readable manifest name
+	Description  string   `json:"description"`
+	Tags         []string `json:"tags"`
+	DBPath       string   `json:"db_path"`
+	EntryCount   int      `json:"entry_count"`
 }
 
 // ListDatabases retrieves all registered databases from the manifest registry
@@ -71,15 +74,97 @@ func ListDatabases(ctx context.Context) ([]DatabaseInfo, error) {
 		}
 
 		databases = append(databases, DatabaseInfo{
-			DatabaseName:  entry.DatabaseName,
-			ManifestName:  entry.ManifestName,
-			Description:   entry.Description,
-			Tags:          entry.Tags,
-			DBPath:        dbPath,
-			EntryCount:    count,
+			DatabaseName: entry.DatabaseName,
+			ManifestName: entry.ManifestName,
+			Description:  entry.Description,
+			Tags:         entry.Tags,
+			DBPath:       dbPath,
+			EntryCount:   count,
 		})
 	}
 
 	logger.Debug("Found databases in registry", "count", len(databases))
 	return databases, nil
+}
+
+// ListInactiveDatabases discovers manifest JSON files under .gitsense/manifests
+// that are not currently registered as active Brain databases.
+func ListInactiveDatabases(ctx context.Context) ([]InactiveDatabaseInfo, error) {
+	root, err := git.FindProjectRoot()
+	if err != nil {
+		logger.Error("Failed to find project root", "error", err)
+		return nil, err
+	}
+
+	manifestsDir, err := ResolveManifestsDir()
+	if err != nil {
+		return nil, err
+	}
+
+	entries, err := os.ReadDir(manifestsDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return []InactiveDatabaseInfo{}, nil
+		}
+		return nil, err
+	}
+
+	reg, err := registry.LoadRegistry()
+	if err != nil {
+		return nil, err
+	}
+
+	active := make(map[string]bool, len(reg.Databases))
+	for _, entry := range reg.Databases {
+		active[entry.DatabaseName] = true
+	}
+
+	var inactive []InactiveDatabaseInfo
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.EqualFold(filepath.Ext(entry.Name()), ".json") {
+			continue
+		}
+
+		manifestPath := filepath.Join(manifestsDir, entry.Name())
+		data, err := os.ReadFile(manifestPath)
+		if err != nil {
+			logger.Warning("Failed to read manifest candidate", "path", manifestPath, "error", err)
+			continue
+		}
+
+		var manifestFile ManifestFile
+		if err := json.Unmarshal(data, &manifestFile); err != nil {
+			logger.Warning("Failed to parse manifest candidate", "path", manifestPath, "error", err)
+			continue
+		}
+
+		dbName := manifestFile.Manifest.DatabaseName
+		if dbName == "" {
+			dbName = strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name()))
+		}
+		if dbName == "" || active[dbName] {
+			continue
+		}
+
+		relPath, err := filepath.Rel(root, manifestPath)
+		if err != nil {
+			relPath = manifestPath
+		}
+
+		inactive = append(inactive, InactiveDatabaseInfo{
+			DatabaseName:  dbName,
+			ManifestName:  manifestFile.Manifest.ManifestName,
+			Description:   manifestFile.Manifest.Description,
+			Tags:          manifestFile.Manifest.Tags,
+			ManifestPath:  relPath,
+			ImportCommand: "gsc manifest import " + relPath,
+		})
+	}
+
+	sort.Slice(inactive, func(i, j int) bool {
+		return inactive[i].DatabaseName < inactive[j].DatabaseName
+	})
+
+	_ = ctx
+	return inactive, nil
 }

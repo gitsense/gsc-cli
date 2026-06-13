@@ -259,6 +259,219 @@ func Publish(manifestPath, owner, repo, branch, format string) error {
 	return nil
 }
 
+// DeleteByOwnerRepo unpublishes all manifests for a specific owner/repo combination.
+// ManifestGroupSummary holds a manifest name and the number of versions published under it.
+type ManifestGroupSummary struct {
+	Name  string
+	Count int
+}
+
+// RepoDeleteSummary holds a repo name and the number of manifests published in it.
+type RepoDeleteSummary struct {
+	Repo  string
+	Count int
+}
+
+// SummarizeOwnerRepoDelete returns the total count and per-name breakdown for an owner/repo delete.
+func SummarizeOwnerRepoDelete(owner, repo string) (int, []ManifestGroupSummary, error) {
+	gscHome, err := settings.GetGSCHome(false)
+	if err != nil {
+		return 0, nil, err
+	}
+	chatDB, err := db.OpenDB(settings.GetChatDatabasePath(gscHome))
+	if err != nil {
+		return 0, nil, err
+	}
+	defer db.CloseDB(chatDB)
+
+	manifests, err := db.GetActiveManifests(chatDB, owner, repo)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	counts := map[string]int{}
+	var order []string
+	for _, m := range manifests {
+		if _, seen := counts[m.ManifestName]; !seen {
+			order = append(order, m.ManifestName)
+		}
+		counts[m.ManifestName]++
+	}
+
+	groups := make([]ManifestGroupSummary, 0, len(order))
+	total := 0
+	for _, name := range order {
+		c := counts[name]
+		groups = append(groups, ManifestGroupSummary{Name: name, Count: c})
+		total += c
+	}
+	return total, groups, nil
+}
+
+// SummarizeOwnerDelete returns the total count and per-repo breakdown for an owner-wide delete.
+func SummarizeOwnerDelete(owner string) (int, []RepoDeleteSummary, error) {
+	gscHome, err := settings.GetGSCHome(false)
+	if err != nil {
+		return 0, nil, err
+	}
+	chatDB, err := db.OpenDB(settings.GetChatDatabasePath(gscHome))
+	if err != nil {
+		return 0, nil, err
+	}
+	defer db.CloseDB(chatDB)
+
+	repos, err := db.GetActiveManifests(chatDB, owner, "")
+	if err != nil {
+		return 0, nil, err
+	}
+
+	summaries := make([]RepoDeleteSummary, 0, len(repos))
+	total := 0
+	for _, r := range repos {
+		summaries = append(summaries, RepoDeleteSummary{Repo: r.Repo, Count: r.ManifestCount})
+		total += r.ManifestCount
+	}
+	return total, summaries, nil
+}
+
+func DeleteByOwnerRepo(owner, repo string) error {
+	gscHome, err := settings.GetGSCHome(false)
+	if err != nil {
+		return err
+	}
+
+	dbPath := settings.GetChatDatabasePath(gscHome)
+	chatDB, err := db.OpenDB(dbPath)
+	if err != nil {
+		return err
+	}
+	defer db.CloseDB(chatDB)
+
+	count, err := db.DeletePublishedManifestsByOwnerRepo(chatDB, owner, repo)
+	if err != nil {
+		return err
+	}
+
+	rootChat, err := db.FindChatByTypeAndName(chatDB, "intelligence-manifests-root", "Intelligence Manifests", 0)
+	if err != nil {
+		return fmt.Errorf("failed to find root chat: %w", err)
+	}
+	if rootChat != nil {
+		ownerChat, err := db.FindChatByTypeAndName(chatDB, "intelligence-manifests-owner", owner, rootChat.ID)
+		if err != nil {
+			return fmt.Errorf("failed to find owner chat: %w", err)
+		}
+		if ownerChat != nil {
+			repoChat, err := db.FindChatByTypeAndName(chatDB, "intelligence-manifests-repo", repo, ownerChat.ID)
+			if err != nil {
+				return fmt.Errorf("failed to find repo chat: %w", err)
+			}
+			if repoChat != nil {
+				if err := db.DeleteChatAndDescendants(chatDB, repoChat.ID); err != nil {
+					return fmt.Errorf("failed to delete repo chat hierarchy: %w", err)
+				}
+			}
+		}
+	}
+
+	deleteStorageDir(filepath.Join(settings.GetManifestStoragePath(gscHome), owner, repo))
+
+	if err := regenerateAfterRepoDelete(chatDB, owner); err != nil {
+		return fmt.Errorf("failed to regenerate UI: %w", err)
+	}
+
+	logger.Success("Manifests unpublished", "owner", owner, "repo", repo, "count", count)
+	return nil
+}
+
+// DeleteByOwner unpublishes all manifests for an owner (all repos).
+func DeleteByOwner(owner string) error {
+	gscHome, err := settings.GetGSCHome(false)
+	if err != nil {
+		return err
+	}
+
+	dbPath := settings.GetChatDatabasePath(gscHome)
+	chatDB, err := db.OpenDB(dbPath)
+	if err != nil {
+		return err
+	}
+	defer db.CloseDB(chatDB)
+
+	count, err := db.DeletePublishedManifestsByOwner(chatDB, owner)
+	if err != nil {
+		return err
+	}
+
+	rootChat, err := db.FindChatByTypeAndName(chatDB, "intelligence-manifests-root", "Intelligence Manifests", 0)
+	if err != nil {
+		return fmt.Errorf("failed to find root chat: %w", err)
+	}
+	if rootChat != nil {
+		ownerChat, err := db.FindChatByTypeAndName(chatDB, "intelligence-manifests-owner", owner, rootChat.ID)
+		if err != nil {
+			return fmt.Errorf("failed to find owner chat: %w", err)
+		}
+		if ownerChat != nil {
+			if err := db.DeleteChatAndDescendants(chatDB, ownerChat.ID); err != nil {
+				return fmt.Errorf("failed to delete owner chat hierarchy: %w", err)
+			}
+		}
+	}
+
+	deleteStorageDir(filepath.Join(settings.GetManifestStoragePath(gscHome), owner))
+
+	if err := regenerateAfterOwnerDelete(chatDB); err != nil {
+		return fmt.Errorf("failed to regenerate root UI: %w", err)
+	}
+
+	logger.Success("Manifests unpublished", "owner", owner, "count", count)
+	return nil
+}
+
+// deleteStorageDir removes a directory and all its contents, ignoring not-found errors.
+func deleteStorageDir(path string) {
+	if err := os.RemoveAll(path); err != nil {
+		logger.Warning("Failed to delete storage directory", "path", path, "error", err)
+	}
+}
+
+// regenerateAfterRepoDelete regenerates the owner and root UIs after a repo has been deleted.
+func regenerateAfterRepoDelete(chatDB *sql.DB, owner string) error {
+	rootChat, err := db.FindChatByTypeAndName(chatDB, "intelligence-manifests-root", "Intelligence Manifests", 0)
+	if err != nil || rootChat == nil {
+		return nil
+	}
+
+	ownerChat, err := db.FindChatByTypeAndName(chatDB, "intelligence-manifests-owner", owner, rootChat.ID)
+	if err != nil || ownerChat == nil {
+		return nil
+	}
+
+	ownerManifests, _ := db.GetActiveManifests(chatDB, owner, "")
+	ownerMD := buildOwnerMarkdown(owner, ownerManifests)
+	if err := ensureMessages(chatDB, ownerChat.ID, owner, ownerMD); err != nil {
+		return err
+	}
+	rootManifests, _ := db.GetActiveManifests(chatDB, "", "")
+	recentManifests, _ := db.GetGlobalRecentManifests(chatDB, 5)
+	rootMD := buildRootMarkdown(rootManifests, recentManifests)
+	return ensureMessages(chatDB, rootChat.ID, "Intelligence Manifests", rootMD)
+}
+
+// regenerateAfterOwnerDelete regenerates the root UI after an entire owner has been deleted.
+func regenerateAfterOwnerDelete(chatDB *sql.DB) error {
+	rootChat, err := db.FindChatByTypeAndName(chatDB, "intelligence-manifests-root", "Intelligence Manifests", 0)
+	if err != nil || rootChat == nil {
+		return nil
+	}
+
+	rootManifests, _ := db.GetActiveManifests(chatDB, "", "")
+	recentManifests, _ := db.GetGlobalRecentManifests(chatDB, 5)
+	rootMD := buildRootMarkdown(rootManifests, recentManifests)
+	return ensureMessages(chatDB, rootChat.ID, "Intelligence Manifests", rootMD)
+}
+
 // Unpublish removes a manifest from the index and updates the UI.
 func Unpublish(remoteID string) error {
 	gscHome, err := settings.GetGSCHome(false)
@@ -555,18 +768,49 @@ func buildRepoMarkdown(owner, repo string, manifests []db.PublishedManifest) str
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("# %s / %s\n\nIntelligence layers for the %s/%s repository.\n\n", owner, repo, owner, repo))
 
-	sb.WriteString("## Published Manifests\n\n")
 	if len(manifests) == 0 {
 		sb.WriteString("No active intelligence layers are currently published for this repository.\n")
 	} else {
-		sb.WriteString("| ID | Branch | Manifest | Published | Download | URL |\n")
-		sb.WriteString("| :--- | :--- | :--- | :--- | :--- | :--- |\n")
+		type manifestGroup struct {
+			name        string
+			database    string
+			description string
+			entries     []db.PublishedManifest
+		}
+		var groupOrder []string
+		groups := map[string]*manifestGroup{}
+
 		for _, m := range manifests {
-			shortID := m.UUID[:8]
-			published := m.PublishedAt.Format("2006-01-02 15:04:05")
-			link := fmt.Sprintf("[Download](/--/manifests/%s/%s/%s.json)", owner, repo, m.UUID)
-			copyLink := "[Copy](#)"
-			sb.WriteString(fmt.Sprintf("| `%s` | %s | %s | %s | %s | %s |\n", shortID, m.Branch, m.ManifestName, published, link, copyLink))
+			key := m.ManifestName + "\x00" + m.Database
+			if _, exists := groups[key]; !exists {
+				groupOrder = append(groupOrder, key)
+				groups[key] = &manifestGroup{
+					name:        m.ManifestName,
+					database:    m.Database,
+					description: m.ManifestDescription,
+				}
+			}
+			groups[key].entries = append(groups[key].entries, m)
+		}
+
+		for i, key := range groupOrder {
+			g := groups[key]
+			sb.WriteString(fmt.Sprintf("## %s (%s)\n\n", g.name, g.database))
+			if g.description != "" {
+				sb.WriteString(g.description + "\n\n")
+			}
+			sb.WriteString("| ID | Branch | Published | Download | URL |\n")
+			sb.WriteString("| :--- | :--- | :--- | :--- | :--- |\n")
+			for _, m := range g.entries {
+				shortID := m.UUID[:8]
+				published := m.PublishedAt.Format("2006-01-02 15:04:05")
+				link := fmt.Sprintf("[Download](/--/manifests/%s/%s/%s.json)", owner, repo, m.UUID)
+				copyLink := "[Copy](#)"
+				sb.WriteString(fmt.Sprintf("| `%s` | %s | %s | %s | %s |\n", shortID, m.Branch, published, link, copyLink))
+			}
+			if i < len(groupOrder)-1 {
+				sb.WriteString("\n---\n\n")
+			}
 		}
 	}
 

@@ -1,12 +1,12 @@
 <!--
 Component: gsc-cli README
-Block-UUID: 5c01d958-b93a-46dd-9f83-65c5d47a15dc
-Parent-UUID: N/A
-Version: 1.0.0
-Description: Reworked README positioning gsc-cli as the terminal half of the GitSense two-part system, with focus on trust, transparency, and what this repository is.
+Block-UUID: d5f493cc-7035-43fc-a3d0-d013fadec153
+Parent-UUID: 5c01d958-b93a-46dd-9f83-65c5d47a15dc
+Version: 1.1.0
+Description: Updated README positioning to include lessons as durable repository knowledge alongside analyzer-generated Manifests and Brains.
 Language: Markdown
 Created-at: 2026-05-31T17:26:27.671Z
-Authors: Claude Code - Sonnet (v1.0.0)
+Authors: Claude Code - Sonnet (v1.0.0), Codex GPT-5 (v1.1.0)
 -->
 
 
@@ -19,6 +19,8 @@ GitSense is a two-part system:
 - **[The Chat App](https://github.com/gitsense/chat)** imports repositories, runs analyzers, extracts structured domain knowledge, and packages that knowledge into portable Manifests.
 - **This repository** is the Go source for the `gsc` binary. The CLI runs on your machine, imports those Manifests, builds local Brains, and makes the intelligence available in your terminal, scripts, and coding agents.
 
+Brains can be built from analyzer output or grown from development sessions as lessons. Both live with the repository. Both are queryable.
+
 If you are reading this, you may already have `gsc` installed. This repository exists so you can review exactly what the CLI does and build it yourself.
 
 ## What This Repository Is
@@ -29,19 +31,20 @@ The CLI handles:
 
 - importing and managing Manifests
 - building local Brain databases from those Manifests
+- capturing durable lessons from development sessions
 - enriched terminal searches powered by Brain metadata
 - context generation for coding agents
 - GitSense Chat app installation, lifecycle, import, and analysis management
 
 The core Brain/search commands operate locally against files and SQLite databases. Commands that explicitly install software, import remote Manifests, publish Manifests, or talk to the Chat app may contact the configured endpoint.
 
-## A Note on AI, Go, and v0.1.0
+## A Note on AI, Go, and Project Maturity
 
 This repository is approximately 99.9% AI-generated. It was guided by a seasoned software developer who was not proficient in Go when the project began.
 
 That context matters because GitSense is built around eliminating blind discovery. Modern AI can generate code quickly, but complex software still depends on knowing what to build, where to look, what context matters, and how to keep changes coherent over time. GitSense is both the product and a working example of that workflow.
 
-This is also a `v0.1.0` project. Some implementation choices may not reflect ideal Go design, and parts of the codebase will evolve as the project matures. The point of this repository is not to present perfect idiomatic Go. It is to show that, with strong human direction and better repository intelligence, AI can help build, extend, and maintain substantial software even when the human is not already fluent in the target language.
+This is also an early-stage project, currently preparing for `v0.2.0`. Some implementation choices may not reflect ideal Go design, and parts of the codebase will evolve as the project matures. The point of this repository is not to present perfect idiomatic Go. It is to show that, with strong human direction and better repository intelligence, AI can help build, extend, and maintain substantial software even when the human is not already fluent in the target language.
 
 Go was chosen for practical distribution reasons. GitSense Chat itself is a Node.js application, which matched the author's existing JavaScript experience and the needs of the web app. The `gsc` CLI is written in Go because it needs to compile into easy-to-install binaries that let users run commands like:
 
@@ -55,16 +58,21 @@ That binary-first workflow is central to making GitSense easy for humans and age
 
 The important distinction:
 
-- A **Manifest** is a portable JSON artifact created from analysis. It can be committed, shared by URL, or published through GitSense Chat.
-- A **Brain** is the local SQLite database that `gsc` builds from a Manifest.  It is what `gsc query`, `gsc rg`, and `gsc tree` read.
+- A **Manifest** is a portable JSON artifact that packages structured repository metadata. It can be committed, shared by URL, or published through GitSense Chat.
+- A **Brain** is the local SQLite database that `gsc` builds from a Manifest. It is what `gsc query`, `gsc rg`, and `gsc tree` read.
 
 Manifests are what teams distribute. Brains are what developers and agents use locally.
+
+There are two common ways Brains are created:
+
+- **Analyzer Brains** come from structured analysis of a codebase. GitSense Chat can produce these by running analyzers over repository files and exporting metadata such as file purpose, keywords, ownership, risk, or any custom fields an analyzer defines.
+- **Lessons Brains** grow from development sessions. When a human or agent discovers a useful constraint, coupling, workflow, design decision, or gotcha, it can be saved as a lesson. Lessons are committed as records in `.gitsense/lessons/records.jsonl`; `gsc lessons build` projects those records into a generated Manifest and imports the local `gsc-lessons` Brain.
 
 ## What `gsc` Does
 
 ### Intelligence Commands
 
-These commands work once a Manifest has been converted to a GitSense Brain (SQLite database).
+These commands work once a Manifest has been imported into a repository.
 
 | Command | Purpose |
 | :--- | :--- |
@@ -87,6 +95,21 @@ These commands work once a Manifest has been converted to a GitSense Brain (SQLi
 | `gsc experts status` | Check whether agent context is stale |
 | `gsc experts guide` | Load the consultation guide for structured agent workflows |
 | `gsc experts setup-agent claude` | Install the `/gitsense` skill for Claude Code |
+
+### Lesson Commands
+
+These commands capture and rebuild durable repository knowledge from development sessions. `gsc experts init` will also build the `gsc-lessons` Brain automatically when committed lesson records exist and the Brain is missing.
+
+| Command | Purpose |
+| :--- | :--- |
+| `gsc lessons new` | Start a new lesson draft |
+| `gsc lessons validate` | Validate the current lesson draft without rendering a review |
+| `gsc lessons review` | Validate and preview the current lesson draft |
+| `gsc lessons commit` | Commit the reviewed draft and update the `gsc-lessons` Brain |
+| `gsc lessons build` | Rebuild the generated lessons Manifest and Brain from committed records |
+| `gsc lessons list` | List committed lessons |
+| `gsc lessons show` | Show a committed lesson |
+| `gsc lessons delete` | Delete a lesson from repository knowledge and rebuild the Brain |
 
 ### App Management Commands
 
@@ -127,6 +150,13 @@ The binary is written to `dist/gsc`. Add it to your `PATH` or alias it:
 ```bash
 alias gsc="$(pwd)/dist/gsc"
 gsc --help
+```
+
+Check the CLI version with either form:
+
+```bash
+gsc --version
+gsc version
 ```
 
 Runtime requirements depend on what you use:

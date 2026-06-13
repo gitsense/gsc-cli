@@ -1,14 +1,13 @@
 /**
  * Component: Query Output Formatter
- * Block-UUID: 39cb03bf-c1e3-45d3-8d38-29599630bd7e
- * Parent-UUID: 5811da61-d75f-4c29-a3da-556384a89b34
- * Version: 3.12.0
+ * Block-UUID: d80e44f6-60d7-41af-9735-9e1782d67e01
+ * Parent-UUID: f8ba1590-72b2-4f47-87c8-79cbfcd3c462
+ * Version: 3.15.0
  * Description: Updated FormatStatusView to reflect the simplified 'gsc query' interface. Removed references to hidden subcommands (list, insights, coverage) and legacy flags (--field, --value). Promoted the --filter syntax and top-level shortcuts (gsc brains, gsc fields, gsc insights, gsc coverage). Added Top Unanalyzed File Types section to coverage report to show which file types/extensions are missing analysis.
  * Language: Go
  * Created-at: 2026-04-02T14:53:02.170Z
- * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v3.8.0), claude-haiku-4-5-20251001 (v3.9.0), GLM-4.7 (v3.9.1), GLM-4.7 (v3.10.0), GLM-4.7 (v3.11.0), GLM-4.7 (v3.12.0)
+ * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v3.8.0), claude-haiku-4-5-20251001 (v3.9.0), GLM-4.7 (v3.9.1), GLM-4.7 (v3.10.0), GLM-4.7 (v3.11.0), GLM-4.7 (v3.12.0), MiMo-v2.5-Pro (v3.13.0), MiMo-v2.5-Pro (v3.14.0), MiMo-v2.5-Pro (v3.15.0)
  */
-
 
 package manifest
 
@@ -99,7 +98,7 @@ func formatQueryResultsTable(response *QueryResponse, quiet bool, config *QueryC
 		}
 		table = output.FormatTable(headers, rows)
 	}
-	
+
 	if quiet {
 		return table
 	}
@@ -114,13 +113,17 @@ func formatQueryResultsTable(response *QueryResponse, quiet bool, config *QueryC
 
 	sb.WriteString(table)
 
+	if response.Summary.Truncated {
+		sb.WriteString(fmt.Sprintf("\n⚠ Showing first %d results (use --limit 0 or a higher value to see more)\n", response.Summary.Limit))
+	}
+
 	if !quiet {
 		sb.WriteString("\n")
 		sb.WriteString(fmt.Sprintf("Coverage Analysis (Confidence: %s)\n", response.Summary.Confidence))
 		sb.WriteString("----------------------------------------------------------\n")
-		sb.WriteString(fmt.Sprintf("Focus Coverage:    %s %.1f%% (%d results)\n\n", 
-			renderProgressBar(response.Summary.CoveragePercent), 
-			response.Summary.CoveragePercent, 
+		sb.WriteString(fmt.Sprintf("Focus Coverage:    %s %.1f%% (%d results)\n\n",
+			renderProgressBar(response.Summary.CoveragePercent),
+			response.Summary.CoveragePercent,
 			response.Summary.TotalResults))
 		sb.WriteString("Hint: Run 'gsc query coverage' for a detailed breakdown of blind spots.\n")
 	}
@@ -182,7 +185,7 @@ func formatListResultTable(listResult *ListResult, quiet bool, config *QueryConf
 				if dbItem.Name == listResult.ActiveDatabase {
 					name = name + " (active)"
 				}
-				
+
 				sb.WriteString(fmt.Sprintf("%s\n", dbItem.ManifestName))
 				sb.WriteString(fmt.Sprintf("    Database: %s\n", name))
 				sb.WriteString(fmt.Sprintf("    Description: %s\n", dbItem.Description))
@@ -204,22 +207,44 @@ func formatListResultTable(listResult *ListResult, quiet bool, config *QueryConf
 						if availableDescWidth < 20 {
 							availableDescWidth = 20 // Minimum width
 						}
-						sb.WriteString(fmt.Sprintf("    %-*s - %s\n", 
-							maxFieldWidth, 
-							f.Name, 
+						sb.WriteString(fmt.Sprintf("    %-*s - %s\n",
+							maxFieldWidth,
+							f.Name,
 							truncate(f.Description, availableDescWidth)))
 					}
 					// Add a blank line after fields for readability
 					sb.WriteString("\n")
 				}
 			}
+		} else {
+			sb.WriteString("No active Brains found.\n\n")
+		}
+
+		if len(listResult.InactiveDatabases) > 0 {
+			sb.WriteString("Inactive Brains:\n")
+			sb.WriteString("----------------\n")
+			headers := []string{"Name", "Manifest", "Import"}
+			rows := make([][]string, 0, len(listResult.InactiveDatabases))
+			for _, db := range listResult.InactiveDatabases {
+				manifestName := db.ManifestName
+				if manifestName == "" {
+					manifestName = "(unnamed)"
+				}
+				rows = append(rows, []string{
+					db.DatabaseName,
+					manifestName,
+					db.ImportCommand,
+				})
+			}
+			sb.WriteString(output.FormatTable(headers, rows))
+			sb.WriteString("\n\n")
 		}
 
 		// 2. Render Fields (Standard Dashboard only)
 		if !isAllView && len(listResult.Fields) > 0 {
 			sb.WriteString(fmt.Sprintf("Available Fields (in '%s'):\n", listResult.ActiveDatabase))
 			sb.WriteString("--------------------------------\n")
-			
+
 			maxNameWidth := 0
 			for _, item := range listResult.Fields {
 				if len(item.Name) > maxNameWidth {
@@ -233,9 +258,9 @@ func formatListResultTable(listResult *ListResult, quiet bool, config *QueryConf
 				if availableDescWidth < 20 {
 					availableDescWidth = 20 // Minimum width
 				}
-				sb.WriteString(fmt.Sprintf("    %-*s - %s\n", 
-					maxNameWidth, 
-					item.Name, 
+				sb.WriteString(fmt.Sprintf("    %-*s - %s\n",
+					maxNameWidth,
+					item.Name,
 					truncate(item.Description, availableDescWidth)))
 			}
 			sb.WriteString("\n")
@@ -373,11 +398,16 @@ func FormatStatusView(config *QueryConfig, quiet bool) string {
 	sb.WriteString("Find files by metadata value.\n\n")
 	sb.WriteString(FormatWorkspaceHeader(config, quiet))
 
-	sb.WriteString("Primary Flags:\n")
-	sb.WriteString("  -d, --db <name>    Override default database\n")
-	sb.WriteString("  --filter <expr>    Metadata filter (e.g., 'field=value', 'field~value')\n")
-	sb.WriteString("  --fields <list>    Additional fields to include in results\n")
-	sb.WriteString("  --match-all        Match all values (AND logic) instead of any (OR logic)\n\n")
+	sb.WriteString("Query Command:\n")
+	sb.WriteString("  gsc query --filter \"...\"\n")
+	sb.WriteString("  Flags: --db, --filter, --fields, --limit, --match-all, --glob, --format\n\n")
+
+	sb.WriteString("Query Shortcuts:\n")
+	sb.WriteString("  gsc brains               List available brains\n")
+	sb.WriteString("  gsc brains <name>        Inspect brain fields\n")
+	sb.WriteString("  gsc insights --fields X  Metadata distribution\n")
+	sb.WriteString("  gsc coverage             Coverage & blind spots\n")
+	sb.WriteString("  gsc rg <pattern>         Code search with metadata\n\n")
 
 	sb.WriteString("Need more help? Run 'gsc query --help' for the full manual.\n")
 
@@ -415,7 +445,7 @@ func formatCoverageTable(report *CoverageReport, quiet bool, config *QueryConfig
 	sb.WriteString(fmt.Sprintf("GitSense Chat Coverage Report: %s\n", dbName))
 	sb.WriteString(strings.Repeat("=", 41+len(dbName)) + "\n")
 	sb.WriteString(fmt.Sprintf("Active Profile: %s\n", getStatusValue(report.ActiveProfile)))
-	
+
 	scopeStr := "All tracked files"
 	if report.ScopeDefinition != nil {
 		scopeStr = fmt.Sprintf("Include %v | Exclude %v", report.ScopeDefinition.Include, report.ScopeDefinition.Exclude)
@@ -432,20 +462,20 @@ func formatCoverageTable(report *CoverageReport, quiet bool, config *QueryConfig
 
 	sb.WriteString("Coverage Percentages\n")
 	sb.WriteString("----------------------------------------------------------\n")
-	sb.WriteString(fmt.Sprintf("Focus Coverage:    %s %.1f%% (%d/%d in-scope)\n", 
-		renderProgressBar(report.Percentages.FocusCoverage), 
-		report.Percentages.FocusCoverage, 
-		report.Totals.AnalyzedFiles, 
+	sb.WriteString(fmt.Sprintf("Focus Coverage:    %s %.1f%% (%d/%d in-scope)\n",
+		renderProgressBar(report.Percentages.FocusCoverage),
+		report.Percentages.FocusCoverage,
+		report.Totals.AnalyzedFiles,
 		report.Totals.InScopeFiles))
-	sb.WriteString(fmt.Sprintf("Total Coverage:    %s %.1f%% (%d/%d total)\n\n", 
-		renderProgressBar(report.Percentages.TotalCoverage), 
-		report.Percentages.TotalCoverage, 
-		report.Totals.AnalyzedFiles, 
+	sb.WriteString(fmt.Sprintf("Total Coverage:    %s %.1f%% (%d/%d total)\n\n",
+		renderProgressBar(report.Percentages.TotalCoverage),
+		report.Percentages.TotalCoverage,
+		report.Totals.AnalyzedFiles,
 		report.Totals.TrackedFiles))
 
 	sb.WriteString("Coverage by Language\n")
 	sb.WriteString("----------------------------------------------------------\n")
-	
+
 	var langs []string
 	for l := range report.ByLanguage {
 		langs = append(langs, l)
@@ -456,11 +486,11 @@ func formatCoverageTable(report *CoverageReport, quiet bool, config *QueryConfig
 
 	for _, l := range langs {
 		stats := report.ByLanguage[l]
-		sb.WriteString(fmt.Sprintf("%-11s %s %5.1f%% (%d/%d)\n", 
-			l+":", 
-			renderProgressBar(stats.Percent), 
-			stats.Percent, 
-			stats.Analyzed, 
+		sb.WriteString(fmt.Sprintf("%-11s %s %5.1f%% (%d/%d)\n",
+			l+":",
+			renderProgressBar(stats.Percent),
+			stats.Percent,
+			stats.Analyzed,
 			stats.Total))
 	}
 	sb.WriteString("\n")
@@ -471,7 +501,7 @@ func formatCoverageTable(report *CoverageReport, quiet bool, config *QueryConfig
 		sb.WriteString("No blind spots detected in scope.\n")
 	} else {
 		for _, ds := range report.BlindSpots.Directories {
-			sb.WriteString(fmt.Sprintf("%-25s (%2d files, %3.0f%% analyzed)\n", 
+			sb.WriteString(fmt.Sprintf("%-25s (%2d files, %3.0f%% analyzed)\n",
 				ds.Path, ds.TotalFiles, ds.Percent))
 		}
 	}
@@ -483,7 +513,7 @@ func formatCoverageTable(report *CoverageReport, quiet bool, config *QueryConfig
 		sb.WriteString("No file type blind spots detected in scope.\n")
 	} else {
 		for _, ft := range report.BlindSpots.FileTypes {
-			sb.WriteString(fmt.Sprintf("%-15s (%3d files, %3.0f%% analyzed)\n", 
+			sb.WriteString(fmt.Sprintf("%-15s (%3d files, %3.0f%% analyzed)\n",
 				ft.Extension, ft.TotalFiles, ft.Percent))
 		}
 	}
@@ -546,7 +576,7 @@ func formatReportTable(report *InsightsReport, quiet bool, config *QueryConfig) 
 	sb.WriteString(fmt.Sprintf("GitSense Chat Intelligence Report: %s\n", dbName))
 	sb.WriteString(strings.Repeat("=", 41+len(dbName)) + "\n")
 	sb.WriteString(fmt.Sprintf("Active Profile: %s\n", getStatusValue(config.ActiveProfile)))
-	
+
 	scopeStr := "All tracked files"
 	if report.Context.ScopeDefinition != nil {
 		scopeStr = fmt.Sprintf("Include %v | Exclude %v", report.Context.ScopeDefinition.Include, report.Context.ScopeDefinition.Exclude)
@@ -563,12 +593,12 @@ func formatReportTable(report *InsightsReport, quiet bool, config *QueryConfig) 
 			}
 		}
 	}
-	
+
 	percent := 0.0
 	if totalFiles > 0 {
 		percent = (float64(analyzedCount) / float64(totalFiles)) * 100
 	}
-	
+
 	sb.WriteString(fmt.Sprintf("Status: %d/%d In-Scope Files Analyzed (%.0f%%)\n\n", analyzedCount, totalFiles, percent))
 
 	var fieldNames []string
@@ -579,7 +609,7 @@ func formatReportTable(report *InsightsReport, quiet bool, config *QueryConfig) 
 
 	for _, fieldName := range fieldNames {
 		insights := report.Insights[fieldName]
-		
+
 		maxValWidth := 0
 		for _, insight := range insights {
 			displayValue := insight.Value
@@ -593,10 +623,10 @@ func formatReportTable(report *InsightsReport, quiet bool, config *QueryConfig) 
 				maxValWidth = len(displayValue)
 			}
 		}
-		
+
 		sb.WriteString(fmt.Sprintf("Field: %s (Top %d)\n", fieldName, report.Context.Limit))
 		sb.WriteString("----------------------------------------------------------\n")
-		
+
 		for _, insight := range insights {
 			displayValue := insight.Value
 			if displayValue == "" {
@@ -605,11 +635,11 @@ func formatReportTable(report *InsightsReport, quiet bool, config *QueryConfig) 
 			if len(displayValue) > 100 {
 				displayValue = displayValue[:97] + "..."
 			}
-			sb.WriteString(fmt.Sprintf("%-*s %s %5.1f%% (%d files)\n", 
+			sb.WriteString(fmt.Sprintf("%-*s %s %5.1f%% (%d files)\n",
 				maxValWidth,
-				displayValue, 
-				renderProgressBar(insight.Percentage), 
-				insight.Percentage, 
+				displayValue,
+				renderProgressBar(insight.Percentage),
+				insight.Percentage,
 				insight.Count))
 		}
 		sb.WriteString("\n")
@@ -619,12 +649,12 @@ func formatReportTable(report *InsightsReport, quiet bool, config *QueryConfig) 
 	sb.WriteString("----------------------------------------------------------\n")
 	for _, fieldName := range fieldNames {
 		withMeta := report.Summary.FilesWithMetadata[fieldName]
-		
+
 		completeness := 0.0
 		if totalFiles > 0 {
 			completeness = (float64(withMeta) / float64(totalFiles)) * 100
 		}
-		
+
 		sb.WriteString(fmt.Sprintf("%-20s: %5.1f%% of in-scope files have values\n", fieldName, completeness))
 	}
 	sb.WriteString("\n")
@@ -723,13 +753,13 @@ func formatManifestListHuman(databases []DatabaseInfo) string {
 		sb.WriteString(fmt.Sprintf("%s\n", db.ManifestName))
 		sb.WriteString(fmt.Sprintf("   Database: %s\n", db.DatabaseName))
 		sb.WriteString(fmt.Sprintf("   Description: %s\n", db.Description))
-		
+
 		if len(db.Tags) > 0 {
 			sb.WriteString(fmt.Sprintf("   Tag: %s\n", strings.Join(db.Tags, ", ")))
 		} else {
 			sb.WriteString("   Tag: (none)\n")
 		}
-		
+
 		sb.WriteString(fmt.Sprintf("   Files: %d\n", db.EntryCount))
 		sb.WriteString("\n")
 	}
