@@ -6,7 +6,7 @@ Version: 1.5.0
 Description: Documented glob-only metadata projection for gsc query. Clarified that --filter is for metadata predicates while --glob may stand alone when retrieving selected fields for known files or path scopes.
 Language: Markdown
 Created-at: 2026-05-01T00:20:05.230Z
-Authors: Gemini 2.5 Flash Lite (v1.0.0), MiMo-v2.5-Pro (v1.1.0), claude-sonnet-4-6 (v1.2.0), claude-sonnet-4-6 (v1.3.0), claude-sonnet-4-6 (v1.4.0)
+Authors: Gemini 2.5 Flash Lite (v1.0.0), MiMo-v2.5-Pro (v1.1.0), claude-sonnet-4-6 (v1.2.0), claude-sonnet-4-6 (v1.3.0), claude-sonnet-4-6 (v1.4.0), Codex GPT-5 (v1.5.0)
 -->
 
 

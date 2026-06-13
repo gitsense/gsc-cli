@@ -6,7 +6,7 @@ Version: 1.4.0
 Description: Hub document for the gsc claude experts AI reference system. Clarified query routing so metadata concepts use --filter while known file/path metadata projection may use --glob without --filter.
 Language: Markdown
 Created-at: 2026-04-30T23:51:56.570Z
-Authors: Gemini 2.5 Flash Lite (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), Gemini 2.5 Flash Lite (v1.3.0)
+Authors: Gemini 2.5 Flash Lite (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), Gemini 2.5 Flash Lite (v1.3.0), Codex GPT-5 (v1.4.0)
 -->
 
 

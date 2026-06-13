@@ -1,3 +1,14 @@
+/**
+ * Component: Manifest Example Content
+ * Block-UUID: 51f33c46-15a2-4b0f-8fa1-7c449f040ecd
+ * Parent-UUID: N/A
+ * Version: 1.0.0
+ * Description: Provides the embedded manifest format guide and working JSON example used by the manifest example command.
+ * Language: Go
+ * Created-at: 2026-06-13T00:00:00Z
+ * Authors: Codex GPT-5 (v1.0.0)
+ */
+
 package manifest
 
 func GenerateExample() string {

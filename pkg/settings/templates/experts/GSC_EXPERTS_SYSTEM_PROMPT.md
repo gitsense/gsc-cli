@@ -6,7 +6,7 @@ Version: 1.6.0
 Description: Clarified that expert context can initialize without active Brains and should fall back to text/path search while teaching agents how to use gsc.
 Language: Markdown (Go Template)
 Created-at: 2026-05-02T00:01:24.457Z
-Authors: Gemini 2.5 Flash Lite (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), Gemini 2.5 Flash Lite (v1.1.0), MiMo-v2.5-Pro (v1.2.0), claude-sonnet-4-6 (v1.3.0), claude-sonnet-4-6 (v1.4.0), claude-sonnet-4-6 (v1.5.0)
+Authors: Gemini 2.5 Flash Lite (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), Gemini 2.5 Flash Lite (v1.1.0), MiMo-v2.5-Pro (v1.2.0), claude-sonnet-4-6 (v1.3.0), claude-sonnet-4-6 (v1.4.0), claude-sonnet-4-6 (v1.5.0), Codex GPT-5 (v1.6.0)
 -->
 
 

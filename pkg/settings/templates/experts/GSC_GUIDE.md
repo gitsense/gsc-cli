@@ -6,7 +6,7 @@ Version: 1.3.0
 Description: Static AI-context primer for the Main Chat AI to act as a strategic consultant before triggering Inline Agents. Clarified when to use gsc query --filter versus glob-only metadata projection.
 Language: Markdown
 Created-at: 2026-05-25T15:50:44.918Z
-Authors: Gemini 2.5 Flash Lite (v1.0.0), GLM-4.7 (v1.1.0), MiMo-v2.5-Pro (v1.2.0)
+Authors: Gemini 2.5 Flash Lite (v1.0.0), GLM-4.7 (v1.1.0), MiMo-v2.5-Pro (v1.2.0), Codex GPT-5 (v1.3.0)
 -->
 
 

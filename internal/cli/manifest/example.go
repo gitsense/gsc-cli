@@ -1,3 +1,14 @@
+/**
+ * Component: Manifest Example Command
+ * Block-UUID: 5304d556-4987-47ce-b9c8-b27cfc952f55
+ * Parent-UUID: N/A
+ * Version: 1.0.0
+ * Description: Implements the 'gsc manifest example' command, printing manifest format documentation and a working JSON example for agent-assisted manifest creation.
+ * Language: Go
+ * Created-at: 2026-06-13T00:00:00Z
+ * Authors: Codex GPT-5 (v1.0.0)
+ */
+
 package manifest
 
 import (

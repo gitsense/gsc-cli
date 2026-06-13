@@ -1,3 +1,14 @@
+/**
+ * Component: Manifest Validate Command
+ * Block-UUID: e38300c0-a06d-4324-8194-83423c1cf7c2
+ * Parent-UUID: N/A
+ * Version: 1.0.0
+ * Description: Implements the 'gsc manifest validate' command, validating manifest JSON files and rendering human-readable validation reports.
+ * Language: Go
+ * Created-at: 2026-06-13T00:00:00Z
+ * Authors: Codex GPT-5 (v1.0.0)
+ */
+
 package manifest
 
 import (
