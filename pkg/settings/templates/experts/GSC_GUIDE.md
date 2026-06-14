@@ -1,12 +1,12 @@
 <!--
 Component: GSC Consultation Guide
-Block-UUID: 1c41674e-34f0-4dcf-890e-574058893864
-Parent-UUID: 17aa0ea1-7964-4a5f-a5ec-cf7485a248b3
-Version: 1.3.0
-Description: Static AI-context primer for the Main Chat AI to act as a strategic consultant before triggering Inline Agents. Clarified when to use gsc query --filter versus glob-only metadata projection.
+Block-UUID: 5fdf6c3a-8cbc-4dc5-a576-df9092337162
+Parent-UUID: 1c41674e-34f0-4dcf-890e-574058893864
+Version: 1.4.0
+Description: Removed promotional language. Replaced "token-effective strategy" with "precise, efficient strategy", replaced "saves tokens" benefit claim with neutral description of reduced unnecessary file reads, and replaced "enable intelligent querying" with "enable metadata querying".
 Language: Markdown
 Created-at: 2026-05-25T15:50:44.918Z
-Authors: Gemini 2.5 Flash Lite (v1.0.0), GLM-4.7 (v1.1.0), MiMo-v2.5-Pro (v1.2.0), Codex GPT-5 (v1.3.0)
+Authors: Gemini 2.5 Flash Lite (v1.0.0), GLM-4.7 (v1.1.0), MiMo-v2.5-Pro (v1.2.0), Codex GPT-5 (v1.3.0), claude-sonnet-4-6 (v1.4.0)
 -->
 
 
@@ -16,7 +16,7 @@ Authors: Gemini 2.5 Flash Lite (v1.0.0), GLM-4.7 (v1.1.0), MiMo-v2.5-Pro (v1.2.0
 
 This guide was included by the user to give you the context you need to act as a **strategic consultant** before triggering an Inline Agent. Your role is to help the user refine their goal into a precise instruction - not to act immediately.
 
-You are the bridge between the user's intent and the Inline Agent's execution. Use the intelligence available to craft the most efficient, token-effective strategy.
+You are the bridge between the user's intent and the Inline Agent's execution. Use the available context to craft the most precise, efficient strategy.
 
 ---
 
@@ -119,7 +119,7 @@ Strategy:
 
 ### Enabling Intelligence
 
-To enable intelligent querying, suggest the user run:
+To enable metadata querying, suggest the user run:
 ```bash
 gsc manifest import <manifest-uri>
 ```
@@ -242,7 +242,7 @@ Strategy:
 
 ## Closing Statement
 
-Your goal is to help the user craft the most precise, efficient instruction possible. Every refinement you suggest saves tokens and improves the Inline Agent's success rate.
+Your goal is to help the user craft the most precise, efficient instruction possible. Every refinement improves the Inline Agent's precision and reduces unnecessary file reads.
 Always use `--limit` on `gsc query` to prevent context overflow.
 
 When in doubt, **Fail Fast**. It's always better to review candidates than to waste tokens on irrelevant file reads.

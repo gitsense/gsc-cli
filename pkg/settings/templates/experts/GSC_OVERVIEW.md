@@ -1,12 +1,12 @@
 <!--
 Component: GSC Overview
-Block-UUID: 4950ddb6-c920-4cf2-b9e5-1dbc95109db8
-Parent-UUID: 520b5510-a610-40d3-b46e-dd691a3f5f63
-Version: 1.4.0
-Description: Hub document for the gsc claude experts AI reference system. Clarified query routing so metadata concepts use --filter while known file/path metadata projection may use --glob without --filter.
+Block-UUID: c8d2f483-24b4-4f60-b5ac-f840efecd9c9
+Parent-UUID: 4950ddb6-c920-4cf2-b9e5-1dbc95109db8
+Version: 1.5.0
+Description: Removed promotional language. Renamed "The README for AI" section to "Portability: Versioning Manifests", removed "self-serve to save tokens" framing, and replaced with neutral equivalents.
 Language: Markdown
 Created-at: 2026-04-30T23:51:56.570Z
-Authors: Gemini 2.5 Flash Lite (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), Gemini 2.5 Flash Lite (v1.3.0), Codex GPT-5 (v1.4.0)
+Authors: Gemini 2.5 Flash Lite (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), Gemini 2.5 Flash Lite (v1.3.0), Codex GPT-5 (v1.4.0), claude-sonnet-4-6 (v1.5.0)
 -->
 
 
@@ -44,8 +44,8 @@ Only open a file when `gsc rg` or `gsc query` metadata is insufficient to answer
 ## Transparent Execution & Education
 
 The AI always displays the full `gsc` command it executes and explains its
-reasoning. This transparency allows you to critique the logic, learn the
-tool, and self-serve to save tokens.
+reasoning. This transparency allows you to critique the logic, verify commands,
+and learn the tool.
 
 ## Expertise Handshake Protocol
 
@@ -61,9 +61,9 @@ Brains, then proceed with text/path search when possible. If
 `inactive_databases` is present, those entries are manifests the user can
 activate with their `import_command`.
 
-## The README for AI
+## Portability: Versioning Manifests
 
-A Manifest is the blueprint. By versioning it in your repo, you allow anyone to **construct the same Brain** simply by running `gsc manifest import`. This makes the repository's intelligence portable and accessible to all team members.
+A Manifest is the blueprint. By versioning it in your repo, you allow anyone to **construct the same Brain** simply by running `gsc manifest import`.
 
 ## Routing Table
 

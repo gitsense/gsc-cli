@@ -1,12 +1,12 @@
 <!--
 Component: GSC Query Guide
-Block-UUID: 9ee392b0-a2d1-466e-896f-07e3083ac2fe
-Parent-UUID: a296ca2e-a615-4b55-952e-55703cd0891a
-Version: 1.5.0
-Description: Documented glob-only metadata projection for gsc query. Clarified that --filter is for metadata predicates while --glob may stand alone when retrieving selected fields for known files or path scopes.
+Block-UUID: d10309ff-df15-4a11-820e-90ba4de414ba
+Parent-UUID: 9ee392b0-a2d1-466e-896f-07e3083ac2fe
+Version: 1.6.0
+Description: Removed promotional language. Replaced "reserved for GitSense Chat synthesis" description of the purpose field with neutral phrasing indicating it is optional and may be externally populated.
 Language: Markdown
 Created-at: 2026-05-01T00:20:05.230Z
-Authors: Gemini 2.5 Flash Lite (v1.0.0), MiMo-v2.5-Pro (v1.1.0), claude-sonnet-4-6 (v1.2.0), claude-sonnet-4-6 (v1.3.0), claude-sonnet-4-6 (v1.4.0), Codex GPT-5 (v1.5.0)
+Authors: Gemini 2.5 Flash Lite (v1.0.0), MiMo-v2.5-Pro (v1.1.0), claude-sonnet-4-6 (v1.2.0), claude-sonnet-4-6 (v1.3.0), claude-sonnet-4-6 (v1.4.0), Codex GPT-5 (v1.5.0), claude-sonnet-4-6 (v1.6.0)
 -->
 
 
@@ -240,7 +240,7 @@ The `gsc-lessons` Brain has both scalar and array fields. Use the right field fo
 
 Scalar fields safe for `gsc rg` overlays: `latest_lesson_summary`, `lesson_count`, `latest_lesson_at`, `purpose`.
 
-`purpose` is reserved for GitSense Chat synthesis and will be empty until Chat writes it. Use `latest_lesson_summary` as the default overlay field.
+`purpose` is an optional field and may be empty if not populated externally. Use `latest_lesson_summary` as the default overlay field.
 
 ### Discovering Keywords and Tags Before Filtering
 

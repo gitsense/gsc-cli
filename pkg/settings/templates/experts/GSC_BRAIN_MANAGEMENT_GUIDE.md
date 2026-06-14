@@ -1,12 +1,12 @@
 <!--
 Component: GSC Brain Management Guide
-Block-UUID: 64f969f9-6062-4b38-88e7-4b89fbbca676
-Parent-UUID: 16f4748b-c3c6-4163-8dec-b92c7e3c4b5f
-Version: 1.3.0
-Description: Detail guide for managing the Brain lifecycle - initializing the workspace, importing manifests, and constructing Brains. Updated to position the Brain as a "constructed knowledge base" built from Analyzer results.
+Block-UUID: cf4a7478-dc2b-4652-b6fe-68c1c2531d4b
+Parent-UUID: 64f969f9-6062-4b38-88e7-4b89fbbca676
+Version: 1.4.0
+Description: Removed promotional language and external product references. Renamed "The README for AI" section to "Portability: Versioning Manifests", replaced GitSense Chat workflow references with neutral descriptions, removed external link, and replaced "unlock" and "promote" with neutral equivalents.
 Language: Markdown
 Created-at: 2026-05-01T12:28:10.876Z
-Authors: Gemini 2.5 Flash Lite (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0)
+Authors: Gemini 2.5 Flash Lite (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash (v1.2.0), GLM-4.7 (v1.3.0), claude-sonnet-4-6 (v1.4.0)
 -->
 
 
@@ -18,7 +18,7 @@ Authors: Gemini 2.5 Flash Lite (v1.0.0), Gemini 3 Flash (v1.1.0), Gemini 3 Flash
 | :--- | :--- |
 | `gsc manifest import <URI>` | Import a manifest and construct a Brain |
 | `gsc manifest list` | List all registered, active Brains |
-| `gsc manifest publish <path>` | Share a Brain via GitSense Chat |
+| `gsc manifest publish <path>` | Publish a manifest to a remote endpoint |
 
 ---
 
@@ -57,17 +57,17 @@ The system resolves the Brain's name in this order:
 
 ---
 
-## 2. The README for AI: Making Repositories Self-Aware
+## 2. Portability: Versioning Manifests
 
 A Manifest is the blueprint. By versioning it in your repo, you allow anyone to **construct the same Brain** simply by running `gsc manifest import`.
 
 **The Workflow:**
-1. **Create & Analyze:** Use the GitSense Chat app to create a custom Analyzer
-   and analyze the repository.
-2. **Download:** Download the resulting Manifest (JSON).
+1. **Create & Analyze:** Generate a Manifest using an Analyzer that produces a
+   compatible JSON format and analyze the repository.
+2. **Download:** Obtain the resulting Manifest (JSON).
 3. **Version:** Commit the Manifest to the repository (e.g., in `metadata/`).
 4. **Construct:** Anyone who clones the repo can run `gsc manifest import` on
-   that file to build the Brain and enable intelligent querying.
+   that file to build the Brain and enable metadata querying.
 
 ---
 
@@ -84,11 +84,8 @@ follow this protocol:
 2. **Check for Versioned Manifests:** Ask the user if there is a versioned
    Manifest in the repository (e.g., `metadata/brain.json`) that can be
    imported via `gsc manifest import <path>` to construct the Brain.
-3. **Suggest Creation:** If no Manifest exists, suggest the user create their
-   own custom Analyzer to generate a Manifest.
-4. **Direct to Tutorials:** Point the user to the **interactive tutorials**
-   on the GitSense Chat demo instance. A link to the demo can be found on the
-   official GitHub page: [https://github.com/gitsense/chat](https://github.com/gitsense/chat).
+3. **No Manifest Available:** If no Manifest exists, inform the user that a
+   Manifest must be obtained or generated before a Brain can be constructed.
 
 ---
 
@@ -99,8 +96,8 @@ follow this protocol:
    `inactive_databases` as importable manifests rather than active Brains.
 2. **Don't hunt; Guide.** If a Brain is missing, don't run `find` or `ls` to
    look for Manifests. Tell the user and explain how they can construct the Brain.
-3. **Promote the "README for AI" concept.** Encourage users to version their
-   Manifests so the repository's intelligence is portable and accessible to
-   all team members.
+3. **Recommend versioning Manifests alongside code.** When a Manifest is
+   committed to the repository, any team member can reconstruct the Brain
+   with a single import command.
 4. **Explain the "why" when suggesting an import.** Tell the user which field
-   the Brain will unlock and how it helps answer their question.
+   the Brain provides and how it applies to their question.
