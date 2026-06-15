@@ -1,12 +1,12 @@
 /**
  * Component: Ripgrep Search Engine
- * Block-UUID: 6f690208-3729-412b-9aaf-2f03d71de29b
- * Parent-UUID: 1a1a762b-43b5-41f2-85fd-52e6dfd1a2e3
- * Version: 2.7.0
- * Description: Updated buildArgs() to support new ripgrep-compatible flags: IgnoreCase (-i), InvertMatch (-v), WordRegexp (-w), FixedStrings (-F), Globs (-g), MaxCount (-m), Hidden (--hidden), NoIgnore (--no-ignore), and MultilinePatterns (-e). Implemented three-way case sensitivity logic: explicit -i, legacy --smart-case, or default case-sensitive.
+ * Block-UUID: 05077d4e-1ecd-4987-aba5-a2bd708ec9b6
+ * Parent-UUID: 6f690208-3729-412b-9aaf-2f03d71de29b
+ * Version: 2.8.0
+ * Description: Set an explicit bufio.Scanner buffer (up to 64MB) on all four ripgrep stdout scanners so that matches in files containing very long lines (e.g. minified assets or generated lock files like MODULE.bazel.lock) no longer abort the search with "bufio.Scanner: token too long". This makes gsc rg --summary robust on large repos where a broad query can hit such files.
  * Language: Go
  * Created-at: 2026-03-04T15:42:00.123Z
- * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), Gemini 3 Flash (v2.3.0), Gemini 3 Flash (v2.3.1), GLM-4.7 (v2.4.0), Gemini 3 Flash (v2.4.1), Gemini 3 Flash (v2.5.0), Gemini 3 Flash (v2.5.1), GLM-4.7 (v2.6.0), GLM-4.7 (v2.7.0)
+ * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v2.0.0), GLM-4.7 (v2.1.0), GLM-4.7 (v2.2.0), Gemini 3 Flash (v2.3.0), Gemini 3 Flash (v2.3.1), GLM-4.7 (v2.4.0), Gemini 3 Flash (v2.4.1), Gemini 3 Flash (v2.5.0), Gemini 3 Flash (v2.5.1), GLM-4.7 (v2.6.0), GLM-4.7 (v2.7.0), Claude Opus 4.8 (v2.8.0)
  */
 
 
@@ -119,6 +119,7 @@ func (e *RipgrepEngine) FindBlockByUUID(ctx context.Context, workdir string, uui
 	}
 
 	scanner := bufio.NewScanner(stdout)
+	scanner.Buffer(make([]byte, 0, 64*1024), 64*1024*1024) // allow long JSON lines (e.g. minified/lock files)
 	for scanner.Scan() {
 		var message map[string]interface{}
 		if err := json.Unmarshal(scanner.Bytes(), &message); err != nil {
@@ -191,6 +192,7 @@ func (e *RipgrepEngine) ResolvePathsByUUIDs(ctx context.Context, workdir string,
 	// 2. Parse output
 	result := make(map[string]string)
 	scanner := bufio.NewScanner(stdout)
+	scanner.Buffer(make([]byte, 0, 64*1024), 64*1024*1024) // allow long JSON lines (e.g. minified/lock files)
 	
 	for scanner.Scan() {
 		var message map[string]interface{}
@@ -261,6 +263,7 @@ func (e *RipgrepEngine) EnsureUUIDUniqueness(ctx context.Context, workdir string
 	}
 
 	scanner := bufio.NewScanner(stdout)
+	scanner.Buffer(make([]byte, 0, 64*1024), 64*1024*1024) // allow long JSON lines (e.g. minified/lock files)
 	for scanner.Scan() {
 		var message map[string]interface{}
 		if err := json.Unmarshal(scanner.Bytes(), &message); err != nil {
@@ -398,7 +401,8 @@ func (e *RipgrepEngine) parseJSONOutput(stdout interface{}) ([]RawMatch, error) 
 	}
 
 	scanner := bufio.NewScanner(reader)
-	
+	scanner.Buffer(make([]byte, 0, 64*1024), 64*1024*1024) // allow long JSON lines (e.g. minified/lock files)
+
 	var matches []RawMatch
 	var currentContext []string
 	var lastMatch *RawMatch
