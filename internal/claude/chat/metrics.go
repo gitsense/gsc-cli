@@ -51,6 +51,11 @@ func OpenMetricsDB() (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to ping metrics database: %w", err)
 	}
 
+	// Connection pool settings (match db.OpenDB defaults)
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
+	db.SetConnMaxLifetime(5 * time.Minute)
+
 	// Initialize Schema
 	if err := initSchema(db); err != nil {
 		return nil, fmt.Errorf("failed to initialize schema: %w", err)

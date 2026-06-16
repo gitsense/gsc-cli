@@ -14,7 +14,6 @@ package contract
 
 import (
 	typescontract "github.com/gitsense/gsc-cli/internal/types/contract"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -30,7 +29,6 @@ import (
 	"github.com/gitsense/gsc-cli/pkg/logger"
 	"github.com/gitsense/gsc-cli/pkg/settings"
 	"github.com/google/uuid"
-	_ "github.com/mattn/go-sqlite3"
 )
 
 // CreateContract initializes a new traceability contract using a valid handshake code.
@@ -163,15 +161,15 @@ func initEventsDB(uuid string) error {
 		return fmt.Errorf("failed to create events DB directory: %w", err)
 	}
 
-	// Open database
-	db, err := sql.Open("sqlite3", dbPath)
+	// Open database (uses centralized db.OpenDB for consistent WAL mode and connection settings)
+	dbConn, err := db.OpenDB(dbPath)
 	if err != nil {
 		return fmt.Errorf("failed to open events DB: %w", err)
 	}
-	defer db.Close()
+	defer db.CloseDB(dbConn)
 
 	// Create schema
-	if _, err := db.Exec(EventsDBSchema); err != nil {
+	if _, err := dbConn.Exec(EventsDBSchema); err != nil {
 		return fmt.Errorf("failed to create events table: %w", err)
 	}
 
