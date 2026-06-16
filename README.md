@@ -17,9 +17,22 @@ Authors: Claude Code - Sonnet (v1.0.0), Codex GPT-5 (v1.1.0)
 GitSense is a two-part system:
 
 - **[The Chat App](https://github.com/gitsense/chat)** imports repositories, runs analyzers, extracts structured domain knowledge, and packages that knowledge into portable Manifests.
-- **This repository** is the Go source for the `gsc` binary. The CLI runs on your machine, imports those Manifests, builds local Brains, and makes the intelligence available in your terminal, scripts, and coding agents.
+- **This repository** is the Go source for the `gsc` binary. The CLI runs on your machine, imports those Manifests, builds local Brains (SQLite databases), and makes the intelligence available in your terminal, scripts, and coding agents.
 
 Brains can be built from analyzer output or grown from development sessions as lessons. Both live with the repository. Both are queryable.
+
+Here is what that split means in practice. Plain ripgrep finds the string:
+
+    rg cache
+
+`gsc` returns the same matches plus what each file is for, so the agent can drop the junk before it opens anything:
+
+    gsc rg --db code-intent --fields purpose cache
+
+    crates/ignore/src/dir.rs
+    purpose: Modify this file to change how ignore rules are loaded, matched, and prioritized during directory traversal, including support for custom ignore files and git integration.
+
+The App built that purpose line. The CLI delivered it. Same search, but now the agent looks first and thinks second.
 
 If you are reading this, you may already have `gsc` installed. This repository exists so you can review exactly what the CLI does and build it yourself.
 
