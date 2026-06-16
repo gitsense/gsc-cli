@@ -2,11 +2,11 @@
  * Component: Lessons New Command
  * Block-UUID: ff1394b3-af3e-4341-a0d8-eee2ced3dfe9
  * Parent-UUID: c61954d2-897b-4d57-b0a5-11ec9fea7892
- * Version: 1.2.0
- * Description: Removed --archive flag and discard mention from existing-draft message. Only --replace remains for overwriting an existing draft.
+ * Version: 1.3.0
+ * Description: Added discard option to existing-draft help text.
  * Language: Go
  * Created-at: 2026-06-12T12:44:13Z
- * Authors: Codex GPT-5 (v1.0.0), Codex GPT-5 (v1.1.0), claude-sonnet-4-6 (v1.2.0)
+ * Authors: Codex GPT-5 (v1.0.0), Codex GPT-5 (v1.1.0), claude-sonnet-4-6 (v1.2.0), MiMo-v2.5-pro (v1.3.0)
  */
 
 
@@ -37,6 +37,7 @@ func newCmd() *cobra.Command {
 					fmt.Println("  gsc lessons validate            # check the draft")
 					fmt.Println("  gsc lessons review              # inspect the draft for human confirmation")
 					fmt.Println("  gsc lessons commit              # persist it as a lesson")
+					fmt.Println("  gsc lessons discard             # delete the draft")
 					fmt.Println("  gsc lessons new --replace       # delete it and start a new draft")
 					return nil
 				}

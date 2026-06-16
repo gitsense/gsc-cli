@@ -2,11 +2,11 @@
 Component: gsc-cli README
 Block-UUID: d5f493cc-7035-43fc-a3d0-d013fadec153
 Parent-UUID: 5c01d958-b93a-46dd-9f83-65c5d47a15dc
-Version: 1.1.0
-Description: Updated README positioning to include lessons as durable repository knowledge alongside analyzer-generated Manifests and Brains.
+Version: 1.2.0
+Description: Added gsc lessons discard command to lessons command table.
 Language: Markdown
 Created-at: 2026-05-31T17:26:27.671Z
-Authors: Claude Code - Sonnet (v1.0.0), Codex GPT-5 (v1.1.0)
+Authors: Claude Code - Sonnet (v1.0.0), Codex GPT-5 (v1.1.0), MiMo-v2.5-pro (v1.2.0)
 -->
 
 
@@ -119,6 +119,7 @@ These commands capture and rebuild durable repository knowledge from development
 | `gsc lessons validate` | Validate the current lesson draft without rendering a review |
 | `gsc lessons review` | Validate and preview the current lesson draft |
 | `gsc lessons commit` | Commit the reviewed draft and update the `gsc-lessons` Brain |
+| `gsc lessons discard` | Discard the current lesson draft |
 | `gsc lessons build` | Rebuild the generated lessons Manifest and Brain from committed records |
 | `gsc lessons list` | List committed lessons |
 | `gsc lessons show` | Show a committed lesson |
