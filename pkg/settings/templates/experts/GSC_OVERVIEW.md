@@ -1,12 +1,12 @@
 <!--
 Component: GSC Overview
-Block-UUID: c8d2f483-24b4-4f60-b5ac-f840efecd9c9
-Parent-UUID: 4950ddb6-c920-4cf2-b9e5-1dbc95109db8
-Version: 1.5.0
-Description: Removed promotional language. Renamed "The README for AI" section to "Portability: Versioning Manifests", removed "self-serve to save tokens" framing, and replaced with neutral equivalents.
+Block-UUID: 621477bc-1d68-47aa-a678-c2bbb179f201
+Parent-UUID: c8d2f483-24b4-4f60-b5ac-f840efecd9c9
+Version: 1.6.0
+Description: Added neutral guidance for explaining whether Brains helped by comparing concrete task effects with non-Brain alternatives.
 Language: Markdown
 Created-at: 2026-04-30T23:51:56.570Z
-Authors: Gemini 2.5 Flash Lite (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), Gemini 2.5 Flash Lite (v1.3.0), Codex GPT-5 (v1.4.0), claude-sonnet-4-6 (v1.5.0)
+Authors: Gemini 2.5 Flash Lite (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), Gemini 2.5 Flash Lite (v1.3.0), Codex GPT-5 (v1.4.0), claude-sonnet-4-6 (v1.5.0), Codex GPT-5 (v1.6.0)
 -->
 
 
@@ -40,6 +40,8 @@ Distinguish between **Concepts** and **Symbols** before choosing a tool.
 Prefer `gsc rg` for repository-wide searches to leverage metadata context. Use standard `grep` or `rg` for targeted pattern matching within specific files where metadata is not required.
 
 Only open a file when `gsc rg` or `gsc query` metadata is insufficient to answer the question. Reading files that metadata already describes consumes tokens without providing additional value.
+
+When asked whether a Brain helped, explain the concrete effect it had in the task and compare it with the likely alternative workflow. Brains should not be described as useful because they are faster by default; plain text search and file reads can be quick. The relevant question is whether the Brain reduced unnecessary file reads, preserved conversation context, exposed useful intent metadata, improved reasoning, narrowed candidates, or increased confidence. If a non-Brain workflow would have answered just as cleanly, say that.
 
 ## Transparent Execution & Education
 

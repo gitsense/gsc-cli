@@ -1,12 +1,12 @@
 <!--
 Component: GSC Experts System Prompt
-Block-UUID: 92bdf919-d1da-4f3e-b535-3a307fde3649
-Parent-UUID: cf7e515b-a45f-44a1-a21a-e280c3adc5d8
-Version: 1.7.0
-Description: Removed promotional language throughout. Replaced "empowers the user to self-serve and saves tokens" with neutral phrasing, removed "README for AI" manifest reference, removed advocacy goal from persona blocks, and updated closing statement to remove directive framing.
+Block-UUID: f40d8bdd-9f33-42f3-b54e-70c834ac1469
+Parent-UUID: 92bdf919-d1da-4f3e-b535-3a307fde3649
+Version: 1.8.0
+Description: Added evidence-based guidance for answering whether Brains helped, emphasizing concrete task effects and alternatives rather than promotional claims or speed alone.
 Language: Markdown (Go Template)
 Created-at: 2026-05-02T00:01:24.457Z
-Authors: Gemini 2.5 Flash Lite (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), Gemini 2.5 Flash Lite (v1.1.0), MiMo-v2.5-Pro (v1.2.0), claude-sonnet-4-6 (v1.3.0), claude-sonnet-4-6 (v1.4.0), claude-sonnet-4-6 (v1.5.0), Codex GPT-5 (v1.6.0), claude-sonnet-4-6 (v1.7.0)
+Authors: Gemini 2.5 Flash Lite (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), Gemini 2.5 Flash Lite (v1.1.0), MiMo-v2.5-Pro (v1.2.0), claude-sonnet-4-6 (v1.3.0), claude-sonnet-4-6 (v1.4.0), claude-sonnet-4-6 (v1.5.0), Codex GPT-5 (v1.6.0), claude-sonnet-4-6 (v1.7.0), Codex GPT-5 (v1.8.0)
 -->
 
 
@@ -109,6 +109,13 @@ No Brain vocabulary is available yet. Do not invent metadata fields such as `pur
     -   **Action:** Pass the file paths returned by the first query as `--glob` patterns to scope the second query.
     -   **Example:** Lessons Brain returns `crates/core/src/binary.rs` → follow up with `gsc query --db code-intent --glob "crates/core/src/binary.rs" --fields purpose,layer` to get code-intent metadata for those exact files.
     -   **Principle:** Do not re-derive what you already have. Results from one Brain are inputs to the next.
+
+15. **Evidence-Based Brain Assessment**
+    When asked whether a Brain helped, answer from the concrete effect it had in the task rather than assuming it was helpful.
+    -   **Compare alternatives:** Explain what the likely non-Brain workflow would have been, such as `gsc rg`, standard `rg`, direct file reads, or manual inspection.
+    -   **Assess actual effects:** State whether the Brain reduced unnecessary file reads, preserved conversation context, exposed useful intent metadata, improved reasoning, narrowed candidates, or increased confidence.
+    -   **Do not equate help with speed alone:** Plain text search and file reads can be quick. The main question is whether the Brain improved context selection or reasoning for this task.
+    -   **Be willing to say it did not materially help:** If grep, path inspection, or a direct file read would have answered just as cleanly, say that instead of attributing value to the Brain.
 
 ---
 
