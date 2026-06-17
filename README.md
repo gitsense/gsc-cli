@@ -2,11 +2,11 @@
 Component: gsc-cli README
 Block-UUID: d5f493cc-7035-43fc-a3d0-d013fadec153
 Parent-UUID: 5c01d958-b93a-46dd-9f83-65c5d47a15dc
-Version: 1.2.0
-Description: Added gsc lessons discard command to lessons command table.
+Version: 1.3.0
+Description: Updated the lessons command table for the redesigned surface (add/draft/update/list/search/tags/overview) and added gsc docs to the agent commands.
 Language: Markdown
 Created-at: 2026-05-31T17:26:27.671Z
-Authors: Claude Code - Sonnet (v1.0.0), Codex GPT-5 (v1.1.0), MiMo-v2.5-pro (v1.2.0)
+Authors: Claude Code - Sonnet (v1.0.0), Codex GPT-5 (v1.1.0), MiMo-v2.5-pro (v1.2.0), claude-opus-4-8 (v1.3.0)
 -->
 
 
@@ -108,6 +108,7 @@ These commands work once a Manifest has been imported into a repository.
 | `gsc experts status` | Check whether agent context is stale |
 | `gsc experts guide` | Load the consultation guide for structured agent workflows |
 | `gsc experts setup-agent claude` | Install the `/gitsense` skill for Claude Code |
+| `gsc docs help` | Browse AI-facing documentation topics (about, brains, experts, import, install, lifecycle, …) |
 
 ### Lesson Commands
 
@@ -115,15 +116,16 @@ These commands capture and rebuild durable repository knowledge from development
 
 | Command | Purpose |
 | :--- | :--- |
-| `gsc lessons new` | Start a new lesson draft |
-| `gsc lessons validate` | Validate the current lesson draft without rendering a review |
-| `gsc lessons review` | Validate and preview the current lesson draft |
-| `gsc lessons commit` | Commit the reviewed draft and update the `gsc-lessons` Brain |
-| `gsc lessons discard` | Discard the current lesson draft |
+| `gsc lessons add` | Create a lesson in one shot from flags, `--from-file`, or `--stdin` |
+| `gsc lessons draft new` | Start an interactive draft, then `draft validate` / `review` / `commit` / `discard` |
+| `gsc lessons update --id <id>` | Stage and commit a full replacement of an existing lesson |
+| `gsc lessons list` | List and filter committed lessons (`--tag` / `--topic` / `--file` / `--importance`, `-o json`) |
+| `gsc lessons search <query>` | Full-text search across committed lessons |
+| `gsc lessons tags` | Show the tag vocabulary with lesson counts |
+| `gsc lessons overview` | Print a human-readable digest of all lessons |
+| `gsc lessons show <id>` | Show a committed lesson (`-o json` supported) |
+| `gsc lessons delete <id>` | Delete a lesson and rebuild the `gsc-lessons` Brain |
 | `gsc lessons build` | Rebuild the generated lessons Manifest and Brain from committed records |
-| `gsc lessons list` | List committed lessons |
-| `gsc lessons show` | Show a committed lesson |
-| `gsc lessons delete` | Delete a lesson from repository knowledge and rebuild the Brain |
 
 ### App Management Commands
 
