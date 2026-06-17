@@ -2,11 +2,11 @@
  * Component: Lessons Review Command
  * Block-UUID: 7f3a2e1d-5c8b-4d9e-a6f0-1b2c3d4e5f6a
  * Parent-UUID: e5c59ef0-ee7c-4637-9086-bdd2fc2deaa8
- * Version: 1.3.0
- * Description: Added discard as alternative next step when lesson is incorrect.
+ * Version: 1.4.0
+ * Description: Pointed next-step hints at the "gsc lessons draft" lifecycle forms.
  * Language: Go
  * Created-at: 2026-06-12T12:44:13Z
- * Authors: Codex GPT-5 (v1.0.0), Codex GPT-5 (v1.1.0), claude-sonnet-4-6 (v1.2.0), MiMo-v2.5-pro (v1.3.0)
+ * Authors: Codex GPT-5 (v1.0.0), Codex GPT-5 (v1.1.0), claude-sonnet-4-6 (v1.2.0), MiMo-v2.5-pro (v1.3.0), claude-opus-4-8 (v1.4.0)
  */
 
 
@@ -36,10 +36,10 @@ func reviewCmd() *cobra.Command {
 			}
 			fmt.Println()
 			fmt.Println("If this lesson is correct, run:")
-			fmt.Println("  gsc lessons commit")
+			fmt.Println("  gsc lessons draft commit")
 			fmt.Println()
 			fmt.Println("If this lesson is incorrect, run:")
-			fmt.Println("  gsc lessons discard")
+			fmt.Println("  gsc lessons draft discard")
 			return nil
 		},
 	}

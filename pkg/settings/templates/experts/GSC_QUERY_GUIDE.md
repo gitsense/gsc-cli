@@ -2,11 +2,11 @@
 Component: GSC Query Guide
 Block-UUID: d10309ff-df15-4a11-820e-90ba4de414ba
 Parent-UUID: 9ee392b0-a2d1-466e-896f-07e3083ac2fe
-Version: 1.6.0
-Description: Removed promotional language. Replaced "reserved for GitSense Chat synthesis" description of the purpose field with neutral phrasing indicating it is optional and may be externally populated.
+Version: 1.7.0
+Description: Reworked the gsc-lessons section to lead with the dedicated gsc lessons commands (list/search/tags/overview/show/add/draft/update) for working with lessons directly, reframing the gsc-lessons Brain as the path for overlaying lessons onto code search.
 Language: Markdown
 Created-at: 2026-05-01T00:20:05.230Z
-Authors: Gemini 2.5 Flash Lite (v1.0.0), MiMo-v2.5-Pro (v1.1.0), claude-sonnet-4-6 (v1.2.0), claude-sonnet-4-6 (v1.3.0), claude-sonnet-4-6 (v1.4.0), Codex GPT-5 (v1.5.0), claude-sonnet-4-6 (v1.6.0)
+Authors: Gemini 2.5 Flash Lite (v1.0.0), MiMo-v2.5-Pro (v1.1.0), claude-sonnet-4-6 (v1.2.0), claude-sonnet-4-6 (v1.3.0), claude-sonnet-4-6 (v1.4.0), Codex GPT-5 (v1.5.0), claude-sonnet-4-6 (v1.6.0), claude-opus-4-8 (v1.7.0)
 -->
 
 
@@ -226,7 +226,28 @@ Scope precedence (highest to lowest):
 
 ### gsc-lessons
 
-The `gsc-lessons` Brain has both scalar and array fields. Use the right field for the right tool:
+Lessons are curated, committed repository knowledge. There are two ways to reach them; pick by intent.
+
+#### Work with lessons directly — the `gsc lessons` commands (preferred)
+
+To browse, search, read, create, or edit lessons, use the dedicated `gsc lessons` commands. They read the canonical store (`.gitsense/lessons/records.jsonl`) directly and work even when the Brain has not been built. Do **not** hand-build `gsc query --db gsc-lessons` filters for these tasks.
+
+| Goal | Command |
+| :--- | :--- |
+| List / filter lessons | `gsc lessons list [--tag <t>] [--topic <t>] [--file <path>] [--importance <lvl>] [-o json]` |
+| Full-text search | `gsc lessons search <query> [--fields summary,details,tags,topics,keywords] [-o json]` |
+| Tag vocabulary with counts | `gsc lessons tags [-o json]` |
+| Human-readable digest of all lessons | `gsc lessons overview [--by tag]` |
+| Show one lesson (full ID or unique prefix) | `gsc lessons show <id> [-o json]` |
+| Create in one shot | `gsc lessons add --from-file <path>` · `--stdin` · `--summary "..." --details "..." --tag <t>` |
+| Create interactively | `gsc lessons draft new` → `draft validate` → `draft review` → `draft commit` |
+| Replace an existing lesson | `gsc lessons update --id <id> --file <path>` → `update review` → `update commit` |
+
+Add `-o json` for machine-readable output (agents should prefer it). `add` and `update` validate before staging and require an explicit `commit` step; nothing is written on a validation error.
+
+#### Overlay lessons onto code search — the gsc-lessons Brain
+
+The `gsc-lessons` Brain projects lessons onto the files they apply to. Reach for it through `gsc rg`/`gsc query` only when you want lessons **in the context of file or code search** (e.g. "which lessons attach to a file I'm grepping"), or to enrich results from another Brain. It has both scalar and array fields:
 
 | Use case | Command |
 | :--- | :--- |
@@ -234,7 +255,7 @@ The `gsc-lessons` Brain has both scalar and array fields. Use the right field fo
 | When was the last lesson recorded | `gsc rg <term> --db gsc-lessons --fields latest_lesson_at` |
 | How many lessons exist for a file | `gsc rg <term> --db gsc-lessons --fields lesson_count` |
 | Full lesson content for a file | `gsc query --db gsc-lessons --glob "<path>" --fields lesson_summaries,lesson_details --limit 20 --format json` |
-| Find all lessons by topic or tag | `gsc query --db gsc-lessons --filter "tags=<tag>" --fields lesson_summaries,lesson_details --format json` |
+| Lessons attached to files by tag | `gsc query --db gsc-lessons --filter "tags=<tag>" --fields lesson_summaries,lesson_details --format json` |
 
 **Always use `--format json` when requesting array fields** (`lesson_summaries`, `lesson_details`, `review_checks`, etc.) — without it, arrays render as flat text and lose structure.
 
@@ -244,7 +265,7 @@ Scalar fields safe for `gsc rg` overlays: `latest_lesson_summary`, `lesson_count
 
 ### Discovering Keywords and Tags Before Filtering
 
-Never guess keyword or tag values. Use `gsc insights` to discover what exists first — it supports substring matching so you can search the vocabulary itself:
+Never guess keyword or tag values. For the lesson tag vocabulary, `gsc lessons tags` lists tags with counts directly. To explore any Brain field (including lesson keywords) by distribution, use `gsc insights` — it supports substring matching so you can search the vocabulary itself:
 
 ```bash
 # Find all keywords containing "binary"

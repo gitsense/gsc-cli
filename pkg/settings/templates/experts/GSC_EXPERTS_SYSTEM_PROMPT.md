@@ -2,11 +2,11 @@
 Component: GSC Experts System Prompt
 Block-UUID: f40d8bdd-9f33-42f3-b54e-70c834ac1469
 Parent-UUID: 92bdf919-d1da-4f3e-b535-3a307fde3649
-Version: 1.8.0
-Description: Added evidence-based guidance for answering whether Brains helped, emphasizing concrete task effects and alternatives rather than promotional claims or speed alone.
+Version: 1.9.0
+Description: Added a routing-table entry directing lesson browsing, searching, and recording to the gsc lessons commands documented in GSC_QUERY_GUIDE.md.
 Language: Markdown (Go Template)
 Created-at: 2026-05-02T00:01:24.457Z
-Authors: Gemini 2.5 Flash Lite (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), Gemini 2.5 Flash Lite (v1.1.0), MiMo-v2.5-Pro (v1.2.0), claude-sonnet-4-6 (v1.3.0), claude-sonnet-4-6 (v1.4.0), claude-sonnet-4-6 (v1.5.0), Codex GPT-5 (v1.6.0), claude-sonnet-4-6 (v1.7.0), Codex GPT-5 (v1.8.0)
+Authors: Gemini 2.5 Flash Lite (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3), Gemini 2.5 Flash Lite (v1.1.0), MiMo-v2.5-Pro (v1.2.0), claude-sonnet-4-6 (v1.3.0), claude-sonnet-4-6 (v1.4.0), claude-sonnet-4-6 (v1.5.0), Codex GPT-5 (v1.6.0), claude-sonnet-4-6 (v1.7.0), Codex GPT-5 (v1.8.0), claude-opus-4-8 (v1.9.0)
 -->
 
 
@@ -126,6 +126,7 @@ No Brain vocabulary is available yet. Do not invent metadata fields such as `pur
 | Querying, filtering, coverage, insights | `GSC_QUERY_GUIDE.md` |
 | File tree, grep, visualizing structure | `GSC_VISUALIZATION_GUIDE.md` |
 | Missing Brain, importing a manifest | `GSC_BRAIN_MANAGEMENT_GUIDE.md` |
+| Browsing, searching, or recording lessons | `GSC_QUERY_GUIDE.md` (gsc-lessons) |
 
 ---
 

@@ -2,11 +2,11 @@
 Component: GSC Overview
 Block-UUID: 621477bc-1d68-47aa-a678-c2bbb179f201
 Parent-UUID: c8d2f483-24b4-4f60-b5ac-f840efecd9c9
-Version: 1.6.0
-Description: Added neutral guidance for explaining whether Brains helped by comparing concrete task effects with non-Brain alternatives.
+Version: 1.7.0
+Description: Added a routing-table entry directing lesson browsing, searching, and recording to the gsc lessons commands documented in GSC_QUERY_GUIDE.md.
 Language: Markdown
 Created-at: 2026-04-30T23:51:56.570Z
-Authors: Gemini 2.5 Flash Lite (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), Gemini 2.5 Flash Lite (v1.3.0), Codex GPT-5 (v1.4.0), claude-sonnet-4-6 (v1.5.0), Codex GPT-5 (v1.6.0)
+Authors: Gemini 2.5 Flash Lite (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), Gemini 2.5 Flash Lite (v1.3.0), Codex GPT-5 (v1.4.0), claude-sonnet-4-6 (v1.5.0), Codex GPT-5 (v1.6.0), claude-opus-4-8 (v1.7.0)
 -->
 
 
@@ -74,5 +74,6 @@ A Manifest is the blueprint. By versioning it in your repo, you allow anyone to 
 | Querying, filtering, coverage, insights | `GSC_QUERY_GUIDE.md` |
 | File tree, grep, visualizing structure | `GSC_VISUALIZATION_GUIDE.md` |
 | Missing Brain, importing a manifest | `GSC_BRAIN_MANAGEMENT_GUIDE.md` |
+| Browsing, searching, or recording lessons | `GSC_QUERY_GUIDE.md` (gsc-lessons) |
 | Starting an Inline Agent, refining intent | Run `gsc experts guide` and paste the output |
 | General orientation or first-time setup | Stay in this document, then route per the table above |

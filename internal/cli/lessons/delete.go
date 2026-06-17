@@ -2,11 +2,11 @@
  * Component: Lessons Delete Command
  * Block-UUID: 9483aa5c-39bc-4389-8263-ac1409d6c3be
  * Parent-UUID: 911b4f3f-e3e0-42a2-9b48-d0a4edb8c8c9
- * Version: 1.1.0
- * Description: Added Long description with start-fresh hint. Added non-interactive stdin detection requiring --yes when not in a terminal, with a clear error message directing users to confirm explicitly.
+ * Version: 1.2.0
+ * Description: Accepts a full lesson ID or a unique short-ID prefix via ResolveRecord and deletes by the resolved ID.
  * Language: Go
  * Created-at: 2026-06-12T12:44:13Z
- * Authors: Codex GPT-5 (v1.0.0), claude-sonnet-4-6 (v1.1.0)
+ * Authors: Codex GPT-5 (v1.0.0), claude-sonnet-4-6 (v1.1.0), claude-opus-4-8 (v1.2.0)
  */
 
 
@@ -37,14 +37,14 @@ To remove all lessons and start fresh:
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id := args[0]
-			record, err := lessonspkg.FindRecord(id)
+			record, err := lessonspkg.ResolveRecord(args[0])
 			if err != nil {
 				return err
 			}
 			if record == nil {
-				return fmt.Errorf("lesson not found: %s", id)
+				return fmt.Errorf("lesson not found: %s", args[0])
 			}
+			id := record.ID
 			fmt.Print(lessonspkg.RenderRecord(*record))
 			if !yes {
 				if !term.IsTerminal(int(os.Stdin.Fd())) {

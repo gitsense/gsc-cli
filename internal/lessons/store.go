@@ -2,11 +2,11 @@
  * Component: Lessons Canonical Store
  * Block-UUID: 2f108404-bf41-443e-992c-c9f321f04849
  * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: Reads, appends, rewrites, finds, and deletes committed lesson records in the canonical JSONL store.
+ * Version: 1.1.0
+ * Description: Reads, appends, rewrites, and deletes committed lesson records in the canonical JSONL store. Lookup moved to ResolveRecord in query.go.
  * Language: Go
  * Created-at: 2026-06-12T12:44:13Z
- * Authors: Codex GPT-5 (v1.0.0)
+ * Authors: Codex GPT-5 (v1.0.0), claude-opus-4-8 (v1.1.0)
  */
 
 package lessons
@@ -161,15 +161,3 @@ func WriteRecords(records []Record) error {
 	return nil
 }
 
-func FindRecord(id string) (*Record, error) {
-	records, err := LoadRecords()
-	if err != nil {
-		return nil, err
-	}
-	for _, record := range records {
-		if record.ID == id {
-			return &record, nil
-		}
-	}
-	return nil, nil
-}

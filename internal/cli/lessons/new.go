@@ -2,11 +2,11 @@
  * Component: Lessons New Command
  * Block-UUID: ff1394b3-af3e-4341-a0d8-eee2ced3dfe9
  * Parent-UUID: c61954d2-897b-4d57-b0a5-11ec9fea7892
- * Version: 1.3.0
- * Description: Added discard option to existing-draft help text.
+ * Version: 1.4.0
+ * Description: Pointed lifecycle hints at the "gsc lessons draft" subcommands.
  * Language: Go
  * Created-at: 2026-06-12T12:44:13Z
- * Authors: Codex GPT-5 (v1.0.0), Codex GPT-5 (v1.1.0), claude-sonnet-4-6 (v1.2.0), MiMo-v2.5-pro (v1.3.0)
+ * Authors: Codex GPT-5 (v1.0.0), Codex GPT-5 (v1.1.0), claude-sonnet-4-6 (v1.2.0), MiMo-v2.5-pro (v1.3.0), claude-opus-4-8 (v1.4.0)
  */
 
 
@@ -34,11 +34,11 @@ func newCmd() *cobra.Command {
 					fmt.Println("This may be an uncommitted lesson from a previous session.")
 					fmt.Println()
 					fmt.Println("Next actions:")
-					fmt.Println("  gsc lessons validate            # check the draft")
-					fmt.Println("  gsc lessons review              # inspect the draft for human confirmation")
-					fmt.Println("  gsc lessons commit              # persist it as a lesson")
-					fmt.Println("  gsc lessons discard             # delete the draft")
-					fmt.Println("  gsc lessons new --replace       # delete it and start a new draft")
+					fmt.Println("  gsc lessons draft validate          # check the draft")
+					fmt.Println("  gsc lessons draft review            # inspect the draft for human confirmation")
+					fmt.Println("  gsc lessons draft commit            # persist it as a lesson")
+					fmt.Println("  gsc lessons draft discard           # delete the draft")
+					fmt.Println("  gsc lessons draft new --replace     # delete it and start a new draft")
 					return nil
 				}
 			}
@@ -54,8 +54,8 @@ func newCmd() *cobra.Command {
 			fmt.Printf("Draft created:\n  %s\n\n", path)
 			fmt.Println("Agent workflow:")
 			fmt.Println("  1. Fill in the draft with a concrete lesson.")
-			fmt.Println("  2. Run: gsc lessons validate")
-			fmt.Println("  3. If valid, tell the user to run: gsc lessons review")
+			fmt.Println("  2. Run: gsc lessons draft validate")
+			fmt.Println("  3. If valid, tell the user to run: gsc lessons draft review")
 			return nil
 		},
 	}

@@ -2,11 +2,11 @@
  * Component: Lessons Draft Validator
  * Block-UUID: f340ff18-fff4-4b16-82ba-ea2542358756
  * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: Validates lesson draft JSON shape, required fields, exact repo-relative file anchors, slug fields, command safety, and bounded text.
+ * Version: 1.2.0
+ * Description: Validates lesson draft JSON shape, required fields, exact repo-relative file anchors, slug fields, command safety, and bounded text. Added ValidateDraftBytes and ValidateDraftValue shared with the add/update flows.
  * Language: Go
  * Created-at: 2026-06-12T12:44:13Z
- * Authors: Codex GPT-5 (v1.0.0)
+ * Authors: Codex GPT-5 (v1.0.0), claude-opus-4-8 (v1.1.0), claude-opus-4-8 (v1.2.0)
  */
 
 
@@ -21,13 +21,18 @@ import (
 )
 
 func ReadAndValidateDraft(path string) ValidationResult {
-	var result ValidationResult
-
 	data, err := os.ReadFile(path)
 	if err != nil {
-		result.Errors = append(result.Errors, fmt.Sprintf("cannot read draft: %v", err))
-		return result
+		return ValidationResult{Errors: []string{fmt.Sprintf("cannot read draft: %v", err)}}
 	}
+	return ValidateDraftBytes(data, "draft must not include id; gsc generates lsn_<uuid-v7>")
+}
+
+// ValidateDraftBytes parses draft-shaped JSON, normalizes it, and validates it.
+// idErr is the message used when the content carries a forbidden "id" field,
+// letting callers tailor it (a fresh draft vs. an update keyed by --id).
+func ValidateDraftBytes(data []byte, idErr string) ValidationResult {
+	var result ValidationResult
 
 	var raw map[string]interface{}
 	if err := json.Unmarshal(data, &raw); err != nil {
@@ -35,7 +40,7 @@ func ReadAndValidateDraft(path string) ValidationResult {
 		return result
 	}
 	if _, ok := raw["id"]; ok {
-		result.Errors = append(result.Errors, "draft must not include id; gsc generates lsn_<uuid-v7>")
+		result.Errors = append(result.Errors, idErr)
 	}
 
 	var draft Draft
@@ -44,6 +49,15 @@ func ReadAndValidateDraft(path string) ValidationResult {
 		return result
 	}
 	result.Draft = normalizeDraft(draft)
+	result.Errors = append(result.Errors, ValidateDraft(result.Draft)...)
+	return result
+}
+
+// ValidateDraftValue normalizes and validates an in-memory draft (built from
+// flags rather than JSON bytes). Shared by add and update.
+func ValidateDraftValue(d Draft) ValidationResult {
+	var result ValidationResult
+	result.Draft = normalizeDraft(d)
 	result.Errors = append(result.Errors, ValidateDraft(result.Draft)...)
 	return result
 }
