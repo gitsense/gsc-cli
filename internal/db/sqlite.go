@@ -9,7 +9,6 @@
  * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), claude-haiku-4-5-20251001 (v1.2.0), claude-haiku-4-5-20251001 (v1.3.0), claude-haiku-4-5-20251001 (v1.4.0), claude-haiku-4-5-20251001 (v1.5.0), GLM-4.7 (v1.6.0)
  */
 
-
 package db
 
 import (
@@ -23,8 +22,8 @@ import (
 
 	_ "modernc.org/sqlite" // Pure Go SQLite driver
 
-	"github.com/gitsense/gsc-cli/pkg/logger"
 	docker_internal "github.com/gitsense/gsc-cli/internal/docker"
+	"github.com/gitsense/gsc-cli/pkg/logger"
 )
 
 // OpenDB opens a SQLite database connection with optimized settings for the CLI.
@@ -33,8 +32,8 @@ func OpenDB(dbPath string) (*sql.DB, error) {
 	// Connection string parameters:
 	// _pragma=foreign_keys(1): Enforce foreign key constraints
 	// _pragma=journal_mode(WAL): Enable Write-Ahead Logging for better concurrency
-	// _timeout=5000: Wait 5 seconds if the database is locked
-	connStr := fmt.Sprintf("%s?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_timeout=5000", dbPath)
+	// _pragma=busy_timeout(5000): Wait 5 seconds if the database is locked
+	connStr := fmt.Sprintf("%s?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)", dbPath)
 
 	db, err := sql.Open("sqlite", connStr)
 	if err != nil {

@@ -9,7 +9,6 @@
  * Authors: Gemini 3 Flash (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.1.1), GLM-4.7 (v1.1.2)
  */
 
-
 package chat
 
 import (
@@ -34,14 +33,14 @@ func OpenMetricsDB() (*sql.DB, error) {
 	}
 
 	dbPath := filepath.Join(gscHome, settings.ClaudeCodeDirRelPath, settings.ClaudeMetricsDBName)
-	
+
 	// Ensure directory exists
 	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
 		return nil, fmt.Errorf("failed to create metrics directory: %w", err)
 	}
 
 	// Connection string with optimizations
-	connStr := fmt.Sprintf("%s?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_timeout=5000", dbPath)
+	connStr := fmt.Sprintf("%s?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)", dbPath)
 	db, err := sql.Open("sqlite", connStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open metrics database: %w", err)
@@ -168,7 +167,7 @@ func GetSessionByChatUUID(db *sql.DB, chatUUID string) (string, error) {
 	ORDER BY last_request_at DESC 
 	LIMIT 1
 	`
-	
+
 	var sessionID string
 	err := db.QueryRow(query, chatUUID).Scan(&sessionID)
 	if err != nil {
@@ -177,6 +176,6 @@ func GetSessionByChatUUID(db *sql.DB, chatUUID string) (string, error) {
 		}
 		return "", fmt.Errorf("failed to query session: %w", err)
 	}
-	
+
 	return sessionID, nil
 }
