@@ -299,7 +299,7 @@ func writeQueryResultsHuman(results []pisessions.QueryResult, withBranches bool,
 			}
 		}
 		fmt.Println(matchLine)
-		fmt.Println(strings.Repeat("-", 60))
+		fmt.Println(strings.Repeat("-", 75))
 		fmt.Println()
 
 		// Print each result in the group
