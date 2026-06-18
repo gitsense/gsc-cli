@@ -546,6 +546,84 @@ func querySessionsWithMatches(ctx context.Context, database *sql.DB, options Que
 	return results, nil
 }
 
+// List returns a compact list of sessions.
+func List(ctx context.Context, options ListOptions) ([]ListResult, error) {
+	if options.DBPath == "" {
+		return nil, fmt.Errorf("db path is required")
+	}
+	database, err := openQueryMirror(options.DBPath)
+	if err != nil {
+		return nil, err
+	}
+	defer db.CloseDB(database)
+
+	query := `
+		SELECT c.uuid, c.cwd, c.repo_root, c.created_at, c.last_message_at,
+		       c.message_count, c.last_user_text
+		FROM pi_chats c
+		WHERE c.file_deleted_at IS NULL`
+	var args []interface{}
+
+	if options.Repo != "" {
+		query += " AND c.repo_root = ?"
+		args = append(args, options.Repo)
+	}
+	if options.Provider != "" {
+		query += " AND c.provider = ?"
+		args = append(args, options.Provider)
+	}
+	if options.Model != "" {
+		query += " AND c.model = ?"
+		args = append(args, options.Model)
+	}
+	if options.Since != "" {
+		query += " AND c.created_at >= ?"
+		args = append(args, options.Since)
+	}
+	if options.Until != "" {
+		query += " AND c.created_at <= ?"
+		args = append(args, options.Until)
+	}
+
+	sort := strings.ToLower(options.Sort)
+	switch sort {
+	case "oldest":
+		query += " ORDER BY c.created_at ASC"
+	case "messages":
+		query += " ORDER BY c.message_count DESC"
+	default:
+		query += " ORDER BY c.last_message_at DESC"
+	}
+	query += " LIMIT ?"
+	args = append(args, limitOrDefault(options.Limit))
+
+	rows, err := database.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []ListResult
+	for rows.Next() {
+		var r ListResult
+		var cwd, repoRoot sql.NullString
+		var createdAt, lastMessageAt, lastUserText sql.NullString
+		if err := rows.Scan(
+			&r.SessionID, &cwd, &repoRoot, &createdAt, &lastMessageAt,
+			&r.MessageCount, &lastUserText,
+		); err != nil {
+			return nil, err
+		}
+		r.CWD = cwd.String
+		r.RepoRoot = repoRoot.String
+		r.CreatedAt = createdAt.String
+		r.LastMessageAt = lastMessageAt.String
+		r.LastUserText = compactText(lastUserText.String)
+		results = append(results, r)
+	}
+	return results, rows.Err()
+}
+
 func appendSessionFilters(query string, args []interface{}, options QueryOptions) (string, []interface{}) {
 	if options.SessionID != "" {
 		query += " AND c.uuid = ?"

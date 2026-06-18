@@ -122,3 +122,26 @@ type SessionQueryResult struct {
 	MatchedMessageCount  int      `json:"matched_message_count,omitempty"`
 	MatchedPaths         []string `json:"matched_paths,omitempty"`
 }
+
+// ListOptions configures session listing.
+type ListOptions struct {
+	DBPath   string
+	Repo     string
+	Since    string
+	Until    string
+	Provider string
+	Model    string
+	Sort     string // "recent" (default), "oldest", "messages"
+	Limit    int
+}
+
+// ListResult represents a single session in list output.
+type ListResult struct {
+	SessionID     string `json:"session_id"`
+	CWD           string `json:"cwd"`
+	RepoRoot      string `json:"repo_root,omitempty"`
+	CreatedAt     string `json:"created_at"`
+	LastMessageAt string `json:"last_message_at,omitempty"`
+	MessageCount  int    `json:"message_count"`
+	LastUserText  string `json:"last_user_text,omitempty"`
+}
