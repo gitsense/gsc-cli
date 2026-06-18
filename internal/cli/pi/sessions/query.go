@@ -272,10 +272,19 @@ func writeQueryResultsHuman(results []pisessions.QueryResult, withBranches bool,
 		}
 
 		// Print header
+		elapsed := relativeTime(latestTs)
 		if location != "" {
-			fmt.Printf("Session %s  %s  %s\n", sessionPrefix, location, formatTimestamp(latestTs))
+			if elapsed != "" {
+				fmt.Printf("Session %s  %s  %s %s\n", sessionPrefix, location, formatTimestamp(latestTs), elapsed)
+			} else {
+				fmt.Printf("Session %s  %s  %s\n", sessionPrefix, location, formatTimestamp(latestTs))
+			}
 		} else {
-			fmt.Printf("Session %s  %s\n", sessionPrefix, formatTimestamp(latestTs))
+			if elapsed != "" {
+				fmt.Printf("Session %s  %s %s\n", sessionPrefix, formatTimestamp(latestTs), elapsed)
+			} else {
+				fmt.Printf("Session %s  %s\n", sessionPrefix, formatTimestamp(latestTs))
+			}
 		}
 
 		// Match count and branch info
