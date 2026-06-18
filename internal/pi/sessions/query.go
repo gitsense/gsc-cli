@@ -90,12 +90,16 @@ func annotateResult(graph branchGraph, entryID string) branchAnnotations {
 		return branchAnnotations{}
 	}
 
-	ancestors := ancestorSet(graph, entryID)
+	// Build ancestor sets for all leaves
+	leafAncestors := make(map[string]map[string]bool, len(graph.leaves))
+	for _, leafID := range graph.leaves {
+		leafAncestors[leafID] = ancestorSet(graph, leafID)
+	}
 
 	// Find all leaves that have this entry as an ancestor
 	var branchLeafIDs []string
 	for _, leafID := range graph.leaves {
-		if ancestors[leafID] {
+		if leafAncestors[leafID][entryID] {
 			branchLeafIDs = append(branchLeafIDs, leafID)
 		}
 	}
