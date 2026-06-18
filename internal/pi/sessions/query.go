@@ -15,10 +15,209 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/gitsense/gsc-cli/internal/db"
 )
+
+// graphNode represents an entry in the session graph for branch analysis.
+type graphNode struct {
+	entryID        string
+	parentEntryID  string
+	entryType      string
+	seq            int
+}
+
+// branchGraph holds the graph structure for a single session.
+type branchGraph struct {
+	entryByID     map[string]graphNode
+	parentByID    map[string]string
+	childrenByID  map[string][]string
+	leaves        []string
+}
+
+// buildBranchGraph constructs a branch graph from session message rows.
+func buildBranchGraph(rows []graphNode) branchGraph {
+	graph := branchGraph{
+		entryByID:    make(map[string]graphNode, len(rows)),
+		parentByID:   make(map[string]string, len(rows)),
+		childrenByID: make(map[string][]string, len(rows)),
+	}
+
+	for _, row := range rows {
+		graph.entryByID[row.entryID] = row
+		if row.parentEntryID != "" {
+			graph.parentByID[row.entryID] = row.parentEntryID
+			graph.childrenByID[row.parentEntryID] = append(graph.childrenByID[row.parentEntryID], row.entryID)
+		}
+	}
+
+	// Find leaves: entries that never appear as a parent
+	isParent := make(map[string]bool, len(graph.childrenByID))
+	for parentID := range graph.childrenByID {
+		isParent[parentID] = true
+		}
+	for _, row := range rows {
+		if !isParent[row.entryID] {
+			graph.leaves = append(graph.leaves, row.entryID)
+		}
+	}
+	return graph
+}
+
+// ancestorSet returns the set of all ancestor entry IDs (including the entry itself).
+func ancestorSet(graph branchGraph, entryID string) map[string]bool {
+	ancestors := make(map[string]bool)
+	current := entryID
+	for current != "" {
+		ancestors[current] = true
+		current = graph.parentByID[current]
+	}
+	return ancestors
+}
+
+// branchAnnotations holds the branch enrichment data for a single result.
+type branchAnnotations struct {
+	branchLeafIDs          []string
+	nearestCompactionID    string
+	nearestBranchSummaryID string
+}
+
+// annotateResult computes branch annotations for a single entry.
+func annotateResult(graph branchGraph, entryID string) branchAnnotations {
+	if entryID == "" {
+		return branchAnnotations{}
+	}
+
+	ancestors := ancestorSet(graph, entryID)
+
+	// Find all leaves that have this entry as an ancestor
+	var branchLeafIDs []string
+	for _, leafID := range graph.leaves {
+		if ancestors[leafID] {
+			branchLeafIDs = append(branchLeafIDs, leafID)
+		}
+	}
+	// Sort for deterministic output
+	sort.Strings(branchLeafIDs)
+
+	// Find nearest compaction ancestor
+	nearestCompactionID := ""
+	current := entryID
+	for current != "" {
+		node, ok := graph.entryByID[current]
+		if !ok {
+			break
+		}
+		if node.entryType == "compaction" {
+			nearestCompactionID = current
+			break
+		}
+		current = graph.parentByID[current]
+	}
+
+	// Find nearest branch_summary ancestor
+	nearestBranchSummaryID := ""
+	current = entryID
+	for current != "" {
+		node, ok := graph.entryByID[current]
+		if !ok {
+			break
+		}
+		if node.entryType == "branch_summary" {
+			nearestBranchSummaryID = current
+			break
+		}
+		current = graph.parentByID[current]
+	}
+
+	return branchAnnotations{
+		branchLeafIDs:          branchLeafIDs,
+		nearestCompactionID:    nearestCompactionID,
+		nearestBranchSummaryID: nearestBranchSummaryID,
+	}
+}
+
+// enrichWithBranches adds branch metadata to query results.
+func enrichWithBranches(ctx context.Context, database *sql.DB, results []QueryResult) error {
+	// Collect unique session IDs
+	sessionIDs := make(map[string]bool)
+	for _, r := range results {
+		if r.SessionID != "" {
+			sessionIDs[r.SessionID] = true
+		}
+	}
+
+	// Build graph per session
+	type sessionGraph struct {
+		chatID int64
+		graph  branchGraph
+	}
+	graphs := make(map[string]sessionGraph, len(sessionIDs))
+
+	for sessionID := range sessionIDs {
+		// Get internal chat_id
+		var chatID int64
+		err := database.QueryRowContext(ctx, "SELECT id FROM pi_chats WHERE uuid = ?", sessionID).Scan(&chatID)
+		if err != nil {
+			continue
+		}
+
+		// Load graph rows
+		rows, err := database.QueryContext(ctx,
+			"SELECT entry_id, parent_entry_id, type, seq FROM pi_messages WHERE chat_id = ? ORDER BY seq",
+			chatID,
+		)
+		if err != nil {
+			continue
+		}
+
+		var graphRows []graphNode
+		for rows.Next() {
+			var node graphNode
+			var parentEntryID sql.NullString
+			var entryType sql.NullString
+			if err := rows.Scan(&node.entryID, &parentEntryID, &entryType, &node.seq); err != nil {
+				rows.Close()
+				continue
+			}
+			node.parentEntryID = parentEntryID.String
+			node.entryType = entryType.String
+			graphRows = append(graphRows, node)
+		}
+		rows.Close()
+
+		// Skip enrichment for very large sessions
+		if len(graphRows) > 20000 {
+			continue
+		}
+
+		graphs[sessionID] = sessionGraph{
+			chatID: chatID,
+			graph:  buildBranchGraph(graphRows),
+		}
+	}
+
+	// Annotate each result
+	for i := range results {
+		sessionID := results[i].SessionID
+		entryID := results[i].EntryID
+		if sessionID == "" || entryID == "" {
+			continue
+		}
+		sessionGraph, ok := graphs[sessionID]
+		if !ok {
+			continue
+		}
+		annotations := annotateResult(sessionGraph.graph, entryID)
+		results[i].BranchLeafIDs = annotations.branchLeafIDs
+		results[i].NearestCompactionID = annotations.nearestCompactionID
+		results[i].NearestBranchSummaryID = annotations.nearestBranchSummaryID
+	}
+
+	return nil
+}
 
 func hasToolCallFilters(options QueryOptions) bool {
 	return options.CommandStartsWith != "" ||
@@ -62,16 +261,28 @@ func Query(ctx context.Context, options QueryOptions) ([]QueryResult, error) {
 		return nil, fmt.Errorf("use QuerySessions for --view sessions")
 	}
 
+	var results []QueryResult
 	if options.File != "" || options.AbsFile != "" || options.Op != "" {
-		return queryFileRefs(ctx, database, options)
+		results, err = queryFileRefs(ctx, database, options)
+	} else if options.Tool != "" || hasToolCallFilters(options) {
+		results, err = queryToolCalls(ctx, database, options)
+	} else if options.Text != "" {
+		results, err = queryText(ctx, database, options)
+	} else {
+		results, err = queryMessages(ctx, database, options)
 	}
-	if options.Tool != "" || hasToolCallFilters(options) {
-		return queryToolCalls(ctx, database, options)
+	if err != nil {
+		return nil, err
 	}
-	if options.Text != "" {
-		return queryText(ctx, database, options)
+
+	// Enrich with branch metadata if requested
+	if options.WithBranches && len(results) > 0 {
+		if err := enrichWithBranches(ctx, database, results); err != nil {
+			return results, err
+		}
 	}
-	return queryMessages(ctx, database, options)
+
+	return results, nil
 }
 
 // QuerySessions returns aggregated session-level results.

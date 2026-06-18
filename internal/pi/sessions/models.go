@@ -58,6 +58,7 @@ type QueryOptions struct {
 	SessionName       string
 	SessionNamePrefix string
 	Sort              string // "recent" (default), "oldest", "match-count"
+	WithBranches      bool
 	Limit             int
 }
 
@@ -83,6 +84,11 @@ type QueryResult struct {
 	Provider      string `json:"provider,omitempty"`
 	Model         string `json:"model,omitempty"`
 	Text          string `json:"text,omitempty"`
+
+	// Branch enrichment fields (populated when WithBranches is set)
+	BranchLeafIDs          []string `json:"branch_leaf_ids,omitempty"`
+	NearestCompactionID    string   `json:"nearest_compaction_id,omitempty"`
+	NearestBranchSummaryID string   `json:"nearest_branch_summary_id,omitempty"`
 }
 
 // SessionQueryResult represents an aggregated session-level query result.

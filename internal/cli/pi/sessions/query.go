@@ -2,11 +2,11 @@
  * Component: Pi Sessions Query Command
  * Block-UUID: 28c28a9f-e833-4bdd-96dd-7a8c6ab25cf0
  * Parent-UUID: N/A
- * Version: 1.1.0
+ * Version: 1.2.0
  * Description: Implements phase-one discovery queries over the Pi sessions SQLite mirror.
  * Language: Go
  * Created-at: 2026-06-18T00:00:00Z
- * Authors: Codex GPT-5 (v1.0.0), MiMo-v2.5-pro (v1.1.0)
+ * Authors: Codex GPT-5 (v1.0.0), MiMo-v2.5-pro (v1.1.0, v1.2.0)
  */
 
 package sessions
@@ -65,7 +65,7 @@ func queryCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return writeQueryResults(results, format)
+			return writeQueryResults(results, format, options.WithBranches)
 		},
 	}
 	cmd.Flags().StringVar(&dbPath, "db", "", "SQLite mirror path (default: GSC_HOME/data/pi-sessions.sqlite3)")
@@ -96,12 +96,13 @@ func queryCmd() *cobra.Command {
 	cmd.Flags().StringVar(&options.Role, "role", "", "Message role filter")
 	cmd.Flags().StringVar(&options.EntryID, "entry", "", "Entry id filter")
 	cmd.Flags().StringVar(&options.Sort, "sort", "recent", "Sort order: recent, oldest, match-count")
+	cmd.Flags().BoolVar(&options.WithBranches, "with-branches", false, "Enrich results with branch metadata (branch_leaf_ids, nearest_compaction_id, nearest_branch_summary_id)")
 	cmd.Flags().IntVar(&options.Limit, "limit", 50, "Maximum results")
 	cmd.Flags().StringVarP(&format, "format", "o", "human", "Output format: human, json")
 	return cmd
 }
 
-func writeQueryResults(results []pisessions.QueryResult, format string) error {
+func writeQueryResults(results []pisessions.QueryResult, format string, withBranches bool) error {
 	switch format {
 	case "json":
 		encoder := json.NewEncoder(os.Stdout)
@@ -134,6 +135,18 @@ func writeQueryResults(results []pisessions.QueryResult, format string) error {
 			}
 			if result.Text != "" {
 				fmt.Printf("\n  %s", result.Text)
+			}
+			// Branch enrichment output
+			if withBranches {
+				if len(result.BranchLeafIDs) > 0 {
+					fmt.Printf("\n  branch leaves: %s", strings.Join(result.BranchLeafIDs, ", "))
+				}
+				if result.NearestCompactionID != "" {
+					fmt.Printf("\n  nearest compaction: %s", result.NearestCompactionID)
+				}
+				if result.NearestBranchSummaryID != "" {
+					fmt.Printf("\n  nearest branch summary: %s", result.NearestBranchSummaryID)
+				}
 			}
 			fmt.Println()
 		}
