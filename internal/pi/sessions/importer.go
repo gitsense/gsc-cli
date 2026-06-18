@@ -56,7 +56,7 @@ func Sync(ctx context.Context, options SyncOptions) (SyncResult, error) {
 			result.Errors = append(result.Errors, SyncError{Path: path, Error: err.Error()})
 			continue
 		}
-		result.ChatsImported++
+		result.SessionsImported++
 		result.MessagesImported += imported.messages
 		result.ToolCallsImported += imported.toolCalls
 		result.FileRefsImported += imported.fileRefs

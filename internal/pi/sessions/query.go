@@ -9,7 +9,6 @@
  * Authors: Codex GPT-5 (v1.0.0)
  */
 
-
 package sessions
 
 import (
@@ -81,7 +80,7 @@ func queryFileRefs(ctx context.Context, database *sql.DB, options QueryOptions) 
 		var name, cwd, repoRoot, toolCallID, toolName, text sql.NullString
 		var rawPath, absPath, filePathRel sql.NullString
 		if err := rows.Scan(
-			&result.ChatUUID,
+			&result.SessionID,
 			&name,
 			&cwd,
 			&repoRoot,
@@ -99,7 +98,7 @@ func queryFileRefs(ctx context.Context, database *sql.DB, options QueryOptions) 
 			return nil, err
 		}
 		result.Kind = "file_ref"
-		result.ChatName = name.String
+		result.SessionName = name.String
 		result.CWD = cwd.String
 		result.RepoRoot = repoRoot.String
 		result.ToolCallID = toolCallID.String
@@ -137,7 +136,7 @@ func queryToolCalls(ctx context.Context, database *sql.DB, options QueryOptions)
 		var result QueryResult
 		var name, cwd, repoRoot, resultText sql.NullString
 		if err := rows.Scan(
-			&result.ChatUUID,
+			&result.SessionID,
 			&name,
 			&cwd,
 			&repoRoot,
@@ -150,7 +149,7 @@ func queryToolCalls(ctx context.Context, database *sql.DB, options QueryOptions)
 			return nil, err
 		}
 		result.Kind = "tool_call"
-		result.ChatName = name.String
+		result.SessionName = name.String
 		result.CWD = cwd.String
 		result.RepoRoot = repoRoot.String
 		result.Text = compactText(resultText.String)
@@ -184,7 +183,7 @@ func queryText(ctx context.Context, database *sql.DB, options QueryOptions) ([]Q
 		var result QueryResult
 		var name, cwd, repoRoot, role, provider, model, text sql.NullString
 		if err := rows.Scan(
-			&result.ChatUUID,
+			&result.SessionID,
 			&name,
 			&cwd,
 			&repoRoot,
@@ -199,7 +198,7 @@ func queryText(ctx context.Context, database *sql.DB, options QueryOptions) ([]Q
 			return nil, err
 		}
 		result.Kind = "message"
-		result.ChatName = name.String
+		result.SessionName = name.String
 		result.CWD = cwd.String
 		result.RepoRoot = repoRoot.String
 		result.Role = role.String
@@ -234,7 +233,7 @@ func queryMessages(ctx context.Context, database *sql.DB, options QueryOptions) 
 		var result QueryResult
 		var name, cwd, repoRoot, role, provider, model, text sql.NullString
 		if err := rows.Scan(
-			&result.ChatUUID,
+			&result.SessionID,
 			&name,
 			&cwd,
 			&repoRoot,
@@ -249,7 +248,7 @@ func queryMessages(ctx context.Context, database *sql.DB, options QueryOptions) 
 			return nil, err
 		}
 		result.Kind = "message"
-		result.ChatName = name.String
+		result.SessionName = name.String
 		result.CWD = cwd.String
 		result.RepoRoot = repoRoot.String
 		result.Role = role.String
@@ -262,9 +261,9 @@ func queryMessages(ctx context.Context, database *sql.DB, options QueryOptions) 
 }
 
 func appendCommonFilters(query string, args []interface{}, options QueryOptions, chatAlias string, messageAlias string) (string, []interface{}) {
-	if options.ChatUUID != "" {
+	if options.SessionID != "" {
 		query += " AND " + chatAlias + ".uuid = ?"
-		args = append(args, options.ChatUUID)
+		args = append(args, options.SessionID)
 	}
 	if options.Repo != "" {
 		query += " AND " + chatAlias + ".repo_root = ?"

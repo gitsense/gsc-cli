@@ -105,7 +105,7 @@ func writeSyncResult(result pisessions.SyncResult, format string) error {
 		fmt.Printf("Synced Pi sessions into %s\n", result.DBPath)
 		fmt.Printf("  Sessions dir: %s\n", result.SessionsDir)
 		fmt.Printf("  Files scanned: %d\n", result.FilesScanned)
-		fmt.Printf("  Chats imported: %d\n", result.ChatsImported)
+		fmt.Printf("  Sessions imported: %d\n", result.SessionsImported)
 		fmt.Printf("  Messages: %d\n", result.MessagesImported)
 		fmt.Printf("  Tool calls: %d\n", result.ToolCallsImported)
 		fmt.Printf("  File refs: %d\n", result.FileRefsImported)

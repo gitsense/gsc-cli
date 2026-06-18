@@ -9,7 +9,6 @@
  * Authors: Codex GPT-5 (v1.0.0)
  */
 
-
 package sessions
 
 import (
@@ -50,7 +49,7 @@ func queryCmd() *cobra.Command {
 	cmd.Flags().StringVar(&options.File, "file", "", "Repo-root-relative file path to recall")
 	cmd.Flags().StringVar(&options.AbsFile, "abs-file", "", "Absolute file path to recall")
 	cmd.Flags().StringVar(&options.Repo, "repo", "", "Repo root filter")
-	cmd.Flags().StringVar(&options.ChatUUID, "chat", "", "Pi session UUID filter")
+	cmd.Flags().StringVar(&options.SessionID, "session-id", "", "Pi session ID filter")
 	cmd.Flags().StringVar(&options.Tool, "tool", "", "Tool name filter")
 	cmd.Flags().StringVar(&options.Op, "op", "", "File operation filter")
 	cmd.Flags().StringVar(&options.Text, "text", "", "Full-text search over message text")
@@ -76,8 +75,8 @@ func writeQueryResults(results []pisessions.QueryResult, format string) error {
 	case "human", "":
 		for _, result := range results {
 			fmt.Printf("%s", result.Kind)
-			if result.ChatUUID != "" {
-				fmt.Printf(" %s", result.ChatUUID)
+			if result.SessionID != "" {
+				fmt.Printf(" %s", result.SessionID)
 			}
 			if result.Timestamp != "" {
 				fmt.Printf(" %s", result.Timestamp)

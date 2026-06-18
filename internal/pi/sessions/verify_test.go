@@ -60,10 +60,10 @@ func importFixtures(t *testing.T) string {
 		}
 		t.Fatal("sync had errors")
 	}
-	if result.ChatsImported == 0 {
-		t.Fatal("no chats imported")
+	if result.SessionsImported == 0 {
+		t.Fatal("no sessions imported")
 	}
-	t.Logf("imported %d chats, %d messages", result.ChatsImported, result.MessagesImported)
+	t.Logf("imported %d sessions, %d messages", result.SessionsImported, result.MessagesImported)
 	return dbPath
 }
 

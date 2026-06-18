@@ -9,7 +9,6 @@
  * Authors: Codex GPT-5 (v1.0.0)
  */
 
-
 package sessions
 
 type SyncOptions struct {
@@ -21,7 +20,7 @@ type SyncResult struct {
 	SessionsDir       string      `json:"sessions_dir"`
 	DBPath            string      `json:"db_path"`
 	FilesScanned      int         `json:"files_scanned"`
-	ChatsImported     int         `json:"chats_imported"`
+	SessionsImported  int         `json:"sessions_imported"`
 	MessagesImported  int         `json:"messages_imported"`
 	ToolCallsImported int         `json:"tool_calls_imported"`
 	FileRefsImported  int         `json:"file_refs_imported"`
@@ -34,28 +33,28 @@ type SyncError struct {
 }
 
 type QueryOptions struct {
-	DBPath   string
-	File     string
-	AbsFile  string
-	Repo     string
-	ChatUUID string
-	Tool     string
-	Op       string
-	Text     string
-	Since    string
-	Until    string
-	Provider string
-	Model    string
-	Type     string
-	Role     string
-	EntryID  string
-	Limit    int
+	DBPath    string
+	File      string
+	AbsFile   string
+	Repo      string
+	SessionID string
+	Tool      string
+	Op        string
+	Text      string
+	Since     string
+	Until     string
+	Provider  string
+	Model     string
+	Type      string
+	Role      string
+	EntryID   string
+	Limit     int
 }
 
 type QueryResult struct {
 	Kind        string `json:"kind"`
-	ChatUUID    string `json:"chat_uuid,omitempty"`
-	ChatName    string `json:"chat_name,omitempty"`
+	SessionID   string `json:"session_id,omitempty"`
+	SessionName string `json:"session_name,omitempty"`
 	CWD         string `json:"cwd,omitempty"`
 	RepoRoot    string `json:"repo_root,omitempty"`
 	EntryID     string `json:"entry_id,omitempty"`
