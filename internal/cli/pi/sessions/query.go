@@ -295,7 +295,7 @@ func writeQueryResultsHuman(results []pisessions.QueryResult, withBranches bool,
 		} else {
 			fmt.Printf("%d matches\n", matchCount)
 		}
-		fmt.Println("  " + strings.Repeat("-", 60))
+		fmt.Println(strings.Repeat("-", 60))
 		fmt.Println()
 
 		// Print each result in the group
