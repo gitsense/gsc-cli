@@ -34,7 +34,7 @@ const DefaultGitSenseDir = ".gitsense"
 // GitSenseDir is the name of the directory where GitSense Chat stores its data
 var GitSenseDir = DefaultGitSenseDir
 
-// DockerRootPrefix is the unique root path used in Docker environments to signal 
+// DockerRootPrefix is the unique root path used in Docker environments to signal
 // that paths require translation when accessed from a host machine.
 const DockerRootPrefix = "/gsc-docker-app"
 
@@ -103,14 +103,15 @@ const PermissionManifestPublish = "manifest:publish"
 
 // Default Terminal Constants
 // These represent the most commonly available terminals for each platform.
-const DefaultTerminalDarwin  = "terminal.app"
-const DefaultTerminalLinux   = "gnome-terminal"
+const DefaultTerminalDarwin = "terminal.app"
+const DefaultTerminalLinux = "gnome-terminal"
 const DefaultTerminalWindows = "wt"
 
 // Claude Code Integration Constants
 const ClaudeCodeDirRelPath = "data/claude-code"
 const ClaudeTemplatesPath = "cli/templates/claude/chat"
 const ClaudeMetricsDBName = "claude.sqlite3"
+const PiSessionsDatabaseRelPath = "data/pi-sessions.sqlite3"
 const ClaudeChatsDirRelPath = "chats"
 const DefaultClaudeChunkSize = 5
 const DefaultClaudeMaxFiles = 5
@@ -312,6 +313,11 @@ func GetGSCHome(required bool) (string, error) {
 // GetChatDatabasePath returns the absolute path to the GitSense Chat database.
 func GetChatDatabasePath(gscHome string) string {
 	return filepath.Join(gscHome, ChatDatabaseRelPath)
+}
+
+// GetPiSessionsDatabasePath returns the absolute path to the Pi sessions mirror database.
+func GetPiSessionsDatabasePath(gscHome string) string {
+	return filepath.Join(gscHome, PiSessionsDatabaseRelPath)
 }
 
 // GetManifestStoragePath returns the absolute path to the manifest storage directory.
