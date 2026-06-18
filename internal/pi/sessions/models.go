@@ -59,6 +59,7 @@ type QueryOptions struct {
 	SessionNamePrefix string
 	Sort              string // "recent" (default), "oldest", "match-count"
 	WithBranches      bool
+	Color             string // "auto" (default), "always", "never"
 	Limit             int
 }
 
@@ -85,10 +86,20 @@ type QueryResult struct {
 	Model         string `json:"model,omitempty"`
 	Text          string `json:"text,omitempty"`
 
+	// Snippet and match highlighting
+	Snippet     string         `json:"snippet,omitempty"`
+	MatchRanges []MatchRange   `json:"match_ranges,omitempty"`
+
 	// Branch enrichment fields (populated when WithBranches is set)
 	BranchLeafIDs          []string `json:"branch_leaf_ids,omitempty"`
 	NearestCompactionID    string   `json:"nearest_compaction_id,omitempty"`
 	NearestBranchSummaryID string   `json:"nearest_branch_summary_id,omitempty"`
+}
+
+// MatchRange represents a highlighted region within a snippet.
+type MatchRange struct {
+	Start int `json:"start"`
+	End   int `json:"end"`
 }
 
 // SessionQueryResult represents an aggregated session-level query result.

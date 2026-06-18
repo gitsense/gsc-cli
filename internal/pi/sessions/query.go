@@ -754,6 +754,16 @@ func queryToolCalls(ctx context.Context, database *sql.DB, options QueryOptions)
 		result.ArgumentsJSON = argumentsJSON.String
 		result.Command = extractCommand(argumentsJSON.String)
 		result.Text = compactText(resultText.String)
+
+		// Add highlighting for command matches
+		if options.CommandContains != "" {
+			result.MatchRanges = highlightSubstring(result.Command, options.CommandContains, options.CaseInsensitive)
+		} else if options.CommandStartsWith != "" {
+			result.MatchRanges = highlightSubstring(result.Command, options.CommandStartsWith, options.CaseInsensitive)
+		} else if options.OutputContains != "" {
+			result.MatchRanges = highlightSubstring(resultText.String, options.OutputContains, options.CaseInsensitive)
+		}
+
 		results = append(results, result)
 	}
 	return results, rows.Err()
@@ -832,10 +842,71 @@ func queryText(ctx context.Context, database *sql.DB, options QueryOptions) ([]Q
 		result.Role = role.String
 		result.Provider = provider.String
 		result.Model = model.String
-		result.Text = compactText(text.String)
+		result.Snippet = text.String
+		result.MatchRanges = extractBracketRanges(text.String, '[', ']')
+		result.Text = compactText(stripBrackets(text.String, '[', ']'))
 		results = append(results, result)
 	}
 	return results, rows.Err()
+}
+
+// extractBracketRanges finds all regions enclosed by open/close brackets.
+func extractBracketRanges(s string, open, close byte) []MatchRange {
+	var ranges []MatchRange
+	i := 0
+	for i < len(s) {
+		start := strings.IndexByte(s[i:], open)
+		if start == -1 {
+			break
+		}
+		start += i
+		end := strings.IndexByte(s[start+1:], close)
+		if end == -1 {
+			break
+		}
+		end += start + 1
+		ranges = append(ranges, MatchRange{Start: start, End: end - 1})
+		i = end + 1
+	}
+	return ranges
+}
+
+// stripBrackets removes bracket delimiters from a string.
+func stripBrackets(s string, open, close byte) string {
+	var result strings.Builder
+	result.Grow(len(s))
+	for i := 0; i < len(s); i++ {
+		if s[i] != open && s[i] != close {
+			result.WriteByte(s[i])
+		}
+	}
+	return result.String()
+}
+
+// highlightSubstring finds all occurrences of substr in text and returns match ranges.
+func highlightSubstring(text, substr string, caseInsensitive bool) []MatchRange {
+	if substr == "" {
+		return nil
+	}
+	var ranges []MatchRange
+	searchText := text
+	searchSubstr := substr
+	if caseInsensitive {
+		searchText = strings.ToLower(text)
+		searchSubstr = strings.ToLower(substr)
+	}
+	i := 0
+	for i <= len(searchText)-len(searchSubstr) {
+		idx := strings.Index(searchText[i:], searchSubstr)
+		if idx == -1 {
+			break
+		}
+		start := i + idx
+		end := start + len(searchSubstr)
+		ranges = append(ranges, MatchRange{Start: start, End: end})
+		i = end
+	}
+	return ranges
 }
 
 func queryMessages(ctx context.Context, database *sql.DB, options QueryOptions) ([]QueryResult, error) {

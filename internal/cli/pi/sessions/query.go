@@ -2,11 +2,11 @@
  * Component: Pi Sessions Query Command
  * Block-UUID: 28c28a9f-e833-4bdd-96dd-7a8c6ab25cf0
  * Parent-UUID: N/A
- * Version: 1.2.0
+ * Version: 1.3.0
  * Description: Implements phase-one discovery queries over the Pi sessions SQLite mirror.
  * Language: Go
  * Created-at: 2026-06-18T00:00:00Z
- * Authors: Codex GPT-5 (v1.0.0), MiMo-v2.5-pro (v1.1.0, v1.2.0)
+ * Authors: Codex GPT-5 (v1.0.0), MiMo-v2.5-pro (v1.1.0, v1.2.0, v1.3.0)
  */
 
 package sessions
@@ -28,6 +28,12 @@ const hiddenTextFlagName = "text"
 
 // hiddenTypeFlagName is the flag name for the hidden --type alias.
 const hiddenTypeFlagName = "type"
+
+// ANSI color codes
+const (
+	ansiReset  = "\033[0m"
+	ansiYellow = "\033[1;33m"
+)
 
 func queryCmd() *cobra.Command {
 	var options pisessions.QueryOptions
@@ -65,7 +71,7 @@ func queryCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return writeQueryResults(results, format, options.WithBranches)
+			return writeQueryResults(results, format, options.WithBranches, options.Color)
 		},
 	}
 	cmd.Flags().StringVar(&dbPath, "db", "", "SQLite mirror path (default: GSC_HOME/data/pi-sessions.sqlite3)")
@@ -97,18 +103,95 @@ func queryCmd() *cobra.Command {
 	cmd.Flags().StringVar(&options.EntryID, "entry", "", "Entry id filter")
 	cmd.Flags().StringVar(&options.Sort, "sort", "recent", "Sort order: recent, oldest, match-count")
 	cmd.Flags().BoolVar(&options.WithBranches, "with-branches", false, "Enrich results with branch metadata (branch_leaf_ids, nearest_compaction_id, nearest_branch_summary_id)")
+	cmd.Flags().StringVar(&options.Color, "color", "auto", "Color output: auto, always, never")
 	cmd.Flags().IntVar(&options.Limit, "limit", 50, "Maximum results")
 	cmd.Flags().StringVarP(&format, "format", "o", "human", "Output format: human, json")
 	return cmd
 }
 
-func writeQueryResults(results []pisessions.QueryResult, format string, withBranches bool) error {
+// useColor returns true if ANSI colors should be used.
+func useColor(colorOption string) bool {
+	switch strings.ToLower(colorOption) {
+	case "always":
+		return true
+	case "never":
+		return false
+	default: // "auto"
+		// Check if stdout is a terminal
+		fi, err := os.Stdout.Stat()
+		if err != nil {
+			return false
+		}
+		return (fi.Mode() & os.ModeCharDevice) != 0
+	}
+}
+
+// highlightText applies ANSI highlighting to regions of text based on match ranges.
+func highlightText(text string, ranges []pisessions.MatchRange, useAnsi bool) string {
+	if len(ranges) == 0 {
+		return text
+	}
+
+	if !useAnsi {
+		// Use brackets for non-ANSI mode
+		return applyBrackets(text, ranges)
+	}
+
+	// Apply ANSI colors
+	var result strings.Builder
+	result.Grow(len(text) + len(ranges)*20)
+	lastEnd := 0
+	for _, r := range ranges {
+		if r.Start > lastEnd {
+			result.WriteString(text[lastEnd:r.Start])
+		}
+		if r.Start < len(text) && r.End <= len(text) {
+			result.WriteString(ansiYellow)
+			result.WriteString(text[r.Start:r.End])
+			result.WriteString(ansiReset)
+		}
+		lastEnd = r.End
+	}
+	if lastEnd < len(text) {
+		result.WriteString(text[lastEnd:])
+	}
+	return result.String()
+}
+
+// applyBrackets wraps matched regions with brackets.
+func applyBrackets(text string, ranges []pisessions.MatchRange) string {
+	if len(ranges) == 0 {
+		return text
+	}
+
+	var result strings.Builder
+	result.Grow(len(text) + len(ranges)*2)
+	lastEnd := 0
+	for _, r := range ranges {
+		if r.Start > lastEnd {
+			result.WriteString(text[lastEnd:r.Start])
+		}
+		if r.Start < len(text) && r.End <= len(text) {
+			result.WriteByte('[')
+			result.WriteString(text[r.Start:r.End])
+			result.WriteByte(']')
+		}
+		lastEnd = r.End
+	}
+	if lastEnd < len(text) {
+		result.WriteString(text[lastEnd:])
+	}
+	return result.String()
+}
+
+func writeQueryResults(results []pisessions.QueryResult, format string, withBranches bool, colorOption string) error {
 	switch format {
 	case "json":
 		encoder := json.NewEncoder(os.Stdout)
 		encoder.SetIndent("", "  ")
 		return encoder.Encode(results)
 	case "human", "":
+		useAnsi := useColor(colorOption)
 		for _, result := range results {
 			fmt.Printf("%s", result.Kind)
 			if result.SessionID != "" {
@@ -134,7 +217,13 @@ func writeQueryResults(results []pisessions.QueryResult, format string, withBran
 				fmt.Printf(" entry=%s", result.EntryID)
 			}
 			if result.Text != "" {
-				fmt.Printf("\n  %s", result.Text)
+				// Use highlighted snippet if available, otherwise plain text
+				if len(result.MatchRanges) > 0 {
+					highlighted := highlightText(result.Text, result.MatchRanges, useAnsi)
+					fmt.Printf("\n  %s", highlighted)
+				} else {
+					fmt.Printf("\n  %s", result.Text)
+				}
 			}
 			// Branch enrichment output
 			if withBranches {
