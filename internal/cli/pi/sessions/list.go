@@ -80,10 +80,11 @@ func writeListHuman(results []pisessions.ListResult) error {
 	}
 
 	for _, r := range results {
-		// Short ID (13 chars: 019edc1e-bf7f)
+		// Short ID (first two parts: 019edbc4-8752)
+		parts := strings.SplitN(r.SessionID, "-", 3)
 		shortID := r.SessionID
-		if len(shortID) > 13 {
-			shortID = shortID[:13]
+		if len(parts) >= 2 {
+			shortID = parts[0] + "-" + parts[1]
 		}
 
 		// Last activity date (Jun 18 19:29)
