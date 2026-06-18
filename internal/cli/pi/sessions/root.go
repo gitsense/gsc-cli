@@ -32,5 +32,6 @@ func NewCmd() *cobra.Command {
 	}
 	cmd.AddCommand(syncCmd())
 	cmd.AddCommand(queryCmd())
+	cmd.AddCommand(verifyCmd())
 	return cmd
 }
