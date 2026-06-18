@@ -20,9 +20,26 @@ import (
 	"github.com/gitsense/gsc-cli/internal/db"
 )
 
+func hasToolCallFilters(options QueryOptions) bool {
+	return options.CommandStartsWith != "" ||
+		options.CommandContains != "" ||
+		options.OutputContains != "" ||
+		options.ToolArgsContains != ""
+}
+
+func validateToolCallOptions(options QueryOptions) error {
+	if hasToolCallFilters(options) && options.Tool != "" && strings.ToLower(options.Tool) != "bash" {
+		return fmt.Errorf("--command-* and --output-* flags only apply to bash tool calls; remove --tool or use --tool bash")
+	}
+	return nil
+}
+
 func Query(ctx context.Context, options QueryOptions) ([]QueryResult, error) {
 	if options.DBPath == "" {
 		return nil, fmt.Errorf("db path is required")
+	}
+	if err := validateToolCallOptions(options); err != nil {
+		return nil, err
 	}
 	database, err := openQueryMirror(options.DBPath)
 	if err != nil {
@@ -33,7 +50,7 @@ func Query(ctx context.Context, options QueryOptions) ([]QueryResult, error) {
 	if options.File != "" || options.AbsFile != "" || options.Op != "" {
 		return queryFileRefs(ctx, database, options)
 	}
-	if options.Tool != "" {
+	if options.Tool != "" || hasToolCallFilters(options) {
 		return queryToolCalls(ctx, database, options)
 	}
 	if options.Text != "" {
@@ -115,15 +132,63 @@ func queryFileRefs(ctx context.Context, database *sql.DB, options QueryOptions) 
 func queryToolCalls(ctx context.Context, database *sql.DB, options QueryOptions) ([]QueryResult, error) {
 	query := `
 		SELECT c.uuid, c.name, c.cwd, c.repo_root, t.entry_id, t.tool_call_id,
-		       t.tool_name, t.timestamp, t.result_text
+		       t.tool_name, t.timestamp, t.arguments_json, t.result_text
 		FROM pi_tool_calls t
 		JOIN pi_chats c ON c.id = t.chat_id
 		JOIN pi_messages m ON m.id = t.message_id
 		WHERE c.file_deleted_at IS NULL`
 	var args []interface{}
 	query, args = appendCommonFilters(query, args, options, "c", "m")
-	query += " AND t.tool_name = ? ORDER BY t.timestamp DESC LIMIT ?"
-	args = append(args, strings.ToLower(options.Tool), limitOrDefault(options.Limit))
+
+	toolName := strings.ToLower(options.Tool)
+	if hasToolCallFilters(options) && toolName == "" {
+		toolName = "bash"
+	}
+	if toolName != "" {
+		query += " AND t.tool_name = ?"
+		args = append(args, toolName)
+	}
+
+	commandExpr := "json_extract(t.arguments_json, '$.command')"
+	if options.CommandStartsWith != "" {
+		pattern := options.CommandStartsWith + "%"
+		if options.CaseInsensitive {
+			query += " AND LOWER(" + commandExpr + ") LIKE LOWER(?)"
+		} else {
+			query += " AND " + commandExpr + " LIKE ?"
+		}
+		args = append(args, pattern)
+	}
+	if options.CommandContains != "" {
+		pattern := "%" + options.CommandContains + "%"
+		if options.CaseInsensitive {
+			query += " AND LOWER(" + commandExpr + ") LIKE LOWER(?)"
+		} else {
+			query += " AND " + commandExpr + " LIKE ?"
+		}
+		args = append(args, pattern)
+	}
+	if options.OutputContains != "" {
+		pattern := "%" + options.OutputContains + "%"
+		if options.CaseInsensitive {
+			query += " AND LOWER(t.result_text) LIKE LOWER(?)"
+		} else {
+			query += " AND t.result_text LIKE ?"
+		}
+		args = append(args, pattern)
+	}
+	if options.ToolArgsContains != "" {
+		pattern := "%" + options.ToolArgsContains + "%"
+		if options.CaseInsensitive {
+			query += " AND LOWER(t.arguments_json) LIKE LOWER(?)"
+		} else {
+			query += " AND t.arguments_json LIKE ?"
+		}
+		args = append(args, pattern)
+	}
+
+	query += " ORDER BY t.timestamp DESC LIMIT ?"
+	args = append(args, limitOrDefault(options.Limit))
 
 	rows, err := database.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -134,7 +199,7 @@ func queryToolCalls(ctx context.Context, database *sql.DB, options QueryOptions)
 	var results []QueryResult
 	for rows.Next() {
 		var result QueryResult
-		var name, cwd, repoRoot, resultText sql.NullString
+		var name, cwd, repoRoot, argumentsJSON, resultText sql.NullString
 		if err := rows.Scan(
 			&result.SessionID,
 			&name,
@@ -144,6 +209,7 @@ func queryToolCalls(ctx context.Context, database *sql.DB, options QueryOptions)
 			&result.ToolCallID,
 			&result.ToolName,
 			&result.Timestamp,
+			&argumentsJSON,
 			&resultText,
 		); err != nil {
 			return nil, err
@@ -152,10 +218,39 @@ func queryToolCalls(ctx context.Context, database *sql.DB, options QueryOptions)
 		result.SessionName = name.String
 		result.CWD = cwd.String
 		result.RepoRoot = repoRoot.String
+		result.ArgumentsJSON = argumentsJSON.String
+		result.Command = extractCommand(argumentsJSON.String)
 		result.Text = compactText(resultText.String)
 		results = append(results, result)
 	}
 	return results, rows.Err()
+}
+
+func extractCommand(argumentsJSON string) string {
+	if argumentsJSON == "" {
+		return ""
+	}
+	// Simple extraction: look for "command":"..."
+	// Handle escaped quotes (\") inside the value.
+	const key = `"command":"`
+	start := strings.Index(argumentsJSON, key)
+	if start == -1 {
+		return ""
+	}
+	start += len(key)
+	// Scan forward, skipping \" sequences.
+	i := start
+	for i < len(argumentsJSON) {
+		if argumentsJSON[i] == '\\' && i+1 < len(argumentsJSON) {
+			i += 2 // skip escaped char
+			continue
+		}
+		if argumentsJSON[i] == '"' {
+			break
+		}
+		i++
+	}
+	return argumentsJSON[start:i]
 }
 
 func queryText(ctx context.Context, database *sql.DB, options QueryOptions) ([]QueryResult, error) {

@@ -33,42 +33,49 @@ type SyncError struct {
 }
 
 type QueryOptions struct {
-	DBPath    string
-	File      string
-	AbsFile   string
-	Repo      string
-	SessionID string
-	Tool      string
-	Op        string
-	Text      string
-	Since     string
-	Until     string
-	Provider  string
-	Model     string
-	Type      string
-	Role      string
-	EntryID   string
-	Limit     int
+	DBPath            string
+	File              string
+	AbsFile           string
+	Repo              string
+	SessionID         string
+	Tool              string
+	Op                string
+	Text              string
+	CommandStartsWith string
+	CommandContains   string
+	OutputContains    string
+	ToolArgsContains  string
+	CaseInsensitive   bool
+	Since             string
+	Until             string
+	Provider          string
+	Model             string
+	Type              string
+	Role              string
+	EntryID           string
+	Limit             int
 }
 
 type QueryResult struct {
-	Kind        string `json:"kind"`
-	SessionID   string `json:"session_id,omitempty"`
-	SessionName string `json:"session_name,omitempty"`
-	CWD         string `json:"cwd,omitempty"`
-	RepoRoot    string `json:"repo_root,omitempty"`
-	EntryID     string `json:"entry_id,omitempty"`
-	ToolCallID  string `json:"tool_call_id,omitempty"`
-	ToolName    string `json:"tool_name,omitempty"`
-	Op          string `json:"op,omitempty"`
-	Source      string `json:"source,omitempty"`
-	RawPath     string `json:"raw_path,omitempty"`
-	AbsPath     string `json:"abs_path,omitempty"`
-	FilePathRel string `json:"file_path_rel,omitempty"`
-	Timestamp   string `json:"timestamp,omitempty"`
-	Type        string `json:"type,omitempty"`
-	Role        string `json:"role,omitempty"`
-	Provider    string `json:"provider,omitempty"`
-	Model       string `json:"model,omitempty"`
-	Text        string `json:"text,omitempty"`
+	Kind          string `json:"kind"`
+	SessionID     string `json:"session_id,omitempty"`
+	SessionName   string `json:"session_name,omitempty"`
+	CWD           string `json:"cwd,omitempty"`
+	RepoRoot      string `json:"repo_root,omitempty"`
+	EntryID       string `json:"entry_id,omitempty"`
+	ToolCallID    string `json:"tool_call_id,omitempty"`
+	ToolName      string `json:"tool_name,omitempty"`
+	Command       string `json:"command,omitempty"`
+	ArgumentsJSON string `json:"arguments_json,omitempty"`
+	Op            string `json:"op,omitempty"`
+	Source        string `json:"source,omitempty"`
+	RawPath       string `json:"raw_path,omitempty"`
+	AbsPath       string `json:"abs_path,omitempty"`
+	FilePathRel   string `json:"file_path_rel,omitempty"`
+	Timestamp     string `json:"timestamp,omitempty"`
+	Type          string `json:"type,omitempty"`
+	Role          string `json:"role,omitempty"`
+	Provider      string `json:"provider,omitempty"`
+	Model         string `json:"model,omitempty"`
+	Text          string `json:"text,omitempty"`
 }

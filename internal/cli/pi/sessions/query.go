@@ -20,6 +20,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// hiddenTextFlagName is the flag name for the hidden --text alias.
+const hiddenTextFlagName = "text"
+
 func queryCmd() *cobra.Command {
 	var options pisessions.QueryOptions
 	var dbPath string
@@ -50,10 +53,16 @@ func queryCmd() *cobra.Command {
 	cmd.Flags().StringVar(&options.AbsFile, "abs-file", "", "Absolute file path to recall")
 	cmd.Flags().StringVar(&options.Repo, "repo", "", "Repo root filter")
 	cmd.Flags().StringVar(&options.SessionID, "session-id", "", "Pi session ID filter")
-	cmd.Flags().StringVar(&options.Tool, "tool", "", "Tool name filter")
-	cmd.Flags().StringVar(&options.Op, "op", "", "File operation filter")
-	cmd.Flags().StringVar(&options.Text, "text", "", "Full-text search over message text")
-	cmd.Flags().StringVarP(&options.Text, "query", "q", "", "Full-text search over message text")
+	cmd.Flags().StringVar(&options.Tool, "tool", "", "Tool name filter (bash, read, edit, write)")
+	cmd.Flags().StringVar(&options.Op, "op", "", "File operation filter (read, edit, write)")
+	cmd.Flags().StringVarP(&options.Text, "message", "q", "", "Full-text search over user/assistant messages")
+	cmd.Flags().StringVar(&options.Text, hiddenTextFlagName, "", "")
+	cmd.Flags().MarkHidden(hiddenTextFlagName)
+	cmd.Flags().StringVar(&options.CommandStartsWith, "command-starts-with", "", "Bash command prefix match (implies --tool bash)")
+	cmd.Flags().StringVar(&options.CommandContains, "command-contains", "", "Bash command substring match (implies --tool bash)")
+	cmd.Flags().StringVar(&options.OutputContains, "output-contains", "", "Tool output substring match")
+	cmd.Flags().StringVar(&options.ToolArgsContains, "tool-args-contains", "", "Tool arguments JSON substring match")
+	cmd.Flags().BoolVarP(&options.CaseInsensitive, "case-insensitive", "i", false, "Case-insensitive matching for --command-*, --output-*, --tool-args-*")
 	cmd.Flags().StringVar(&options.Since, "since", "", "Inclusive lower timestamp bound")
 	cmd.Flags().StringVar(&options.Until, "until", "", "Inclusive upper timestamp bound")
 	cmd.Flags().StringVar(&options.Provider, "provider", "", "Provider filter")
@@ -81,7 +90,9 @@ func writeQueryResults(results []pisessions.QueryResult, format string) error {
 			if result.Timestamp != "" {
 				fmt.Printf(" %s", result.Timestamp)
 			}
-			if result.FilePathRel != "" {
+			if result.Command != "" {
+				fmt.Printf(" cmd=%s", result.Command)
+			} else if result.FilePathRel != "" {
 				fmt.Printf(" %s", result.FilePathRel)
 			} else if result.AbsPath != "" {
 				fmt.Printf(" %s", result.AbsPath)
