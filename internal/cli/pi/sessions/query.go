@@ -274,9 +274,9 @@ func writeQueryResultsHuman(results []pisessions.QueryResult, withBranches bool,
 		// Print header
 		elapsed := relativeTime(latestTs)
 		if elapsed != "" {
-			fmt.Printf("Session %s  %s %s\n", sessionPrefix, formatTimestamp(latestTs), elapsed)
+			fmt.Printf("Session %s  %s %s\n", g.sessionID, formatTimestamp(latestTs), elapsed)
 		} else {
-			fmt.Printf("Session %s  %s\n", sessionPrefix, formatTimestamp(latestTs))
+			fmt.Printf("Session %s  %s\n", g.sessionID, formatTimestamp(latestTs))
 		}
 
 		// Match count, location, and branch info
