@@ -273,22 +273,18 @@ func writeQueryResultsHuman(results []pisessions.QueryResult, withBranches bool,
 
 		// Print header
 		elapsed := relativeTime(latestTs)
-		if location != "" {
-			if elapsed != "" {
-				fmt.Printf("Session %s  %s  %s %s\n", sessionPrefix, location, formatTimestamp(latestTs), elapsed)
-			} else {
-				fmt.Printf("Session %s  %s  %s\n", sessionPrefix, location, formatTimestamp(latestTs))
-			}
+		if elapsed != "" {
+			fmt.Printf("Session %s  %s %s\n", sessionPrefix, formatTimestamp(latestTs), elapsed)
 		} else {
-			if elapsed != "" {
-				fmt.Printf("Session %s  %s %s\n", sessionPrefix, formatTimestamp(latestTs), elapsed)
-			} else {
-				fmt.Printf("Session %s  %s\n", sessionPrefix, formatTimestamp(latestTs))
-			}
+			fmt.Printf("Session %s  %s\n", sessionPrefix, formatTimestamp(latestTs))
 		}
 
-		// Match count and branch info
+		// Match count, location, and branch info
 		matchCount := len(g.results)
+		matchLine := fmt.Sprintf("%d matches", matchCount)
+		if location != "" {
+			matchLine += " in " + location
+		}
 		if withBranches && len(g.branchLeaves) > 0 {
 			leafCount := len(g.branchLeaves)
 			if leafCount <= 2 {
@@ -297,13 +293,12 @@ func writeQueryResultsHuman(results []pisessions.QueryResult, withBranches bool,
 					leafIDs = append(leafIDs, id)
 				}
 				sort.Strings(leafIDs)
-				fmt.Printf("%d matches | branches: %d leaves (%s)\n", matchCount, leafCount, strings.Join(leafIDs, ", "))
+				matchLine += fmt.Sprintf(" | branches: %d leaves (%s)", leafCount, strings.Join(leafIDs, ", "))
 			} else {
-				fmt.Printf("%d matches | branches: %d leaves\n", matchCount, leafCount)
+				matchLine += fmt.Sprintf(" | branches: %d leaves", leafCount)
 			}
-		} else {
-			fmt.Printf("%d matches\n", matchCount)
 		}
+		fmt.Println(matchLine)
 		fmt.Println(strings.Repeat("-", 60))
 		fmt.Println()
 
