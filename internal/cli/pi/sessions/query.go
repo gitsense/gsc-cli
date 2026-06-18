@@ -316,6 +316,10 @@ func writeQueryResultsHuman(results []pisessions.QueryResult, withBranches bool,
 				t, err := time.Parse(time.RFC3339, r.Timestamp)
 				if err == nil {
 					timeStr = t.Local().Format("15:04:05")
+					elapsed := relativeTime(r.Timestamp)
+					if elapsed != "" {
+						timeStr += " " + elapsed
+					}
 				}
 			}
 
