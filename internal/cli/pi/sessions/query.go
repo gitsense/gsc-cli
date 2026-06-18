@@ -2,11 +2,11 @@
  * Component: Pi Sessions Query Command
  * Block-UUID: 28c28a9f-e833-4bdd-96dd-7a8c6ab25cf0
  * Parent-UUID: N/A
- * Version: 1.3.0
+ * Version: 1.4.0
  * Description: Implements phase-one discovery queries over the Pi sessions SQLite mirror.
  * Language: Go
  * Created-at: 2026-06-18T00:00:00Z
- * Authors: Codex GPT-5 (v1.0.0), MiMo-v2.5-pro (v1.1.0, v1.2.0, v1.3.0)
+ * Authors: Codex GPT-5 (v1.0.0), MiMo-v2.5-pro (v1.1.0, v1.2.0, v1.3.0, v1.4.0)
  */
 
 package sessions
@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -33,6 +34,7 @@ const hiddenTypeFlagName = "type"
 const (
 	ansiReset  = "\033[0m"
 	ansiYellow = "\033[1;33m"
+	ansiDim    = "\033[2m"
 )
 
 func queryCmd() *cobra.Command {
@@ -191,58 +193,152 @@ func writeQueryResults(results []pisessions.QueryResult, format string, withBran
 		encoder.SetIndent("", "  ")
 		return encoder.Encode(results)
 	case "human", "":
-		useAnsi := useColor(colorOption)
-		for _, result := range results {
-			fmt.Printf("%s", result.Kind)
-			if result.SessionID != "" {
-				fmt.Printf(" %s", result.SessionID)
+		return writeQueryResultsHuman(results, withBranches, colorOption)
+	default:
+		return fmt.Errorf("unsupported output format %q", format)
+	}
+}
+
+func writeQueryResultsHuman(results []pisessions.QueryResult, withBranches bool, colorOption string) error {
+	if len(results) == 0 {
+		fmt.Println("No matches found.")
+		return nil
+	}
+
+	useAnsi := useColor(colorOption)
+
+	// Group results by session ID
+	type sessionGroup struct {
+		sessionID   string
+		cwd         string
+		repoRoot    string
+		results     []pisessions.QueryResult
+		branchLeaves map[string]bool
+	}
+	groups := make([]*sessionGroup, 0)
+	groupIndex := make(map[string]*sessionGroup)
+
+	for _, r := range results {
+		g, ok := groupIndex[r.SessionID]
+		if !ok {
+			g = &sessionGroup{
+				sessionID:    r.SessionID,
+				cwd:          r.CWD,
+				repoRoot:     r.RepoRoot,
+				branchLeaves: make(map[string]bool),
 			}
-			if result.Timestamp != "" {
-				fmt.Printf(" %s", result.Timestamp)
+			groupIndex[r.SessionID] = g
+			groups = append(groups, g)
+		}
+		g.results = append(g.results, r)
+		// Collect branch leaves
+		for _, leaf := range r.BranchLeafIDs {
+			g.branchLeaves[leaf] = true
+		}
+	}
+
+	// Print each group
+	for i, g := range groups {
+		if i > 0 {
+			fmt.Println()
+		}
+
+		// Session header
+		sessionPrefix := g.sessionID
+		if len(sessionPrefix) > 12 {
+			sessionPrefix = sessionPrefix[:12]
+		}
+
+		// Location
+		location := ""
+		if g.repoRoot != "" {
+			location = "~/" + homeRelative(g.repoRoot)
+			if g.cwd != "" && g.cwd != g.repoRoot {
+				rel, err := filepath.Rel(g.repoRoot, g.cwd)
+				if err == nil && !strings.HasPrefix(rel, "..") {
+					location += "/" + rel
+				}
 			}
-			if result.Command != "" {
-				fmt.Printf(" cmd=%s", result.Command)
-			} else if result.FilePathRel != "" {
-				fmt.Printf(" %s", result.FilePathRel)
-			} else if result.AbsPath != "" {
-				fmt.Printf(" %s", result.AbsPath)
+		} else if g.cwd != "" {
+			location = "~/" + homeRelative(g.cwd)
+		}
+
+		// Timestamp (use most recent)
+		latestTs := g.results[0].Timestamp
+		for _, r := range g.results[1:] {
+			if r.Timestamp > latestTs {
+				latestTs = r.Timestamp
 			}
-			if result.ToolName != "" {
-				fmt.Printf(" tool=%s", result.ToolName)
+		}
+
+		// Print header
+		if location != "" {
+			fmt.Printf("Session %s  %s  %s\n", sessionPrefix, location, formatTimestamp(latestTs))
+		} else {
+			fmt.Printf("Session %s  %s\n", sessionPrefix, formatTimestamp(latestTs))
+		}
+
+		// Match count and branch info
+		matchCount := len(g.results)
+		if withBranches && len(g.branchLeaves) > 0 {
+			leafCount := len(g.branchLeaves)
+			if leafCount <= 2 {
+				leafIDs := make([]string, 0, leafCount)
+				for id := range g.branchLeaves {
+					leafIDs = append(leafIDs, id)
+				}
+				sort.Strings(leafIDs)
+				fmt.Printf("%d matches | branches: %d leaves (%s)\n", matchCount, leafCount, strings.Join(leafIDs, ", "))
+			} else {
+				fmt.Printf("%d matches | branches: %d leaves\n", matchCount, leafCount)
 			}
-			if result.Op != "" {
-				fmt.Printf(" op=%s", result.Op)
+		} else {
+			fmt.Printf("%d matches\n", matchCount)
+		}
+		fmt.Println()
+
+		// Print each result in the group
+		for _, r := range g.results {
+			// Role and entry ID
+			role := r.Role
+			if role == "" {
+				role = r.Kind
 			}
-			if result.EntryID != "" {
-				fmt.Printf(" entry=%s", result.EntryID)
+			entryPrefix := r.EntryID
+			if len(entryPrefix) > 8 {
+				entryPrefix = entryPrefix[:8]
 			}
-			if result.Text != "" {
-				// Use highlighted snippet if available, otherwise plain text
-				if len(result.MatchRanges) > 0 {
-					highlighted := highlightText(result.Text, result.MatchRanges, useAnsi)
-					fmt.Printf("\n  %s", highlighted)
+
+			// Time (just the time portion)
+			timeStr := ""
+			if r.Timestamp != "" {
+				t, err := time.Parse(time.RFC3339, r.Timestamp)
+				if err == nil {
+					timeStr = t.Local().Format("15:04:05")
+				}
+			}
+
+			fmt.Printf("  %s %s  %s\n", role, entryPrefix, timeStr)
+
+			// Show text with highlighting
+			if r.Text != "" {
+				if len(r.MatchRanges) > 0 {
+					highlighted := highlightText(r.Text, r.MatchRanges, useAnsi)
+					fmt.Printf("  %s\n", highlighted)
 				} else {
-					fmt.Printf("\n  %s", result.Text)
-				}
-			}
-			// Branch enrichment output
-			if withBranches {
-				if len(result.BranchLeafIDs) > 0 {
-					fmt.Printf("\n  branch leaves: %s", strings.Join(result.BranchLeafIDs, ", "))
-				}
-				if result.NearestCompactionID != "" {
-					fmt.Printf("\n  nearest compaction: %s", result.NearestCompactionID)
-				}
-				if result.NearestBranchSummaryID != "" {
-					fmt.Printf("\n  nearest branch summary: %s", result.NearestBranchSummaryID)
+					fmt.Printf("  %s\n", r.Text)
 				}
 			}
 			fmt.Println()
 		}
-		return nil
-	default:
-		return fmt.Errorf("unsupported output format %q", format)
 	}
+
+	// Footer
+	totalMatches := len(results)
+	totalSessions := len(groups)
+	fmt.Printf("%d matches across %d sessions. Use --limit N or -o json for full structured output.\n", totalMatches, totalSessions)
+
+	return nil
 }
 
 func writeSessionResults(results []pisessions.SessionQueryResult, format string) error {
