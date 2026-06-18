@@ -2,11 +2,11 @@
  * Component: Pi Sessions Data Models
  * Block-UUID: 6be4912a-3e89-42b4-b2de-990863235120
  * Parent-UUID: N/A
- * Version: 1.0.0
+ * Version: 1.1.0
  * Description: Defines phase-one sync and query data structures for the Pi sessions mirror.
  * Language: Go
  * Created-at: 2026-06-18T00:00:00Z
- * Authors: Codex GPT-5 (v1.0.0)
+ * Authors: Codex GPT-5 (v1.0.0), MiMo-v2.5-pro (v1.1.0)
  */
 
 package sessions
@@ -50,9 +50,14 @@ type QueryOptions struct {
 	Until             string
 	Provider          string
 	Model             string
-	Type              string
+	Type              string // deprecated alias for EntryType
 	Role              string
 	EntryID           string
+	View              string // "events" (default) or "sessions"
+	EntryType         string
+	SessionName       string
+	SessionNamePrefix string
+	Sort              string // "recent" (default), "oldest", "match-count"
 	Limit             int
 }
 
@@ -78,4 +83,25 @@ type QueryResult struct {
 	Provider      string `json:"provider,omitempty"`
 	Model         string `json:"model,omitempty"`
 	Text          string `json:"text,omitempty"`
+}
+
+// SessionQueryResult represents an aggregated session-level query result.
+type SessionQueryResult struct {
+	SessionID            string   `json:"session_id"`
+	Title                string   `json:"title"`
+	Name                 string   `json:"name,omitempty"`
+	CWD                  string   `json:"cwd"`
+	RepoRoot             string   `json:"repo_root,omitempty"`
+	Provider             string   `json:"provider,omitempty"`
+	Model                string   `json:"model,omitempty"`
+	CreatedAt            string   `json:"created_at"`
+	LastMessageAt        string   `json:"last_message_at,omitempty"`
+	MessageCount         int      `json:"message_count"`
+	ToolCallCount        int      `json:"tool_call_count"`
+	FileRefCount         int      `json:"file_ref_count"`
+	MatchCount           int      `json:"match_count,omitempty"`
+	MatchedFileRefCount  int      `json:"matched_file_ref_count,omitempty"`
+	MatchedToolCallCount int      `json:"matched_tool_call_count,omitempty"`
+	MatchedMessageCount  int      `json:"matched_message_count,omitempty"`
+	MatchedPaths         []string `json:"matched_paths,omitempty"`
 }
