@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-06-18T16:18:50.437Z",
+  "generated_at": "2026-06-19T03:14:27.835Z",
   "manifest": {
     "name": "Code Intent Discovery",
     "database_name": "code-intent",
@@ -137,7 +137,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/shells/ws/windows/init.ps1",
       "language": "powershell",
-      "chat_id": 99159,
+      "chat_id": 99630,
       "fields": {
         "F0": "pkg/settings/templates/shells/ws/windows/init.ps1",
         "F1": "init",
@@ -177,7 +177,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/shells/ws/linux/init.sh",
       "language": "bash",
-      "chat_id": 99161,
+      "chat_id": 99632,
       "fields": {
         "F0": "pkg/settings/templates/shells/ws/linux/init.sh",
         "F1": "init.sh",
@@ -215,7 +215,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/shells/ws/linux/init.zsh",
       "language": "zsh",
-      "chat_id": 99162,
+      "chat_id": 99633,
       "fields": {
         "F0": "pkg/settings/templates/shells/ws/linux/init.zsh",
         "F1": "init.zsh",
@@ -252,7 +252,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/shells/ws/darwin/init.sh",
       "language": "bash",
-      "chat_id": 99164,
+      "chat_id": 99635,
       "fields": {
         "F0": "pkg/settings/templates/shells/ws/darwin/init.sh",
         "F1": "init.sh",
@@ -290,7 +290,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/shells/ws/darwin/init.zsh",
       "language": "zsh",
-      "chat_id": 99165,
+      "chat_id": 99636,
       "fields": {
         "F0": "pkg/settings/templates/shells/ws/darwin/init.zsh",
         "F1": "init.zsh",
@@ -327,7 +327,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/lessons/LESSON_DRAFT_GUIDE.md",
       "language": "markdown",
-      "chat_id": 99167,
+      "chat_id": 99638,
       "fields": {
         "F0": "pkg/settings/templates/lessons/LESSON_DRAFT_GUIDE.md",
         "F1": "LESSON_DRAFT_GUIDE",
@@ -363,7 +363,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/lessons/LESSON_SCHEMA.md",
       "language": "markdown",
-      "chat_id": 99168,
+      "chat_id": 99639,
       "fields": {
         "F0": "pkg/settings/templates/lessons/LESSON_SCHEMA.md",
         "F1": "LESSON_SCHEMA",
@@ -403,7 +403,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/help/help.txt",
       "language": "plaintext",
-      "chat_id": 99170,
+      "chat_id": 99641,
       "fields": {
         "F0": "pkg/settings/templates/help/help.txt",
         "F1": "help",
@@ -441,7 +441,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/help/welcome.txt",
       "language": "plaintext",
-      "chat_id": 99171,
+      "chat_id": 99642,
       "fields": {
         "F0": "pkg/settings/templates/help/welcome.txt",
         "F1": "welcome",
@@ -476,7 +476,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/experts/GSC_BRAIN_MANAGEMENT_GUIDE.md",
       "language": "markdown",
-      "chat_id": 99173,
+      "chat_id": 99644,
       "fields": {
         "F0": "pkg/settings/templates/experts/GSC_BRAIN_MANAGEMENT_GUIDE.md",
         "F1": "GSC_BRAIN_MANAGEMENT_GUIDE.md",
@@ -512,7 +512,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/experts/GSC_EXPERTS_SYSTEM_PROMPT.md",
       "language": "markdown",
-      "chat_id": 99174,
+      "chat_id": 99645,
       "fields": {
         "F0": "pkg/settings/templates/experts/GSC_EXPERTS_SYSTEM_PROMPT.md",
         "F1": "GSC_EXPERTS_SYSTEM_PROMPT.md",
@@ -552,7 +552,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/experts/GSC_GUIDE.md",
       "language": "markdown",
-      "chat_id": 99175,
+      "chat_id": 99646,
       "fields": {
         "F0": "pkg/settings/templates/experts/GSC_GUIDE.md",
         "F1": "GSC_GUIDE",
@@ -588,7 +588,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/experts/GSC_OVERVIEW.md",
       "language": "markdown",
-      "chat_id": 99176,
+      "chat_id": 99647,
       "fields": {
         "F0": "pkg/settings/templates/experts/GSC_OVERVIEW.md",
         "F1": "GSC_OVERVIEW.md",
@@ -624,7 +624,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/experts/GSC_QUERY_GUIDE.md",
       "language": "markdown",
-      "chat_id": 99177,
+      "chat_id": 99648,
       "fields": {
         "F0": "pkg/settings/templates/experts/GSC_QUERY_GUIDE.md",
         "F1": "GSC_QUERY_GUIDE.md",
@@ -661,7 +661,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/experts/GSC_VISUALIZATION_GUIDE.md",
       "language": "markdown",
-      "chat_id": 99178,
+      "chat_id": 99649,
       "fields": {
         "F0": "pkg/settings/templates/experts/GSC_VISUALIZATION_GUIDE.md",
         "F1": "GSC_VISUALIZATION_GUIDE.md",
@@ -697,7 +697,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/docs/about.md",
       "language": "markdown",
-      "chat_id": 99180,
+      "chat_id": 99651,
       "fields": {
         "F0": "pkg/settings/templates/docs/about.md",
         "F1": "about",
@@ -734,7 +734,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/docs/admin.md",
       "language": "markdown",
-      "chat_id": 99181,
+      "chat_id": 99652,
       "fields": {
         "F0": "pkg/settings/templates/docs/admin.md",
         "F1": "admin.md",
@@ -771,7 +771,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/docs/brains.md",
       "language": "markdown",
-      "chat_id": 99182,
+      "chat_id": 99653,
       "fields": {
         "F0": "pkg/settings/templates/docs/brains.md",
         "F1": "brains",
@@ -808,7 +808,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/docs/experts.md",
       "language": "markdown",
-      "chat_id": 99183,
+      "chat_id": 99654,
       "fields": {
         "F0": "pkg/settings/templates/docs/experts.md",
         "F1": "experts.md",
@@ -843,7 +843,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/docs/git-analysis.md",
       "language": "markdown",
-      "chat_id": 99184,
+      "chat_id": 99655,
       "fields": {
         "F0": "pkg/settings/templates/docs/git-analysis.md",
         "F1": "git-analysis.md",
@@ -879,7 +879,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/docs/import-git.md",
       "language": "markdown",
-      "chat_id": 99185,
+      "chat_id": 99656,
       "fields": {
         "F0": "pkg/settings/templates/docs/import-git.md",
         "F1": "import-git.md",
@@ -915,7 +915,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/docs/init.md",
       "language": "markdown",
-      "chat_id": 99186,
+      "chat_id": 99657,
       "fields": {
         "F0": "pkg/settings/templates/docs/init.md",
         "F1": "init",
@@ -953,7 +953,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/docs/install.md",
       "language": "markdown",
-      "chat_id": 99187,
+      "chat_id": 99658,
       "fields": {
         "F0": "pkg/settings/templates/docs/install.md",
         "F1": "install",
@@ -990,7 +990,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/docs/lifecycle.md",
       "language": "markdown",
-      "chat_id": 99188,
+      "chat_id": 99659,
       "fields": {
         "F0": "pkg/settings/templates/docs/lifecycle.md",
         "F1": "lifecycle.md",
@@ -1027,7 +1027,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/docs/locate.md",
       "language": "markdown",
-      "chat_id": 99189,
+      "chat_id": 99660,
       "fields": {
         "F0": "pkg/settings/templates/docs/locate.md",
         "F1": "locate.md",
@@ -1064,7 +1064,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/docs/quickstart.md",
       "language": "markdown",
-      "chat_id": 99190,
+      "chat_id": 99661,
       "fields": {
         "F0": "pkg/settings/templates/docs/quickstart.md",
         "F1": "quickstart",
@@ -1101,7 +1101,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/commands/darwin.json",
       "language": "json",
-      "chat_id": 99192,
+      "chat_id": 99663,
       "fields": {
         "F0": "pkg/settings/templates/commands/darwin.json",
         "F1": "darwin",
@@ -1138,7 +1138,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/commands/linux.json",
       "language": "json",
-      "chat_id": 99193,
+      "chat_id": 99664,
       "fields": {
         "F0": "pkg/settings/templates/commands/linux.json",
         "F1": "linux",
@@ -1175,7 +1175,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/commands/windows.json",
       "language": "json",
-      "chat_id": 99194,
+      "chat_id": 99665,
       "fields": {
         "F0": "pkg/settings/templates/commands/windows.json",
         "F1": "windows",
@@ -1211,7 +1211,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/claude/intent-workflow/validation/system_prompt.md",
       "language": "markdown",
-      "chat_id": 99198,
+      "chat_id": 99669,
       "fields": {
         "F0": "pkg/settings/templates/claude/intent-workflow/validation/system_prompt.md",
         "F1": "system_prompt",
@@ -1249,7 +1249,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/claude/intent-workflow/validation/task.md",
       "language": "markdown",
-      "chat_id": 99199,
+      "chat_id": 99670,
       "fields": {
         "F0": "pkg/settings/templates/claude/intent-workflow/validation/task.md",
         "F1": "task",
@@ -1284,7 +1284,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/claude/intent-workflow/validation/validation.md",
       "language": "markdown",
-      "chat_id": 99200,
+      "chat_id": 99671,
       "fields": {
         "F0": "pkg/settings/templates/claude/intent-workflow/validation/validation.md",
         "F1": "validation",
@@ -1321,7 +1321,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/claude/intent-workflow/shared/intent_prompt.md",
       "language": "markdown",
-      "chat_id": 99202,
+      "chat_id": 99673,
       "fields": {
         "F0": "pkg/settings/templates/claude/intent-workflow/shared/intent_prompt.md",
         "F1": "intent_prompt",
@@ -1357,7 +1357,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/claude/intent-workflow/shared/system_prompt_shared.md",
       "language": "markdown",
-      "chat_id": 99203,
+      "chat_id": 99674,
       "fields": {
         "F0": "pkg/settings/templates/claude/intent-workflow/shared/system_prompt_shared.md",
         "F1": "system_prompt_shared",
@@ -1392,7 +1392,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/claude/intent-workflow/discovery/discovery.md",
       "language": "markdown",
-      "chat_id": 99205,
+      "chat_id": 99676,
       "fields": {
         "F0": "pkg/settings/templates/claude/intent-workflow/discovery/discovery.md",
         "F1": "discovery",
@@ -1427,7 +1427,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/claude/intent-workflow/discovery/response_format.md",
       "language": "markdown",
-      "chat_id": 99206,
+      "chat_id": 99677,
       "fields": {
         "F0": "pkg/settings/templates/claude/intent-workflow/discovery/response_format.md",
         "F1": "response_format.md",
@@ -1461,7 +1461,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/claude/intent-workflow/discovery/system_prompt.md",
       "language": "markdown",
-      "chat_id": 99207,
+      "chat_id": 99678,
       "fields": {
         "F0": "pkg/settings/templates/claude/intent-workflow/discovery/system_prompt.md",
         "F1": "system_prompt.md",
@@ -1494,7 +1494,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/claude/intent-workflow/discovery/task.md",
       "language": "markdown",
-      "chat_id": 99208,
+      "chat_id": 99679,
       "fields": {
         "F0": "pkg/settings/templates/claude/intent-workflow/discovery/task.md",
         "F1": "task.md",
@@ -1527,7 +1527,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/claude/intent-workflow/change/change_meta_format.md",
       "language": "markdown",
-      "chat_id": 99210,
+      "chat_id": 99681,
       "fields": {
         "F0": "pkg/settings/templates/claude/intent-workflow/change/change_meta_format.md",
         "F1": "change_meta_format",
@@ -1563,7 +1563,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/claude/intent-workflow/change/response_format.md",
       "language": "markdown",
-      "chat_id": 99211,
+      "chat_id": 99682,
       "fields": {
         "F0": "pkg/settings/templates/claude/intent-workflow/change/response_format.md",
         "F1": "response_format",
@@ -1599,7 +1599,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/claude/intent-workflow/change/resume_task.md",
       "language": "markdown",
-      "chat_id": 99212,
+      "chat_id": 99683,
       "fields": {
         "F0": "pkg/settings/templates/claude/intent-workflow/change/resume_task.md",
         "F1": "resume_task",
@@ -1635,7 +1635,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/claude/intent-workflow/change/system_prompt.md",
       "language": "markdown",
-      "chat_id": 99213,
+      "chat_id": 99684,
       "fields": {
         "F0": "pkg/settings/templates/claude/intent-workflow/change/system_prompt.md",
         "F1": "system_prompt.md",
@@ -1670,7 +1670,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/claude/intent-workflow/change/task.md",
       "language": "markdown",
-      "chat_id": 99214,
+      "chat_id": 99685,
       "fields": {
         "F0": "pkg/settings/templates/claude/intent-workflow/change/task.md",
         "F1": "task.md",
@@ -1705,7 +1705,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/claude/chat/analyze.md",
       "language": "markdown",
-      "chat_id": 99216,
+      "chat_id": 99687,
       "fields": {
         "F0": "pkg/settings/templates/claude/chat/analyze.md",
         "F1": "analyze.md",
@@ -1735,7 +1735,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/claude/chat/claude_template.md",
       "language": "markdown",
-      "chat_id": 99217,
+      "chat_id": 99688,
       "fields": {
         "F0": "pkg/settings/templates/claude/chat/claude_template.md",
         "F1": "claude_template",
@@ -1770,7 +1770,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/claude/chat/coding_assistant.md",
       "language": "markdown",
-      "chat_id": 99218,
+      "chat_id": 99689,
       "fields": {
         "F0": "pkg/settings/templates/claude/chat/coding_assistant.md",
         "F1": "coding_assistant",
@@ -1805,7 +1805,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/templates/README.md",
       "language": "markdown",
-      "chat_id": 99219,
+      "chat_id": 99690,
       "fields": {
         "F0": "pkg/settings/templates/README.md",
         "F1": "README",
@@ -1839,7 +1839,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/settings/settings.go",
       "language": "go",
-      "chat_id": 99220,
+      "chat_id": 99691,
       "fields": {
         "F0": "pkg/settings/settings.go",
         "F1": "settings",
@@ -1879,7 +1879,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/netutil/downloader.go",
       "language": "go",
-      "chat_id": 99222,
+      "chat_id": 99693,
       "fields": {
         "F0": "pkg/netutil/downloader.go",
         "F1": "downloader",
@@ -1912,7 +1912,7 @@
       "branch_ref": "B0",
       "file_path": "pkg/logger/logger.go",
       "language": "go",
-      "chat_id": 99224,
+      "chat_id": 99695,
       "fields": {
         "F0": "pkg/logger/logger.go",
         "F1": "logger",
@@ -1951,7 +1951,7 @@
       "branch_ref": "B0",
       "file_path": "internal/version/version.go",
       "language": "go",
-      "chat_id": 99227,
+      "chat_id": 99698,
       "fields": {
         "F0": "internal/version/version.go",
         "F1": "version",
@@ -1984,7 +1984,7 @@
       "branch_ref": "B0",
       "file_path": "internal/types/contract/metadata.go",
       "language": "go",
-      "chat_id": 99230,
+      "chat_id": 99701,
       "fields": {
         "F0": "internal/types/contract/metadata.go",
         "F1": "metadata",
@@ -2019,7 +2019,7 @@
       "branch_ref": "B0",
       "file_path": "internal/tree/tree.go",
       "language": "go",
-      "chat_id": 99232,
+      "chat_id": 99703,
       "fields": {
         "F0": "internal/tree/tree.go",
         "F1": "tree",
@@ -2056,7 +2056,7 @@
       "branch_ref": "B0",
       "file_path": "internal/traceability/models.go",
       "language": "go",
-      "chat_id": 99234,
+      "chat_id": 99705,
       "fields": {
         "F0": "internal/traceability/models.go",
         "F1": "models.go",
@@ -2086,7 +2086,7 @@
       "branch_ref": "B0",
       "file_path": "internal/traceability/parser.go",
       "language": "go",
-      "chat_id": 99235,
+      "chat_id": 99706,
       "fields": {
         "F0": "internal/traceability/parser.go",
         "F1": "parser",
@@ -2121,7 +2121,7 @@
       "branch_ref": "B0",
       "file_path": "internal/search/aggregator.go",
       "language": "go",
-      "chat_id": 99237,
+      "chat_id": 99708,
       "fields": {
         "F0": "internal/search/aggregator.go",
         "F1": "aggregator",
@@ -2155,7 +2155,7 @@
       "branch_ref": "B0",
       "file_path": "internal/search/engine.go",
       "language": "go",
-      "chat_id": 99238,
+      "chat_id": 99709,
       "fields": {
         "F0": "internal/search/engine.go",
         "F1": "engine.go",
@@ -2190,7 +2190,7 @@
       "branch_ref": "B0",
       "file_path": "internal/search/enricher.go",
       "language": "go",
-      "chat_id": 99239,
+      "chat_id": 99710,
       "fields": {
         "F0": "internal/search/enricher.go",
         "F1": "enricher.go",
@@ -2227,7 +2227,7 @@
       "branch_ref": "B0",
       "file_path": "internal/search/filter_parser.go",
       "language": "go",
-      "chat_id": 99240,
+      "chat_id": 99711,
       "fields": {
         "F0": "internal/search/filter_parser.go",
         "F1": "filter_parser.go",
@@ -2262,7 +2262,7 @@
       "branch_ref": "B0",
       "file_path": "internal/search/formatter.go",
       "language": "go",
-      "chat_id": 99241,
+      "chat_id": 99712,
       "fields": {
         "F0": "internal/search/formatter.go",
         "F1": "formatter",
@@ -2300,7 +2300,7 @@
       "branch_ref": "B0",
       "file_path": "internal/search/models.go",
       "language": "go",
-      "chat_id": 99242,
+      "chat_id": 99713,
       "fields": {
         "F0": "internal/search/models.go",
         "F1": "models",
@@ -2337,7 +2337,7 @@
       "branch_ref": "B0",
       "file_path": "internal/search/ripgrep_engine.go",
       "language": "go",
-      "chat_id": 99243,
+      "chat_id": 99714,
       "fields": {
         "F0": "internal/search/ripgrep_engine.go",
         "F1": "ripgrep_engine",
@@ -2375,7 +2375,7 @@
       "branch_ref": "B0",
       "file_path": "internal/search/stats.go",
       "language": "go",
-      "chat_id": 99244,
+      "chat_id": 99715,
       "fields": {
         "F0": "internal/search/stats.go",
         "F1": "stats",
@@ -2411,7 +2411,7 @@
       "branch_ref": "B0",
       "file_path": "internal/registry/models.go",
       "language": "go",
-      "chat_id": 99246,
+      "chat_id": 99717,
       "fields": {
         "F0": "internal/registry/models.go",
         "F1": "models",
@@ -2447,7 +2447,7 @@
       "branch_ref": "B0",
       "file_path": "internal/registry/registry.go",
       "language": "go",
-      "chat_id": 99247,
+      "chat_id": 99718,
       "fields": {
         "F0": "internal/registry/registry.go",
         "F1": "registry",
@@ -2482,7 +2482,7 @@
       "branch_ref": "B0",
       "file_path": "internal/registry/resolver.go",
       "language": "go",
-      "chat_id": 99248,
+      "chat_id": 99719,
       "fields": {
         "F0": "internal/registry/resolver.go",
         "F1": "resolver",
@@ -2516,7 +2516,7 @@
       "branch_ref": "B0",
       "file_path": "internal/provenance/recorder.go",
       "language": "go",
-      "chat_id": 99250,
+      "chat_id": 99721,
       "fields": {
         "F0": "internal/provenance/recorder.go",
         "F1": "recorder",
@@ -2554,7 +2554,7 @@
       "branch_ref": "B0",
       "file_path": "internal/pi/sessions/db.go",
       "language": "go",
-      "chat_id": 99253,
+      "chat_id": 99724,
       "fields": {
         "F0": "internal/pi/sessions/db.go",
         "F1": "db",
@@ -2590,7 +2590,7 @@
       "branch_ref": "B0",
       "file_path": "internal/pi/sessions/importer.go",
       "language": "go",
-      "chat_id": 99254,
+      "chat_id": 99725,
       "fields": {
         "F0": "internal/pi/sessions/importer.go",
         "F1": "importer",
@@ -2629,9 +2629,44 @@
     {
       "repo_ref": "R0",
       "branch_ref": "B0",
+      "file_path": "internal/pi/sessions/incremental_test.go",
+      "language": "go",
+      "chat_id": 99726,
+      "fields": {
+        "F0": "internal/pi/sessions/incremental_test.go",
+        "F1": "incremental_test.go",
+        "F2": "go",
+        "F3": "99726",
+        "F4": "Use this file to verify the correctness of incremental updates, partial line buffering, and lossless reconstruction of chat history.",
+        "F5": "test",
+        "F6": "[\"2026-06-18_created\"]",
+        "F7": [
+          "test-append-ingestion",
+          "test-idempotency",
+          "test-partial-line-handling",
+          "test-prefix-rebuild",
+          "test-aggregate-ingestion"
+        ],
+        "F8": [
+          "unit-testing",
+          "sync-engine-validation",
+          "ingestion-logic"
+        ],
+        "F9": [
+          "TestSyncAppendsWithoutReplacingExistingRows",
+          "TestSyncDefersPartialTrailingLine",
+          "TestSyncRebuildsWhenPrefixChanges"
+        ],
+        "F10": "append-only-verification",
+        "F11": "N/A"
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
       "file_path": "internal/pi/sessions/jsonl.go",
       "language": "go",
-      "chat_id": 99255,
+      "chat_id": 99727,
       "fields": {
         "F0": "internal/pi/sessions/jsonl.go",
         "F1": "jsonl",
@@ -2670,7 +2705,7 @@
       "branch_ref": "B0",
       "file_path": "internal/pi/sessions/models.go",
       "language": "go",
-      "chat_id": 99256,
+      "chat_id": 99728,
       "fields": {
         "F0": "internal/pi/sessions/models.go",
         "F1": "models.go",
@@ -2706,7 +2741,7 @@
       "branch_ref": "B0",
       "file_path": "internal/pi/sessions/paths.go",
       "language": "go",
-      "chat_id": 99257,
+      "chat_id": 99729,
       "fields": {
         "F0": "internal/pi/sessions/paths.go",
         "F1": "paths",
@@ -2741,7 +2776,7 @@
       "branch_ref": "B0",
       "file_path": "internal/pi/sessions/query.go",
       "language": "go",
-      "chat_id": 99258,
+      "chat_id": 99730,
       "fields": {
         "F0": "internal/pi/sessions/query.go",
         "F1": "query.go",
@@ -2777,9 +2812,78 @@
     {
       "repo_ref": "R0",
       "branch_ref": "B0",
+      "file_path": "internal/pi/sessions/reconciliation_test.go",
+      "language": "go",
+      "chat_id": 99731,
+      "fields": {
+        "F0": "internal/pi/sessions/reconciliation_test.go",
+        "F1": "reconciliation_test.go",
+        "F2": "go",
+        "F3": "99731",
+        "F4": "Use this file to validate the reconciliation engine's ability to handle file moves, deletions, and restorations without data loss.",
+        "F5": "test",
+        "F6": "[\"2026-06-18_created\"]",
+        "F7": [
+          "test-move-reassociation",
+          "test-deletion-purge",
+          "test-file-restoration",
+          "test-parent-resolution"
+        ],
+        "F8": [
+          "integration-testing",
+          "sync-logic-validation"
+        ],
+        "F9": [
+          "TestSyncReassociatesMovedSessionByUUID",
+          "TestSyncPurgesConfirmedMissingSession",
+          "TestSyncResolvesParentAfterParentMove"
+        ],
+        "F10": "file-system-mocking",
+        "F11": "N/A"
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/pi/sessions/reconciliation.go",
+      "language": "go",
+      "chat_id": 99732,
+      "fields": {
+        "F0": "internal/pi/sessions/reconciliation.go",
+        "F1": "reconciliation.go",
+        "F2": "go",
+        "F3": "99732",
+        "F4": "Modify this file to change the logic for detecting and handling moved or deleted session files, including the debounce delay and UUID verification steps.",
+        "F5": "source_code",
+        "F6": "[\"2026-06-18_created\"]",
+        "F7": [
+          "reassociate-moved-file",
+          "purge-missing-record",
+          "verify-uuid-existence",
+          "debounce-deletion",
+          "rebuild-fts-index"
+        ],
+        "F8": [
+          "data-integrity",
+          "file-system-sync",
+          "database-maintenance"
+        ],
+        "F9": [
+          "reassociateMovedSession",
+          "reconcileMissingSessions",
+          "purgeMissingSessions",
+          "missingChat"
+        ],
+        "F10": "database-transaction",
+        "F11": "[\"deletionConfirmDelay-200ms\"]"
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
       "file_path": "internal/pi/sessions/schema.sql",
       "language": "sql",
-      "chat_id": 99259,
+      "chat_id": 99733,
       "fields": {
         "F0": "internal/pi/sessions/schema.sql",
         "F1": "schema.sql",
@@ -2816,9 +2920,149 @@
     {
       "repo_ref": "R0",
       "branch_ref": "B0",
+      "file_path": "internal/pi/sessions/verify_test.go",
+      "language": "go",
+      "chat_id": 99734,
+      "fields": {
+        "F0": "internal/pi/sessions/verify_test.go",
+        "F1": "verify_test",
+        "F2": "go",
+        "F3": "99734",
+        "F4": "Modify this file to change the test fixtures and validation logic for the lossless verification and JSONL reconstruction features, including environment variable configuration for fixture paths.",
+        "F5": "test",
+        "F6": "[\"2026-06-18_created\"]",
+        "F7": [
+          "import-fixtures",
+          "test-reconstruction",
+          "lossless-verification",
+          "fixture-uuids",
+          "env-config"
+        ],
+        "F8": [
+          "testing",
+          "data-integrity",
+          "fixtures"
+        ],
+        "F9": [
+          "importFixtures",
+          "TestReconstructJSONL",
+          "TestVerifyLossless"
+        ],
+        "F10": "integration-test",
+        "F11": "N/A"
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/pi/sessions/verify.go",
+      "language": "go",
+      "chat_id": 99735,
+      "fields": {
+        "F0": "internal/pi/sessions/verify.go",
+        "F1": "verify",
+        "F2": "go",
+        "F3": "99735",
+        "F4": "Modify this file to change the logic for reconstructing Pi session JSONL files from SQLite records and the verification process that ensures lossless round-trip fidelity using SHA256 hash comparison.",
+        "F5": "source_code",
+        "F6": "[\"2026-06-18_created\"]",
+        "F7": [
+          "reconstruct-jsonl",
+          "verify-lossless",
+          "sha256-comparison",
+          "round-trip-fidelity",
+          "raw-header-retrieval"
+        ],
+        "F8": [
+          "data-integrity",
+          "database-verification",
+          "serialization"
+        ],
+        "F9": [
+          "ReconstructJSONL",
+          "VerifyLossless",
+          "LosslessReport"
+        ],
+        "F10": "verification-utility",
+        "F11": "N/A"
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/pi/sessions/watcher_test.go",
+      "language": "go",
+      "chat_id": 99736,
+      "fields": {
+        "F0": "internal/pi/sessions/watcher_test.go",
+        "F1": "watcher_test",
+        "F2": "go",
+        "F3": "99736",
+        "F4": "Modify this file to change the test coverage for the session watcher's event coalescing logic, periodic reconciliation intervals, and nested directory discovery capabilities.",
+        "F5": "test",
+        "F6": "[\"2026-06-18_created\"]",
+        "F7": [
+          "coalesce-events",
+          "periodic-reconciliation",
+          "nested-discovery",
+          "watcher-cancellation",
+          "poll-interval"
+        ],
+        "F8": [
+          "testing",
+          "filesystem-watching",
+          "synchronization"
+        ],
+        "F9": [
+          "manualWatchEventSource",
+          "runWatchLoop",
+          "Watch",
+          "waitForCondition"
+        ],
+        "F10": "unit-test",
+        "F11": "[\"debounce-25ms\",\"reconcile-150ms\",\"poll-15ms\"]"
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/pi/sessions/watcher.go",
+      "language": "go",
+      "chat_id": 99737,
+      "fields": {
+        "F0": "internal/pi/sessions/watcher.go",
+        "F1": "watcher.go",
+        "F2": "go",
+        "F3": "99737",
+        "F4": "Modify this file to change the filesystem watching behavior, debounce logic, or reconciliation frequency.",
+        "F5": "source_code",
+        "F6": "[\"2026-06-18_created\"]",
+        "F7": [
+          "watch-directory",
+          "reconcile-data",
+          "fsnotify-events",
+          "debounce-events",
+          "periodic-sync"
+        ],
+        "F8": [
+          "filesystem-monitoring",
+          "data-synchronization"
+        ],
+        "F9": [
+          "Watch",
+          "runWatchLoop",
+          "fsnotifyEventSource"
+        ],
+        "F10": "filesystem-watcher",
+        "F11": "[\"default-debounce-200ms\",\"default-reconcile-30s\",\"default-refresh-5s\"]"
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
       "file_path": "internal/output/formatter.go",
       "language": "go",
-      "chat_id": 99261,
+      "chat_id": 99739,
       "fields": {
         "F0": "internal/output/formatter.go",
         "F1": "formatter",
@@ -2856,7 +3100,7 @@
       "branch_ref": "B0",
       "file_path": "internal/native/config.go",
       "language": "go",
-      "chat_id": 99263,
+      "chat_id": 99741,
       "fields": {
         "F0": "internal/native/config.go",
         "F1": "config",
@@ -2892,7 +3136,7 @@
       "branch_ref": "B0",
       "file_path": "internal/markdown/parser.go",
       "language": "go",
-      "chat_id": 99265,
+      "chat_id": 99743,
       "fields": {
         "F0": "internal/markdown/parser.go",
         "F1": "parser",
@@ -2928,7 +3172,7 @@
       "branch_ref": "B0",
       "file_path": "internal/manifest/bundler.go",
       "language": "go",
-      "chat_id": 99267,
+      "chat_id": 99745,
       "fields": {
         "F0": "internal/manifest/bundler.go",
         "F1": "bundler",
@@ -2964,7 +3208,7 @@
       "branch_ref": "B0",
       "file_path": "internal/manifest/config.go",
       "language": "go",
-      "chat_id": 99268,
+      "chat_id": 99746,
       "fields": {
         "F0": "internal/manifest/config.go",
         "F1": "config",
@@ -3004,7 +3248,7 @@
       "branch_ref": "B0",
       "file_path": "internal/manifest/deleter.go",
       "language": "go",
-      "chat_id": 99269,
+      "chat_id": 99747,
       "fields": {
         "F0": "internal/manifest/deleter.go",
         "F1": "deleter",
@@ -3039,7 +3283,7 @@
       "branch_ref": "B0",
       "file_path": "internal/manifest/doctor_logic.go",
       "language": "go",
-      "chat_id": 99270,
+      "chat_id": 99748,
       "fields": {
         "F0": "internal/manifest/doctor_logic.go",
         "F1": "doctor_logic",
@@ -3075,7 +3319,7 @@
       "branch_ref": "B0",
       "file_path": "internal/manifest/example_content.go",
       "language": "go",
-      "chat_id": 99271,
+      "chat_id": 99749,
       "fields": {
         "F0": "internal/manifest/example_content.go",
         "F1": "example_content",
@@ -3109,7 +3353,7 @@
       "branch_ref": "B0",
       "file_path": "internal/manifest/exporter.go",
       "language": "go",
-      "chat_id": 99272,
+      "chat_id": 99750,
       "fields": {
         "F0": "internal/manifest/exporter.go",
         "F1": "exporter",
@@ -3143,7 +3387,7 @@
       "branch_ref": "B0",
       "file_path": "internal/manifest/gitsense_map.go",
       "language": "go",
-      "chat_id": 99273,
+      "chat_id": 99751,
       "fields": {
         "F0": "internal/manifest/gitsense_map.go",
         "F1": "gitsense_map.go",
@@ -3178,7 +3422,7 @@
       "branch_ref": "B0",
       "file_path": "internal/manifest/importer_test.go",
       "language": "go",
-      "chat_id": 99274,
+      "chat_id": 99752,
       "fields": {
         "F0": "internal/manifest/importer_test.go",
         "F1": "importer_test",
@@ -3216,7 +3460,7 @@
       "branch_ref": "B0",
       "file_path": "internal/manifest/importer.go",
       "language": "go",
-      "chat_id": 99275,
+      "chat_id": 99753,
       "fields": {
         "F0": "internal/manifest/importer.go",
         "F1": "importer",
@@ -3254,7 +3498,7 @@
       "branch_ref": "B0",
       "file_path": "internal/manifest/info.go",
       "language": "go",
-      "chat_id": 99276,
+      "chat_id": 99754,
       "fields": {
         "F0": "internal/manifest/info.go",
         "F1": "info",
@@ -3289,7 +3533,7 @@
       "branch_ref": "B0",
       "file_path": "internal/manifest/initializer.go",
       "language": "go",
-      "chat_id": 99277,
+      "chat_id": 99755,
       "fields": {
         "F0": "internal/manifest/initializer.go",
         "F1": "initializer",
@@ -3321,7 +3565,7 @@
       "branch_ref": "B0",
       "file_path": "internal/manifest/models.go",
       "language": "go",
-      "chat_id": 99278,
+      "chat_id": 99756,
       "fields": {
         "F0": "internal/manifest/models.go",
         "F1": "models.go",
@@ -3358,7 +3602,7 @@
       "branch_ref": "B0",
       "file_path": "internal/manifest/path_helper.go",
       "language": "go",
-      "chat_id": 99279,
+      "chat_id": 99757,
       "fields": {
         "F0": "internal/manifest/path_helper.go",
         "F1": "path_helper.go",
@@ -3397,7 +3641,7 @@
       "branch_ref": "B0",
       "file_path": "internal/manifest/profile_manager.go",
       "language": "go",
-      "chat_id": 99280,
+      "chat_id": 99758,
       "fields": {
         "F0": "internal/manifest/profile_manager.go",
         "F1": "profile_manager.go",
@@ -3435,7 +3679,7 @@
       "branch_ref": "B0",
       "file_path": "internal/manifest/profile_models.go",
       "language": "go",
-      "chat_id": 99281,
+      "chat_id": 99759,
       "fields": {
         "F0": "internal/manifest/profile_models.go",
         "F1": "profile_models.go",
@@ -3473,7 +3717,7 @@
       "branch_ref": "B0",
       "file_path": "internal/manifest/publisher.go",
       "language": "go",
-      "chat_id": 99282,
+      "chat_id": 99760,
       "fields": {
         "F0": "internal/manifest/publisher.go",
         "F1": "publisher.go",
@@ -3513,7 +3757,7 @@
       "branch_ref": "B0",
       "file_path": "internal/manifest/querier.go",
       "language": "go",
-      "chat_id": 99283,
+      "chat_id": 99761,
       "fields": {
         "F0": "internal/manifest/querier.go",
         "F1": "querier.go",
@@ -3547,7 +3791,7 @@
       "branch_ref": "B0",
       "file_path": "internal/manifest/query_formatter.go",
       "language": "go",
-      "chat_id": 99284,
+      "chat_id": 99762,
       "fields": {
         "F0": "internal/manifest/query_formatter.go",
         "F1": "query_formatter.go",
@@ -3585,7 +3829,7 @@
       "branch_ref": "B0",
       "file_path": "internal/manifest/query_models.go",
       "language": "go",
-      "chat_id": 99285,
+      "chat_id": 99763,
       "fields": {
         "F0": "internal/manifest/query_models.go",
         "F1": "query_models.go",
@@ -3622,7 +3866,7 @@
       "branch_ref": "B0",
       "file_path": "internal/manifest/rg_enricher.go",
       "language": "go",
-      "chat_id": 99286,
+      "chat_id": 99764,
       "fields": {
         "F0": "internal/manifest/rg_enricher.go",
         "F1": "rg_enricher.go",
@@ -3658,7 +3902,7 @@
       "branch_ref": "B0",
       "file_path": "internal/manifest/rg_executor.go",
       "language": "go",
-      "chat_id": 99287,
+      "chat_id": 99765,
       "fields": {
         "F0": "internal/manifest/rg_executor.go",
         "F1": "rg_executor.go",
@@ -3694,7 +3938,7 @@
       "branch_ref": "B0",
       "file_path": "internal/manifest/rg_models.go",
       "language": "go",
-      "chat_id": 99288,
+      "chat_id": 99766,
       "fields": {
         "F0": "internal/manifest/rg_models.go",
         "F1": "rg_models.go",
@@ -3729,7 +3973,7 @@
       "branch_ref": "B0",
       "file_path": "internal/manifest/schemareader.go",
       "language": "go",
-      "chat_id": 99289,
+      "chat_id": 99767,
       "fields": {
         "F0": "internal/manifest/schemareader.go",
         "F1": "schemareader.go",
@@ -3764,7 +4008,7 @@
       "branch_ref": "B0",
       "file_path": "internal/manifest/scope.go",
       "language": "go",
-      "chat_id": 99290,
+      "chat_id": 99768,
       "fields": {
         "F0": "internal/manifest/scope.go",
         "F1": "scope",
@@ -3802,7 +4046,7 @@
       "branch_ref": "B0",
       "file_path": "internal/manifest/simple_querier.go",
       "language": "go",
-      "chat_id": 99291,
+      "chat_id": 99769,
       "fields": {
         "F0": "internal/manifest/simple_querier.go",
         "F1": "simple_querier",
@@ -3839,7 +4083,7 @@
       "branch_ref": "B0",
       "file_path": "internal/manifest/validator.go",
       "language": "go",
-      "chat_id": 99292,
+      "chat_id": 99770,
       "fields": {
         "F0": "internal/manifest/validator.go",
         "F1": "validator",
@@ -3873,7 +4117,7 @@
       "branch_ref": "B0",
       "file_path": "internal/manifest/wizard.go",
       "language": "go",
-      "chat_id": 99293,
+      "chat_id": 99771,
       "fields": {
         "F0": "internal/manifest/wizard.go",
         "F1": "wizard.go",
@@ -3909,7 +4153,7 @@
       "branch_ref": "B0",
       "file_path": "internal/lessons/commit.go",
       "language": "go",
-      "chat_id": 99295,
+      "chat_id": 99773,
       "fields": {
         "F0": "internal/lessons/commit.go",
         "F1": "commit",
@@ -3944,7 +4188,7 @@
       "branch_ref": "B0",
       "file_path": "internal/lessons/draft.go",
       "language": "go",
-      "chat_id": 99296,
+      "chat_id": 99774,
       "fields": {
         "F0": "internal/lessons/draft.go",
         "F1": "draft",
@@ -3977,7 +4221,7 @@
       "branch_ref": "B0",
       "file_path": "internal/lessons/guides.go",
       "language": "go",
-      "chat_id": 99297,
+      "chat_id": 99775,
       "fields": {
         "F0": "internal/lessons/guides.go",
         "F1": "guides",
@@ -4009,7 +4253,7 @@
       "branch_ref": "B0",
       "file_path": "internal/lessons/id.go",
       "language": "go",
-      "chat_id": 99298,
+      "chat_id": 99776,
       "fields": {
         "F0": "internal/lessons/id.go",
         "F1": "id",
@@ -4039,7 +4283,7 @@
       "branch_ref": "B0",
       "file_path": "internal/lessons/manifest.go",
       "language": "go",
-      "chat_id": 99299,
+      "chat_id": 99777,
       "fields": {
         "F0": "internal/lessons/manifest.go",
         "F1": "manifest",
@@ -4074,7 +4318,7 @@
       "branch_ref": "B0",
       "file_path": "internal/lessons/models.go",
       "language": "go",
-      "chat_id": 99300,
+      "chat_id": 99778,
       "fields": {
         "F0": "internal/lessons/models.go",
         "F1": "models.go",
@@ -4111,7 +4355,7 @@
       "branch_ref": "B0",
       "file_path": "internal/lessons/normalize.go",
       "language": "go",
-      "chat_id": 99301,
+      "chat_id": 99779,
       "fields": {
         "F0": "internal/lessons/normalize.go",
         "F1": "normalize.go",
@@ -4147,7 +4391,7 @@
       "branch_ref": "B0",
       "file_path": "internal/lessons/paths.go",
       "language": "go",
-      "chat_id": 99302,
+      "chat_id": 99780,
       "fields": {
         "F0": "internal/lessons/paths.go",
         "F1": "paths.go",
@@ -4183,7 +4427,7 @@
       "branch_ref": "B0",
       "file_path": "internal/lessons/query.go",
       "language": "go",
-      "chat_id": 99303,
+      "chat_id": 99781,
       "fields": {
         "F0": "internal/lessons/query.go",
         "F1": "query",
@@ -4222,7 +4466,7 @@
       "branch_ref": "B0",
       "file_path": "internal/lessons/renderer.go",
       "language": "go",
-      "chat_id": 99304,
+      "chat_id": 99782,
       "fields": {
         "F0": "internal/lessons/renderer.go",
         "F1": "renderer",
@@ -4255,7 +4499,7 @@
       "branch_ref": "B0",
       "file_path": "internal/lessons/store.go",
       "language": "go",
-      "chat_id": 99305,
+      "chat_id": 99783,
       "fields": {
         "F0": "internal/lessons/store.go",
         "F1": "store",
@@ -4292,7 +4536,7 @@
       "branch_ref": "B0",
       "file_path": "internal/lessons/update.go",
       "language": "go",
-      "chat_id": 99306,
+      "chat_id": 99784,
       "fields": {
         "F0": "internal/lessons/update.go",
         "F1": "update",
@@ -4328,7 +4572,7 @@
       "branch_ref": "B0",
       "file_path": "internal/lessons/validator.go",
       "language": "go",
-      "chat_id": 99307,
+      "chat_id": 99785,
       "fields": {
         "F0": "internal/lessons/validator.go",
         "F1": "validator",
@@ -4363,7 +4607,7 @@
       "branch_ref": "B0",
       "file_path": "internal/gitignore/gitignore.go",
       "language": "go",
-      "chat_id": 99309,
+      "chat_id": 99787,
       "fields": {
         "F0": "internal/gitignore/gitignore.go",
         "F1": "gitignore.go",
@@ -4403,7 +4647,7 @@
       "branch_ref": "B0",
       "file_path": "internal/git/discovery.go",
       "language": "go",
-      "chat_id": 99311,
+      "chat_id": 99789,
       "fields": {
         "F0": "internal/git/discovery.go",
         "F1": "discovery",
@@ -4439,7 +4683,7 @@
       "branch_ref": "B0",
       "file_path": "internal/git/repo_info.go",
       "language": "go",
-      "chat_id": 99312,
+      "chat_id": 99790,
       "fields": {
         "F0": "internal/git/repo_info.go",
         "F1": "repo_info.go",
@@ -4474,7 +4718,7 @@
       "branch_ref": "B0",
       "file_path": "internal/experts/brain_loader.go",
       "language": "go",
-      "chat_id": 99314,
+      "chat_id": 99792,
       "fields": {
         "F0": "internal/experts/brain_loader.go",
         "F1": "brain_loader",
@@ -4510,7 +4754,7 @@
       "branch_ref": "B0",
       "file_path": "internal/experts/config.go",
       "language": "go",
-      "chat_id": 99315,
+      "chat_id": 99793,
       "fields": {
         "F0": "internal/experts/config.go",
         "F1": "config",
@@ -4543,7 +4787,7 @@
       "branch_ref": "B0",
       "file_path": "internal/experts/models.go",
       "language": "go",
-      "chat_id": 99316,
+      "chat_id": 99794,
       "fields": {
         "F0": "internal/experts/models.go",
         "F1": "models",
@@ -4578,7 +4822,7 @@
       "branch_ref": "B0",
       "file_path": "internal/exec/errors.go",
       "language": "go",
-      "chat_id": 99318,
+      "chat_id": 99796,
       "fields": {
         "F0": "internal/exec/errors.go",
         "F1": "errors",
@@ -4612,7 +4856,7 @@
       "branch_ref": "B0",
       "file_path": "internal/exec/executor.go",
       "language": "go",
-      "chat_id": 99319,
+      "chat_id": 99797,
       "fields": {
         "F0": "internal/exec/executor.go",
         "F1": "executor",
@@ -4650,7 +4894,7 @@
       "branch_ref": "B0",
       "file_path": "internal/exec/models.go",
       "language": "go",
-      "chat_id": 99320,
+      "chat_id": 99798,
       "fields": {
         "F0": "internal/exec/models.go",
         "F1": "models",
@@ -4685,7 +4929,7 @@
       "branch_ref": "B0",
       "file_path": "internal/exec/platform_unix.go",
       "language": "go",
-      "chat_id": 99321,
+      "chat_id": 99799,
       "fields": {
         "F0": "internal/exec/platform_unix.go",
         "F1": "platform_unix",
@@ -4721,7 +4965,7 @@
       "branch_ref": "B0",
       "file_path": "internal/exec/platform_windows.go",
       "language": "go",
-      "chat_id": 99322,
+      "chat_id": 99800,
       "fields": {
         "F0": "internal/exec/platform_windows.go",
         "F1": "platform_windows",
@@ -4756,7 +5000,7 @@
       "branch_ref": "B0",
       "file_path": "internal/docker/context.go",
       "language": "go",
-      "chat_id": 99324,
+      "chat_id": 99802,
       "fields": {
         "F0": "internal/docker/context.go",
         "F1": "context",
@@ -4794,7 +5038,7 @@
       "branch_ref": "B0",
       "file_path": "internal/docker/manager.go",
       "language": "go",
-      "chat_id": 99325,
+      "chat_id": 99803,
       "fields": {
         "F0": "internal/docker/manager.go",
         "F1": "manager",
@@ -4833,7 +5077,7 @@
       "branch_ref": "B0",
       "file_path": "internal/docker/proxy.go",
       "language": "go",
-      "chat_id": 99326,
+      "chat_id": 99804,
       "fields": {
         "F0": "internal/docker/proxy.go",
         "F1": "proxy",
@@ -4870,7 +5114,7 @@
       "branch_ref": "B0",
       "file_path": "internal/docker/watcher.go",
       "language": "go",
-      "chat_id": 99327,
+      "chat_id": 99805,
       "fields": {
         "F0": "internal/docker/watcher.go",
         "F1": "watcher",
@@ -4906,7 +5150,7 @@
       "branch_ref": "B0",
       "file_path": "internal/db/analysis.go",
       "language": "go",
-      "chat_id": 99329,
+      "chat_id": 99807,
       "fields": {
         "F0": "internal/db/analysis.go",
         "F1": "analysis",
@@ -4945,7 +5189,7 @@
       "branch_ref": "B0",
       "file_path": "internal/db/chats.go",
       "language": "go",
-      "chat_id": 99330,
+      "chat_id": 99808,
       "fields": {
         "F0": "internal/db/chats.go",
         "F1": "chats",
@@ -4982,7 +5226,7 @@
       "branch_ref": "B0",
       "file_path": "internal/db/models.go",
       "language": "go",
-      "chat_id": 99331,
+      "chat_id": 99809,
       "fields": {
         "F0": "internal/db/models.go",
         "F1": "models",
@@ -5016,7 +5260,7 @@
       "branch_ref": "B0",
       "file_path": "internal/db/repository.go",
       "language": "go",
-      "chat_id": 99332,
+      "chat_id": 99810,
       "fields": {
         "F0": "internal/db/repository.go",
         "F1": "repository",
@@ -5052,7 +5296,7 @@
       "branch_ref": "B0",
       "file_path": "internal/db/schema.go",
       "language": "go",
-      "chat_id": 99333,
+      "chat_id": 99811,
       "fields": {
         "F0": "internal/db/schema.go",
         "F1": "schema",
@@ -5090,7 +5334,7 @@
       "branch_ref": "B0",
       "file_path": "internal/db/sqlite.go",
       "language": "go",
-      "chat_id": 99334,
+      "chat_id": 99812,
       "fields": {
         "F0": "internal/db/sqlite.go",
         "F1": "sqlite",
@@ -5126,7 +5370,7 @@
       "branch_ref": "B0",
       "file_path": "internal/contract/dumper_mapped.go",
       "language": "go",
-      "chat_id": 99336,
+      "chat_id": 99814,
       "fields": {
         "F0": "internal/contract/dumper_mapped.go",
         "F1": "dumper_mapped",
@@ -5165,7 +5409,7 @@
       "branch_ref": "B0",
       "file_path": "internal/contract/dumper_merged.go",
       "language": "go",
-      "chat_id": 99337,
+      "chat_id": 99815,
       "fields": {
         "F0": "internal/contract/dumper_merged.go",
         "F1": "dumper_merged",
@@ -5201,7 +5445,7 @@
       "branch_ref": "B0",
       "file_path": "internal/contract/dumper_tree.go",
       "language": "go",
-      "chat_id": 99338,
+      "chat_id": 99816,
       "fields": {
         "F0": "internal/contract/dumper_tree.go",
         "F1": "dumper_tree",
@@ -5233,7 +5477,7 @@
       "branch_ref": "B0",
       "file_path": "internal/contract/dumper_utils.go",
       "language": "go",
-      "chat_id": 99339,
+      "chat_id": 99817,
       "fields": {
         "F0": "internal/contract/dumper_utils.go",
         "F1": "dumper_utils",
@@ -5269,7 +5513,7 @@
       "branch_ref": "B0",
       "file_path": "internal/contract/dumper.go",
       "language": "go",
-      "chat_id": 99340,
+      "chat_id": 99818,
       "fields": {
         "F0": "internal/contract/dumper.go",
         "F1": "dumper",
@@ -5306,7 +5550,7 @@
       "branch_ref": "B0",
       "file_path": "internal/contract/events.go",
       "language": "go",
-      "chat_id": 99341,
+      "chat_id": 99819,
       "fields": {
         "F0": "internal/contract/events.go",
         "F1": "events",
@@ -5343,7 +5587,7 @@
       "branch_ref": "B0",
       "file_path": "internal/contract/handler.go",
       "language": "go",
-      "chat_id": 99342,
+      "chat_id": 99820,
       "fields": {
         "F0": "internal/contract/handler.go",
         "F1": "handler",
@@ -5380,7 +5624,7 @@
       "branch_ref": "B0",
       "file_path": "internal/contract/manager.go",
       "language": "go",
-      "chat_id": 99343,
+      "chat_id": 99821,
       "fields": {
         "F0": "internal/contract/manager.go",
         "F1": "manager",
@@ -5417,7 +5661,7 @@
       "branch_ref": "B0",
       "file_path": "internal/contract/MappedWriter.go",
       "language": "go",
-      "chat_id": 99344,
+      "chat_id": 99822,
       "fields": {
         "F0": "internal/contract/MappedWriter.go",
         "F1": "MappedWriter",
@@ -5453,7 +5697,7 @@
       "branch_ref": "B0",
       "file_path": "internal/contract/MergedWriter.go",
       "language": "go",
-      "chat_id": 99345,
+      "chat_id": 99823,
       "fields": {
         "F0": "internal/contract/MergedWriter.go",
         "F1": "MergedWriter",
@@ -5489,7 +5733,7 @@
       "branch_ref": "B0",
       "file_path": "internal/contract/models.go",
       "language": "go",
-      "chat_id": 99346,
+      "chat_id": 99824,
       "fields": {
         "F0": "internal/contract/models.go",
         "F1": "models",
@@ -5526,7 +5770,7 @@
       "branch_ref": "B0",
       "file_path": "internal/contract/patcher.go",
       "language": "go",
-      "chat_id": 99347,
+      "chat_id": 99825,
       "fields": {
         "F0": "internal/contract/patcher.go",
         "F1": "patcher",
@@ -5561,7 +5805,7 @@
       "branch_ref": "B0",
       "file_path": "internal/contract/provenance.go",
       "language": "go",
-      "chat_id": 99348,
+      "chat_id": 99826,
       "fields": {
         "F0": "internal/contract/provenance.go",
         "F1": "provenance.go",
@@ -5599,7 +5843,7 @@
       "branch_ref": "B0",
       "file_path": "internal/contract/TreeWriter.go",
       "language": "go",
-      "chat_id": 99349,
+      "chat_id": 99827,
       "fields": {
         "F0": "internal/contract/TreeWriter.go",
         "F1": "TreeWriter.go",
@@ -5636,7 +5880,7 @@
       "branch_ref": "B0",
       "file_path": "internal/contract/writer.go",
       "language": "go",
-      "chat_id": 99350,
+      "chat_id": 99828,
       "fields": {
         "F0": "internal/contract/writer.go",
         "F1": "writer.go",
@@ -5667,7 +5911,7 @@
       "branch_ref": "B0",
       "file_path": "internal/context/models.go",
       "language": "go",
-      "chat_id": 99352,
+      "chat_id": 99830,
       "fields": {
         "F0": "internal/context/models.go",
         "F1": "models.go",
@@ -5697,7 +5941,7 @@
       "branch_ref": "B0",
       "file_path": "internal/context/parser.go",
       "language": "go",
-      "chat_id": 99353,
+      "chat_id": 99831,
       "fields": {
         "F0": "internal/context/parser.go",
         "F1": "parser.go",
@@ -5733,7 +5977,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/ws/block.go",
       "language": "go",
-      "chat_id": 99356,
+      "chat_id": 99834,
       "fields": {
         "F0": "internal/cli/ws/block.go",
         "F1": "block.go",
@@ -5769,7 +6013,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/ws/ffp.go",
       "language": "go",
-      "chat_id": 99357,
+      "chat_id": 99835,
       "fields": {
         "F0": "internal/cli/ws/ffp.go",
         "F1": "ffp",
@@ -5805,7 +6049,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/ws/map.go",
       "language": "go",
-      "chat_id": 99358,
+      "chat_id": 99836,
       "fields": {
         "F0": "internal/cli/ws/map.go",
         "F1": "map.go",
@@ -5840,7 +6084,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/ws/root.go",
       "language": "go",
-      "chat_id": 99359,
+      "chat_id": 99837,
       "fields": {
         "F0": "internal/cli/ws/root.go",
         "F1": "root.go",
@@ -5876,7 +6120,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/ws/send.go",
       "language": "go",
-      "chat_id": 99360,
+      "chat_id": 99838,
       "fields": {
         "F0": "internal/cli/ws/send.go",
         "F1": "send",
@@ -5913,7 +6157,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/send/send.go",
       "language": "go",
-      "chat_id": 99362,
+      "chat_id": 99840,
       "fields": {
         "F0": "internal/cli/send/send.go",
         "F1": "send.go",
@@ -5947,9 +6191,43 @@
     {
       "repo_ref": "R0",
       "branch_ref": "B0",
+      "file_path": "internal/cli/pi/sessions/list.go",
+      "language": "go",
+      "chat_id": 99843,
+      "fields": {
+        "F0": "internal/cli/pi/sessions/list.go",
+        "F1": "list.go",
+        "F2": "go",
+        "F3": "99843",
+        "F4": "Modify this file to change how sessions are listed, filtered, and paginated.",
+        "F5": "source_code",
+        "F6": "[\"2026-06-18_created\"]",
+        "F7": [
+          "list-sessions",
+          "filter-sessions",
+          "sort-sessions",
+          "flag-limit",
+          "flag-repo"
+        ],
+        "F8": [
+          "cli-command",
+          "data-filtering"
+        ],
+        "F9": [
+          "listCmd",
+          "writeListResults",
+          "writeListHuman"
+        ],
+        "F10": "cli-command",
+        "F11": "[\"default-limit-50\",\"default-sort-recent\"]"
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
       "file_path": "internal/cli/pi/sessions/query.go",
       "language": "go",
-      "chat_id": 99365,
+      "chat_id": 99844,
       "fields": {
         "F0": "internal/cli/pi/sessions/query.go",
         "F1": "query",
@@ -5984,7 +6262,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/pi/sessions/root.go",
       "language": "go",
-      "chat_id": 99366,
+      "chat_id": 99845,
       "fields": {
         "F0": "internal/cli/pi/sessions/root.go",
         "F1": "root.go",
@@ -6015,9 +6293,111 @@
     {
       "repo_ref": "R0",
       "branch_ref": "B0",
+      "file_path": "internal/cli/pi/sessions/show.go",
+      "language": "go",
+      "chat_id": 99846,
+      "fields": {
+        "F0": "internal/cli/pi/sessions/show.go",
+        "F1": "show.go",
+        "F2": "go",
+        "F3": "99846",
+        "F4": "Modify this file to change how detailed session information is retrieved and displayed.",
+        "F5": "source_code",
+        "F6": "[\"2026-06-18_created\"]",
+        "F7": [
+          "show-session",
+          "display-details",
+          "format-output",
+          "flag-db",
+          "flag-format"
+        ],
+        "F8": [
+          "cli-command",
+          "data-retrieval"
+        ],
+        "F9": [
+          "showCmd",
+          "writeShowResult",
+          "writeShowHuman"
+        ],
+        "F10": "cli-command",
+        "F11": "[\"default-format-human\"]"
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/cli/pi/sessions/sync_start_test.go",
+      "language": "go",
+      "chat_id": 99847,
+      "fields": {
+        "F0": "internal/cli/pi/sessions/sync_start_test.go",
+        "F1": "sync_start_test",
+        "F2": "go",
+        "F3": "99847",
+        "F4": "Modify this file to adjust the test coverage for the sync start command, including scenarios for signal handling, path resolution defaults, and feature flag validation.",
+        "F5": "test",
+        "F6": "[\"2026-06-18_created\"]",
+        "F7": [
+          "test-watcher-wiring",
+          "test-signal-cancellation",
+          "test-path-resolution",
+          "test-detached-rejection"
+        ],
+        "F8": [
+          "unit-testing",
+          "cli-testing"
+        ],
+        "F9": [
+          "TestSyncStartRunsForegroundWatcherUntilCancellation",
+          "TestResolvePiSessionsDirDefaultsToHome",
+          "TestSyncStartRejectsDetachedModeUntilImplemented"
+        ],
+        "F10": "test-suite",
+        "F11": "N/A"
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
+      "file_path": "internal/cli/pi/sessions/sync_start.go",
+      "language": "go",
+      "chat_id": 99848,
+      "fields": {
+        "F0": "internal/cli/pi/sessions/sync_start.go",
+        "F1": "sync_start",
+        "F2": "go",
+        "F3": "99848",
+        "F4": "Modify this file to change the behavior of the continuous sync process, including how OS signals trigger shutdown, how paths are resolved, or how the watcher is invoked.",
+        "F5": "source_code",
+        "F6": "[\"2026-06-18_created\"]",
+        "F7": [
+          "start-sync",
+          "foreground-watcher",
+          "signal-handling",
+          "continuous-reconciliation",
+          "cli-start-cmd"
+        ],
+        "F8": [
+          "synchronization",
+          "file-watching",
+          "cli-commands"
+        ],
+        "F9": [
+          "syncStartCmd",
+          "syncStartDependencies",
+          "resolvePiSessionsDir"
+        ],
+        "F10": "cli-command",
+        "F11": "[\"default-path-home-pi-agent-sessions\"]"
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
       "file_path": "internal/cli/pi/sessions/sync.go",
       "language": "go",
-      "chat_id": 99367,
+      "chat_id": 99849,
       "fields": {
         "F0": "internal/cli/pi/sessions/sync.go",
         "F1": "sync",
@@ -6051,9 +6431,44 @@
     {
       "repo_ref": "R0",
       "branch_ref": "B0",
+      "file_path": "internal/cli/pi/sessions/verify.go",
+      "language": "go",
+      "chat_id": 99850,
+      "fields": {
+        "F0": "internal/cli/pi/sessions/verify.go",
+        "F1": "verify",
+        "F2": "go",
+        "F3": "99850",
+        "F4": "Modify this file to change the CLI interface for verifying session data integrity, specifically the flags required for lossless checks and the output formatting of verification reports.",
+        "F5": "source_code",
+        "F6": "[\"2026-06-18_created\"]",
+        "F7": [
+          "verify-lossless",
+          "round-trip-check",
+          "sha256-validation",
+          "cli-verify-cmd",
+          "report-generation"
+        ],
+        "F8": [
+          "data-integrity",
+          "verification",
+          "cli-commands"
+        ],
+        "F9": [
+          "verifyCmd",
+          "writeVerifyReport",
+          "LosslessReport"
+        ],
+        "F10": "cli-command",
+        "F11": "N/A"
+      }
+    },
+    {
+      "repo_ref": "R0",
+      "branch_ref": "B0",
       "file_path": "internal/cli/pi/root.go",
       "language": "go",
-      "chat_id": 99368,
+      "chat_id": 99851,
       "fields": {
         "F0": "internal/cli/pi/root.go",
         "F1": "root",
@@ -6086,7 +6501,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/manifest/bundle.go",
       "language": "go",
-      "chat_id": 99370,
+      "chat_id": 99853,
       "fields": {
         "F0": "internal/cli/manifest/bundle.go",
         "F1": "bundle",
@@ -6121,7 +6536,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/manifest/delete.go",
       "language": "go",
-      "chat_id": 99371,
+      "chat_id": 99854,
       "fields": {
         "F0": "internal/cli/manifest/delete.go",
         "F1": "delete.go",
@@ -6154,7 +6569,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/manifest/doctor.go",
       "language": "go",
-      "chat_id": 99372,
+      "chat_id": 99855,
       "fields": {
         "F0": "internal/cli/manifest/doctor.go",
         "F1": "doctor.go",
@@ -6189,7 +6604,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/manifest/example.go",
       "language": "go",
-      "chat_id": 99373,
+      "chat_id": 99856,
       "fields": {
         "F0": "internal/cli/manifest/example.go",
         "F1": "example.go",
@@ -6221,7 +6636,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/manifest/export.go",
       "language": "go",
-      "chat_id": 99374,
+      "chat_id": 99857,
       "fields": {
         "F0": "internal/cli/manifest/export.go",
         "F1": "export.go",
@@ -6256,7 +6671,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/manifest/flags.go",
       "language": "go",
-      "chat_id": 99375,
+      "chat_id": 99858,
       "fields": {
         "F0": "internal/cli/manifest/flags.go",
         "F1": "flags",
@@ -6290,7 +6705,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/manifest/import.go",
       "language": "go",
-      "chat_id": 99376,
+      "chat_id": 99859,
       "fields": {
         "F0": "internal/cli/manifest/import.go",
         "F1": "import",
@@ -6326,7 +6741,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/manifest/init.go",
       "language": "go",
-      "chat_id": 99377,
+      "chat_id": 99860,
       "fields": {
         "F0": "internal/cli/manifest/init.go",
         "F1": "init",
@@ -6359,7 +6774,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/manifest/list.go",
       "language": "go",
-      "chat_id": 99378,
+      "chat_id": 99861,
       "fields": {
         "F0": "internal/cli/manifest/list.go",
         "F1": "list",
@@ -6393,7 +6808,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/manifest/publish.go",
       "language": "go",
-      "chat_id": 99379,
+      "chat_id": 99862,
       "fields": {
         "F0": "internal/cli/manifest/publish.go",
         "F1": "publish",
@@ -6428,7 +6843,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/manifest/root.go",
       "language": "go",
-      "chat_id": 99380,
+      "chat_id": 99863,
       "fields": {
         "F0": "internal/cli/manifest/root.go",
         "F1": "root",
@@ -6464,7 +6879,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/manifest/schema.go",
       "language": "go",
-      "chat_id": 99381,
+      "chat_id": 99864,
       "fields": {
         "F0": "internal/cli/manifest/schema.go",
         "F1": "schema",
@@ -6500,7 +6915,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/manifest/unpublish.go",
       "language": "go",
-      "chat_id": 99382,
+      "chat_id": 99865,
       "fields": {
         "F0": "internal/cli/manifest/unpublish.go",
         "F1": "unpublish",
@@ -6534,7 +6949,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/manifest/validate.go",
       "language": "go",
-      "chat_id": 99383,
+      "chat_id": 99866,
       "fields": {
         "F0": "internal/cli/manifest/validate.go",
         "F1": "validate.go",
@@ -6568,7 +6983,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/lessons/add.go",
       "language": "go",
-      "chat_id": 99385,
+      "chat_id": 99868,
       "fields": {
         "F0": "internal/cli/lessons/add.go",
         "F1": "add",
@@ -6605,7 +7020,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/lessons/build.go",
       "language": "go",
-      "chat_id": 99386,
+      "chat_id": 99869,
       "fields": {
         "F0": "internal/cli/lessons/build.go",
         "F1": "build.go",
@@ -6639,7 +7054,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/lessons/commit.go",
       "language": "go",
-      "chat_id": 99387,
+      "chat_id": 99870,
       "fields": {
         "F0": "internal/cli/lessons/commit.go",
         "F1": "commit",
@@ -6674,7 +7089,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/lessons/confirm.go",
       "language": "go",
-      "chat_id": 99388,
+      "chat_id": 99871,
       "fields": {
         "F0": "internal/cli/lessons/confirm.go",
         "F1": "confirm",
@@ -6705,7 +7120,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/lessons/delete.go",
       "language": "go",
-      "chat_id": 99389,
+      "chat_id": 99872,
       "fields": {
         "F0": "internal/cli/lessons/delete.go",
         "F1": "delete",
@@ -6739,7 +7154,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/lessons/discard.go",
       "language": "go",
-      "chat_id": 99390,
+      "chat_id": 99873,
       "fields": {
         "F0": "internal/cli/lessons/discard.go",
         "F1": "discard.go",
@@ -6772,7 +7187,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/lessons/draft.go",
       "language": "go",
-      "chat_id": 99391,
+      "chat_id": 99874,
       "fields": {
         "F0": "internal/cli/lessons/draft.go",
         "F1": "draft.go",
@@ -6810,7 +7225,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/lessons/list.go",
       "language": "go",
-      "chat_id": 99392,
+      "chat_id": 99875,
       "fields": {
         "F0": "internal/cli/lessons/list.go",
         "F1": "list.go",
@@ -6842,7 +7257,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/lessons/new.go",
       "language": "go",
-      "chat_id": 99393,
+      "chat_id": 99876,
       "fields": {
         "F0": "internal/cli/lessons/new.go",
         "F1": "new.go",
@@ -6876,7 +7291,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/lessons/overview.go",
       "language": "go",
-      "chat_id": 99394,
+      "chat_id": 99877,
       "fields": {
         "F0": "internal/cli/lessons/overview.go",
         "F1": "overview",
@@ -6911,7 +7326,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/lessons/review.go",
       "language": "go",
-      "chat_id": 99395,
+      "chat_id": 99878,
       "fields": {
         "F0": "internal/cli/lessons/review.go",
         "F1": "review.go",
@@ -6944,7 +7359,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/lessons/root.go",
       "language": "go",
-      "chat_id": 99396,
+      "chat_id": 99879,
       "fields": {
         "F0": "internal/cli/lessons/root.go",
         "F1": "root.go",
@@ -6984,7 +7399,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/lessons/search.go",
       "language": "go",
-      "chat_id": 99397,
+      "chat_id": 99880,
       "fields": {
         "F0": "internal/cli/lessons/search.go",
         "F1": "search.go",
@@ -7017,7 +7432,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/lessons/show.go",
       "language": "go",
-      "chat_id": 99398,
+      "chat_id": 99881,
       "fields": {
         "F0": "internal/cli/lessons/show.go",
         "F1": "show.go",
@@ -7051,7 +7466,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/lessons/tags.go",
       "language": "go",
-      "chat_id": 99399,
+      "chat_id": 99882,
       "fields": {
         "F0": "internal/cli/lessons/tags.go",
         "F1": "tags",
@@ -7086,7 +7501,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/lessons/update.go",
       "language": "go",
-      "chat_id": 99400,
+      "chat_id": 99883,
       "fields": {
         "F0": "internal/cli/lessons/update.go",
         "F1": "update",
@@ -7123,7 +7538,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/lessons/validate.go",
       "language": "go",
-      "chat_id": 99401,
+      "chat_id": 99884,
       "fields": {
         "F0": "internal/cli/lessons/validate.go",
         "F1": "validate.go",
@@ -7156,7 +7571,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/gitignore/root.go",
       "language": "go",
-      "chat_id": 99403,
+      "chat_id": 99886,
       "fields": {
         "F0": "internal/cli/gitignore/root.go",
         "F1": "root.go",
@@ -7188,7 +7603,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/gitignore/update.go",
       "language": "go",
-      "chat_id": 99404,
+      "chat_id": 99887,
       "fields": {
         "F0": "internal/cli/gitignore/update.go",
         "F1": "update.go",
@@ -7222,7 +7637,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/experts/flags.go",
       "language": "go",
-      "chat_id": 99406,
+      "chat_id": 99889,
       "fields": {
         "F0": "internal/cli/experts/flags.go",
         "F1": "flags",
@@ -7259,7 +7674,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/experts/forget.go",
       "language": "go",
-      "chat_id": 99407,
+      "chat_id": 99890,
       "fields": {
         "F0": "internal/cli/experts/forget.go",
         "F1": "forget",
@@ -7294,7 +7709,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/experts/guide.go",
       "language": "go",
-      "chat_id": 99408,
+      "chat_id": 99891,
       "fields": {
         "F0": "internal/cli/experts/guide.go",
         "F1": "guide",
@@ -7331,7 +7746,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/experts/init.go",
       "language": "go",
-      "chat_id": 99409,
+      "chat_id": 99892,
       "fields": {
         "F0": "internal/cli/experts/init.go",
         "F1": "init",
@@ -7367,7 +7782,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/experts/root.go",
       "language": "go",
-      "chat_id": 99410,
+      "chat_id": 99893,
       "fields": {
         "F0": "internal/cli/experts/root.go",
         "F1": "root",
@@ -7401,7 +7816,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/experts/setup_agent.go",
       "language": "go",
-      "chat_id": 99411,
+      "chat_id": 99894,
       "fields": {
         "F0": "internal/cli/experts/setup_agent.go",
         "F1": "setup_agent",
@@ -7437,7 +7852,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/experts/status.go",
       "language": "go",
-      "chat_id": 99412,
+      "chat_id": 99895,
       "fields": {
         "F0": "internal/cli/experts/status.go",
         "F1": "status",
@@ -7472,7 +7887,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/docs/about.go",
       "language": "go",
-      "chat_id": 99414,
+      "chat_id": 99897,
       "fields": {
         "F0": "internal/cli/docs/about.go",
         "F1": "about",
@@ -7504,7 +7919,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/docs/admin.go",
       "language": "go",
-      "chat_id": 99415,
+      "chat_id": 99898,
       "fields": {
         "F0": "internal/cli/docs/admin.go",
         "F1": "admin",
@@ -7535,7 +7950,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/docs/brains.go",
       "language": "go",
-      "chat_id": 99416,
+      "chat_id": 99899,
       "fields": {
         "F0": "internal/cli/docs/brains.go",
         "F1": "brains",
@@ -7568,7 +7983,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/docs/core.go",
       "language": "go",
-      "chat_id": 99417,
+      "chat_id": 99900,
       "fields": {
         "F0": "internal/cli/docs/core.go",
         "F1": "core.go",
@@ -7600,7 +8015,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/docs/experts.go",
       "language": "go",
-      "chat_id": 99418,
+      "chat_id": 99901,
       "fields": {
         "F0": "internal/cli/docs/experts.go",
         "F1": "experts.go",
@@ -7634,7 +8049,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/docs/git-analysis.go",
       "language": "go",
-      "chat_id": 99419,
+      "chat_id": 99902,
       "fields": {
         "F0": "internal/cli/docs/git-analysis.go",
         "F1": "git-analysis.go",
@@ -7665,7 +8080,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/docs/help.go",
       "language": "go",
-      "chat_id": 99420,
+      "chat_id": 99903,
       "fields": {
         "F0": "internal/cli/docs/help.go",
         "F1": "help.go",
@@ -7697,7 +8112,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/docs/import-git.go",
       "language": "go",
-      "chat_id": 99421,
+      "chat_id": 99904,
       "fields": {
         "F0": "internal/cli/docs/import-git.go",
         "F1": "import-git.go",
@@ -7728,7 +8143,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/docs/init.go",
       "language": "go",
-      "chat_id": 99422,
+      "chat_id": 99905,
       "fields": {
         "F0": "internal/cli/docs/init.go",
         "F1": "init.go",
@@ -7759,7 +8174,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/docs/install.go",
       "language": "go",
-      "chat_id": 99423,
+      "chat_id": 99906,
       "fields": {
         "F0": "internal/cli/docs/install.go",
         "F1": "install.go",
@@ -7791,7 +8206,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/docs/lifecycle.go",
       "language": "go",
-      "chat_id": 99424,
+      "chat_id": 99907,
       "fields": {
         "F0": "internal/cli/docs/lifecycle.go",
         "F1": "lifecycle",
@@ -7824,7 +8239,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/docs/locate.go",
       "language": "go",
-      "chat_id": 99425,
+      "chat_id": 99908,
       "fields": {
         "F0": "internal/cli/docs/locate.go",
         "F1": "locate",
@@ -7857,7 +8272,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/docs/quickstart.go",
       "language": "go",
-      "chat_id": 99426,
+      "chat_id": 99909,
       "fields": {
         "F0": "internal/cli/docs/quickstart.go",
         "F1": "quickstart",
@@ -7888,7 +8303,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/docs/root.go",
       "language": "go",
-      "chat_id": 99427,
+      "chat_id": 99910,
       "fields": {
         "F0": "internal/cli/docs/root.go",
         "F1": "root",
@@ -7931,7 +8346,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/contract/add_chat.go",
       "language": "go",
-      "chat_id": 99429,
+      "chat_id": 99912,
       "fields": {
         "F0": "internal/cli/contract/add_chat.go",
         "F1": "add_chat",
@@ -7966,7 +8381,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/contract/chats.go",
       "language": "go",
-      "chat_id": 99430,
+      "chat_id": 99913,
       "fields": {
         "F0": "internal/cli/contract/chats.go",
         "F1": "chats",
@@ -8001,7 +8416,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/contract/create.go",
       "language": "go",
-      "chat_id": 99431,
+      "chat_id": 99914,
       "fields": {
         "F0": "internal/cli/contract/create.go",
         "F1": "create",
@@ -8035,7 +8450,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/contract/directories.go",
       "language": "go",
-      "chat_id": 99432,
+      "chat_id": 99915,
       "fields": {
         "F0": "internal/cli/contract/directories.go",
         "F1": "directories",
@@ -8071,7 +8486,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/contract/dump.go",
       "language": "go",
-      "chat_id": 99433,
+      "chat_id": 99916,
       "fields": {
         "F0": "internal/cli/contract/dump.go",
         "F1": "dump",
@@ -8110,7 +8525,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/contract/exec.go",
       "language": "go",
-      "chat_id": 99434,
+      "chat_id": 99917,
       "fields": {
         "F0": "internal/cli/contract/exec.go",
         "F1": "exec",
@@ -8145,7 +8560,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/contract/lifecycle.go",
       "language": "go",
-      "chat_id": 99435,
+      "chat_id": 99918,
       "fields": {
         "F0": "internal/cli/contract/lifecycle.go",
         "F1": "lifecycle",
@@ -8185,7 +8600,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/contract/messages.go",
       "language": "go",
-      "chat_id": 99436,
+      "chat_id": 99919,
       "fields": {
         "F0": "internal/cli/contract/messages.go",
         "F1": "messages.go",
@@ -8222,7 +8637,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/contract/ops.go",
       "language": "go",
-      "chat_id": 99437,
+      "chat_id": 99920,
       "fields": {
         "F0": "internal/cli/contract/ops.go",
         "F1": "ops.go",
@@ -8257,7 +8672,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/contract/root.go",
       "language": "go",
-      "chat_id": 99438,
+      "chat_id": 99921,
       "fields": {
         "F0": "internal/cli/contract/root.go",
         "F1": "root.go",
@@ -8294,7 +8709,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/contract/send.go",
       "language": "go",
-      "chat_id": 99439,
+      "chat_id": 99922,
       "fields": {
         "F0": "internal/cli/contract/send.go",
         "F1": "send",
@@ -8330,7 +8745,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/claude/shared/agent_helper.go",
       "language": "go",
-      "chat_id": 99442,
+      "chat_id": 99925,
       "fields": {
         "F0": "internal/cli/claude/shared/agent_helper.go",
         "F1": "agent_helper",
@@ -8366,7 +8781,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/claude/shared/sysattr_unix.go",
       "language": "go",
-      "chat_id": 99443,
+      "chat_id": 99926,
       "fields": {
         "F0": "internal/cli/claude/shared/sysattr_unix.go",
         "F1": "sysattr_unix.go",
@@ -8399,7 +8814,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/claude/shared/sysattr_windows.go",
       "language": "go",
-      "chat_id": 99444,
+      "chat_id": 99927,
       "fields": {
         "F0": "internal/cli/claude/shared/sysattr_windows.go",
         "F1": "sysattr_windows.go",
@@ -8430,7 +8845,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/claude/scout/flags.go",
       "language": "go",
-      "chat_id": 99446,
+      "chat_id": 99929,
       "fields": {
         "F0": "internal/cli/claude/scout/flags.go",
         "F1": "flags",
@@ -8467,7 +8882,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/claude/scout/root.go",
       "language": "go",
-      "chat_id": 99447,
+      "chat_id": 99930,
       "fields": {
         "F0": "internal/cli/claude/scout/root.go",
         "F1": "root.go",
@@ -8499,7 +8914,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/claude/scout/start.go",
       "language": "go",
-      "chat_id": 99448,
+      "chat_id": 99931,
       "fields": {
         "F0": "internal/cli/claude/scout/start.go",
         "F1": "start.go",
@@ -8536,7 +8951,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/claude/scout/stop.go",
       "language": "go",
-      "chat_id": 99449,
+      "chat_id": 99932,
       "fields": {
         "F0": "internal/cli/claude/scout/stop.go",
         "F1": "stop.go",
@@ -8572,7 +8987,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/claude/intent-workflow/delete.go",
       "language": "go",
-      "chat_id": 99451,
+      "chat_id": 99934,
       "fields": {
         "F0": "internal/cli/claude/intent-workflow/delete.go",
         "F1": "delete.go",
@@ -8608,7 +9023,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/claude/intent-workflow/flags.go",
       "language": "go",
-      "chat_id": 99452,
+      "chat_id": 99935,
       "fields": {
         "F0": "internal/cli/claude/intent-workflow/flags.go",
         "F1": "flags.go",
@@ -8645,7 +9060,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/claude/intent-workflow/retry.go",
       "language": "go",
-      "chat_id": 99453,
+      "chat_id": 99936,
       "fields": {
         "F0": "internal/cli/claude/intent-workflow/retry.go",
         "F1": "retry.go",
@@ -8682,7 +9097,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/claude/intent-workflow/root.go",
       "language": "go",
-      "chat_id": 99454,
+      "chat_id": 99937,
       "fields": {
         "F0": "internal/cli/claude/intent-workflow/root.go",
         "F1": "root",
@@ -8714,7 +9129,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/claude/intent-workflow/status.go",
       "language": "go",
-      "chat_id": 99455,
+      "chat_id": 99938,
       "fields": {
         "F0": "internal/cli/claude/intent-workflow/status.go",
         "F1": "status",
@@ -8750,7 +9165,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/claude/intent-workflow/stop.go",
       "language": "go",
-      "chat_id": 99456,
+      "chat_id": 99939,
       "fields": {
         "F0": "internal/cli/claude/intent-workflow/stop.go",
         "F1": "stop",
@@ -8784,7 +9199,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/claude/intent-workflow/sysattr_unix.go",
       "language": "go",
-      "chat_id": 99457,
+      "chat_id": 99940,
       "fields": {
         "F0": "internal/cli/claude/intent-workflow/sysattr_unix.go",
         "F1": "sysattr_unix.go",
@@ -8815,7 +9230,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/claude/intent-workflow/sysattr_windows.go",
       "language": "go",
-      "chat_id": 99458,
+      "chat_id": 99941,
       "fields": {
         "F0": "internal/cli/claude/intent-workflow/sysattr_windows.go",
         "F1": "sysattr_windows.go",
@@ -8847,7 +9262,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/claude/chat/chat.go",
       "language": "go",
-      "chat_id": 99460,
+      "chat_id": 99943,
       "fields": {
         "F0": "internal/cli/claude/chat/chat.go",
         "F1": "chat.go",
@@ -8881,7 +9296,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/claude/chat/flags.go",
       "language": "go",
-      "chat_id": 99461,
+      "chat_id": 99944,
       "fields": {
         "F0": "internal/cli/claude/chat/flags.go",
         "F1": "flags.go",
@@ -8914,7 +9329,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/claude/change/change.go",
       "language": "go",
-      "chat_id": 99463,
+      "chat_id": 99946,
       "fields": {
         "F0": "internal/cli/claude/change/change.go",
         "F1": "change.go",
@@ -8948,7 +9363,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/claude/change/resume.go",
       "language": "go",
-      "chat_id": 99464,
+      "chat_id": 99947,
       "fields": {
         "F0": "internal/cli/claude/change/resume.go",
         "F1": "resume",
@@ -8986,7 +9401,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/claude/change/start.go",
       "language": "go",
-      "chat_id": 99465,
+      "chat_id": 99948,
       "fields": {
         "F0": "internal/cli/claude/change/start.go",
         "F1": "start",
@@ -9023,7 +9438,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/claude/change/stop.go",
       "language": "go",
-      "chat_id": 99466,
+      "chat_id": 99949,
       "fields": {
         "F0": "internal/cli/claude/change/stop.go",
         "F1": "stop",
@@ -9059,7 +9474,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/claude/change/sysattr_unix.go",
       "language": "go",
-      "chat_id": 99467,
+      "chat_id": 99950,
       "fields": {
         "F0": "internal/cli/claude/change/sysattr_unix.go",
         "F1": "sysattr_unix.go",
@@ -9091,7 +9506,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/claude/change/sysattr_windows.go",
       "language": "go",
-      "chat_id": 99468,
+      "chat_id": 99951,
       "fields": {
         "F0": "internal/cli/claude/change/sysattr_windows.go",
         "F1": "sysattr_windows",
@@ -9124,7 +9539,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/claude/init.go",
       "language": "go",
-      "chat_id": 99469,
+      "chat_id": 99952,
       "fields": {
         "F0": "internal/cli/claude/init.go",
         "F1": "init",
@@ -9159,7 +9574,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/claude/root.go",
       "language": "go",
-      "chat_id": 99470,
+      "chat_id": 99953,
       "fields": {
         "F0": "internal/cli/claude/root.go",
         "F1": "root",
@@ -9193,7 +9608,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/native/admin_env.go",
       "language": "go",
-      "chat_id": 99473,
+      "chat_id": 99956,
       "fields": {
         "F0": "internal/cli/app/native/admin_env.go",
         "F1": "admin_env.go",
@@ -9225,7 +9640,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/native/admin_llm.go",
       "language": "go",
-      "chat_id": 99474,
+      "chat_id": 99957,
       "fields": {
         "F0": "internal/cli/app/native/admin_llm.go",
         "F1": "admin_llm",
@@ -9259,7 +9674,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/native/admin.go",
       "language": "go",
-      "chat_id": 99475,
+      "chat_id": 99958,
       "fields": {
         "F0": "internal/cli/app/native/admin.go",
         "F1": "admin.go",
@@ -9290,7 +9705,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/native/cleanup.go",
       "language": "go",
-      "chat_id": 99476,
+      "chat_id": 99959,
       "fields": {
         "F0": "internal/cli/app/native/cleanup.go",
         "F1": "cleanup.go",
@@ -9323,7 +9738,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/native/install.go",
       "language": "go",
-      "chat_id": 99477,
+      "chat_id": 99960,
       "fields": {
         "F0": "internal/cli/app/native/install.go",
         "F1": "install.go",
@@ -9360,7 +9775,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/native/logs.go",
       "language": "go",
-      "chat_id": 99478,
+      "chat_id": 99961,
       "fields": {
         "F0": "internal/cli/app/native/logs.go",
         "F1": "logs.go",
@@ -9396,7 +9811,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/native/package.go",
       "language": "go",
-      "chat_id": 99479,
+      "chat_id": 99962,
       "fields": {
         "F0": "internal/cli/app/native/package.go",
         "F1": "package.go",
@@ -9431,7 +9846,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/native/restart.go",
       "language": "go",
-      "chat_id": 99480,
+      "chat_id": 99963,
       "fields": {
         "F0": "internal/cli/app/native/restart.go",
         "F1": "restart.go",
@@ -9466,7 +9881,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/native/root.go",
       "language": "go",
-      "chat_id": 99481,
+      "chat_id": 99964,
       "fields": {
         "F0": "internal/cli/app/native/root.go",
         "F1": "root",
@@ -9497,7 +9912,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/native/setup.go",
       "language": "go",
-      "chat_id": 99482,
+      "chat_id": 99965,
       "fields": {
         "F0": "internal/cli/app/native/setup.go",
         "F1": "setup",
@@ -9530,7 +9945,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/native/start.go",
       "language": "go",
-      "chat_id": 99483,
+      "chat_id": 99966,
       "fields": {
         "F0": "internal/cli/app/native/start.go",
         "F1": "start",
@@ -9565,7 +9980,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/native/status.go",
       "language": "go",
-      "chat_id": 99484,
+      "chat_id": 99967,
       "fields": {
         "F0": "internal/cli/app/native/status.go",
         "F1": "status",
@@ -9601,7 +10016,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/native/stop.go",
       "language": "go",
-      "chat_id": 99485,
+      "chat_id": 99968,
       "fields": {
         "F0": "internal/cli/app/native/stop.go",
         "F1": "stop",
@@ -9635,7 +10050,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/import/git/command.go",
       "language": "go",
-      "chat_id": 99488,
+      "chat_id": 99971,
       "fields": {
         "F0": "internal/cli/app/import/git/command.go",
         "F1": "command",
@@ -9675,7 +10090,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/import/git/delete_cmd.go",
       "language": "go",
-      "chat_id": 99489,
+      "chat_id": 99972,
       "fields": {
         "F0": "internal/cli/app/import/git/delete_cmd.go",
         "F1": "delete_cmd.go",
@@ -9711,7 +10126,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/import/git/parser.go",
       "language": "go",
-      "chat_id": 99490,
+      "chat_id": 99973,
       "fields": {
         "F0": "internal/cli/app/import/git/parser.go",
         "F1": "parser",
@@ -9747,7 +10162,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/import/git/progress.go",
       "language": "go",
-      "chat_id": 99491,
+      "chat_id": 99974,
       "fields": {
         "F0": "internal/cli/app/import/git/progress.go",
         "F1": "progress",
@@ -9783,7 +10198,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/import/git/rebuild_cmd.go",
       "language": "go",
-      "chat_id": 99492,
+      "chat_id": 99975,
       "fields": {
         "F0": "internal/cli/app/import/git/rebuild_cmd.go",
         "F1": "rebuild_cmd",
@@ -9819,7 +10234,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/import/git/rebuild.go",
       "language": "go",
-      "chat_id": 99493,
+      "chat_id": 99976,
       "fields": {
         "F0": "internal/cli/app/import/git/rebuild.go",
         "F1": "rebuild",
@@ -9859,7 +10274,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/import/git/root.go",
       "language": "go",
-      "chat_id": 99494,
+      "chat_id": 99977,
       "fields": {
         "F0": "internal/cli/app/import/git/root.go",
         "F1": "root",
@@ -9896,7 +10311,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/import/git/shadow.go",
       "language": "go",
-      "chat_id": 99495,
+      "chat_id": 99978,
       "fields": {
         "F0": "internal/cli/app/import/git/shadow.go",
         "F1": "shadow",
@@ -9937,7 +10352,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/import/git/state.go",
       "language": "go",
-      "chat_id": 99496,
+      "chat_id": 99979,
       "fields": {
         "F0": "internal/cli/app/import/git/state.go",
         "F1": "state",
@@ -9976,7 +10391,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/import/git/validate.go",
       "language": "go",
-      "chat_id": 99497,
+      "chat_id": 99980,
       "fields": {
         "F0": "internal/cli/app/import/git/validate.go",
         "F1": "validate",
@@ -10010,7 +10425,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/import/root.go",
       "language": "go",
-      "chat_id": 99498,
+      "chat_id": 99981,
       "fields": {
         "F0": "internal/cli/app/import/root.go",
         "F1": "root",
@@ -10041,7 +10456,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/docker/admin.go",
       "language": "go",
-      "chat_id": 99500,
+      "chat_id": 99983,
       "fields": {
         "F0": "internal/cli/app/docker/admin.go",
         "F1": "admin",
@@ -10077,7 +10492,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/docker/configure.go",
       "language": "go",
-      "chat_id": 99501,
+      "chat_id": 99984,
       "fields": {
         "F0": "internal/cli/app/docker/configure.go",
         "F1": "configure",
@@ -10111,7 +10526,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/docker/env.go",
       "language": "go",
-      "chat_id": 99502,
+      "chat_id": 99985,
       "fields": {
         "F0": "internal/cli/app/docker/env.go",
         "F1": "env",
@@ -10149,7 +10564,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/docker/install.go",
       "language": "go",
-      "chat_id": 99503,
+      "chat_id": 99986,
       "fields": {
         "F0": "internal/cli/app/docker/install.go",
         "F1": "install.go",
@@ -10181,7 +10596,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/docker/lifecycle.go",
       "language": "go",
-      "chat_id": 99504,
+      "chat_id": 99987,
       "fields": {
         "F0": "internal/cli/app/docker/lifecycle.go",
         "F1": "lifecycle.go",
@@ -10220,7 +10635,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/docker/root.go",
       "language": "go",
-      "chat_id": 99505,
+      "chat_id": 99988,
       "fields": {
         "F0": "internal/cli/app/docker/root.go",
         "F1": "root.go",
@@ -10250,7 +10665,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/docker/start.go",
       "language": "go",
-      "chat_id": 99506,
+      "chat_id": 99989,
       "fields": {
         "F0": "internal/cli/app/docker/start.go",
         "F1": "start",
@@ -10285,7 +10700,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/docker/watch.go",
       "language": "go",
-      "chat_id": 99507,
+      "chat_id": 99990,
       "fields": {
         "F0": "internal/cli/app/docker/watch.go",
         "F1": "watch",
@@ -10317,7 +10732,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/auth/delete.go",
       "language": "go",
-      "chat_id": 99509,
+      "chat_id": 99992,
       "fields": {
         "F0": "internal/cli/app/auth/delete.go",
         "F1": "delete.go",
@@ -10350,7 +10765,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/auth/generate.go",
       "language": "go",
-      "chat_id": 99510,
+      "chat_id": 99993,
       "fields": {
         "F0": "internal/cli/app/auth/generate.go",
         "F1": "generate",
@@ -10386,7 +10801,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/auth/models.go",
       "language": "go",
-      "chat_id": 99511,
+      "chat_id": 99994,
       "fields": {
         "F0": "internal/cli/app/auth/models.go",
         "F1": "models.go",
@@ -10420,7 +10835,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/auth/root.go",
       "language": "go",
-      "chat_id": 99512,
+      "chat_id": 99995,
       "fields": {
         "F0": "internal/cli/app/auth/root.go",
         "F1": "root.go",
@@ -10452,7 +10867,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/auth/store.go",
       "language": "go",
-      "chat_id": 99513,
+      "chat_id": 99996,
       "fields": {
         "F0": "internal/cli/app/auth/store.go",
         "F1": "store.go",
@@ -10490,7 +10905,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/auth/validate.go",
       "language": "go",
-      "chat_id": 99514,
+      "chat_id": 99997,
       "fields": {
         "F0": "internal/cli/app/auth/validate.go",
         "F1": "validate.go",
@@ -10524,7 +10939,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/auth/validator.go",
       "language": "go",
-      "chat_id": 99515,
+      "chat_id": 99998,
       "fields": {
         "F0": "internal/cli/app/auth/validator.go",
         "F1": "validator.go",
@@ -10556,7 +10971,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/analysis/copy.go",
       "language": "go",
-      "chat_id": 99517,
+      "chat_id": 100000,
       "fields": {
         "F0": "internal/cli/app/analysis/copy.go",
         "F1": "copy",
@@ -10590,7 +11005,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/analysis/dump.go",
       "language": "go",
-      "chat_id": 99518,
+      "chat_id": 100001,
       "fields": {
         "F0": "internal/cli/app/analysis/dump.go",
         "F1": "dump",
@@ -10625,7 +11040,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/analysis/get.go",
       "language": "go",
-      "chat_id": 99519,
+      "chat_id": 100002,
       "fields": {
         "F0": "internal/cli/app/analysis/get.go",
         "F1": "get",
@@ -10664,7 +11079,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/analysis/load.go",
       "language": "go",
-      "chat_id": 99520,
+      "chat_id": 100003,
       "fields": {
         "F0": "internal/cli/app/analysis/load.go",
         "F1": "load",
@@ -10699,7 +11114,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/analysis/query.go",
       "language": "go",
-      "chat_id": 99521,
+      "chat_id": 100004,
       "fields": {
         "F0": "internal/cli/app/analysis/query.go",
         "F1": "query.go",
@@ -10738,7 +11153,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/analysis/root.go",
       "language": "go",
-      "chat_id": 99522,
+      "chat_id": 100005,
       "fields": {
         "F0": "internal/cli/app/analysis/root.go",
         "F1": "root",
@@ -10769,7 +11184,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/analysis/schema.go",
       "language": "go",
-      "chat_id": 99523,
+      "chat_id": 100006,
       "fields": {
         "F0": "internal/cli/app/analysis/schema.go",
         "F1": "schema.go",
@@ -10805,7 +11220,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/analysis/set.go",
       "language": "go",
-      "chat_id": 99524,
+      "chat_id": 100007,
       "fields": {
         "F0": "internal/cli/app/analysis/set.go",
         "F1": "set.go",
@@ -10846,7 +11261,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/analysis/status.go",
       "language": "go",
-      "chat_id": 99525,
+      "chat_id": 100008,
       "fields": {
         "F0": "internal/cli/app/analysis/status.go",
         "F1": "status.go",
@@ -10883,7 +11298,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/exec.go",
       "language": "go",
-      "chat_id": 99526,
+      "chat_id": 100009,
       "fields": {
         "F0": "internal/cli/app/exec.go",
         "F1": "exec.go",
@@ -10919,7 +11334,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/app/root.go",
       "language": "go",
-      "chat_id": 99527,
+      "chat_id": 100010,
       "fields": {
         "F0": "internal/cli/app/root.go",
         "F1": "root",
@@ -10954,7 +11369,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/examples.go",
       "language": "go",
-      "chat_id": 99528,
+      "chat_id": 100011,
       "fields": {
         "F0": "internal/cli/examples.go",
         "F1": "examples",
@@ -10989,7 +11404,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/grep.go",
       "language": "go",
-      "chat_id": 99529,
+      "chat_id": 100012,
       "fields": {
         "F0": "internal/cli/grep.go",
         "F1": "grep",
@@ -11026,7 +11441,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/info.go",
       "language": "go",
-      "chat_id": 99530,
+      "chat_id": 100013,
       "fields": {
         "F0": "internal/cli/info.go",
         "F1": "info",
@@ -11059,7 +11474,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/query.go",
       "language": "go",
-      "chat_id": 99531,
+      "chat_id": 100014,
       "fields": {
         "F0": "internal/cli/query.go",
         "F1": "query",
@@ -11099,7 +11514,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/root.go",
       "language": "go",
-      "chat_id": 99532,
+      "chat_id": 100015,
       "fields": {
         "F0": "internal/cli/root.go",
         "F1": "root",
@@ -11135,7 +11550,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/tree.go",
       "language": "go",
-      "chat_id": 99533,
+      "chat_id": 100016,
       "fields": {
         "F0": "internal/cli/tree.go",
         "F1": "tree",
@@ -11171,7 +11586,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/values.go",
       "language": "go",
-      "chat_id": 99534,
+      "chat_id": 100017,
       "fields": {
         "F0": "internal/cli/values.go",
         "F1": "values",
@@ -11202,7 +11617,7 @@
       "branch_ref": "B0",
       "file_path": "internal/cli/version.go",
       "language": "go",
-      "chat_id": 99535,
+      "chat_id": 100018,
       "fields": {
         "F0": "internal/cli/version.go",
         "F1": "version.go",
@@ -11233,7 +11648,7 @@
       "branch_ref": "B0",
       "file_path": "internal/claude/scout/validator.go",
       "language": "go",
-      "chat_id": 99538,
+      "chat_id": 100021,
       "fields": {
         "F0": "internal/claude/scout/validator.go",
         "F1": "validator",
@@ -11268,7 +11683,7 @@
       "branch_ref": "B0",
       "file_path": "internal/claude/intent-workflow/change_parser.go",
       "language": "go",
-      "chat_id": 99540,
+      "chat_id": 100023,
       "fields": {
         "F0": "internal/claude/intent-workflow/change_parser.go",
         "F1": "change_parser.go",
@@ -11303,7 +11718,7 @@
       "branch_ref": "B0",
       "file_path": "internal/claude/intent-workflow/changelog.go",
       "language": "go",
-      "chat_id": 99541,
+      "chat_id": 100024,
       "fields": {
         "F0": "internal/claude/intent-workflow/changelog.go",
         "F1": "changelog",
@@ -11340,7 +11755,7 @@
       "branch_ref": "B0",
       "file_path": "internal/claude/intent-workflow/codebase_overview.go",
       "language": "go",
-      "chat_id": 99542,
+      "chat_id": 100025,
       "fields": {
         "F0": "internal/claude/intent-workflow/codebase_overview.go",
         "F1": "codebase_overview",
@@ -11376,7 +11791,7 @@
       "branch_ref": "B0",
       "file_path": "internal/claude/intent-workflow/config.go",
       "language": "go",
-      "chat_id": 99543,
+      "chat_id": 100026,
       "fields": {
         "F0": "internal/claude/intent-workflow/config.go",
         "F1": "config",
@@ -11412,7 +11827,7 @@
       "branch_ref": "B0",
       "file_path": "internal/claude/intent-workflow/constants.go",
       "language": "go",
-      "chat_id": 99544,
+      "chat_id": 100027,
       "fields": {
         "F0": "internal/claude/intent-workflow/constants.go",
         "F1": "constants",
@@ -11447,7 +11862,7 @@
       "branch_ref": "B0",
       "file_path": "internal/claude/intent-workflow/correction_parser.go",
       "language": "go",
-      "chat_id": 99545,
+      "chat_id": 100028,
       "fields": {
         "F0": "internal/claude/intent-workflow/correction_parser.go",
         "F1": "correction_parser",
@@ -11481,7 +11896,7 @@
       "branch_ref": "B0",
       "file_path": "internal/claude/intent-workflow/correction.go",
       "language": "go",
-      "chat_id": 99546,
+      "chat_id": 100029,
       "fields": {
         "F0": "internal/claude/intent-workflow/correction.go",
         "F1": "correction.go",
@@ -11519,7 +11934,7 @@
       "branch_ref": "B0",
       "file_path": "internal/claude/intent-workflow/debug.go",
       "language": "go",
-      "chat_id": 99547,
+      "chat_id": 100030,
       "fields": {
         "F0": "internal/claude/intent-workflow/debug.go",
         "F1": "debug",
@@ -11552,7 +11967,7 @@
       "branch_ref": "B0",
       "file_path": "internal/claude/intent-workflow/discovery_parser.go",
       "language": "go",
-      "chat_id": 99548,
+      "chat_id": 100031,
       "fields": {
         "F0": "internal/claude/intent-workflow/discovery_parser.go",
         "F1": "discovery_parser",
@@ -11588,7 +12003,7 @@
       "branch_ref": "B0",
       "file_path": "internal/claude/intent-workflow/git_provider.go",
       "language": "go",
-      "chat_id": 99549,
+      "chat_id": 100032,
       "fields": {
         "F0": "internal/claude/intent-workflow/git_provider.go",
         "F1": "git_provider",
@@ -11624,7 +12039,7 @@
       "branch_ref": "B0",
       "file_path": "internal/claude/intent-workflow/lang_detector.go",
       "language": "go",
-      "chat_id": 99550,
+      "chat_id": 100033,
       "fields": {
         "F0": "internal/claude/intent-workflow/lang_detector.go",
         "F1": "lang_detector",
@@ -11657,7 +12072,7 @@
       "branch_ref": "B0",
       "file_path": "internal/claude/intent-workflow/manager_lifecycle.go",
       "language": "go",
-      "chat_id": 99551,
+      "chat_id": 100034,
       "fields": {
         "F0": "internal/claude/intent-workflow/manager_lifecycle.go",
         "F1": "manager_lifecycle",
@@ -11697,7 +12112,7 @@
       "branch_ref": "B0",
       "file_path": "internal/claude/intent-workflow/manager_persistence.go",
       "language": "go",
-      "chat_id": 99552,
+      "chat_id": 100035,
       "fields": {
         "F0": "internal/claude/intent-workflow/manager_persistence.go",
         "F1": "manager_persistence",
@@ -11731,7 +12146,7 @@
       "branch_ref": "B0",
       "file_path": "internal/claude/intent-workflow/manager_prompts.go",
       "language": "go",
-      "chat_id": 99553,
+      "chat_id": 100036,
       "fields": {
         "F0": "internal/claude/intent-workflow/manager_prompts.go",
         "F1": "manager_prompts",
@@ -11766,7 +12181,7 @@
       "branch_ref": "B0",
       "file_path": "internal/claude/intent-workflow/manager_resume.go",
       "language": "go",
-      "chat_id": 99554,
+      "chat_id": 100037,
       "fields": {
         "F0": "internal/claude/intent-workflow/manager_resume.go",
         "F1": "manager_resume.go",
@@ -11803,7 +12218,7 @@
       "branch_ref": "B0",
       "file_path": "internal/claude/intent-workflow/manager_turns.go",
       "language": "go",
-      "chat_id": 99555,
+      "chat_id": 100038,
       "fields": {
         "F0": "internal/claude/intent-workflow/manager_turns.go",
         "F1": "manager_turns.go",
@@ -11840,7 +12255,7 @@
       "branch_ref": "B0",
       "file_path": "internal/claude/intent-workflow/manager.go",
       "language": "go",
-      "chat_id": 99556,
+      "chat_id": 100039,
       "fields": {
         "F0": "internal/claude/intent-workflow/manager.go",
         "F1": "manager.go",
@@ -11876,7 +12291,7 @@
       "branch_ref": "B0",
       "file_path": "internal/claude/intent-workflow/metadata_enricher.go",
       "language": "go",
-      "chat_id": 99557,
+      "chat_id": 100040,
       "fields": {
         "F0": "internal/claude/intent-workflow/metadata_enricher.go",
         "F1": "metadata_enricher",
@@ -11912,7 +12327,7 @@
       "branch_ref": "B0",
       "file_path": "internal/claude/intent-workflow/models.go",
       "language": "go",
-      "chat_id": 99558,
+      "chat_id": 100041,
       "fields": {
         "F0": "internal/claude/intent-workflow/models.go",
         "F1": "models",
@@ -11950,7 +12365,7 @@
       "branch_ref": "B0",
       "file_path": "internal/claude/intent-workflow/permissions.go",
       "language": "go",
-      "chat_id": 99559,
+      "chat_id": 100042,
       "fields": {
         "F0": "internal/claude/intent-workflow/permissions.go",
         "F1": "permissions",
@@ -11982,7 +12397,7 @@
       "branch_ref": "B0",
       "file_path": "internal/claude/intent-workflow/post_process_logger.go",
       "language": "go",
-      "chat_id": 99560,
+      "chat_id": 100043,
       "fields": {
         "F0": "internal/claude/intent-workflow/post_process_logger.go",
         "F1": "post_process_logger.go",
@@ -12018,7 +12433,7 @@
       "branch_ref": "B0",
       "file_path": "internal/claude/intent-workflow/post_processor.go",
       "language": "go",
-      "chat_id": 99561,
+      "chat_id": 100044,
       "fields": {
         "F0": "internal/claude/intent-workflow/post_processor.go",
         "F1": "post_processor.go",
@@ -12058,7 +12473,7 @@
       "branch_ref": "B0",
       "file_path": "internal/claude/intent-workflow/processor.go",
       "language": "go",
-      "chat_id": 99562,
+      "chat_id": 100045,
       "fields": {
         "F0": "internal/claude/intent-workflow/processor.go",
         "F1": "processor.go",
@@ -12095,7 +12510,7 @@
       "branch_ref": "B0",
       "file_path": "internal/claude/intent-workflow/spawn.go",
       "language": "go",
-      "chat_id": 99563,
+      "chat_id": 100046,
       "fields": {
         "F0": "internal/claude/intent-workflow/spawn.go",
         "F1": "spawn",
@@ -12131,7 +12546,7 @@
       "branch_ref": "B0",
       "file_path": "internal/claude/intent-workflow/stream.go",
       "language": "go",
-      "chat_id": 99564,
+      "chat_id": 100047,
       "fields": {
         "F0": "internal/claude/intent-workflow/stream.go",
         "F1": "stream",
@@ -12169,7 +12584,7 @@
       "branch_ref": "B0",
       "file_path": "internal/claude/intent-workflow/util.go",
       "language": "go",
-      "chat_id": 99565,
+      "chat_id": 100048,
       "fields": {
         "F0": "internal/claude/intent-workflow/util.go",
         "F1": "util",
@@ -12201,7 +12616,7 @@
       "branch_ref": "B0",
       "file_path": "internal/claude/intent-workflow/validation_parser.go",
       "language": "go",
-      "chat_id": 99566,
+      "chat_id": 100049,
       "fields": {
         "F0": "internal/claude/intent-workflow/validation_parser.go",
         "F1": "validation_parser.go",
@@ -12237,7 +12652,7 @@
       "branch_ref": "B0",
       "file_path": "internal/claude/intent-workflow/validator.go",
       "language": "go",
-      "chat_id": 99567,
+      "chat_id": 100050,
       "fields": {
         "F0": "internal/claude/intent-workflow/validator.go",
         "F1": "validator.go",
@@ -12273,7 +12688,7 @@
       "branch_ref": "B0",
       "file_path": "internal/claude/chat/archive.go",
       "language": "go",
-      "chat_id": 99569,
+      "chat_id": 100052,
       "fields": {
         "F0": "internal/claude/chat/archive.go",
         "F1": "archive.go",
@@ -12310,7 +12725,7 @@
       "branch_ref": "B0",
       "file_path": "internal/claude/chat/bucketer.go",
       "language": "go",
-      "chat_id": 99570,
+      "chat_id": 100053,
       "fields": {
         "F0": "internal/claude/chat/bucketer.go",
         "F1": "bucketer.go",
@@ -12346,7 +12761,7 @@
       "branch_ref": "B0",
       "file_path": "internal/claude/chat/debug_logger.go",
       "language": "go",
-      "chat_id": 99571,
+      "chat_id": 100054,
       "fields": {
         "F0": "internal/claude/chat/debug_logger.go",
         "F1": "debug_logger.go",
@@ -12382,7 +12797,7 @@
       "branch_ref": "B0",
       "file_path": "internal/claude/chat/event_writer.go",
       "language": "go",
-      "chat_id": 99572,
+      "chat_id": 100055,
       "fields": {
         "F0": "internal/claude/chat/event_writer.go",
         "F1": "event_writer.go",
@@ -12418,7 +12833,7 @@
       "branch_ref": "B0",
       "file_path": "internal/claude/chat/manager.go",
       "language": "go",
-      "chat_id": 99573,
+      "chat_id": 100056,
       "fields": {
         "F0": "internal/claude/chat/manager.go",
         "F1": "manager",
@@ -12457,7 +12872,7 @@
       "branch_ref": "B0",
       "file_path": "internal/claude/chat/metrics.go",
       "language": "go",
-      "chat_id": 99574,
+      "chat_id": 100057,
       "fields": {
         "F0": "internal/claude/chat/metrics.go",
         "F1": "metrics",
@@ -12493,7 +12908,7 @@
       "branch_ref": "B0",
       "file_path": "internal/claude/chat/processor.go",
       "language": "go",
-      "chat_id": 99575,
+      "chat_id": 100058,
       "fields": {
         "F0": "internal/claude/chat/processor.go",
         "F1": "processor",
@@ -12530,7 +12945,7 @@
       "branch_ref": "B0",
       "file_path": "internal/claude/chat/types.go",
       "language": "go",
-      "chat_id": 99576,
+      "chat_id": 100059,
       "fields": {
         "F0": "internal/claude/chat/types.go",
         "F1": "types",
@@ -12565,7 +12980,7 @@
       "branch_ref": "B0",
       "file_path": "internal/claude/models.go",
       "language": "go",
-      "chat_id": 99577,
+      "chat_id": 100060,
       "fields": {
         "F0": "internal/claude/models.go",
         "F1": "models",
@@ -12601,7 +13016,7 @@
       "branch_ref": "B0",
       "file_path": "internal/bridge/formatters/cat.go",
       "language": "go",
-      "chat_id": 99580,
+      "chat_id": 100063,
       "fields": {
         "F0": "internal/bridge/formatters/cat.go",
         "F1": "cat",
@@ -12634,7 +13049,7 @@
       "branch_ref": "B0",
       "file_path": "internal/bridge/formatters/formatter.go",
       "language": "go",
-      "chat_id": 99581,
+      "chat_id": 100064,
       "fields": {
         "F0": "internal/bridge/formatters/formatter.go",
         "F1": "formatter",
@@ -12670,7 +13085,7 @@
       "branch_ref": "B0",
       "file_path": "internal/bridge/bridge.go",
       "language": "go",
-      "chat_id": 99582,
+      "chat_id": 100065,
       "fields": {
         "F0": "internal/bridge/bridge.go",
         "F1": "bridge",
@@ -12707,7 +13122,7 @@
       "branch_ref": "B0",
       "file_path": "internal/app/daemon_unix.go",
       "language": "go",
-      "chat_id": 99584,
+      "chat_id": 100067,
       "fields": {
         "F0": "internal/app/daemon_unix.go",
         "F1": "daemon_unix",
@@ -12740,7 +13155,7 @@
       "branch_ref": "B0",
       "file_path": "internal/app/daemon_windows.go",
       "language": "go",
-      "chat_id": 99585,
+      "chat_id": 100068,
       "fields": {
         "F0": "internal/app/daemon_windows.go",
         "F1": "daemon_windows",
@@ -12770,7 +13185,7 @@
       "branch_ref": "B0",
       "file_path": "internal/app/health.go",
       "language": "go",
-      "chat_id": 99586,
+      "chat_id": 100069,
       "fields": {
         "F0": "internal/app/health.go",
         "F1": "health",
@@ -12804,7 +13219,7 @@
       "branch_ref": "B0",
       "file_path": "internal/app/log_manager.go",
       "language": "go",
-      "chat_id": 99587,
+      "chat_id": 100070,
       "fields": {
         "F0": "internal/app/log_manager.go",
         "F1": "log_manager",
@@ -12837,7 +13252,7 @@
       "branch_ref": "B0",
       "file_path": "internal/app/pid_manager.go",
       "language": "go",
-      "chat_id": 99588,
+      "chat_id": 100071,
       "fields": {
         "F0": "internal/app/pid_manager.go",
         "F1": "pid_manager",
@@ -12872,7 +13287,7 @@
       "branch_ref": "B0",
       "file_path": "internal/app/startup_message.go",
       "language": "go",
-      "chat_id": 99589,
+      "chat_id": 100072,
       "fields": {
         "F0": "internal/app/startup_message.go",
         "F1": "startup_message",
@@ -12908,7 +13323,7 @@
       "branch_ref": "B0",
       "file_path": "internal/app/supervisor.go",
       "language": "go",
-      "chat_id": 99590,
+      "chat_id": 100073,
       "fields": {
         "F0": "internal/app/supervisor.go",
         "F1": "supervisor",
@@ -12944,7 +13359,7 @@
       "branch_ref": "B0",
       "file_path": "internal/app/utils.go",
       "language": "go",
-      "chat_id": 99591,
+      "chat_id": 100074,
       "fields": {
         "F0": "internal/app/utils.go",
         "F1": "utils.go",
@@ -12974,7 +13389,7 @@
       "branch_ref": "B0",
       "file_path": "docs/demo.tape",
       "language": "plaintext",
-      "chat_id": 99594,
+      "chat_id": 100077,
       "fields": {
         "F0": "docs/demo.tape",
         "F1": "demo",
@@ -13008,7 +13423,7 @@
       "branch_ref": "B0",
       "file_path": "cmd/gsc/main.go",
       "language": "go",
-      "chat_id": 99597,
+      "chat_id": 100080,
       "fields": {
         "F0": "cmd/gsc/main.go",
         "F1": "main",
@@ -13038,7 +13453,7 @@
       "branch_ref": "B0",
       "file_path": ".gitsense/lessons/records.jsonl",
       "language": "plaintext",
-      "chat_id": 99602,
+      "chat_id": 100085,
       "fields": {
         "F0": ".gitsense/lessons/records.jsonl",
         "F1": "records.jsonl",
@@ -13073,7 +13488,7 @@
       "branch_ref": "B0",
       "file_path": ".gitsense/.gitignore",
       "language": "plaintext",
-      "chat_id": 99603,
+      "chat_id": 100086,
       "fields": {
         "F0": ".gitsense/.gitignore",
         "F1": ".gitignore",
@@ -13105,7 +13520,7 @@
       "branch_ref": "B0",
       "file_path": ".github/workflows/release.yml",
       "language": "yaml",
-      "chat_id": 99606,
+      "chat_id": 100089,
       "fields": {
         "F0": ".github/workflows/release.yml",
         "F1": "release",
@@ -13141,7 +13556,7 @@
       "branch_ref": "B0",
       "file_path": ".gitignore",
       "language": "plaintext",
-      "chat_id": 99607,
+      "chat_id": 100090,
       "fields": {
         "F0": ".gitignore",
         "F1": ".gitignore",
@@ -13170,7 +13585,7 @@
       "branch_ref": "B0",
       "file_path": "ARCHITECTURE.md",
       "language": "markdown",
-      "chat_id": 99608,
+      "chat_id": 100091,
       "fields": {
         "F0": "ARCHITECTURE.md",
         "F1": "ARCHITECTURE",
@@ -13210,7 +13625,7 @@
       "branch_ref": "B0",
       "file_path": "DEBT.md",
       "language": "markdown",
-      "chat_id": 99609,
+      "chat_id": 100092,
       "fields": {
         "F0": "DEBT.md",
         "F1": "DEBT",
@@ -13246,7 +13661,7 @@
       "branch_ref": "B0",
       "file_path": "go.mod",
       "language": "plaintext",
-      "chat_id": 99610,
+      "chat_id": 100093,
       "fields": {
         "F0": "go.mod",
         "F1": "go.mod",
@@ -13277,7 +13692,7 @@
       "branch_ref": "B0",
       "file_path": "go.sum",
       "language": "plaintext",
-      "chat_id": 99611,
+      "chat_id": 100094,
       "fields": {
         "F0": "go.sum",
         "F1": "go.sum",
@@ -13304,7 +13719,7 @@
       "branch_ref": "B0",
       "file_path": "LICENSE",
       "language": "plaintext",
-      "chat_id": 99612,
+      "chat_id": 100095,
       "fields": {
         "F0": "LICENSE",
         "F1": "LICENSE",
@@ -13340,7 +13755,7 @@
       "branch_ref": "B0",
       "file_path": "Makefile",
       "language": "plaintext",
-      "chat_id": 99613,
+      "chat_id": 100096,
       "fields": {
         "F0": "Makefile",
         "F1": "Makefile",
@@ -13378,7 +13793,7 @@
       "branch_ref": "B0",
       "file_path": "NOTICE",
       "language": "plaintext",
-      "chat_id": 99614,
+      "chat_id": 100097,
       "fields": {
         "F0": "NOTICE",
         "F1": "NOTICE",
@@ -13414,7 +13829,7 @@
       "branch_ref": "B0",
       "file_path": "README.md",
       "language": "markdown",
-      "chat_id": 99615,
+      "chat_id": 100098,
       "fields": {
         "F0": "README.md",
         "F1": "README",
