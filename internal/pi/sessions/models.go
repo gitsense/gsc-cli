@@ -145,3 +145,27 @@ type ListResult struct {
 	MessageCount  int    `json:"message_count"`
 	LastUserText  string `json:"last_user_text,omitempty"`
 }
+
+// ShowOptions configures session detail view.
+type ShowOptions struct {
+	DBPath    string
+	SessionID string
+}
+
+// ShowResult represents detailed session information.
+type ShowResult struct {
+	SessionID     string `json:"session_id"`
+	Name          string `json:"name,omitempty"`
+	CWD           string `json:"cwd"`
+	RepoRoot      string `json:"repo_root,omitempty"`
+	Provider      string `json:"provider,omitempty"`
+	Model         string `json:"model,omitempty"`
+	CreatedAt     string `json:"created_at"`
+	LastMessageAt string `json:"last_message_at,omitempty"`
+	MessageCount  int    `json:"message_count"`
+	ToolCallCount int    `json:"tool_call_count"`
+	FileRefCount  int    `json:"file_ref_count"`
+	FirstUserText string `json:"first_user_text,omitempty"`
+	LastUserText  string `json:"last_user_text,omitempty"`
+	LastText      string `json:"last_text,omitempty"`
+}

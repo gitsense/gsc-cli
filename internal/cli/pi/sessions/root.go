@@ -33,6 +33,7 @@ func NewCmd() *cobra.Command {
 	cmd.AddCommand(syncCmd())
 	cmd.AddCommand(queryCmd())
 	cmd.AddCommand(listCmd())
+	cmd.AddCommand(showCmd())
 	cmd.AddCommand(verifyCmd())
 	return cmd
 }

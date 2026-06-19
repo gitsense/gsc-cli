@@ -109,11 +109,37 @@ func formatListDate(ts string) string {
 	if ts == "" {
 		return "?"
 	}
+	return relativeTimeCompact(ts)
+}
+
+// relativeTimeCompact returns a compact relative time string.
+func relativeTimeCompact(ts string) string {
+	if ts == "" {
+		return "?"
+	}
 	t, err := time.Parse(time.RFC3339, ts)
 	if err != nil {
 		return "?"
 	}
-	return t.Local().Format("Jan 02 15:04")
+	d := time.Since(t)
+	switch {
+	case d < time.Minute:
+		return "just now"
+	case d < time.Hour:
+		m := int(d.Minutes())
+		return fmt.Sprintf("%dm ago", m)
+	case d < 24*time.Hour:
+		h := int(d.Hours())
+		return fmt.Sprintf("%dh ago", h)
+	case d < 7*24*time.Hour:
+		days := int(d.Hours() / 24)
+		return fmt.Sprintf("%dd ago", days)
+	case d < 30*24*time.Hour:
+		weeks := int(d.Hours() / 24 / 7)
+		return fmt.Sprintf("%dw ago", weeks)
+	default:
+		return t.Local().Format("Jan 02")
+	}
 }
 
 func formatListPath(repoRoot, cwd string) string {

@@ -624,6 +624,57 @@ func List(ctx context.Context, options ListOptions) ([]ListResult, error) {
 	return results, rows.Err()
 }
 
+// Show returns detailed information about a specific session.
+func Show(ctx context.Context, dbPath string, sessionID string) (*ShowResult, error) {
+	if dbPath == "" {
+		return nil, fmt.Errorf("db path is required")
+	}
+	database, err := openQueryMirror(dbPath)
+	if err != nil {
+		return nil, err
+	}
+	defer db.CloseDB(database)
+
+	query := `
+		SELECT c.uuid, c.name, c.cwd, c.repo_root, c.provider, c.model,
+		       c.created_at, c.last_message_at, c.message_count,
+		       c.tool_call_count, c.file_ref_count,
+		       c.first_user_text, c.last_user_text, c.last_text
+		FROM pi_chats c
+		WHERE c.uuid = ? AND c.file_deleted_at IS NULL`
+
+	var r ShowResult
+	var name, cwd, repoRoot, provider, model sql.NullString
+	var createdAt, lastMessageAt sql.NullString
+	var firstUserText, lastUserText, lastText sql.NullString
+
+	err = database.QueryRowContext(ctx, query, sessionID).Scan(
+		&r.SessionID, &name, &cwd, &repoRoot, &provider, &model,
+		&createdAt, &lastMessageAt, &r.MessageCount,
+		&r.ToolCallCount, &r.FileRefCount,
+		&firstUserText, &lastUserText, &lastText,
+	)
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("session not found: %s", sessionID)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	r.Name = name.String
+	r.CWD = cwd.String
+	r.RepoRoot = repoRoot.String
+	r.Provider = provider.String
+	r.Model = model.String
+	r.CreatedAt = createdAt.String
+	r.LastMessageAt = lastMessageAt.String
+	r.FirstUserText = firstUserText.String
+	r.LastUserText = lastUserText.String
+	r.LastText = lastText.String
+
+	return &r, nil
+}
+
 func appendSessionFilters(query string, args []interface{}, options QueryOptions) (string, []interface{}) {
 	if options.SessionID != "" {
 		query += " AND c.uuid = ?"
