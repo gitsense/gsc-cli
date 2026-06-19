@@ -2,13 +2,12 @@
  * Component: Pi Sessions Sync Command
  * Block-UUID: c18409b8-dda6-4426-8b61-03eb43d1a1ce
  * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: Implements one-shot Pi session JSONL import with controlled sessions-dir and disposable database support.
+ * Version: 1.1.0
+ * Description: Defines shared sync flags, preserves one-shot import, and registers continuous sync lifecycle commands.
  * Language: Go
  * Created-at: 2026-06-18T00:00:00Z
- * Authors: Codex GPT-5 (v1.0.0)
+ * Authors: Codex GPT-5 (v1.0.0, v1.1.0)
  */
-
 
 package sessions
 
@@ -27,8 +26,11 @@ import (
 )
 
 func syncCmd() *cobra.Command {
-	var sessionsDir string
-	var dbPath string
+	return syncCmdWithDependencies(defaultSyncStartDependencies())
+}
+
+func syncCmdWithDependencies(startDependencies syncStartDependencies) *cobra.Command {
+	config := &syncConfig{}
 	var reset bool
 	var yes bool
 	var format string
@@ -38,10 +40,10 @@ func syncCmd() *cobra.Command {
 		Short:        "One-shot import Pi session JSONL into the local mirror",
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if sessionsDir == "" {
-				return fmt.Errorf("--sessions-dir is required for phase 1")
+			if config.sessionsDir == "" {
+				return fmt.Errorf("--sessions-dir is required for one-shot sync")
 			}
-			resolvedDB, err := resolvePiSessionsDBPath(dbPath)
+			resolvedDB, err := resolvePiSessionsDBPath(config.dbPath)
 			if err != nil {
 				return err
 			}
@@ -60,7 +62,7 @@ func syncCmd() *cobra.Command {
 				}
 			}
 			result, err := pisessions.Sync(cmd.Context(), pisessions.SyncOptions{
-				SessionsDir: sessionsDir,
+				SessionsDir: config.sessionsDir,
 				DBPath:      resolvedDB,
 			})
 			if err != nil {
@@ -69,12 +71,18 @@ func syncCmd() *cobra.Command {
 			return writeSyncResult(result, format)
 		},
 	}
-	cmd.Flags().StringVar(&sessionsDir, "sessions-dir", "", "Root directory containing Pi session JSONL files")
-	cmd.Flags().StringVar(&dbPath, "db", "", "SQLite mirror path (default: GSC_HOME/data/pi-sessions.sqlite3)")
+	cmd.PersistentFlags().StringVar(&config.sessionsDir, "sessions-dir", "", "Root directory containing Pi session JSONL files")
+	cmd.PersistentFlags().StringVar(&config.dbPath, "db", "", "SQLite mirror path (default: GSC_HOME/data/pi-sessions.sqlite3)")
 	cmd.Flags().BoolVar(&reset, "reset", false, "Delete and recreate the mirror database before syncing")
 	cmd.Flags().BoolVar(&yes, "yes", false, "Confirm destructive operations without prompting")
 	cmd.Flags().StringVarP(&format, "format", "o", "human", "Output format: human, json")
+	cmd.AddCommand(syncStartCmd(config, startDependencies))
 	return cmd
+}
+
+type syncConfig struct {
+	sessionsDir string
+	dbPath      string
 }
 
 func resolvePiSessionsDBPath(value string) (string, error) {
