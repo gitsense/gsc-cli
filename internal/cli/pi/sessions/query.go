@@ -43,10 +43,20 @@ func queryCmd() *cobra.Command {
 	var format string
 
 	cmd := &cobra.Command{
-		Use:          "query",
+		Use:          "query [search]",
 		Short:        "Query the Pi sessions mirror",
 		SilenceUsage: true,
+		Args:         cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// A positional argument is the full-text search term, mirroring
+			// `gsc rg <pattern>`. Quote multi-word terms (e.g. "session sync").
+			if len(args) == 1 {
+				if options.Text != "" {
+					return fmt.Errorf("provide the search term either positionally or with --message/-q, not both")
+				}
+				options.Text = args[0]
+			}
+
 			resolvedDB, err := resolvePiSessionsDBPath(dbPath)
 			if err != nil {
 				return err

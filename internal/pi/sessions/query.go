@@ -521,7 +521,7 @@ func querySessionsWithMatches(ctx context.Context, database *sql.DB, options Que
 				JOIN pi_messages m ON m.id = fts.rowid
 				WHERE m.chat_id = ? AND fts MATCH ?`
 			var count int
-			if err := database.QueryRowContext(ctx, countQuery, sr.id, options.Text).Scan(&count); err != nil {
+			if err := database.QueryRowContext(ctx, countQuery, sr.id, ftsPhrase(options.Text)).Scan(&count); err != nil {
 				return nil, err
 			}
 			sr.r.MatchedMessageCount = count
@@ -934,7 +934,7 @@ func queryText(ctx context.Context, database *sql.DB, options QueryOptions) ([]Q
 		JOIN pi_messages m ON m.id = fts_pi_messages.rowid
 		JOIN pi_chats c ON c.id = m.chat_id
 		WHERE c.file_deleted_at IS NULL AND fts_pi_messages MATCH ?`
-	args := []interface{}{options.Text}
+	args := []interface{}{ftsPhrase(options.Text)}
 	query, args = appendCommonFilters(query, args, options, "c", "m")
 	query += " ORDER BY m.timestamp DESC LIMIT ?"
 	args = append(args, limitOrDefault(options.Limit))
@@ -1127,6 +1127,15 @@ func appendCommonFilters(query string, args []interface{}, options QueryOptions,
 		args = append(args, options.Until)
 	}
 	return query, args
+}
+
+// ftsPhrase wraps a user search term as an FTS5 string literal so that
+// characters FTS5 treats as operators (".", "-", "/", etc.) are matched
+// literally. The result is a phrase query: tokens must appear in order,
+// which gives intuitive "search for this text" behavior similar to rg.
+// Embedded double quotes are escaped by doubling per FTS5 rules.
+func ftsPhrase(term string) string {
+	return `"` + strings.ReplaceAll(term, `"`, `""`) + `"`
 }
 
 func limitOrDefault(limit int) int {
