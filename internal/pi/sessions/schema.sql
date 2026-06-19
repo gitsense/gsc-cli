@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS pi_chats (
     model TEXT,
     first_user_text TEXT,
     last_user_text TEXT,
+    last_text TEXT,
     message_count INTEGER NOT NULL DEFAULT 0,
     tool_call_count INTEGER NOT NULL DEFAULT 0,
     file_ref_count INTEGER NOT NULL DEFAULT 0,

@@ -2,13 +2,12 @@
  * Component: Pi Sessions Importer
  * Block-UUID: 96bb35de-5c03-4ced-9ec7-18df3db71aec
  * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: Imports Pi session JSONL files into the phase-one SQLite mirror with derived tool and file indexes.
+ * Version: 1.1.0
+ * Description: Reconciles Pi session JSONL files into SQLite using atomic append-or-rebuild ingestion.
  * Language: Go
  * Created-at: 2026-06-18T00:00:00Z
- * Authors: Codex GPT-5 (v1.0.0)
+ * Authors: Codex GPT-5 (v1.0.0, v1.1.0)
  */
-
 
 package sessions
 
@@ -56,10 +55,15 @@ func Sync(ctx context.Context, options SyncOptions) (SyncResult, error) {
 			result.Errors = append(result.Errors, SyncError{Path: path, Error: err.Error()})
 			continue
 		}
-		result.SessionsImported++
+		if imported.sessionChanged {
+			result.SessionsImported++
+		}
 		result.MessagesImported += imported.messages
 		result.ToolCallsImported += imported.toolCalls
 		result.FileRefsImported += imported.fileRefs
+	}
+	if err := reconcileMissingSessions(ctx, database, sessionsDir, files); err != nil {
+		return result, err
 	}
 	if err := resolveParentChats(ctx, database); err != nil {
 		return result, err
@@ -68,9 +72,10 @@ func Sync(ctx context.Context, options SyncOptions) (SyncResult, error) {
 }
 
 type importCounts struct {
-	messages  int
-	toolCalls int
-	fileRefs  int
+	sessionChanged bool
+	messages       int
+	toolCalls      int
+	fileRefs       int
 }
 
 type messageInsert struct {
@@ -84,6 +89,18 @@ type toolResultInfo struct {
 	entryID   string
 	isError   bool
 	text      string
+}
+
+type chatSyncState struct {
+	id               int64
+	sessionFile      string
+	syncedSeq        int
+	syncedByteOffset int64
+	fileSize         int64
+	fileMtimeMS      int64
+	headerHash       string
+	contentHash      string
+	fileDeleted      bool
 }
 
 func discoverSessionFiles(root string) ([]string, error) {
@@ -107,15 +124,77 @@ func discoverSessionFiles(root string) ([]string, error) {
 }
 
 func importSessionFile(ctx context.Context, database *sql.DB, path string) (importCounts, error) {
-	parsed, err := parseSessionFile(path)
-	if err != nil {
-		return importCounts{}, err
-	}
 	info, err := os.Stat(path)
 	if err != nil {
 		return importCounts{}, err
 	}
 	sessionFile, err := filepath.Abs(path)
+	if err != nil {
+		return importCounts{}, err
+	}
+	header, headerBytes, err := parseSessionHeader(path)
+	if err != nil {
+		return importCounts{}, err
+	}
+	state, found, err := loadChatSyncState(ctx, database, header.UUID, sessionFile)
+	if err != nil {
+		return importCounts{}, err
+	}
+	if found && !state.fileDeleted && state.sessionFile != sessionFile {
+		if err := reassociateMovedSession(ctx, database, state, sessionFile); err != nil {
+			return importCounts{}, err
+		}
+	}
+	if found && !state.fileDeleted && state.headerHash == hashText(header.RawLine) && state.syncedByteOffset >= headerBytes && state.syncedByteOffset <= info.Size() {
+		anchorOK, err := validateTailAnchor(ctx, database, path, state)
+		if err != nil {
+			return importCounts{}, err
+		}
+		if anchorOK {
+			if state.syncedByteOffset < info.Size() {
+				entries, newOffset, partial, err := parseSessionTail(path, state.syncedByteOffset, state.syncedSeq+1)
+				if err != nil {
+					return importCounts{}, err
+				}
+				if len(entries) == 0 {
+					if err := updateIncompleteTailState(ctx, database, state.id, info, partial); err != nil {
+						return importCounts{}, err
+					}
+					return importCounts{}, nil
+				}
+				return appendSessionEntries(ctx, database, state, header, sessionFile, info, entries, newOffset, partial)
+			}
+			if info.Size() == state.fileSize {
+				if info.ModTime().UnixMilli() == state.fileMtimeMS {
+					return importCounts{}, nil
+				}
+				content, err := os.ReadFile(path)
+				if err != nil {
+					return importCounts{}, err
+				}
+				if hashText(string(content)) == state.contentHash {
+					if err := updateIncompleteTailState(ctx, database, state.id, info, false); err != nil {
+						return importCounts{}, err
+					}
+					return importCounts{}, nil
+				}
+			}
+		}
+	}
+	counts, err := rebuildSessionFile(ctx, database, path, sessionFile, info)
+	if err != nil {
+		return importCounts{}, err
+	}
+	if found && state.fileDeleted {
+		if err := recordRestoredSession(ctx, database, state, sessionFile, info); err != nil {
+			return importCounts{}, err
+		}
+	}
+	return counts, nil
+}
+
+func rebuildSessionFile(ctx context.Context, database *sql.DB, path string, sessionFile string, info os.FileInfo) (importCounts, error) {
+	parsed, err := parseSessionFile(path)
 	if err != nil {
 		return importCounts{}, err
 	}
@@ -147,13 +226,73 @@ func importSessionFile(ctx context.Context, database *sql.DB, path string) (impo
 	if err != nil {
 		return importCounts{}, err
 	}
-	if err := updateChatDerivedMetadata(ctx, tx, chatID, parsed.entries, counts, now); err != nil {
+	if err := refreshChatDerivedMetadata(ctx, tx, chatID, parsed.entries, now); err != nil {
 		return importCounts{}, err
 	}
 	if err := tx.Commit(); err != nil {
 		return importCounts{}, err
 	}
-	return importCounts{messages: len(messages), toolCalls: counts.toolCalls, fileRefs: counts.fileRefs}, nil
+	return importCounts{sessionChanged: true, messages: len(messages), toolCalls: counts.toolCalls, fileRefs: counts.fileRefs}, nil
+}
+
+func loadChatSyncState(ctx context.Context, database *sql.DB, uuid string, sessionFile string) (chatSyncState, bool, error) {
+	var state chatSyncState
+	var syncedSeq, syncedOffset, fileSize, fileMtime sql.NullInt64
+	var headerHash, contentHash, fileDeletedAt sql.NullString
+	err := database.QueryRowContext(ctx, `
+		SELECT id, session_file, synced_seq, synced_byte_offset, file_size, file_mtime_ms,
+			header_hash, content_hash, file_deleted_at
+		FROM pi_chats WHERE uuid = ? OR session_file = ?
+		ORDER BY CASE WHEN uuid = ? THEN 0 ELSE 1 END, id LIMIT 1`, uuid, sessionFile, uuid).Scan(
+		&state.id, &state.sessionFile, &syncedSeq, &syncedOffset, &fileSize, &fileMtime,
+		&headerHash, &contentHash, &fileDeletedAt,
+	)
+	if err == sql.ErrNoRows {
+		return chatSyncState{}, false, nil
+	}
+	if err != nil {
+		return chatSyncState{}, false, err
+	}
+	state.syncedSeq = int(syncedSeq.Int64)
+	state.syncedByteOffset = syncedOffset.Int64
+	state.fileSize = fileSize.Int64
+	state.fileMtimeMS = fileMtime.Int64
+	state.headerHash = headerHash.String
+	state.contentHash = contentHash.String
+	state.fileDeleted = fileDeletedAt.Valid
+	return state, true, nil
+}
+
+func validateTailAnchor(ctx context.Context, database *sql.DB, path string, state chatSyncState) (bool, error) {
+	if state.syncedSeq < 0 {
+		return true, nil
+	}
+	var rawLine string
+	var rawHash string
+	err := database.QueryRowContext(ctx, `
+		SELECT raw_line, raw_hash FROM pi_messages
+		WHERE chat_id = ? AND seq = ?`, state.id, state.syncedSeq).Scan(&rawLine, &rawHash)
+	if err == sql.ErrNoRows {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	anchorSize := int64(len(rawLine) + 1)
+	anchorStart := state.syncedByteOffset - anchorSize
+	if anchorStart < 0 {
+		return false, nil
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		return false, err
+	}
+	defer file.Close()
+	anchor := make([]byte, anchorSize)
+	if _, err := file.ReadAt(anchor, anchorStart); err != nil {
+		return false, nil
+	}
+	return string(anchor) == rawLine+"\n" && hashText(rawLine) == rawHash, nil
 }
 
 func hashFileContent(header string, entries []parsedEntry) string {
@@ -163,6 +302,101 @@ func hashFileContent(header string, entries []parsedEntry) string {
 		lines = append(lines, entry.RawLine)
 	}
 	return hashText(strings.Join(lines, "\n") + "\n")
+}
+
+func appendSessionEntries(ctx context.Context, database *sql.DB, state chatSyncState, header sessionHeader, sessionFile string, info os.FileInfo, entries []parsedEntry, newOffset int64, partial bool) (importCounts, error) {
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	repoRoot := findRepoRoot(header.CWD)
+	tx, err := database.BeginTx(ctx, nil)
+	if err != nil {
+		return importCounts{}, err
+	}
+	defer tx.Rollback()
+
+	messages, results, err := insertMessages(ctx, tx, state.id, entries, now)
+	if err != nil {
+		return importCounts{}, err
+	}
+	if err := applyToolResults(ctx, tx, state.id, results); err != nil {
+		return importCounts{}, err
+	}
+	counts, err := insertDerivedRows(ctx, tx, state.id, header.CWD, repoRoot, messages, results)
+	if err != nil {
+		return importCounts{}, err
+	}
+	if err := refreshChatDerivedMetadata(ctx, tx, state.id, entries, now); err != nil {
+		return importCounts{}, err
+	}
+	status := "idle"
+	if partial {
+		status = "pending_partial"
+	}
+	lastSeq := entries[len(entries)-1].Seq
+	_, err = tx.ExecContext(ctx, `
+		UPDATE pi_chats SET
+				uuid = ?, version = ?, cwd = ?, session_file = ?, parent_session_file = ?,
+			parent_chat_id = NULL, repo_root = ?, file_size = ?, file_mtime_ms = ?,
+			header_hash = ?, file_deleted_at = NULL, synced_seq = ?, synced_byte_offset = ?,
+			last_synced_at = ?, sync_status = ?, sync_error = NULL,
+			last_ingest_started_at = ?, last_ingest_completed_at = ?, raw_header = ?, updated_at = ?
+		WHERE id = ?`,
+		header.UUID,
+		header.Version,
+		nullString(header.CWD),
+		sessionFile,
+		nullString(header.ParentSession),
+		nullString(repoRoot),
+		info.Size(),
+		info.ModTime().UnixMilli(),
+		hashText(header.RawLine),
+		lastSeq,
+		newOffset,
+		now,
+		status,
+		now,
+		now,
+		header.RawLine,
+		now,
+		state.id,
+	)
+	if err != nil {
+		return importCounts{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return importCounts{}, err
+	}
+	return importCounts{sessionChanged: true, messages: len(messages), toolCalls: counts.toolCalls, fileRefs: counts.fileRefs}, nil
+}
+
+func applyToolResults(ctx context.Context, tx *sql.Tx, chatID int64, results map[string]toolResultInfo) error {
+	for toolCallID, result := range results {
+		isError := 0
+		if result.isError {
+			isError = 1
+		}
+		if _, err := tx.ExecContext(ctx, `
+			UPDATE pi_tool_calls SET result_message_id = ?, result_entry_id = ?, is_error = ?, result_text = ?
+			WHERE chat_id = ? AND tool_call_id = ?`,
+			result.messageID, result.entryID, isError, nullString(result.text), chatID, toolCallID,
+		); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func updateIncompleteTailState(ctx context.Context, database *sql.DB, chatID int64, info os.FileInfo, partial bool) error {
+	status := "idle"
+	if partial {
+		status = "pending_partial"
+	}
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	_, err := database.ExecContext(ctx, `
+		UPDATE pi_chats SET file_size = ?, file_mtime_ms = ?, sync_status = ?, sync_error = NULL,
+			last_synced_at = ?, updated_at = ? WHERE id = ?`,
+		info.Size(), info.ModTime().UnixMilli(), status, now, now, chatID,
+	)
+	return err
 }
 
 func upsertChat(ctx context.Context, tx *sql.Tx, parsed parsedSession, sessionFile string, repoRoot string, info os.FileInfo, contentHash string, now string) (int64, int64, error) {
@@ -176,6 +410,10 @@ func upsertChat(ctx context.Context, tx *sql.Tx, parsed parsedSession, sessionFi
 	if parsed.header.ParentSession != "" {
 		parentSession = sql.NullString{String: parsed.header.ParentSession, Valid: true}
 	}
+	status := "idle"
+	if parsed.hasPartialTail {
+		status = "pending_partial"
+	}
 
 	if existingID == 0 {
 		result, err := tx.ExecContext(ctx, `
@@ -184,7 +422,7 @@ func upsertChat(ctx context.Context, tx *sql.Tx, parsed parsedSession, sessionFi
 				file_mtime_ms, header_hash, content_hash, synced_seq, synced_byte_offset,
 				last_synced_at, sync_status, last_ingest_started_at, last_ingest_completed_at,
 				raw_header, created_at, updated_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'idle', ?, ?, ?, ?, ?)`,
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			parsed.header.UUID,
 			parsed.header.Version,
 			nullString(parsed.header.CWD),
@@ -196,8 +434,9 @@ func upsertChat(ctx context.Context, tx *sql.Tx, parsed parsedSession, sessionFi
 			hashText(parsed.header.RawLine),
 			contentHash,
 			len(parsed.entries)-1,
-			info.Size(),
+			parsed.syncedByteOffset,
 			now,
+			status,
 			now,
 			now,
 			parsed.header.RawLine,
@@ -213,11 +452,11 @@ func upsertChat(ctx context.Context, tx *sql.Tx, parsed parsedSession, sessionFi
 
 	_, err = tx.ExecContext(ctx, `
 		UPDATE pi_chats SET
-			uuid = ?, version = ?, cwd = ?, session_file = ?, parent_session_file = ?,
+				uuid = ?, version = ?, cwd = ?, name = NULL, session_file = ?, parent_session_file = ?,
 			parent_chat_id = NULL, repo_root = ?, file_size = ?, file_mtime_ms = ?,
 			header_hash = ?, content_hash = ?, file_deleted_at = NULL,
-			synced_seq = ?, synced_byte_offset = ?, last_synced_at = ?,
-			sync_status = 'idle', sync_error = NULL, last_ingest_started_at = ?,
+		synced_seq = ?, synced_byte_offset = ?, last_synced_at = ?,
+			sync_status = ?, sync_error = NULL, last_ingest_started_at = ?,
 			last_ingest_completed_at = ?, raw_header = ?, created_at = ?, updated_at = ?
 		WHERE id = ?`,
 		parsed.header.UUID,
@@ -231,8 +470,9 @@ func upsertChat(ctx context.Context, tx *sql.Tx, parsed parsedSession, sessionFi
 		hashText(parsed.header.RawLine),
 		contentHash,
 		len(parsed.entries)-1,
-		info.Size(),
+		parsed.syncedByteOffset,
 		now,
+		status,
 		now,
 		now,
 		parsed.header.RawLine,
@@ -480,57 +720,43 @@ func insertFileRef(ctx context.Context, tx *sql.Tx, seen map[string]struct{}, ch
 	return err == nil, err
 }
 
-func updateChatDerivedMetadata(ctx context.Context, tx *sql.Tx, chatID int64, entries []parsedEntry, counts derivedCounts, now string) error {
+func refreshChatDerivedMetadata(ctx context.Context, tx *sql.Tx, chatID int64, entries []parsedEntry, now string) error {
 	var name string
-	var provider string
-	var model string
-	var firstUser string
-	var lastUser string
-	var currentLeaf string
-	var lastMessageAt string
-
+	nameSet := 0
 	for _, entry := range entries {
-		currentLeaf = entry.ID
-		lastMessageAt = entry.Timestamp
 		if entry.Type == "session_info" && entry.Name != "" {
 			name = entry.Name
-		}
-		if entry.Message == nil {
-			continue
-		}
-		if entry.Message.Role == "assistant" {
-			if entry.Message.Provider != "" {
-				provider = entry.Message.Provider
-			}
-			if entry.Message.Model != "" {
-				model = entry.Message.Model
-			}
-		}
-		if entry.Message.Role == "user" {
-			text := flattenMessageText(entry.Message)
-			if firstUser == "" {
-				firstUser = text
-			}
-			lastUser = text
+			nameSet = 1
 		}
 	}
 
 	_, err := tx.ExecContext(ctx, `
 		UPDATE pi_chats SET
-			name = ?, current_leaf_id = ?, provider = ?, model = ?,
-			first_user_text = ?, last_user_text = ?, message_count = ?,
-			tool_call_count = ?, file_ref_count = ?, last_message_at = ?, updated_at = ?
+			name = CASE WHEN ? = 1 THEN ? ELSE name END,
+			current_leaf_id = (SELECT entry_id FROM pi_messages WHERE chat_id = ? ORDER BY seq DESC LIMIT 1),
+			provider = (SELECT provider FROM pi_messages WHERE chat_id = ? AND role = 'assistant' AND provider IS NOT NULL ORDER BY seq DESC LIMIT 1),
+			model = (SELECT model FROM pi_messages WHERE chat_id = ? AND role = 'assistant' AND model IS NOT NULL ORDER BY seq DESC LIMIT 1),
+			first_user_text = (SELECT text FROM pi_messages WHERE chat_id = ? AND role = 'user' ORDER BY seq ASC LIMIT 1),
+			last_user_text = (SELECT text FROM pi_messages WHERE chat_id = ? AND role = 'user' ORDER BY seq DESC LIMIT 1),
+			last_text = (SELECT text FROM pi_messages WHERE chat_id = ? ORDER BY seq DESC LIMIT 1),
+			message_count = (SELECT COUNT(*) FROM pi_messages WHERE chat_id = ?),
+			tool_call_count = (SELECT COUNT(*) FROM pi_tool_calls WHERE chat_id = ?),
+			file_ref_count = (SELECT COUNT(*) FROM pi_file_refs WHERE chat_id = ?),
+			last_message_at = (SELECT timestamp FROM pi_messages WHERE chat_id = ? ORDER BY seq DESC LIMIT 1),
+			updated_at = ?
 		WHERE id = ?`,
+		nameSet,
 		nullString(name),
-		nullString(currentLeaf),
-		nullString(provider),
-		nullString(model),
-		nullString(firstUser),
-		nullString(lastUser),
-		len(entries),
-		counts.toolCalls,
-		counts.fileRefs,
-		nullString(lastMessageAt),
+		chatID,
+		chatID,
+		chatID,
+		chatID,
+		chatID,
+		chatID,
+		chatID,
+		chatID,
+		chatID,
+		chatID,
 		now,
 		chatID,
 	)
@@ -538,17 +764,66 @@ func updateChatDerivedMetadata(ctx context.Context, tx *sql.Tx, chatID int64, en
 }
 
 func resolveParentChats(ctx context.Context, database *sql.DB) error {
-	_, err := database.ExecContext(ctx, `
-		UPDATE pi_chats
-		SET parent_chat_id = (
-			SELECT parent.id
-			FROM pi_chats parent
-			WHERE parent.session_file = pi_chats.parent_session_file
-			   OR parent.uuid = substr(pi_chats.parent_session_file, instr(pi_chats.parent_session_file, '_') + 1, 36)
-			LIMIT 1
-		)
-		WHERE parent_session_file IS NOT NULL AND parent_session_file != ''`)
-	return err
+	type chatIdentity struct {
+		id          int64
+		uuid        string
+		sessionFile string
+		parentFile  sql.NullString
+	}
+	rows, err := database.QueryContext(ctx, `SELECT id, uuid, session_file, parent_session_file FROM pi_chats`)
+	if err != nil {
+		return err
+	}
+	var chats []chatIdentity
+	byPath := make(map[string]int64)
+	byUUID := make(map[string]int64)
+	for rows.Next() {
+		var chat chatIdentity
+		if err := rows.Scan(&chat.id, &chat.uuid, &chat.sessionFile, &chat.parentFile); err != nil {
+			rows.Close()
+			return err
+		}
+		chats = append(chats, chat)
+		byPath[chat.sessionFile] = chat.id
+		byUUID[chat.uuid] = chat.id
+	}
+	if err := rows.Close(); err != nil {
+		return err
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	tx, err := database.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	for _, chat := range chats {
+		if !chat.parentFile.Valid || chat.parentFile.String == "" {
+			continue
+		}
+		var parentID sql.NullInt64
+		if id, ok := byPath[chat.parentFile.String]; ok {
+			parentID = sql.NullInt64{Int64: id, Valid: true}
+		} else if uuid := sessionUUIDFromPath(chat.parentFile.String); uuid != "" {
+			if id, ok := byUUID[uuid]; ok {
+				parentID = sql.NullInt64{Int64: id, Valid: true}
+			}
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE pi_chats SET parent_chat_id = ? WHERE id = ?`, parentID, chat.id); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+func sessionUUIDFromPath(path string) string {
+	name := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
+	separator := strings.LastIndex(name, "_")
+	if separator < 0 || separator == len(name)-1 {
+		return ""
+	}
+	return name[separator+1:]
 }
 
 func nullString(value string) sql.NullString {

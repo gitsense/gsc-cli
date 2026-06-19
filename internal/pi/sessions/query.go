@@ -559,7 +559,7 @@ func List(ctx context.Context, options ListOptions) ([]ListResult, error) {
 
 	query := `
 		SELECT c.uuid, c.cwd, c.repo_root, c.created_at, c.last_message_at,
-		       c.message_count, c.last_user_text
+		       c.message_count, c.last_text
 		FROM pi_chats c
 		WHERE c.file_deleted_at IS NULL`
 	var args []interface{}

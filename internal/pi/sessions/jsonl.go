@@ -2,11 +2,11 @@
  * Component: Pi Session JSONL Parser
  * Block-UUID: 0f9da76e-5b96-4339-89d6-4d6a20e86254
  * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: Parses Pi session JSONL files into lossless raw lines and extracted phase-one import records.
+ * Version: 1.1.0
+ * Description: Parses complete Pi session JSONL lines losslessly from the file start or a committed byte offset.
  * Language: Go
  * Created-at: 2026-06-18T00:00:00Z
- * Authors: Codex GPT-5 (v1.0.0)
+ * Authors: Codex GPT-5 (v1.0.0, v1.1.0)
  */
 
 
@@ -18,13 +18,16 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 )
 
 type parsedSession struct {
-	header  sessionHeader
-	entries []parsedEntry
+	header           sessionHeader
+	entries          []parsedEntry
+	syncedByteOffset int64
+	hasPartialTail   bool
 }
 
 type sessionHeader struct {
@@ -86,17 +89,14 @@ func parseSessionFile(path string) (parsedSession, error) {
 	}
 	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
-	scanner.Buffer(make([]byte, 0, 1024*1024), 64*1024*1024)
-
-	if !scanner.Scan() {
-		if err := scanner.Err(); err != nil {
-			return parsedSession{}, err
-		}
-		return parsedSession{}, fmt.Errorf("empty session file")
+	reader := bufio.NewReaderSize(file, 1024*1024)
+	headerLine, headerBytes, complete, err := readCompleteLine(reader)
+	if err != nil {
+		return parsedSession{}, err
 	}
-
-	headerLine := scanner.Text()
+	if !complete {
+		return parsedSession{}, fmt.Errorf("incomplete session header")
+	}
 	var header sessionHeader
 	if err := json.Unmarshal([]byte(headerLine), &header); err != nil {
 		return parsedSession{}, fmt.Errorf("parse header: %w", err)
@@ -105,20 +105,78 @@ func parseSessionFile(path string) (parsedSession, error) {
 		return parsedSession{}, fmt.Errorf("invalid session header")
 	}
 	header.RawLine = headerLine
+	entries, consumed, partial, err := parseCompleteEntries(reader, 0)
+	if err != nil {
+		return parsedSession{}, err
+	}
+	return parsedSession{
+		header:           header,
+		entries:          entries,
+		syncedByteOffset: headerBytes + consumed,
+		hasPartialTail:   partial,
+	}, nil
+}
 
+func parseSessionHeader(path string) (sessionHeader, int64, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return sessionHeader{}, 0, err
+	}
+	defer file.Close()
+	reader := bufio.NewReaderSize(file, 1024*1024)
+	line, consumed, complete, err := readCompleteLine(reader)
+	if err != nil {
+		return sessionHeader{}, 0, err
+	}
+	if !complete {
+		return sessionHeader{}, 0, fmt.Errorf("incomplete session header")
+	}
+	var header sessionHeader
+	if err := json.Unmarshal([]byte(line), &header); err != nil {
+		return sessionHeader{}, 0, fmt.Errorf("parse header: %w", err)
+	}
+	if header.Type != "session" || header.UUID == "" {
+		return sessionHeader{}, 0, fmt.Errorf("invalid session header")
+	}
+	header.RawLine = line
+	return header, consumed, nil
+}
+
+func parseSessionTail(path string, offset int64, seq int) ([]parsedEntry, int64, bool, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, offset, false, err
+	}
+	defer file.Close()
+	if _, err := file.Seek(offset, io.SeekStart); err != nil {
+		return nil, offset, false, err
+	}
+	entries, consumed, partial, err := parseCompleteEntries(bufio.NewReaderSize(file, 1024*1024), seq)
+	return entries, offset + consumed, partial, err
+}
+
+func parseCompleteEntries(reader *bufio.Reader, startSeq int) ([]parsedEntry, int64, bool, error) {
 	var entries []parsedEntry
-	seq := 0
-	for scanner.Scan() {
-		line := scanner.Text()
+	var consumed int64
+	seq := startSeq
+	for {
+		line, lineBytes, complete, err := readCompleteLine(reader)
+		if err != nil {
+			return nil, consumed, false, err
+		}
+		if !complete {
+			return entries, consumed, line != "", nil
+		}
+		consumed += lineBytes
 		if strings.TrimSpace(line) == "" {
 			continue
 		}
 		var entry parsedEntry
 		if err := json.Unmarshal([]byte(line), &entry); err != nil {
-			return parsedSession{}, fmt.Errorf("parse entry seq %d: %w", seq, err)
+			return nil, consumed, false, fmt.Errorf("parse entry seq %d: %w", seq, err)
 		}
 		if entry.ID == "" {
-			return parsedSession{}, fmt.Errorf("entry seq %d missing id", seq)
+			return nil, consumed, false, fmt.Errorf("entry seq %d missing id", seq)
 		}
 		entry.RawLine = line
 		entry.RawHash = hashText(line)
@@ -126,11 +184,17 @@ func parseSessionFile(path string) (parsedSession, error) {
 		entries = append(entries, entry)
 		seq++
 	}
-	if err := scanner.Err(); err != nil {
-		return parsedSession{}, err
-	}
+}
 
-	return parsedSession{header: header, entries: entries}, nil
+func readCompleteLine(reader *bufio.Reader) (string, int64, bool, error) {
+	line, err := reader.ReadString('\n')
+	if err != nil && err != io.EOF {
+		return "", 0, false, err
+	}
+	if err == io.EOF {
+		return line, 0, false, nil
+	}
+	return strings.TrimSuffix(line, "\n"), int64(len(line)), true, nil
 }
 
 func hashText(value string) string {
