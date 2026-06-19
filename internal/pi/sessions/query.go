@@ -1,12 +1,12 @@
 /**
  * Component: Pi Sessions Query Engine
- * Block-UUID: 52080e7b-c252-4955-a46e-d37be5ad6c03
- * Parent-UUID: N/A
- * Version: 1.2.0
- * Description: Executes phase-one discovery queries over imported Pi sessions.
+ * Block-UUID: 199f5992-4cd3-4b99-94b1-668b85c835a1
+ * Parent-UUID: 52080e7b-c252-4955-a46e-d37be5ad6c03
+ * Version: 1.3.0
+ * Description: Executes phase-one discovery queries over imported Pi sessions; sanitizes full-text terms as FTS5 phrases for literal matching and fixes FTS table aliasing in the sessions match counter.
  * Language: Go
  * Created-at: 2026-06-18T00:00:00Z
- * Authors: Codex GPT-5 (v1.0.0), MiMo-v2.5-pro (v1.1.0, v1.2.0)
+ * Authors: Codex GPT-5 (v1.0.0), MiMo-v2.5-pro (v1.1.0, v1.2.0), claude-opus-4-8 (v1.3.0)
  */
 
 package sessions
@@ -517,9 +517,9 @@ func querySessionsWithMatches(ctx context.Context, database *sql.DB, options Que
 
 		// Message matches
 		if options.Text != "" {
-			countQuery := `SELECT COUNT(*) FROM fts_pi_messages fts
-				JOIN pi_messages m ON m.id = fts.rowid
-				WHERE m.chat_id = ? AND fts MATCH ?`
+			countQuery := `SELECT COUNT(*) FROM fts_pi_messages
+				JOIN pi_messages m ON m.id = fts_pi_messages.rowid
+				WHERE m.chat_id = ? AND fts_pi_messages MATCH ?`
 			var count int
 			if err := database.QueryRowContext(ctx, countQuery, sr.id, ftsPhrase(options.Text)).Scan(&count); err != nil {
 				return nil, err

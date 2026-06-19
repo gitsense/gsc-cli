@@ -1,12 +1,12 @@
 /**
  * Component: Pi Sessions Query Command
- * Block-UUID: 28c28a9f-e833-4bdd-96dd-7a8c6ab25cf0
- * Parent-UUID: N/A
- * Version: 1.4.0
- * Description: Implements phase-one discovery queries over the Pi sessions SQLite mirror.
+ * Block-UUID: 2d0e9316-204f-45dc-ab19-62041e8bba99
+ * Parent-UUID: 28c28a9f-e833-4bdd-96dd-7a8c6ab25cf0
+ * Version: 1.5.0
+ * Description: Accepts a positional search term (like gsc rg) routed to full-text search, mutually exclusive with -q/--message; rejects extra positionals instead of silently ignoring them.
  * Language: Go
  * Created-at: 2026-06-18T00:00:00Z
- * Authors: Codex GPT-5 (v1.0.0), MiMo-v2.5-pro (v1.1.0, v1.2.0, v1.3.0, v1.4.0)
+ * Authors: Codex GPT-5 (v1.0.0), MiMo-v2.5-pro (v1.1.0, v1.2.0, v1.3.0, v1.4.0), claude-opus-4-8 (v1.5.0)
  */
 
 package sessions
