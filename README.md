@@ -12,6 +12,8 @@ Authors: Claude Code - Sonnet (v1.0.0), Codex GPT-5 (v1.1.0), MiMo-v2.5-pro (v1.
 
 # gsc - GitSense CLI
 
+<img src="assets/gsc-cli-hero.png" alt="gsc-cli hero" width="100%">
+
 `gsc` is the terminal half of [GitSense Chat](https://github.com/gitsense/chat).
 
 GitSense is a two-part system:
