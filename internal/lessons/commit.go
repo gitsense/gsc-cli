@@ -18,10 +18,15 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/gitsense/gsc-cli/internal/gitsensescope"
 	"github.com/gitsense/gsc-cli/internal/manifest"
 )
 
 func CommitDraft(confirmedBy string) (*Record, string, error) {
+	return CommitDraftToTarget(confirmedBy, gitsensescope.TargetRepo)
+}
+
+func CommitDraftToTarget(confirmedBy string, target gitsensescope.Target) (*Record, string, error) {
 	if err := EnsureWorkspace(); err != nil {
 		return nil, "", err
 	}
@@ -47,6 +52,8 @@ func CommitDraft(confirmedBy string) (*Record, string, error) {
 		UpdatedAt:      now,
 		Summary:        draft.Summary,
 		Details:        draft.Details,
+		Topic:          draft.Topic,
+		RelatedTopics:  draft.RelatedTopics,
 		AppliesTo:      draft.AppliesTo,
 		Tags:           draft.Tags,
 		Keywords:       keywordsFor(draft),
@@ -58,18 +65,14 @@ func CommitDraft(confirmedBy string) (*Record, string, error) {
 		ConfirmedAt:    now,
 	}
 
-	if err := AppendRecord(record); err != nil {
+	if err := AppendRecordToTarget(record, target); err != nil {
 		return nil, "", err
 	}
-	archivePath, err := archiveCommittedDraft(path, id)
+	archivePath, err := archiveCommittedDraftForTarget(path, id, target)
 	if err != nil {
 		return nil, "", err
 	}
-	manifestPath, err := RebuildManifest()
-	if err != nil {
-		return nil, "", err
-	}
-	if err := manifest.ImportManifest(context.Background(), manifestPath, DatabaseName, true, false); err != nil {
+	if err := RebuildAndImportForTarget(target); err != nil {
 		return nil, "", err
 	}
 	return &record, archivePath, nil
@@ -98,7 +101,14 @@ func RebuildAndImportFromRecords(records []Record) error {
 }
 
 func archiveCommittedDraft(path string, id string) (string, error) {
+	return archiveCommittedDraftForTarget(path, id, gitsensescope.TargetRepo)
+}
+
+func archiveCommittedDraftForTarget(path string, id string, target gitsensescope.Target) (string, error) {
 	archiveDir, err := ArchiveDir()
+	if target != gitsensescope.TargetRepo {
+		archiveDir, err = ArchiveDirForTarget(target)
+	}
 	if err != nil {
 		return "", err
 	}

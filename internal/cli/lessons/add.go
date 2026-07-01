@@ -9,7 +9,6 @@
  * Authors: claude-opus-4-8 (v1.0.0)
  */
 
-
 package lessons
 
 import (
@@ -24,7 +23,7 @@ import (
 // contentFlags are the per-field flags that build a draft directly.
 var addContentFlags = []string{
 	"summary", "details", "importance", "file", "linked-file",
-	"command", "topic", "tag", "review-check", "provider", "model-id", "agent",
+	"command", "topic", "related-topic", "tag", "review-check", "provider", "model-id", "agent",
 }
 
 func addCmd() *cobra.Command {
@@ -33,18 +32,19 @@ func addCmd() *cobra.Command {
 		useStdin bool
 		replace  bool
 
-		summary      string
-		details      string
-		importance   string
-		files        []string
-		linkedFiles  []string
-		commands     []string
-		topics       []string
-		tags         []string
-		reviewChecks []string
-		provider     string
-		modelID      string
-		agent        string
+		summary       string
+		details       string
+		importance    string
+		files         []string
+		linkedFiles   []string
+		commands      []string
+		topic         string
+		relatedTopics []string
+		tags          []string
+		reviewChecks  []string
+		provider      string
+		modelID       string
+		agent         string
 	)
 	cmd := &cobra.Command{
 		Use:   "add",
@@ -57,15 +57,18 @@ Provide the content one of three ways:
   individual flags     --summary/--details/--file/--tag/...
 
 The content is validated, then staged as the lesson draft and shown for review.
-Commit it with "gsc lessons draft commit".`,
+Commit it with "gsc lessons draft commit --target <repo|personal>".`,
 		Example: `  # From a JSON file
   gsc lessons add --from-file /tmp/lesson.json
+  gsc lessons draft commit --target repo
 
   # From stdin
   cat lesson.json | gsc lessons add --stdin
+  gsc lessons draft commit --target personal
 
   # From individual flags
-  gsc lessons add --summary "..." --details "..." --file internal/foo.go --tag foo --importance high`,
+  gsc lessons add --summary "..." --details "..." --file internal/foo.go --tag foo --importance high
+  gsc lessons draft commit --target repo`,
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if fromFile != "" && useStdin {
@@ -89,14 +92,15 @@ Commit it with "gsc lessons draft commit".`,
 					importance = "medium"
 				}
 				result = lessonspkg.ValidateDraftValue(lessonspkg.Draft{
-					Summary:    summary,
-					Details:    details,
-					Importance: importance,
+					Summary:       summary,
+					Details:       details,
+					Topic:         topic,
+					RelatedTopics: relatedTopics,
+					Importance:    importance,
 					AppliesTo: lessonspkg.AppliesTo{
 						Files:       files,
 						LinkedFiles: linkedFiles,
 						Commands:    commands,
-						Topics:      topics,
 					},
 					Tags:         tags,
 					ReviewChecks: reviewChecks,
@@ -123,7 +127,7 @@ Commit it with "gsc lessons draft commit".`,
 			fmt.Print(lessonspkg.RenderDraftReview(result, path))
 			fmt.Println()
 			fmt.Println("If this lesson is correct, run:")
-			fmt.Println("  gsc lessons draft commit")
+			fmt.Println("  gsc lessons draft commit --target <repo|personal>")
 			fmt.Println()
 			fmt.Println("If it is incorrect, run:")
 			fmt.Println("  gsc lessons draft discard")
@@ -139,7 +143,8 @@ Commit it with "gsc lessons draft commit".`,
 	cmd.Flags().StringArrayVar(&files, "file", nil, "Repo-relative file this lesson applies to (repeatable)")
 	cmd.Flags().StringArrayVar(&linkedFiles, "linked-file", nil, "Repo-relative related file (repeatable)")
 	cmd.Flags().StringArrayVar(&commands, "command", nil, "Command this lesson applies to (repeatable)")
-	cmd.Flags().StringArrayVar(&topics, "topic", nil, "Topic slug (repeatable)")
+	cmd.Flags().StringVar(&topic, "topic", "", "Primary topic slug (required)")
+	cmd.Flags().StringArrayVar(&relatedTopics, "related-topic", nil, "Related topic slug (max 2, repeatable)")
 	cmd.Flags().StringArrayVar(&tags, "tag", nil, "Tag slug (repeatable)")
 	cmd.Flags().StringArrayVar(&reviewChecks, "review-check", nil, "Review check (repeatable)")
 	cmd.Flags().StringVar(&provider, "provider", "", "AI provider provenance")

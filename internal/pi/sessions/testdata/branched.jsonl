@@ -1,0 +1,6 @@
+{"type":"session","version":3,"id":"session-002","timestamp":"2026-06-23T01:00:00Z","cwd":"/repo"}
+{"type":"message","id":"root-1","parentId":null,"timestamp":"2026-06-23T01:01:00Z","message":{"role":"user","content":[{"type":"text","text":"Start task"}]}}
+{"type":"message","id":"branch-a-1","parentId":"root-1","timestamp":"2026-06-23T01:02:00Z","message":{"role":"assistant","content":[{"type":"text","text":"Approach A"}]}}
+{"type":"message","id":"branch-a-2","parentId":"branch-a-1","timestamp":"2026-06-23T01:03:00Z","message":{"role":"user","content":[{"type":"text","text":"Continue A"}]}}
+{"type":"message","id":"branch-b-1","parentId":"root-1","timestamp":"2026-06-23T01:02:30Z","message":{"role":"assistant","content":[{"type":"text","text":"Approach B"}]}}
+{"type":"message","id":"branch-b-2","parentId":"branch-b-1","timestamp":"2026-06-23T01:03:30Z","message":{"role":"user","content":[{"type":"text","text":"Continue B"}]}}

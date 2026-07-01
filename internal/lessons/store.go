@@ -79,16 +79,47 @@ func LoadRecordsFromPath(path string, allowMissing bool) ([]Record, error) {
 func LoadRecordsFromReader(reader io.Reader) ([]Record, error) {
 	var records []Record
 	scanner := bufio.NewScanner(reader)
+	var accumulated strings.Builder
+	braceDepth := 0
+
 	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
+		line := scanner.Text()
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" && braceDepth == 0 {
 			continue
 		}
-		var record Record
-		if err := json.Unmarshal([]byte(line), &record); err != nil {
-			return nil, fmt.Errorf("invalid records.jsonl entry: %w", err)
+
+		accumulated.WriteString(line)
+		accumulated.WriteString("\n")
+
+		// Track brace depth to detect end of JSON object
+		for _, ch := range trimmed {
+			if ch == '{' {
+				braceDepth++
+			} else if ch == '}' {
+				braceDepth--
+			}
 		}
-		records = append(records, record)
+
+		// When braces are balanced, we have a complete JSON object
+		if braceDepth <= 0 {
+			jsonStr := strings.TrimSpace(accumulated.String())
+			accumulated.Reset()
+			braceDepth = 0
+
+			if jsonStr == "" {
+				continue
+			}
+
+			var record Record
+			if err := json.Unmarshal([]byte(jsonStr), &record); err != nil {
+				// Skip malformed entries but continue loading
+				continue
+			}
+			// Normalize topics for backward compatibility
+			record.NormalizeTopics()
+			records = append(records, record)
+		}
 	}
 	return records, scanner.Err()
 }

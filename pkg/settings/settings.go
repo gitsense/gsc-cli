@@ -34,7 +34,7 @@ const DefaultGitSenseDir = ".gitsense"
 // GitSenseDir is the name of the directory where GitSense Chat stores its data
 var GitSenseDir = DefaultGitSenseDir
 
-// DockerRootPrefix is the unique root path used in Docker environments to signal 
+// DockerRootPrefix is the unique root path used in Docker environments to signal
 // that paths require translation when accessed from a host machine.
 const DockerRootPrefix = "/gsc-docker-app"
 
@@ -103,14 +103,22 @@ const PermissionManifestPublish = "manifest:publish"
 
 // Default Terminal Constants
 // These represent the most commonly available terminals for each platform.
-const DefaultTerminalDarwin  = "terminal.app"
-const DefaultTerminalLinux   = "gnome-terminal"
+const DefaultTerminalDarwin = "terminal.app"
+const DefaultTerminalLinux = "gnome-terminal"
 const DefaultTerminalWindows = "wt"
 
 // Claude Code Integration Constants
 const ClaudeCodeDirRelPath = "data/claude-code"
 const ClaudeTemplatesPath = "cli/templates/claude/chat"
 const ClaudeMetricsDBName = "claude.sqlite3"
+// Pi GSC Data Directory Constants
+// PiGscDataDirRelPath is the relative path within GSC_HOME for GSC's Pi mirror data.
+// This is separate from ~/.pi which is the Pi agent's own data directory.
+const PiGscDataDirRelPath = "data/pi"
+const PiSyncPIDFileName = "sync.pid"
+const PiSyncLogFileName = "sync.log"
+const PiSyncDebugLogFileName = "sync-debug.log"
+const PiSessionsDatabaseFileName = "pi-sessions.sqlite3"
 const ClaudeChatsDirRelPath = "chats"
 const DefaultClaudeChunkSize = 5
 const DefaultClaudeMaxFiles = 5
@@ -203,7 +211,7 @@ func LoadTemplates() error {
 
 	data, err := os.ReadFile(localJsonPath)
 	if err != nil {
-		return fmt.Errorf("failed to read local command template file %s: %w", localJsonPath)
+		return fmt.Errorf("failed to read local command template file %s: %w", localJsonPath, err)
 	}
 
 	var config TemplateConfig
@@ -312,6 +320,32 @@ func GetGSCHome(required bool) (string, error) {
 // GetChatDatabasePath returns the absolute path to the GitSense Chat database.
 func GetChatDatabasePath(gscHome string) string {
 	return filepath.Join(gscHome, ChatDatabaseRelPath)
+}
+
+// GetPiGscDataDir returns the absolute path to the GSC Pi data directory.
+// This stores GSC's Pi mirror data (database, sync PID, sync logs).
+func GetPiGscDataDir(gscHome string) string {
+	return filepath.Join(gscHome, PiGscDataDirRelPath)
+}
+
+// GetPiSessionsDatabasePath returns the absolute path to the Pi sessions mirror database.
+func GetPiSessionsDatabasePath(gscHome string) string {
+	return filepath.Join(GetPiGscDataDir(gscHome), PiSessionsDatabaseFileName)
+}
+
+// GetPiSyncPIDPath returns the absolute path to the Pi sync watcher PID file.
+func GetPiSyncPIDPath(gscHome string) string {
+	return filepath.Join(GetPiGscDataDir(gscHome), PiSyncPIDFileName)
+}
+
+// GetPiSyncLogPath returns the absolute path to the Pi sync watcher log file.
+func GetPiSyncLogPath(gscHome string) string {
+	return filepath.Join(GetPiGscDataDir(gscHome), PiSyncLogFileName)
+}
+
+// GetPiSyncDebugLogPath returns the absolute path to the Pi sync debug log file.
+func GetPiSyncDebugLogPath(gscHome string) string {
+	return filepath.Join(GetPiGscDataDir(gscHome), PiSyncDebugLogFileName)
 }
 
 // GetManifestStoragePath returns the absolute path to the manifest storage directory.

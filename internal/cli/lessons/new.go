@@ -9,7 +9,6 @@
  * Authors: Codex GPT-5 (v1.0.0), Codex GPT-5 (v1.1.0), claude-sonnet-4-6 (v1.2.0), MiMo-v2.5-pro (v1.3.0), claude-opus-4-8 (v1.4.0)
  */
 
-
 package lessons
 
 import (
@@ -36,7 +35,7 @@ func newCmd() *cobra.Command {
 					fmt.Println("Next actions:")
 					fmt.Println("  gsc lessons draft validate          # check the draft")
 					fmt.Println("  gsc lessons draft review            # inspect the draft for human confirmation")
-					fmt.Println("  gsc lessons draft commit            # persist it as a lesson")
+					fmt.Println("  gsc lessons draft commit --target <repo|personal>  # persist it as a lesson")
 					fmt.Println("  gsc lessons draft discard           # delete the draft")
 					fmt.Println("  gsc lessons draft new --replace     # delete it and start a new draft")
 					return nil

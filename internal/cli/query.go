@@ -326,10 +326,12 @@ var BrainsCmd = &cobra.Command{
 	Use:   "brains [brain]",
 	Short: "List available brains or inspect their schemas",
 	Long: `Provides a high-level overview of the intelligence hub.
-1. No arguments: Lists all registered manifest brains (databases).
-2. With [brain]: Shows the schema for that specific brain.
-3. With --schema: Shows the schema for every registered brain.`,
-	Example: `  # List all brains
+
+With no arguments, lists all registered manifest brains (databases).
+Use 'gsc brains delete <db>' to delete a brain.
+
+Use 'gsc brains help' for detailed help.`,
+	Example: `  # List all brains (default when no arguments)
   gsc brains
 
   # Show schema for the 'arch' brain
@@ -337,6 +339,9 @@ var BrainsCmd = &cobra.Command{
 
   # Show schemas for all brains
   gsc brains --schema
+
+  # Delete a brain
+  gsc brains delete code-intent
 
   # Show rich structured output for coding agents
   gsc brains --json`,

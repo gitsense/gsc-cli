@@ -67,6 +67,19 @@ func formatJSONResponseToString(context QueryContext, summary GrepSummary, match
 
 	if !summaryOnly {
 		response.Files = GroupMatchesByFile(matches)
+		
+		// For unanalyzed files, populate metadata with null values for requested fields
+		if len(context.RequestedFields) > 0 {
+			for i := range response.Files {
+				if !response.Files[i].Analyzed {
+					nullMetadata := make(map[string]interface{})
+					for _, field := range context.RequestedFields {
+						nullMetadata[field] = nil
+					}
+					response.Files[i].Metadata = nullMetadata
+				}
+			}
+		}
 	}
 
 	data, err := json.MarshalIndent(response, "", "  ")
@@ -119,35 +132,47 @@ func formatHumanResponseToString(context QueryContext, summary GrepSummary, matc
 
 		// Show metadata if not disabled
 		metadataPrinted := false
-		if !opts.NoFields && file.Analyzed && len(file.Metadata) > 0 {
-			// Get and sort keys for consistent output
-			var keys []string
-			for k := range file.Metadata {
-				keys = append(keys, k)
-			}
-			sort.Strings(keys)
+		if !opts.NoFields {
+			if file.Analyzed && len(file.Metadata) > 0 {
+				// Get and sort keys for consistent output
+				var keys []string
+				for k := range file.Metadata {
+					keys = append(keys, k)
+				}
+				sort.Strings(keys)
 
-			for _, k := range keys {
-				// Respect RequestedFields if provided
-				if len(opts.RequestedFields) > 0 {
-					found := false
-					for _, rf := range opts.RequestedFields {
-						if rf == k {
-							found = true
-							break
+				for _, k := range keys {
+					// Respect RequestedFields if provided
+					if len(opts.RequestedFields) > 0 {
+						found := false
+						for _, rf := range opts.RequestedFields {
+							if rf == k {
+								found = true
+								break
+							}
+						}
+						if !found {
+							continue
 						}
 					}
-					if !found {
-						continue
-					}
-				}
 
-				key := k
-				if useColor {
-					key = logger.ColorYellow + key + logger.ColorReset
+					key := k
+					if useColor {
+						key = logger.ColorYellow + key + logger.ColorReset
+					}
+					sb.WriteString(fmt.Sprintf("; %s: %v\n", key, file.Metadata[k]))
+					metadataPrinted = true
 				}
-				sb.WriteString(fmt.Sprintf("; %s: %v\n", key, file.Metadata[k]))
-				metadataPrinted = true
+			} else if !file.Analyzed && len(opts.RequestedFields) > 0 {
+				// File not in database — show requested fields as N/A
+				for _, field := range opts.RequestedFields {
+					key := field
+					if useColor {
+						key = logger.ColorYellow + key + logger.ColorReset
+					}
+					sb.WriteString(fmt.Sprintf("; %s: N/A\n", key))
+					metadataPrinted = true
+				}
 			}
 		}
 

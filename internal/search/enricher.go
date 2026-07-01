@@ -9,7 +9,6 @@
  * Authors: GLM-4.7 (v1.0.0), ..., GLM-4.7 (v3.2.2), claude-haiku-4-5-20251001 (v3.2.3), GLM-4.7 (v3.2.4), claude-sonnet-4-6 (v3.2.5), GLM-4.7 (v3.2.6)
  */
 
-
 package search
 
 import (
@@ -44,7 +43,7 @@ func EnrichMatches(ctx context.Context, matches []RawMatch, dbName string, filte
 	}
 
 	// 3. Open Database
-	database, err := db.OpenDB(dbPath)
+	database, err := db.OpenReadOnlyDB(dbPath)
 	if err != nil {
 		return nil, nil, 0, err
 	}
@@ -64,7 +63,7 @@ func EnrichMatches(ctx context.Context, matches []RawMatch, dbName string, filte
 	}
 
 	// Get field types once, reuse in fetchMetadataMap
-	fieldTypes, err := db.GetFieldTypes(ctx, dbName)
+	fieldTypes, err := db.GetFieldTypesFromDB(ctx, database)
 	if err != nil {
 		return nil, nil, 0, fmt.Errorf("failed to get field types: %w", err)
 	}
@@ -115,7 +114,8 @@ func EnrichMatches(ctx context.Context, matches []RawMatch, dbName string, filte
 			}
 
 		} else {
-			continue
+			// File not in database — include match without metadata
+			result.Metadata = make(map[string]interface{})
 		}
 
 		enriched = append(enriched, result)
@@ -139,14 +139,14 @@ func FetchMetadataMap(ctx context.Context, dbName string, filePaths []string, an
 		return nil, nil, err
 	}
 
-	database, err := db.OpenDB(dbPath)
+	database, err := db.OpenReadOnlyDB(dbPath)
 	if err != nil {
 		return nil, nil, err
 	}
 	defer db.CloseDB(database)
 
 	// Get field types
-	fieldTypes, err := db.GetFieldTypes(ctx, dbName)
+	fieldTypes, err := db.GetFieldTypesFromDB(ctx, database)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get field types: %w", err)
 	}
@@ -203,7 +203,7 @@ func fetchMetadataMap(ctx context.Context, database *sql.DB, filePaths []string,
 	}
 	// Strip "WHERE " prefix added by BuildSQLWhereClauseWithTypes before combining with other clauses
 	whereClause = strings.TrimPrefix(whereClause, "WHERE ")
-	
+
 	// Add file path IN clause
 	filePathClause := fmt.Sprintf("f.file_path IN (%s)", strings.Join(placeholders, ","))
 	if whereClause != "" {
@@ -211,10 +211,10 @@ func fetchMetadataMap(ctx context.Context, database *sql.DB, filePaths []string,
 	} else {
 		whereClause = filePathClause
 	}
-	
+
 	// Combine args: file paths + filter args FIRST (filter conditions appear in WHERE before fetchList)
 	args = append(args, filterArgs...)
-	
+
 	// Add field name filter (appended LAST because it appears at the end of the WHERE clause)
 	if len(fetchList) > 0 {
 		var fieldPlaceholders []string
@@ -300,7 +300,7 @@ func CheckFilters(metadata map[string]interface{}, conditions []FilterCondition)
 // CheckSingleCondition verifies a single filter condition against metadata.
 func CheckSingleCondition(metadata map[string]interface{}, cond FilterCondition) bool {
 	value, exists := metadata[cond.Field]
-	
+
 	if cond.Operator == "exists" {
 		return exists
 	}

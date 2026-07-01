@@ -70,6 +70,16 @@ func RenderRecord(record Record) string {
 	return sb.String()
 }
 
+// recordTopics returns a combined list of the primary topic and related topics.
+func recordTopics(r Record) []string {
+	var topics []string
+	if r.Topic != "" {
+		topics = append(topics, r.Topic)
+	}
+	topics = append(topics, r.RelatedTopics...)
+	return topics
+}
+
 // RenderRecordsTable renders records as an aligned scan/filter table for
 // "gsc lessons list" and "gsc lessons search".
 func RenderRecordsTable(records []Record) string {
@@ -78,14 +88,14 @@ func RenderRecordsTable(records []Record) string {
 	}
 	var buf bytes.Buffer
 	w := tabwriter.NewWriter(&buf, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "ID\tIMP\tUPDATED\tTAGS\tSUMMARY")
-	fmt.Fprintln(w, "--\t---\t-------\t----\t-------")
+	fmt.Fprintln(w, "ID\tIMP\tUPDATED\tTOPICS\tSUMMARY")
+	fmt.Fprintln(w, "--\t---\t-------\t------\t-------")
 	for _, r := range records {
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
 			ShortID(r.ID),
 			r.Importance,
 			recordDate(r),
-			truncate(strings.Join(r.Tags, ","), 28),
+			truncate(strings.Join(recordTopics(r), ","), 28),
 			truncate(r.Summary, 64),
 		)
 	}
@@ -240,9 +250,8 @@ func tagHashes(tags []string) string {
 // (or this prefix) remains accepted by show/delete via ResolveRecord.
 func ShortID(id string) string {
 	s := strings.TrimPrefix(id, "lsn_")
-	s = strings.ReplaceAll(s, "-", "")
-	if len(s) > 8 {
-		return s[:8]
+	if len(s) > 13 {
+		return s[:13]
 	}
 	return s
 }

@@ -14,17 +14,25 @@ package lessons
 import (
 	"fmt"
 
+	"github.com/gitsense/gsc-cli/internal/gitsensescope"
 	lessonspkg "github.com/gitsense/gsc-cli/internal/lessons"
 	"github.com/spf13/cobra"
 )
 
 func commitCmd() *cobra.Command {
-	var confirmedBy string
+	var (
+		confirmedBy string
+		targetValue string
+	)
 	cmd := &cobra.Command{
 		Use:          "commit",
 		Short:        "Commit the reviewed lesson draft and update the gsc-lessons Brain",
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			target, err := gitsensescope.ParseTarget(targetValue)
+			if err != nil {
+				return err
+			}
 			path, err := lessonspkg.DraftPath()
 			if err != nil {
 				return err
@@ -33,12 +41,12 @@ func commitCmd() *cobra.Command {
 			if !result.Valid() {
 				return fmt.Errorf("lesson draft is invalid")
 			}
-			record, _, err := lessonspkg.CommitDraft(confirmedBy)
+			record, _, err := lessonspkg.CommitDraftToTarget(confirmedBy, target)
 			if err != nil {
 				return err
 			}
-			recordsPath, _ := lessonspkg.RecordsPath()
-			fmt.Printf("Committed lesson: %s\n", record.ID)
+			recordsPath, _ := lessonspkg.RecordsPathForTarget(target)
+			fmt.Printf("Committed lesson to %s scope: %s\n", target, record.ID)
 			fmt.Println()
 			fmt.Println("The lesson is now available to future agent sessions.")
 			fmt.Println()
@@ -46,10 +54,11 @@ func commitCmd() *cobra.Command {
 			fmt.Printf("  %s\n", recordsPath)
 			fmt.Println()
 			fmt.Println("To delete this lesson:")
-			fmt.Printf("  gsc lessons delete %s\n", record.ID)
+			fmt.Printf("  gsc lessons delete %s --target %s\n", record.ID, target)
 			return nil
 		},
 	}
 	cmd.Flags().StringVar(&confirmedBy, "confirmed-by", "human", "Confirmation source recorded on the lesson")
+	cmd.Flags().StringVar(&targetValue, "target", "", "Write target: repo or personal (required)")
 	return cmd
 }

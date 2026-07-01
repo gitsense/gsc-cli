@@ -1,7 +1,7 @@
 # This file is programmatically generated. DO NOT EDIT MANUALLY.
 # To regenerate, run: gsc gitignore update
 #
-# Generated on: 2026-06-17T11:51:13-04:00
+# Generated on: 2026-07-01T13:23:24-04:00
 
 # core
 # SQLite database files
@@ -46,7 +46,19 @@ change-metadata.jsonl
 # lessons
 # Current lesson draft (review before commit)
 tmp/lesson-draft.json
+# Lesson drafts directory
+lessons/drafts/
 # Archived lesson drafts after commit or manual archive
 lessons/archive/
 # Generated lessons manifest (derived from records.jsonl, rebuild with: gsc lessons build)
 manifests/gsc-lessons.json
+
+# rules
+# Generated rules manifest (derived from records.jsonl, rebuild with: gsc rules build)
+manifests/gsc-rules.json
+# Trigger debug output directory
+debug/
+
+# notes
+# Generated notes manifest (derived from records.jsonl, rebuild with: gsc notes build)
+manifests/gsc-notes.json

@@ -18,6 +18,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	topicstopkg "github.com/gitsense/gsc-cli/internal/topics"
 )
 
 func ReadAndValidateDraft(path string) ValidationResult {
@@ -83,10 +85,35 @@ func ValidateDraft(d Draft) []string {
 		errs = append(errs, "importance must be one of: low, medium, high")
 	}
 
-	if len(d.AppliesTo.Files)+len(d.AppliesTo.LinkedFiles)+len(d.AppliesTo.Commands)+len(d.AppliesTo.Topics)+len(d.Tags) == 0 {
-		errs = append(errs, "at least one anchor is required: files, linked_files, commands, topics, or tags")
+	// Topic is required
+	if d.Topic == "" {
+		errs = append(errs, "topic is required")
+	} else {
+		// Validate topic against registry
+		registry, regErr := topicstopkg.LoadRegistry()
+		if regErr != nil {
+			errs = append(errs, fmt.Sprintf("failed to load topic registry: %v", regErr))
+		} else if !registry.Exists(d.Topic) {
+			errs = append(errs, fmt.Sprintf("topic %q not registered; add with: gsc topics add %s --description \"...\"", d.Topic, d.Topic))
+		}
 	}
 
+	// Validate related topics
+	if len(d.RelatedTopics) > 2 {
+		errs = append(errs, "maximum 2 related topics allowed")
+	}
+	seen := map[string]bool{d.Topic: true}
+	for _, rt := range d.RelatedTopics {
+		if rt == d.Topic {
+			errs = append(errs, "related topic cannot equal primary topic")
+		}
+		if seen[rt] {
+			errs = append(errs, "related topics must be unique")
+		}
+		seen[rt] = true
+	}
+
+	// File/command anchors are optional since topic is required
 	root, err := rootDir()
 	if err != nil {
 		errs = append(errs, fmt.Sprintf("failed to find repository root: %v", err))
@@ -103,11 +130,6 @@ func ValidateDraft(d Draft) []string {
 	for _, tag := range d.Tags {
 		if tag != slugify(tag) {
 			errs = append(errs, fmt.Sprintf("tag %q must be a lowercase slug", tag))
-		}
-	}
-	for _, topic := range d.AppliesTo.Topics {
-		if topic != slugify(topic) {
-			errs = append(errs, fmt.Sprintf("topic %q must be a lowercase slug", topic))
 		}
 	}
 	for _, command := range d.AppliesTo.Commands {

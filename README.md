@@ -2,11 +2,11 @@
 Component: gsc-cli README
 Block-UUID: d5f493cc-7035-43fc-a3d0-d013fadec153
 Parent-UUID: 5c01d958-b93a-46dd-9f83-65c5d47a15dc
-Version: 1.3.0
-Description: Updated the lessons command table for the redesigned surface (add/draft/update/list/search/tags/overview) and added gsc docs to the agent commands.
+Version: 1.5.0
+Description: Added gsc topics and gsc knowledge commands for unified knowledge discovery.
 Language: Markdown
 Created-at: 2026-05-31T17:26:27.671Z
-Authors: Claude Code - Sonnet (v1.0.0), Codex GPT-5 (v1.1.0), MiMo-v2.5-pro (v1.2.0), claude-opus-4-8 (v1.3.0)
+Authors: Claude Code - Sonnet (v1.0.0), Codex GPT-5 (v1.1.0), MiMo-v2.5-pro (v1.2.0), claude-opus-4-8 (v1.3.0), MiMo-v2.5-pro (v1.4.0), MiMo-v2.5-pro (v1.5.0)
 -->
 
 
@@ -51,6 +51,55 @@ The CLI handles:
 
 The core Brain/search commands operate locally against files and SQLite databases. Commands that explicitly install software, import remote Manifests, publish Manifests, or talk to the Chat app may contact the configured endpoint.
 
+## Topics and Knowledge Discovery
+
+GitSense organizes repository knowledge around **topics** — broad navigational domains that span lessons, notes, and rules. Every knowledge item must reference exactly one primary topic, with optional related topics.
+
+### Topics Commands
+
+These commands manage the shared topic registry used by lessons, notes, and rules.
+
+| Command | Purpose |
+| :--- | :--- |
+| `gsc topics add <slug>` | Register a new topic with a description |
+| `gsc topics list` | List all registered topics |
+| `gsc topics show <slug>` | Show topic details |
+| `gsc topics search <query>` | Search topics by slug or description |
+| `gsc topics update <slug>` | Update a topic's description |
+| `gsc topics migrate` | Migrate existing records to the new topic format |
+
+### Knowledge Commands
+
+These commands provide unified search and discovery across lessons, notes, and rules.
+
+| Command | Purpose |
+| :--- | :--- |
+| `gsc knowledge search <query>` | Search across all knowledge types with relevance ranking |
+| `gsc knowledge list --topic <slug>` | List all items in a specific topic |
+
+**Discovery flow:**
+
+```bash
+# General question → search all knowledge
+ gsc knowledge search "manifest import performance"
+
+# Known topic → browse items
+ gsc knowledge list --topic data-layer
+
+# Filter by type
+ gsc knowledge search "database" --type lessons
+ gsc knowledge list --topic data-layer --type rules
+
+# Control output
+ gsc knowledge search "lessons" --limit 10 --truncate 80 -o json
+```
+
+**Search ranking:**
+1. Exact topic match (highest)
+2. Exact tag match
+3. Summary term match
+4. Body term match (lowest)
+
 ## A Note on AI, Go, and Project Maturity
 
 This repository is approximately 99.9% AI-generated. It was guided by a seasoned software developer who was not proficient in Go when the project began.
@@ -93,6 +142,7 @@ These commands work once a Manifest has been imported into a repository.
 | `gsc manifest list` | Show imported Brains available in the current repository |
 | `gsc manifest publish <path>` | Publish a Manifest to your GitSense Chat server |
 | `gsc brains` | List active Brains and their metadata fields |
+| `gsc brains delete <db>` | Delete a Brain (SQLite database) |
 | `gsc query` | Find files by metadata: concept, layer, ownership, risk, or custom fields |
 | `gsc rg` | Enriched ripgrep: text matches plus Brain metadata |
 | `gsc grep` | Alias-compatible enriched search for grep-oriented workflows |
@@ -116,16 +166,71 @@ These commands capture and rebuild durable repository knowledge from development
 
 | Command | Purpose |
 | :--- | :--- |
-| `gsc lessons add` | Create a lesson in one shot from flags, `--from-file`, or `--stdin` |
-| `gsc lessons draft new` | Start an interactive draft, then `draft validate` / `review` / `commit` / `discard` |
-| `gsc lessons update --id <id>` | Stage and commit a full replacement of an existing lesson |
-| `gsc lessons list` | List and filter committed lessons (`--tag` / `--topic` / `--file` / `--importance`, `-o json`) |
-| `gsc lessons search <query>` | Full-text search across committed lessons |
-| `gsc lessons tags` | Show the tag vocabulary with lesson counts |
-| `gsc lessons overview` | Print a human-readable digest of all lessons |
-| `gsc lessons show <id>` | Show a committed lesson (`-o json` supported) |
-| `gsc lessons delete <id>` | Delete a lesson and rebuild the `gsc-lessons` Brain |
-| `gsc lessons build` | Rebuild the generated lessons Manifest and Brain from committed records |
+| `gsc lessons add` | Create and stage a lesson in one shot from flags, `--from-file`, or `--stdin` |
+| `gsc lessons draft new` | Start an interactive draft, then `draft validate` / `review` / `commit --target <repo\|personal>` / `discard` |
+| `gsc lessons update --target <repo\|personal> --id <id>` | Stage and commit a full replacement of an existing lesson |
+| `gsc lessons list [--scope <all\|repo\|personal>]` | List and filter committed lessons (`--tag` / `--topic` / `--file` / `--importance`, `-o json`) |
+| `gsc lessons search <query> [--scope <all\|repo\|personal>]` | Full-text search across committed lessons |
+| `gsc lessons tags [--scope <all\|repo\|personal>]` | Show the tag vocabulary with lesson counts |
+| `gsc lessons overview [--scope <all\|repo\|personal>]` | Print a human-readable digest of all lessons |
+| `gsc lessons show <id> [--scope <all\|repo\|personal>]` | Show a committed lesson (`-o json` supported) |
+| `gsc lessons delete <id> --target <repo\|personal>` | Delete a lesson and rebuild the selected lessons store |
+| `gsc lessons build --target <repo\|personal>` | Rebuild the generated lessons Manifest and Brain from committed records |
+
+### Rules Commands
+
+These commands define queryable guardrails and conventions for coding agents. Agents can consult rules before modifying files to follow project conventions. `gsc experts init` will also build the `gsc-rules` Brain automatically when committed rule records exist and the Brain is missing.
+
+| Command | Purpose |
+| :--- | :--- |
+| `gsc rules new --target <repo\|personal>` | Create a rule from flags, `--from-file`, `--stdin`, or `--template` |
+| `gsc rules update --target <repo\|personal> --id <id>` | Update an existing rule (requires `--changelog`) |
+| `gsc rules delete <id> --target <repo\|personal>` | Delete a rule and rebuild the selected rules store |
+| `gsc rules get --file <path> [--scope <all\|repo\|personal>]` | Query rules for a specific file (returns `git_root` in JSON) |
+| `gsc rules get --glob <pattern> [--scope <all\|repo\|personal>]` | Query rules matching a glob pattern |
+| `gsc rules get --tag <tag> [--scope <all\|repo\|personal>]` | Query rules by tag |
+| `gsc rules changelog --file <path>` | Query changelog for rules (new) |
+| `gsc rules list [--scope <all\|repo\|personal>]` | List and filter rules (`--tag` / `--topic` / `--importance`, `-o json`) |
+| `gsc rules search <query> [--scope <all\|repo\|personal>]` | Full-text search across rules |
+| `gsc rules tags [--scope <all\|repo\|personal>]` | Show the tag vocabulary with rule counts |
+| `gsc rules overview [--scope <all\|repo\|personal>]` | Print a human-readable digest of all rules |
+| `gsc rules show <id> [--scope <all\|repo\|personal>]` | Show a rule in detail (`-o json` supported) |
+| `gsc rules build --target <repo\|personal>` | Rebuild the generated rules Manifest and Brain from committed records |
+
+### Notes Commands
+
+These commands provide a searchable scratchpad for coding agents. Notes are for research, context, and observations that help agents understand the codebase. Unlike rules (guardrails) and lessons (learned constraints), notes are a scratchpad for things you want to keep track of.
+
+| Command | Purpose |
+| :--- | :--- |
+| `gsc notes add --target <repo\|personal>` | Create a note from flags, `--from-file`, `--stdin`, or `--template` |
+| `gsc notes update --target <repo\|personal> --id <id>` | Update an existing note |
+| `gsc notes delete <id> --target <repo\|personal>` | Delete a note and rebuild the selected notes store |
+| `gsc notes get --file <path> [--scope <all\|repo\|personal>]` | Query notes for a specific file |
+| `gsc notes get --glob <pattern> [--scope <all\|repo\|personal>]` | Query notes matching a glob pattern |
+| `gsc notes get --tag <tag> [--scope <all\|repo\|personal>]` | Query notes by tag |
+| `gsc notes list [--scope <all\|repo\|personal>]` | List and filter notes (`--tag` / `--topic` / `--importance`, `-o json`) |
+| `gsc notes search <query> [--scope <all\|repo\|personal>]` | Full-text search across notes |
+| `gsc notes tags [--scope <all\|repo\|personal>]` | Show the tag vocabulary with note counts |
+| `gsc notes overview [--scope <all\|repo\|personal>]` | Print a human-readable digest of all notes |
+| `gsc notes show <id> [--scope <all\|repo\|personal>]` | Show a note in detail (`-o json` supported) |
+| `gsc notes build --target <repo\|personal>` | Rebuild the generated notes Manifest and Brain from committed records |
+
+### Pi Commands
+
+These commands manage Pi coding session data: importing session logs, querying past conversations, resuming sessions, and monitoring context usage.
+
+| Command | Purpose |
+| :--- | :--- |
+| `gsc pi -r`, `--resume` | Interactive session picker with split-pane preview |
+| `gsc pi -b`, `--brains` | Show session statistics (tokens, model, files) |
+| `gsc pi --hud` | Pick a session and open in tmux split with HUD sidebar |
+| `gsc pi guide` | Print detailed reference documentation for gsc pi |
+| `gsc pi sessions sync` | Import Pi session JSONL files into the SQLite mirror |
+| `gsc pi sessions list` | List imported sessions |
+| `gsc pi sessions query` | Full-text search across sessions |
+| `gsc pi sessions show <id>` | Show detailed session information |
+| `gsc pi sessions verify` | Verify session import fidelity |
 
 ### App Management Commands
 

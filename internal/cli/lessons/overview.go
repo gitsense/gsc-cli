@@ -2,11 +2,11 @@
  * Component: Lessons Overview Command
  * Block-UUID: 3a7f1e08-9d4c-4b62-8e15-6c0a2f9b7d34
  * Parent-UUID: N/A
- * Version: 1.0.0
- * Description: Implements gsc lessons overview, a human-readable digest of all committed lessons, optionally clustered by tag.
+ * Version: 2.0.0
+ * Description: Added --scope flag for scoped lesson overview.
  * Language: Go
  * Created-at: 2026-06-17
- * Authors: claude-opus-4-8 (v1.0.0)
+ * Authors: claude-opus-4-8 (v1.0.0), MiMo-v2.5-pro (v2.0.0)
  */
 
 
@@ -15,12 +15,16 @@ package lessons
 import (
 	"fmt"
 
+	"github.com/gitsense/gsc-cli/internal/gitsensescope"
 	lessonspkg "github.com/gitsense/gsc-cli/internal/lessons"
 	"github.com/spf13/cobra"
 )
 
 func overviewCmd() *cobra.Command {
-	var by string
+	var (
+		by         string
+		scopeValue string
+	)
 	cmd := &cobra.Command{
 		Use:     "overview",
 		Aliases: []string{"summary"},
@@ -32,10 +36,17 @@ Use --by tag to cluster lessons under the tags that connect them.
 For machine-readable output use "gsc lessons list -o json".`,
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			records, err := lessonspkg.LoadRecords()
+			// Parse scope
+			scope, err := gitsensescope.ParseScope(scopeValue)
 			if err != nil {
 				return err
 			}
+
+			sourcedRecords, err := lessonspkg.LoadRecordsFromScope(scope)
+			if err != nil {
+				return err
+			}
+			records := lessonspkg.UnwrapSourcedLessons(sourcedRecords)
 			switch by {
 			case "":
 				fmt.Print(lessonspkg.RenderOverview(records))
@@ -49,5 +60,6 @@ For machine-readable output use "gsc lessons list -o json".`,
 		},
 	}
 	cmd.Flags().StringVar(&by, "by", "", "Cluster lessons by a field (tag)")
+	cmd.Flags().StringVar(&scopeValue, "scope", "all", "Read scope: all, repo, or personal")
 	return cmd
 }

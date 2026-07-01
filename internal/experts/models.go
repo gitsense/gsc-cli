@@ -44,4 +44,6 @@ type ExpertsContext struct {
 	RepoPath    string          `json:"repo_path"`
 	UserLevel   string          `json:"user_level"`
 	Brains      []BrainSummary  `json:"brains"`
+	HasRules    bool            `json:"has_rules"`
+	RulesMode   string          `json:"rules_mode"` // "ask", "advisory", "off"
 }

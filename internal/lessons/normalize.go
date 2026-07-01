@@ -63,13 +63,16 @@ func normalizeStringList(values []string) []string {
 func normalizeDraft(d Draft) Draft {
 	d.Summary = cleanString(d.Summary)
 	d.Details = cleanString(d.Details)
+	// Migrate legacy topics first
+	d.NormalizeDraftTopics()
+	d.Topic = slugify(d.Topic)
+	d.RelatedTopics = normalizeSlugList(d.RelatedTopics)
 	d.Importance = slugify(d.Importance)
 	d.Tags = normalizeSlugList(d.Tags)
 	d.ReviewChecks = normalizeStringList(d.ReviewChecks)
 	d.AppliesTo.Files = normalizeStringList(d.AppliesTo.Files)
 	d.AppliesTo.LinkedFiles = normalizeStringList(d.AppliesTo.LinkedFiles)
 	d.AppliesTo.Commands = normalizeStringList(d.AppliesTo.Commands)
-	d.AppliesTo.Topics = normalizeSlugList(d.AppliesTo.Topics)
 	d.AI.Provider = cleanString(d.AI.Provider)
 	d.AI.ModelID = cleanString(d.AI.ModelID)
 	d.AI.Agent = cleanString(d.AI.Agent)
@@ -78,7 +81,8 @@ func normalizeDraft(d Draft) Draft {
 
 func keywordsFor(d Draft) []string {
 	values := append([]string{}, d.Tags...)
-	values = append(values, d.AppliesTo.Topics...)
+	values = append(values, d.Topic)
+	values = append(values, d.RelatedTopics...)
 	for _, command := range d.AppliesTo.Commands {
 		values = append(values, slugify(command))
 	}
@@ -93,7 +97,7 @@ func parentKeywordsFor(d Draft) []string {
 	if len(d.AppliesTo.Commands) > 0 {
 		values = append(values, "command-knowledge")
 	}
-	if len(d.AppliesTo.Topics) > 0 {
+	if d.Topic != "" {
 		values = append(values, "topic-knowledge")
 	}
 	values = append(values, d.Tags...)

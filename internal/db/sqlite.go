@@ -15,10 +15,12 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/gitsense/gsc-cli/internal/git"
+	"net/url"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/gitsense/gsc-cli/internal/git"
 
 	_ "modernc.org/sqlite" // Pure Go SQLite driver
 
@@ -34,7 +36,19 @@ func OpenDB(dbPath string) (*sql.DB, error) {
 	// _pragma=journal_mode(WAL): Enable Write-Ahead Logging for better concurrency
 	// _pragma=busy_timeout(5000): Wait 5 seconds if the database is locked
 	connStr := fmt.Sprintf("%s?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)", dbPath)
+	return openSQLiteConnection(dbPath, connStr)
+}
 
+// OpenReadOnlyDB opens a SQLite database connection for read-only query paths.
+// It avoids journal_mode changes so concurrent gsc rg/query/tree readers do not
+// contend while applying write-oriented PRAGMAs.
+func OpenReadOnlyDB(dbPath string) (*sql.DB, error) {
+	u := url.URL{Scheme: "file", Path: filepath.ToSlash(dbPath)}
+	connStr := u.String() + "?mode=ro&_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)"
+	return openSQLiteConnection(dbPath, connStr)
+}
+
+func openSQLiteConnection(dbPath, connStr string) (*sql.DB, error) {
 	db, err := sql.Open("sqlite", connStr)
 	if err != nil {
 		logger.Error("Failed to open database", "path", dbPath, "error", err)
@@ -123,13 +137,17 @@ func GetFieldTypes(ctx context.Context, dbName string) (map[string]string, error
 	}
 
 	// 3. Open Database Connection
-	database, err := OpenDB(dbPath)
+	database, err := OpenReadOnlyDB(dbPath)
 	if err != nil {
 		return nil, err
 	}
 	defer CloseDB(database)
 
-	// 4. Query Field Names and Types
+	return GetFieldTypesFromDB(ctx, database)
+}
+
+// GetFieldTypesFromDB retrieves field types using an existing database handle.
+func GetFieldTypesFromDB(ctx context.Context, database *sql.DB) (map[string]string, error) {
 	query := `
 		SELECT field_name, field_type
 		FROM metadata_fields

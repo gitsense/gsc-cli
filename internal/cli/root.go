@@ -9,6 +9,7 @@
  * Authors: GLM-4.7 (v1.34.0), Gemini 3 Flash (v1.35.0), Gemini 3 Flash (v1.36.0), GLM-4.7 (v1.37.0), Gemini 3 Flash (v1.38.0), Gemini 3 Flash (v1.39.0), GLM-4.7 (v1.40.0), claude-haiku-4-5-20251001 (v1.40.1), GLM-4.7 (v1.41.0), GLM-4.7 (v1.42.0), GLM-4.7 (v1.43.0), GLM-4.7 (v1.44.0), GLM-4.7 (v1.45.0), GLM-4.7 (v1.46.0), GLM-4.7 (v1.47.0), GLM-4.7 (v1.48.0), GLM-4.7 (v1.49.0), GLM-4.7 (v1.50.0), Codex GPT-5 (v1.51.0)
  */
 
+
 package cli
 
 import (
@@ -23,8 +24,13 @@ import (
 	"github.com/gitsense/gsc-cli/internal/cli/docs"
 	"github.com/gitsense/gsc-cli/internal/cli/experts"
 	"github.com/gitsense/gsc-cli/internal/cli/gitignore"
+	"github.com/gitsense/gsc-cli/internal/cli/knowledge"
 	"github.com/gitsense/gsc-cli/internal/cli/lessons"
+	"github.com/gitsense/gsc-cli/internal/cli/notes"
+	"github.com/gitsense/gsc-cli/internal/cli/rules"
+	"github.com/gitsense/gsc-cli/internal/cli/topics"
 	"github.com/gitsense/gsc-cli/internal/cli/manifest"
+	"github.com/gitsense/gsc-cli/internal/cli/pi"
 	docker_internal "github.com/gitsense/gsc-cli/internal/docker"
 	manifestpkg "github.com/gitsense/gsc-cli/internal/manifest"
 	"github.com/gitsense/gsc-cli/internal/version"
@@ -158,6 +164,11 @@ func init() {
 	// Register gitignore command group
 	rootCmd.AddCommand(gitignore.Cmd)
 	rootCmd.AddCommand(lessons.NewCmd())
+	rootCmd.AddCommand(rules.NewCmd())
+	rootCmd.AddCommand(notes.NewCmd())
+	rootCmd.AddCommand(topics.NewCmd())
+	rootCmd.AddCommand(knowledge.NewCmd())
+	rootCmd.AddCommand(pi.NewCmd())
 	rootCmd.AddCommand(newVersionCmd())
 
 	// Aliases removed
@@ -182,7 +193,7 @@ func init() {
 // as well as specific top-level commands (e.g., 'init', 'doctor').
 func isExcludedCommand(cmd *cobra.Command) bool {
 	// Removed "contract", "ws", "exec", "chats", "messages", "send" as they are now under "app"
-	excludedRoots := []string{"init", "doctor", "tree", "docker", "app", "claude", "import", "manifest", "docs", "gitignore", "lessons", "brains", "version"}
+	excludedRoots := []string{"init", "doctor", "tree", "docker", "app", "claude", "import", "manifest", "docs", "gitignore", "lessons", "rules", "pi", "brains", "version", "experts"}
 	current := cmd
 
 	for current != nil {

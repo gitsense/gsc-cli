@@ -110,7 +110,13 @@ func BuildManifest(records []Record) manifest.ManifestFile {
 			p.Importance = append(p.Importance, record.Importance)
 			p.LinkedFiles = append(p.LinkedFiles, record.AppliesTo.LinkedFiles...)
 			p.Commands = append(p.Commands, record.AppliesTo.Commands...)
-			p.Topics = append(p.Topics, record.AppliesTo.Topics...)
+			// Use new Topic field, fallback to legacy if empty
+			if record.Topic != "" {
+				p.Topics = append(p.Topics, record.Topic)
+				p.Topics = append(p.Topics, record.RelatedTopics...)
+			} else {
+				p.Topics = append(p.Topics, record.AppliesTo.Topics...)
+			}
 			p.Tags = append(p.Tags, record.Tags...)
 			p.Keywords = append(p.Keywords, record.Keywords...)
 			p.ParentKeywords = append(p.ParentKeywords, record.ParentKeywords...)
@@ -217,6 +223,10 @@ func lessonFields() []manifest.Field {
 }
 
 func syntheticTargets(record Record) []string {
+	// Use new Topic field, fallback to legacy
+	if record.Topic != "" {
+		return []string{".gitsense/lessons/topics/" + record.Topic}
+	}
 	if len(record.AppliesTo.Topics) > 0 {
 		return []string{".gitsense/lessons/topics/" + record.AppliesTo.Topics[0]}
 	}

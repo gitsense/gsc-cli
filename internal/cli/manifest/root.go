@@ -57,7 +57,7 @@ func init() {
 
 	Cmd.AddCommand(schemaCmd)
 	Cmd.AddCommand(doctorCmd)
-	Cmd.AddCommand(deleteCmd)
+	// deleteCmd removed - use 'gsc brains delete' instead
 
 	logger.Debug("Manifest root command initialized")
 }

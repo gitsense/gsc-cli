@@ -22,7 +22,7 @@ type AppliesTo struct {
 	Files       []string `json:"files"`
 	LinkedFiles []string `json:"linked_files"`
 	Commands    []string `json:"commands"`
-	Topics      []string `json:"topics"`
+	Topics      []string `json:"topics,omitempty"` // LEGACY: kept for backward compatibility
 }
 
 type AIProvenance struct {
@@ -32,13 +32,15 @@ type AIProvenance struct {
 }
 
 type Draft struct {
-	Summary      string       `json:"summary"`
-	Details      string       `json:"details"`
-	AppliesTo    AppliesTo    `json:"applies_to"`
-	Tags         []string     `json:"tags"`
-	Importance   string       `json:"importance"`
-	ReviewChecks []string     `json:"review_checks"`
-	AI           AIProvenance `json:"ai"`
+	Summary       string       `json:"summary"`
+	Details       string       `json:"details"`
+	Topic         string       `json:"topic"`
+	RelatedTopics []string     `json:"related_topics"`
+	AppliesTo     AppliesTo    `json:"applies_to"`
+	Tags          []string     `json:"tags"`
+	Importance    string       `json:"importance"`
+	ReviewChecks  []string     `json:"review_checks"`
+	AI            AIProvenance `json:"ai"`
 }
 
 type Record struct {
@@ -48,6 +50,8 @@ type Record struct {
 	UpdatedAt      time.Time    `json:"updated_at"`
 	Summary        string       `json:"summary"`
 	Details        string       `json:"details"`
+	Topic          string       `json:"topic"`
+	RelatedTopics  []string     `json:"related_topics"`
 	AppliesTo      AppliesTo    `json:"applies_to"`
 	Tags           []string     `json:"tags"`
 	Keywords       []string     `json:"keywords"`
@@ -66,4 +70,31 @@ type ValidationResult struct {
 
 func (r ValidationResult) Valid() bool {
 	return len(r.Errors) == 0
+}
+
+// NormalizeTopics migrates topics from legacy AppliesTo.Topics to top-level Topic/RelatedTopics.
+// Call this after loading records to ensure consistent access.
+func (r *Record) NormalizeTopics() {
+	// If new field is empty, migrate from legacy
+	if r.Topic == "" && len(r.AppliesTo.Topics) > 0 {
+		r.Topic = r.AppliesTo.Topics[0]
+		if len(r.AppliesTo.Topics) > 1 {
+			r.RelatedTopics = r.AppliesTo.Topics[1:min(3, len(r.AppliesTo.Topics))]
+		}
+	}
+	// Clear legacy field after migration
+	r.AppliesTo.Topics = nil
+}
+
+// NormalizeDraftTopics migrates topics from legacy AppliesTo.Topics to top-level Topic/RelatedTopics in a draft.
+func (d *Draft) NormalizeDraftTopics() {
+	// If new field is empty, migrate from legacy
+	if d.Topic == "" && len(d.AppliesTo.Topics) > 0 {
+		d.Topic = d.AppliesTo.Topics[0]
+		if len(d.AppliesTo.Topics) > 1 {
+			d.RelatedTopics = d.AppliesTo.Topics[1:min(3, len(d.AppliesTo.Topics))]
+		}
+	}
+	// Clear legacy field after migration
+	d.AppliesTo.Topics = nil
 }

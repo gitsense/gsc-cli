@@ -2,11 +2,11 @@
  * Component: GitIgnore Service
  * Block-UUID: 6797c8dc-d1fe-4566-bc3d-de1c6fd34df7
  * Parent-UUID: ca861770-4836-4262-8b50-e752eb431d22
- * Version: 1.2.0
- * Description: Added manifests/gsc-lessons.json to SourceLessons patterns so the generated lessons manifest is gitignored and rebuilt per session via gsc lessons build.
+ * Version: 1.3.0
+ * Description: Added manifests/gsc-notes.json and manifests/gsc-rules.json patterns. Regenerate now skips write if patterns unchanged.
  * Language: Go
  * Created-at: 2026-06-12T12:44:13Z
- * Authors: GLM-4.7 (v1.0.0), Codex GPT-5 (v1.1.0), claude-sonnet-4-6 (v1.2.0)
+ * Authors: GLM-4.7 (v1.0.0), Codex GPT-5 (v1.1.0), claude-sonnet-4-6 (v1.2.0), MiMo-v2.5-pro (v1.3.0)
  */
 
 
@@ -31,6 +31,8 @@ const (
 	SourceConfig   Source = "config"   // Configuration and profiles
 	SourceClaude   Source = "claude"   // Claude change turn state
 	SourceLessons  Source = "lessons"  // Lessons draft and local archive state
+	SourceRules    Source = "rules"    // Rules guardrails state
+	SourceNotes    Source = "notes"    // Notes scratchpad state
 )
 
 // Registration represents a feature's request to ensure patterns are in .gitignore
@@ -78,8 +80,16 @@ func GetPatterns(sources ...Source) []Pattern {
 
 		// Lessons draft and local archive state
 		{Pattern: "tmp/lesson-draft.json", Source: SourceLessons, Comment: "Current lesson draft (review before commit)"},
+		{Pattern: "lessons/drafts/", Source: SourceLessons, Comment: "Lesson drafts directory"},
 		{Pattern: "lessons/archive/", Source: SourceLessons, Comment: "Archived lesson drafts after commit or manual archive"},
 		{Pattern: "manifests/gsc-lessons.json", Source: SourceLessons, Comment: "Generated lessons manifest (derived from records.jsonl, rebuild with: gsc lessons build)"},
+
+		// Rules guardrails state
+		{Pattern: "manifests/gsc-rules.json", Source: SourceRules, Comment: "Generated rules manifest (derived from records.jsonl, rebuild with: gsc rules build)"},
+		{Pattern: "debug/", Source: SourceRules, Comment: "Trigger debug output directory"},
+
+		// Notes scratchpad state
+		{Pattern: "manifests/gsc-notes.json", Source: SourceNotes, Comment: "Generated notes manifest (derived from records.jsonl, rebuild with: gsc notes build)"},
 	}
 
 	// Filter by requested sources
@@ -210,7 +220,44 @@ func EnsureUpdated(gitsenseDir string, reg Registration) error {
 	return nil
 }
 
-// Regenerate rewrites the entire .gitignore file from scratch
+// Regenerate rewrites the entire .gitignore file from scratch only if patterns changed
 func Regenerate(gitsenseDir string) error {
+	gitignorePath := filepath.Join(gitsenseDir, ".gitignore")
+
+	// Read existing content if file exists
+	existingContent := ""
+	if data, err := os.ReadFile(gitignorePath); err == nil {
+		existingContent = string(data)
+	}
+
+	// If file doesn't exist, create it
+	if existingContent == "" {
+		return WriteGitignore(gitsenseDir)
+	}
+
+	// Compare content (ignoring timestamp line)
+	existingLines := strings.Split(existingContent, "\n")
+	newContent := GenerateContent()
+	newLines := strings.Split(newContent, "\n")
+
+	// Check if content is the same (ignoring timestamp)
+	if len(existingLines) == len(newLines) {
+		same := true
+		for i := range existingLines {
+			// Skip timestamp line comparison
+			if strings.HasPrefix(existingLines[i], "# Generated on:") && strings.HasPrefix(newLines[i], "# Generated on:") {
+				continue
+			}
+			if existingLines[i] != newLines[i] {
+				same = false
+				break
+			}
+		}
+		if same {
+			return nil // No changes needed
+		}
+	}
+
+	// Content changed, write with current timestamp
 	return WriteGitignore(gitsenseDir)
 }

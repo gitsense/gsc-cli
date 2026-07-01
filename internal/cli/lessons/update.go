@@ -9,7 +9,6 @@
  * Authors: claude-opus-4-8 (v1.0.0), claude-opus-4-8 (v1.1.0)
  */
 
-
 package lessons
 
 import (
@@ -17,15 +16,17 @@ import (
 	"io"
 	"os"
 
+	"github.com/gitsense/gsc-cli/internal/gitsensescope"
 	lessonspkg "github.com/gitsense/gsc-cli/internal/lessons"
 	"github.com/spf13/cobra"
 )
 
 func updateCmd() *cobra.Command {
 	var (
-		id       string
-		file     string
-		useStdin bool
+		id          string
+		file        string
+		useStdin    bool
+		targetValue string
 	)
 	cmd := &cobra.Command{
 		Use:   "update --id <id> (--file <path> | --stdin)",
@@ -40,7 +41,7 @@ not a raw record line; keywords and identity are managed by gsc.
 Validation always runs before anything is staged or committed. If the content
 is invalid, nothing is staged and the original lesson is left untouched.
 
-  gsc lessons update --id <id> --file new.json   # validate + stage + show diff
+  gsc lessons update --target repo --id <id> --file new.json   # validate + stage + show diff
   gsc lessons update review                        # re-show the old -> new diff
   gsc lessons update commit                        # replace the lesson in place
   gsc lessons update discard                        # drop the staged update`,
@@ -52,16 +53,20 @@ is invalid, nothing is staged and the original lesson is left untouched.
 			if id == "" {
 				return fmt.Errorf("--id is required")
 			}
+			target, err := gitsensescope.ParseTarget(targetValue)
+			if err != nil {
+				return err
+			}
 			data, err := readUpdateInput(file, useStdin)
 			if err != nil {
 				return err
 			}
-			record, err := lessonspkg.ResolveRecord(id)
+			record, err := lessonspkg.ResolveRecordFromTarget(id, target)
 			if err != nil {
 				return err
 			}
 			if record == nil {
-				return fmt.Errorf("lesson not found: %s", id)
+				return fmt.Errorf("lesson not found in %s store: %s", target, id)
 			}
 
 			result := lessonspkg.ValidateDraftBytes(data, "update content must not include id; pass the target via --id")
@@ -75,6 +80,7 @@ is invalid, nothing is staged and the original lesson is left untouched.
 
 			path, err := lessonspkg.WriteUpdateStage(lessonspkg.UpdateStage{
 				TargetID: record.ID,
+				Target:   string(target),
 				Draft:    result.Draft,
 			})
 			if err != nil {
@@ -92,6 +98,7 @@ is invalid, nothing is staged and the original lesson is left untouched.
 	cmd.Flags().StringVar(&id, "id", "", "ID (or unique short-ID prefix) of the lesson to replace")
 	cmd.Flags().StringVar(&file, "file", "", "Path to Draft-shaped JSON with the new content")
 	cmd.Flags().BoolVar(&useStdin, "stdin", false, "Read Draft-shaped JSON content from stdin")
+	cmd.Flags().StringVar(&targetValue, "target", "", "Write target: repo or personal (required)")
 
 	cmd.AddCommand(updateValidateCmd())
 	cmd.AddCommand(updateReviewCmd())
@@ -140,7 +147,11 @@ func updateReviewCmd() *cobra.Command {
 			if stage == nil {
 				return fmt.Errorf("no staged lesson update; run 'gsc lessons update --id <id> --file <path>'")
 			}
-			original, err := lessonspkg.ResolveRecord(stage.TargetID)
+			target, err := targetFromUpdateStage(stage)
+			if err != nil {
+				return err
+			}
+			original, err := lessonspkg.ResolveRecordFromTarget(stage.TargetID, target)
 			if err != nil {
 				return err
 			}
@@ -169,19 +180,41 @@ func updateCommitCmd() *cobra.Command {
 		Short:        "Replace the target lesson with the staged update and rebuild the Brain",
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			record, err := lessonspkg.CommitUpdate()
+			stage, _, err := lessonspkg.ReadUpdateStage()
 			if err != nil {
 				return err
 			}
-			recordsPath, _ := lessonspkg.RecordsPath()
-			fmt.Printf("Updated lesson: %s\n", record.ID)
-			fmt.Println("Rebuilt and imported Brain: gsc-lessons")
+			target, err := targetFromUpdateStage(stage)
+			if err != nil {
+				return err
+			}
+			record, err := lessonspkg.CommitUpdateForTarget(target)
+			if err != nil {
+				return err
+			}
+			recordsPath, _ := lessonspkg.RecordsPathForTarget(target)
+			fmt.Printf("Updated lesson in %s scope: %s\n", target, record.ID)
+			if target == gitsensescope.TargetRepo {
+				fmt.Println("Rebuilt and imported Brain: gsc-lessons")
+			} else {
+				fmt.Println("Rebuilt manifest: gsc-lessons")
+			}
 			fmt.Println()
 			fmt.Println("To preserve the change for teammates and future clones, commit:")
 			fmt.Printf("  %s\n", recordsPath)
 			return nil
 		},
 	}
+}
+
+func targetFromUpdateStage(stage *lessonspkg.UpdateStage) (gitsensescope.Target, error) {
+	if stage == nil {
+		return "", fmt.Errorf("no staged lesson update; run 'gsc lessons update --id <id> --file <path>'")
+	}
+	if stage.Target == "" {
+		return "", fmt.Errorf("staged lesson update has no target; restage with --target repo or --target personal")
+	}
+	return gitsensescope.ParseTarget(stage.Target)
 }
 
 func updateDiscardCmd() *cobra.Command {

@@ -9,18 +9,16 @@
  * Authors: claude-opus-4-8 (v1.0.0)
  */
 
-
 package lessons
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 
-	"github.com/gitsense/gsc-cli/internal/manifest"
+	"github.com/gitsense/gsc-cli/internal/gitsensescope"
 )
 
 // UpdateStage is the pending replacement: the new draft content plus the ID of
@@ -28,6 +26,7 @@ import (
 // never collides with an in-progress create draft.
 type UpdateStage struct {
 	TargetID string `json:"target_id"`
+	Target   string `json:"target,omitempty"`
 	Draft    Draft  `json:"draft"`
 }
 
@@ -108,6 +107,10 @@ func DiscardUpdateStage() (string, bool, error) {
 // provenance (confirmed_by/at) are preserved; updated_at is bumped and keywords
 // are re-derived. The stage is cleared on success.
 func CommitUpdate() (*Record, error) {
+	return CommitUpdateForTarget(gitsensescope.TargetRepo)
+}
+
+func CommitUpdateForTarget(target gitsensescope.Target) (*Record, error) {
 	if err := EnsureWorkspace(); err != nil {
 		return nil, err
 	}
@@ -118,13 +121,16 @@ func CommitUpdate() (*Record, error) {
 	if stage == nil {
 		return nil, fmt.Errorf("no staged lesson update; run 'gsc lessons update --id <id> --file <path>'")
 	}
+	if stage.Target != "" && stage.Target != string(target) {
+		return nil, fmt.Errorf("staged update target is %s, not %s", stage.Target, target)
+	}
 
 	result := ValidateUpdateDraft(stage.Draft)
 	if !result.Valid() {
 		return nil, fmt.Errorf("staged update is invalid; run 'gsc lessons update review'")
 	}
 
-	records, err := LoadRecords()
+	records, err := LoadRecordsFromTarget(target)
 	if err != nil {
 		return nil, err
 	}
@@ -161,14 +167,10 @@ func CommitUpdate() (*Record, error) {
 	}
 	records[index] = updated
 
-	if err := WriteRecords(records); err != nil {
+	if err := WriteRecordsToTarget(records, target); err != nil {
 		return nil, err
 	}
-	manifestPath, err := RebuildManifest()
-	if err != nil {
-		return nil, err
-	}
-	if err := manifest.ImportManifest(context.Background(), manifestPath, DatabaseName, true, false); err != nil {
+	if err := RebuildAndImportForTarget(target); err != nil {
 		return nil, err
 	}
 

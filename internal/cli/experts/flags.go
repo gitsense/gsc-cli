@@ -9,7 +9,6 @@
  * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.0.1), GLM-4.7 (v1.0.2), GLM-4.7 (v1.0.3)
  */
 
-
 package experts
 
 import (
@@ -22,6 +21,8 @@ type InitFlags struct {
 	Force     bool     // Overwrite existing context file without prompting.
 	UserLevel string   // Persona: "new" (Guide), "author" (Specialist), "user" (Consultant).
 	Silent    bool     // Suppress all output (for inline agents).
+	Rules     string   // Rules mode: "ask", "advisory", "off" (default: "advisory").
+	Out       string   // Write context to this path instead of stdout.
 }
 
 // AddInitFlags adds the init-specific flags to the provided cobra command.
@@ -30,6 +31,8 @@ func AddInitFlags(cmd *cobra.Command, flags *InitFlags) {
 	cmd.Flags().BoolVarP(&flags.Force, "force", "f", false, "Overwrite existing context file")
 	cmd.Flags().StringVar(&flags.UserLevel, "user-level", "user", "Persona: 'new' (Guide), 'author' (Specialist), 'user' (Consultant)")
 	cmd.Flags().BoolVar(&flags.Silent, "silent", false, "Suppress all output (for inline agents)")
+	cmd.Flags().StringVar(&flags.Rules, "rules", "advisory", "Rules mode: 'advisory' (consult automatically), 'ask' (ask once per session), 'off' (ignore rules)")
+	cmd.Flags().StringVar(&flags.Out, "out", "", "Write context to this file path instead of stdout")
 }
 
 // StatusFlags holds the flag values for the 'gsc experts status' command.

@@ -234,16 +234,16 @@ To browse, search, read, create, or edit lessons, use the dedicated `gsc lessons
 
 | Goal | Command |
 | :--- | :--- |
-| List / filter lessons | `gsc lessons list [--tag <t>] [--topic <t>] [--file <path>] [--importance <lvl>] [-o json]` |
-| Full-text search | `gsc lessons search <query> [--fields summary,details,tags,topics,keywords] [-o json]` |
-| Tag vocabulary with counts | `gsc lessons tags [-o json]` |
-| Human-readable digest of all lessons | `gsc lessons overview [--by tag]` |
-| Show one lesson (full ID or unique prefix) | `gsc lessons show <id> [-o json]` |
+| List / filter lessons | `gsc lessons list [--scope <all\|repo\|personal>] [--tag <t>] [--topic <t>] [--file <path>] [--importance <lvl>] [-o json]` |
+| Full-text search | `gsc lessons search <query> [--scope <all\|repo\|personal>] [--fields summary,details,tags,topics,keywords] [-o json]` |
+| Tag vocabulary with counts | `gsc lessons tags [--scope <all\|repo\|personal>] [-o json]` |
+| Human-readable digest of all lessons | `gsc lessons overview [--scope <all\|repo\|personal>] [--by tag]` |
+| Show one lesson (full ID or unique prefix) | `gsc lessons show <id> [--scope <all\|repo\|personal>] [-o json]` |
 | Create in one shot | `gsc lessons add --from-file <path>` · `--stdin` · `--summary "..." --details "..." --tag <t>` |
-| Create interactively | `gsc lessons draft new` → `draft validate` → `draft review` → `draft commit` |
-| Replace an existing lesson | `gsc lessons update --id <id> --file <path>` → `update review` → `update commit` |
+| Create interactively | `gsc lessons draft new` → `draft validate` → `draft review` → `draft commit --target <repo\|personal>` |
+| Replace an existing lesson | `gsc lessons update --target <repo\|personal> --id <id> --file <path>` → `update review` → `update commit` |
 
-Add `-o json` for machine-readable output (agents should prefer it). `add` and `update` validate before staging and require an explicit `commit` step; nothing is written on a validation error.
+Add `-o json` for machine-readable output (agents should prefer it). Scoped JSON output includes `source`. `add` and `update` validate before staging and require an explicit `commit` step; nothing is written on a validation error. The final write target is explicit: `draft commit --target <repo|personal>` for new lessons, and `update --target <repo|personal>` for replacements.
 
 #### Overlay lessons onto code search — the gsc-lessons Brain
 

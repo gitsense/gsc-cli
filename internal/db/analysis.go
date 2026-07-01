@@ -2,8 +2,8 @@
  * Component: Analysis Copy Database Operations
  * Block-UUID: dbe01592-2364-417f-b1b3-fd02c34b54ec
  * Parent-UUID: f154a420-bb0b-4a0a-a6b9-819db65db187
- * Version: 1.12.0
- * Description: Handles the database logic for copying, dumping, loading, getting, and setting analyzer metadata. v1.10.0: Added GetAnalysisForFile and ListAnalysisForAnalyzer for the get command. Added GetLatestLeafMessageID (true leaf discovery using NOT EXISTS), ArchiveMessageToHistory, UpdateAnalysisMessage, and SetAnalysisBulk (bulk insert/update orchestrator with chat token updates) for the set command. v1.11.0: Removed unused normalizeAnalyzerForQuery; inlined pattern logic into get/list functions for clarity. v1.12.0: Added hash comparison to SetAnalysisBulk so unchanged analysis skips without --force while changed or legacy records update.
+ * Version: 1.13.0
+ * Description: Handles the database logic for copying, dumping, loading, getting, setting, and deleting analyzer metadata. v1.10.0: Added GetAnalysisForFile and ListAnalysisForAnalyzer for the get command. Added GetLatestLeafMessageID (true leaf discovery using NOT EXISTS), ArchiveMessageToHistory, UpdateAnalysisMessage, and SetAnalysisBulk (bulk insert/update orchestrator with chat token updates) for the set command. v1.11.0: Removed unused normalizeAnalyzerForQuery; inlined pattern logic into get/list functions for clarity. v1.12.0: Added hash comparison to SetAnalysisBulk so unchanged analysis skips without --force while changed or legacy records update. v1.13.0: Added DeleteAnalysisForAnalyzer and removeAnalyzerTokenInTx for the delete command with message chain re-linking and chat metadata cleanup.
  * Language: Go
  * Created-at: 2026-05-14T18:40:00.000Z
  * Authors: GLM-4.7 (v1.0.0), GLM-4.7 (v1.1.0), GLM-4.7 (v1.2.0), GLM-4.7 (v1.3.0), GLM-4.7 (v1.3.1), GLM-4.7 (v1.3.2), GLM-4.7 (v1.4.0), GLM-4.7 (v1.5.0), GLM-4.7 (v1.6.0), GLM-4.7 (v1.7.0), GLM-4.7 (v1.8.0), GLM-4.7 (v1.9.0), MiMo-v2.5-Pro (v1.10.0), MiMo-v2.5-Pro (v1.11.0), Codex (v1.12.0)
@@ -1375,4 +1375,193 @@ func estimateTokens(content string) int {
 		return 0
 	}
 	return len(content) / 4
+}
+
+// =====================================================================
+// DELETE COMMAND SUPPORT
+// =====================================================================
+
+// DeleteResult tracks the outcome of a DeleteAnalysisForAnalyzer operation.
+type DeleteResult struct {
+	DeletedMessages int
+	UpdatedChats    int
+	ReparentedLinks int
+}
+
+// DeleteAnalysisForAnalyzer soft-deletes all analysis messages for a given analyzer in a branch.
+// It performs three operations within a transaction:
+//  1. Re-links child messages to point to the deleted message's parent (preserving message chain)
+//  2. Archives messages to message_history before soft-deleting
+//  3. Removes the analyzer entry from each chat's meta.tokens.analysis
+//
+// Supports flexible analyzer matching (e.g., "rust-depmap" matches "rust-depmap::file-content::default").
+func DeleteAnalysisForAnalyzer(dbConn *sql.DB, refChatID int64, analyzer string, dryRun bool) (*DeleteResult, error) {
+	result := &DeleteResult{}
+
+	// Build analyzer pattern for flexible matching
+	analyzerPattern := analyzer
+	if !strings.Contains(analyzer, "::") {
+		analyzerPattern = analyzer + "::%"
+	}
+
+	// 1. Find all messages to delete
+	findQuery := `
+		SELECT m.id, m.chat_id, m.parent_id
+		FROM messages m
+		JOIN chats c ON c.id = m.chat_id
+		WHERE c.type = 'git-blob'
+		  AND c.deleted = 0
+		  AND json_extract(c.meta, '$.refContext.refChatId') = ?
+		  AND m.type LIKE ?
+		  AND m.deleted = 0`
+
+	rows, err := dbConn.Query(findQuery, refChatID, analyzerPattern)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find analysis messages: %w", err)
+	}
+	defer rows.Close()
+
+	type messageInfo struct {
+		ID       int64
+		ChatID   int64
+		ParentID int64
+	}
+	var messages []messageInfo
+	chatIDs := make(map[int64]bool)
+
+	for rows.Next() {
+		var msg messageInfo
+		if err := rows.Scan(&msg.ID, &msg.ChatID, &msg.ParentID); err != nil {
+			return nil, fmt.Errorf("failed to scan message row: %w", err)
+		}
+		messages = append(messages, msg)
+		chatIDs[msg.ChatID] = true
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating message rows: %w", err)
+	}
+
+	if len(messages) == 0 {
+		return result, nil
+	}
+
+	// Dry run: report what would happen
+	if dryRun {
+		result.DeletedMessages = len(messages)
+		result.UpdatedChats = len(chatIDs)
+		return result, nil
+	}
+
+	// 2. Begin transaction
+	tx, err := dbConn.Begin()
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	now := time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
+
+	// 3. Process each message: re-link children, archive, soft-delete
+	for _, msg := range messages {
+		// a. Re-link children to point to the deleted message's parent
+		relinkQuery := `
+			UPDATE messages
+			SET parent_id = ?, updated_at = ?
+			WHERE parent_id = ? AND chat_id = ? AND deleted = 0`
+		relinkResult, err := tx.Exec(relinkQuery, msg.ParentID, now, msg.ID, msg.ChatID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to re-link children for message %d: %w", msg.ID, err)
+		}
+		relinked, _ := relinkResult.RowsAffected()
+		result.ReparentedLinks += int(relinked)
+
+		// b. Archive to message_history
+		if err := archiveMsgInTx(tx, msg.ID); err != nil {
+			logger.Warning("Failed to archive message before delete", "message_id", msg.ID, "error", err)
+			// Continue with delete anyway - non-fatal
+		}
+
+		// c. Soft-delete the message
+		deleteQuery := `UPDATE messages SET deleted = 1, updated_at = ? WHERE id = ?`
+		if _, err := tx.Exec(deleteQuery, now, msg.ID); err != nil {
+			return nil, fmt.Errorf("failed to soft-delete message %d: %w", msg.ID, err)
+		}
+		result.DeletedMessages++
+	}
+
+	// 4. Update chat metadata: remove analyzer entry from tokens.analysis
+	for chatID := range chatIDs {
+		if err := removeAnalyzerTokenInTx(tx, chatID, analyzer, now); err != nil {
+			logger.Warning("Failed to remove analyzer token from chat meta", "chat_id", chatID, "error", err)
+			// Non-fatal: message was already deleted
+		} else {
+			result.UpdatedChats++
+		}
+	}
+
+	// 5. Commit
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return result, nil
+}
+
+// removeAnalyzerTokenInTx removes an analyzer entry from a chat's meta.tokens.analysis.
+// This mirrors the read-modify-write pattern used in updateChatTokensInTx.
+func removeAnalyzerTokenInTx(tx *sql.Tx, chatID int64, analyzer string, now string) error {
+	// 1. Read current meta
+	var metaStr sql.NullString
+	if err := tx.QueryRow("SELECT meta FROM chats WHERE id = ?", chatID).Scan(&metaStr); err != nil {
+		return fmt.Errorf("failed to read chat meta for chat %d: %w", chatID, err)
+	}
+
+	// 2. Parse existing meta
+	if !metaStr.Valid || metaStr.String == "" {
+		return nil // No meta to update
+	}
+
+	meta := make(map[string]interface{})
+	if err := json.Unmarshal([]byte(metaStr.String), &meta); err != nil {
+		return fmt.Errorf("failed to parse chat meta for chat %d: %w", chatID, err)
+	}
+
+	// 3. Navigate to meta.tokens.analysis
+	tokens, _ := meta["tokens"].(map[string]interface{})
+	if tokens == nil {
+		return nil // No tokens section
+	}
+
+	analysisTokens, _ := tokens["analysis"].(map[string]interface{})
+	if analysisTokens == nil {
+		return nil // No analysis tokens
+	}
+
+	// 4. Delete the analyzer entry (full type match for safety)
+	// Try exact match first, then prefix match
+	if _, exists := analysisTokens[analyzer]; exists {
+		delete(analysisTokens, analyzer)
+	} else {
+		// Try prefix match for flexible analyzer names
+		for key := range analysisTokens {
+			if strings.HasPrefix(key, analyzer+"::") || strings.HasPrefix(analyzer, key+"::") {
+				delete(analysisTokens, key)
+			}
+		}
+	}
+
+	// 5. Write back the full meta object
+	metaJSON, err := json.Marshal(meta)
+	if err != nil {
+		return fmt.Errorf("failed to marshal updated chat meta: %w", err)
+	}
+
+	if _, err := tx.Exec(
+		"UPDATE chats SET meta = ?, updated_at = ? WHERE id = ?",
+		string(metaJSON), now, chatID,
+	); err != nil {
+		return fmt.Errorf("failed to update chat meta for chat %d: %w", chatID, err)
+	}
+
+	return nil
 }

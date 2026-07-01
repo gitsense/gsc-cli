@@ -32,19 +32,22 @@ type ListFilter struct {
 func FilterRecords(records []Record, f ListFilter) []Record {
 	var out []Record
 	for _, r := range records {
-		if f.Tag != "" && !containsFold(r.Tags, f.Tag) {
+		// Normalize topics for backward compatibility
+		rr := r
+		rr.NormalizeTopics()
+		if f.Tag != "" && !containsFold(rr.Tags, f.Tag) {
 			continue
 		}
-		if f.Topic != "" && !containsFold(r.AppliesTo.Topics, f.Topic) {
+		if f.Topic != "" && !containsFold([]string{rr.Topic}, f.Topic) {
 			continue
 		}
-		if f.File != "" && !containsFold(r.AppliesTo.Files, f.File) {
+		if f.File != "" && !containsFold(rr.AppliesTo.Files, f.File) {
 			continue
 		}
-		if f.Importance != "" && !strings.EqualFold(r.Importance, f.Importance) {
+		if f.Importance != "" && !strings.EqualFold(rr.Importance, f.Importance) {
 			continue
 		}
-		out = append(out, r)
+		out = append(out, rr)
 	}
 	return out
 }
@@ -213,21 +216,24 @@ func recordMatches(r Record, lowerQuery string, fields []string) bool {
 }
 
 func recordFieldValues(r Record, field string) []string {
+	// Normalize topics for backward compatibility
+	rr := r
+	rr.NormalizeTopics()
 	switch strings.ToLower(strings.TrimSpace(field)) {
 	case "summary":
-		return []string{r.Summary}
+		return []string{rr.Summary}
 	case "details":
-		return []string{r.Details}
+		return []string{rr.Details}
 	case "tags":
-		return r.Tags
+		return rr.Tags
 	case "topics":
-		return r.AppliesTo.Topics
+		return []string{rr.Topic}
 	case "keywords":
-		return r.Keywords
+		return rr.Keywords
 	case "files":
-		return r.AppliesTo.Files
+		return rr.AppliesTo.Files
 	case "commands":
-		return r.AppliesTo.Commands
+		return rr.AppliesTo.Commands
 	default:
 		return nil
 	}

@@ -2,11 +2,11 @@
 Component: GSC Overview
 Block-UUID: 621477bc-1d68-47aa-a678-c2bbb179f201
 Parent-UUID: c8d2f483-24b4-4f60-b5ac-f840efecd9c9
-Version: 1.7.0
-Description: Added a routing-table entry directing lesson browsing, searching, and recording to the gsc lessons commands documented in GSC_QUERY_GUIDE.md.
+Version: 1.8.0
+Description: Added knowledge discovery commands to routing table.
 Language: Markdown
 Created-at: 2026-04-30T23:51:56.570Z
-Authors: Gemini 2.5 Flash Lite (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), Gemini 2.5 Flash Lite (v1.3.0), Codex GPT-5 (v1.4.0), claude-sonnet-4-6 (v1.5.0), Codex GPT-5 (v1.6.0), claude-opus-4-8 (v1.7.0)
+Authors: Gemini 2.5 Flash Lite (v1.0.0), Gemini 3 Flash (v1.1.0), GLM-4.7 (v1.2.0), Gemini 2.5 Flash Lite (v1.3.0), Codex GPT-5 (v1.4.0), claude-sonnet-4-6 (v1.5.0), Codex GPT-5 (v1.6.0), claude-opus-4-8 (v1.7.0), MiMo-v2.5-pro (v1.8.0)
 -->
 
 
@@ -27,6 +27,7 @@ A Brain is a **constructed knowledge base** (a SQLite database) that serves as t
 | **Query & Analysis** | Filter files by metadata (Concepts), analyze coverage, list field values | `GSC_QUERY_GUIDE.md` |
 | **Visualization & Search** | Enrich the file tree, search code with metadata context | `GSC_VISUALIZATION_GUIDE.md` |
 | **Brain Management** | Initialize workspace, import manifests, construct Brains | `GSC_BRAIN_MANAGEMENT_GUIDE.md` |
+| **Knowledge Discovery** | Unified search across lessons, notes, and rules; topic browsing | `GSC_TOPICS_GUIDE.md` |
 | **Consultation** | Guide AI assistants to act as strategic consultants before triggering Inline Agents | `gsc experts guide` |
 
 ## Intelligence-First Principle
@@ -75,5 +76,6 @@ A Manifest is the blueprint. By versioning it in your repo, you allow anyone to 
 | File tree, grep, visualizing structure | `GSC_VISUALIZATION_GUIDE.md` |
 | Missing Brain, importing a manifest | `GSC_BRAIN_MANAGEMENT_GUIDE.md` |
 | Browsing, searching, or recording lessons | `GSC_QUERY_GUIDE.md` (gsc-lessons) |
+| Knowledge discovery, topics, unified search | `GSC_TOPICS_GUIDE.md` |
 | Starting an Inline Agent, refining intent | Run `gsc experts guide` and paste the output |
 | General orientation or first-time setup | Stay in this document, then route per the table above |

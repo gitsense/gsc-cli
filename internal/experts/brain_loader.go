@@ -20,10 +20,15 @@ import (
 	"text/template"
 
 	"github.com/gitsense/gsc-cli/internal/db"
-	"github.com/gitsense/gsc-cli/internal/manifest"
 	"github.com/gitsense/gsc-cli/internal/registry"
 	"github.com/gitsense/gsc-cli/pkg/settings"
 )
+
+var requiredSystemPromptCapabilities = []string{
+	"GSC-Experts-Capability: compact-on-demand-tool-gates-v1",
+	"GSC-Experts-Capability: advisory-rules-default-v1",
+	"GSC-Experts-Capability: agent-rule-creator-checklist-v2",
+}
 
 // LoadBrains retrieves the schema and summary information for the specified brains.
 func LoadBrains(ctx context.Context, cfg ExpertsConfig) ([]BrainSummary, error) {
@@ -49,11 +54,6 @@ func LoadBrains(ctx context.Context, cfg ExpertsConfig) ([]BrainSummary, error) 
 
 	var brains []BrainSummary
 	for _, entry := range targetDBs {
-		schema, err := manifest.GetSchema(ctx, entry.DatabaseName)
-		if err != nil {
-			continue
-		}
-
 		// Resolve path and count entries inline using internal/db patterns
 		dbPath, _ := db.ResolveManifestDBPath(entry.DatabaseName)
 		count := 0
@@ -62,35 +62,88 @@ func LoadBrains(ctx context.Context, cfg ExpertsConfig) ([]BrainSummary, error) 
 			db.CloseDB(database)
 		}
 
-		var fields []FieldSummary
-		for _, analyzer := range schema.Analyzers {
-			for _, field := range analyzer.Fields {
-				fields = append(fields, FieldSummary{
-					Name:        field.Name,
-					Type:        field.Type,
-					Description: field.Description,
-				})
-			}
-		}
-
 		brains = append(brains, BrainSummary{
 			Name:        entry.DatabaseName,
 			DisplayName: entry.ManifestName,
 			Description: entry.Description,
 			Version:     entry.Version,
 			EntryCount:  count,
-			Fields:      fields,
 		})
 	}
 
 	return brains, nil
 }
 
-// Generate writes the expert context markdown file.
+// Render generates the expert context markdown as a string.
+func Render(ctx context.Context, expertsCtx ExpertsContext) (string, error) {
+	templateContent, err := loadSystemPromptTemplate()
+	if err != nil {
+		return "", err
+	}
+
+	var brainListBuilder strings.Builder
+	primaryBrain := ""
+	for _, brain := range expertsCtx.Brains {
+		if primaryBrain == "" {
+			primaryBrain = brain.Name
+		}
+		brainListBuilder.WriteString(fmt.Sprintf("- **%s** (db: `%s`, v%s): %s\n", brain.DisplayName, brain.Name, brain.Version, brain.Description))
+	}
+
+	repoName := "personal"
+	if expertsCtx.RepoPath != "" {
+		repoName = filepath.Base(expertsCtx.RepoPath)
+	}
+
+	templateData := struct {
+		RepoName         string
+		UserLevel        string
+		DynamicBrainList string
+		HasBrains        bool
+		PrimaryBrain     string
+		HasRules         bool
+		RulesMode        string
+		InRepo           bool
+	}{
+		RepoName:         repoName,
+		UserLevel:        expertsCtx.UserLevel,
+		DynamicBrainList: brainListBuilder.String(),
+		HasBrains:        len(expertsCtx.Brains) > 0,
+		PrimaryBrain:     primaryBrain,
+		HasRules:         expertsCtx.HasRules,
+		RulesMode:        expertsCtx.RulesMode,
+		InRepo:           expertsCtx.RepoPath != "",
+	}
+
+	tmpl, err := template.New("system_prompt").Parse(string(templateContent))
+	if err != nil {
+		return "", err
+	}
+
+	var rendered strings.Builder
+	if err := tmpl.Execute(&rendered, templateData); err != nil {
+		return "", err
+	}
+
+	return StripProvenanceHeaders(rendered.String()), nil
+}
+
+// Generate writes the expert context markdown file (legacy, use Render + write instead).
 func Generate(ctx context.Context, expertsCtx ExpertsContext, outputPath string) error {
-	// Resolve template path with "Local First, Embedded Fallback" strategy
-	// 1. Try $GSC_HOME/cli/templates/experts (allows live updates from GitSense Chat App)
-	// 2. Fallback to embedded filesystem (ensures binary works standalone)
+	output, err := Render(ctx, expertsCtx)
+	if err != nil {
+		return err
+	}
+
+	if err := os.MkdirAll(filepath.Dir(outputPath), 0755); err != nil {
+		return fmt.Errorf("failed to create context directory: %w", err)
+	}
+
+	return os.WriteFile(outputPath, []byte(output), 0644)
+}
+
+// loadSystemPromptTemplate loads the system prompt template using Local First, Embedded Fallback.
+func loadSystemPromptTemplate() ([]byte, error) {
 	gscHome, err := settings.GetGSCHome(false)
 	var templateBase string
 	var useEmbedded bool
@@ -103,117 +156,102 @@ func Generate(ctx context.Context, expertsCtx ExpertsContext, outputPath string)
 	}
 
 	var templateContent []byte
+	if !useEmbedded {
+		templateContent, err = os.ReadFile(filepath.Join(templateBase, "GSC_EXPERTS_SYSTEM_PROMPT.md"))
+		if err != nil || !hasRequiredSystemPromptCapabilities(string(templateContent)) {
+			useEmbedded = true
+			templateBase = "templates/experts"
+		}
+	}
 	if useEmbedded {
 		templateContent, err = settings.TemplateFS.ReadFile(templateBase + "/GSC_EXPERTS_SYSTEM_PROMPT.md")
-	} else {
-		templateContent, err = os.ReadFile(filepath.Join(templateBase, "GSC_EXPERTS_SYSTEM_PROMPT.md"))
 	}
 	if err != nil {
-		return fmt.Errorf("failed to read system prompt template: %w", err)
+		return nil, fmt.Errorf("failed to read system prompt template: %w", err)
 	}
+	return templateContent, nil
+}
 
-	// Build Rich Vocabulary
-	var brainListBuilder strings.Builder
-	var vocabBuilder strings.Builder
-	primaryBrain := ""
-	for _, brain := range expertsCtx.Brains {
-		if primaryBrain == "" {
-			primaryBrain = brain.Name
-		}
-		brainListBuilder.WriteString(fmt.Sprintf("- **%s** (db: `%s`, v%s): %s\n", brain.DisplayName, brain.Name, brain.Version, brain.Description))
-
-		vocabBuilder.WriteString(fmt.Sprintf("### %s\n", brain.DisplayName))
-		for _, f := range brain.Fields {
-			vocabBuilder.WriteString(fmt.Sprintf("- **%s** (%s): %s\n", f.Name, f.Type, f.Description))
-		}
-		vocabBuilder.WriteString("\n")
-	}
-
-	templateData := struct {
-		RepoName          string
-		UserLevel         string
-		DynamicBrainList  string
-		DynamicVocabulary string
-		HasBrains         bool
-		PrimaryBrain      string
-	}{
-		RepoName:          filepath.Base(expertsCtx.RepoPath),
-		UserLevel:         expertsCtx.UserLevel,
-		DynamicBrainList:  brainListBuilder.String(),
-		DynamicVocabulary: vocabBuilder.String(),
-		HasBrains:         len(expertsCtx.Brains) > 0,
-		PrimaryBrain:      primaryBrain,
-	}
-
-	tmpl, err := template.New("system_prompt").Parse(string(templateContent))
-	if err != nil {
-		return err
-	}
-
-	var rendered strings.Builder
-	if err := tmpl.Execute(&rendered, templateData); err != nil {
-		return err
-	}
-
-	// Append Guides
-	guides := []string{"GSC_OVERVIEW.md", "GSC_QUERY_GUIDE.md", "GSC_VISUALIZATION_GUIDE.md", "GSC_BRAIN_MANAGEMENT_GUIDE.md"}
-	for _, guide := range guides {
-		var content []byte
-		if useEmbedded {
-			content, err = settings.TemplateFS.ReadFile(templateBase + "/" + guide)
-		} else {
-			content, err = os.ReadFile(filepath.Join(templateBase, guide))
-		}
-
-		if err == nil {
-			rendered.WriteString("\n\n---\n\n")
-			rendered.Write(content)
+func hasRequiredSystemPromptCapabilities(content string) bool {
+	for _, capability := range requiredSystemPromptCapabilities {
+		if !strings.Contains(content, capability) {
+			return false
 		}
 	}
+	return true
+}
 
-	if err := os.MkdirAll(filepath.Dir(outputPath), 0755); err != nil {
-		return fmt.Errorf("failed to create context directory: %w", err)
+// StripProvenanceHeaders removes HTML-comment provenance blocks (<!-- ... -->)
+// from rendered expert content so the AI-facing output does not waste context
+// tokens on Block-UUIDs, versions, and author lists. Shared by Generate (init)
+// and the `gsc experts guide` command.
+func StripProvenanceHeaders(content string) string {
+	lines := strings.Split(content, "\n")
+	result := make([]string, 0, len(lines))
+	skip := false
+	for _, line := range lines {
+		if strings.HasPrefix(line, "<!--") {
+			skip = true
+			continue
+		}
+		if strings.HasPrefix(line, "-->") {
+			skip = false
+			continue
+		}
+		if !skip {
+			result = append(result, line)
+		}
 	}
-
-	return os.WriteFile(outputPath, []byte(rendered.String()), 0644)
+	return strings.Join(result, "\n")
 }
 
 // OrientationMessage returns the handshake message.
-func OrientationMessage(ctx ExpertsContext, contextFilePath string) string {
-	// Ensure path is relative to repo root for easy AI 'cat'
-	relPath, _ := filepath.Rel(ctx.RepoPath, contextFilePath)
-
+func OrientationMessage(ctx ExpertsContext, outputPath string, wroteToFile bool) string {
 	var sb strings.Builder
 	sb.WriteString("✅ GitSense Expert Context Initialized.\n\n")
 
-	sb.WriteString("⚠️  MANDATORY SETUP:\n")
-	sb.WriteString("Before responding to ANY of the following, you MUST run:\n")
-	sb.WriteString(fmt.Sprintf("  cat %s\n\n", relPath))
+	if wroteToFile {
+		displayPath := outputPath
+		if ctx.RepoPath != "" {
+			if relPath, err := filepath.Rel(ctx.RepoPath, outputPath); err == nil {
+				displayPath = relPath
+			}
+		}
+		sb.WriteString("REQUIRED BEFORE CONTINUING:\n")
+		sb.WriteString(fmt.Sprintf("1. Run: cat %s\n", displayPath))
+		sb.WriteString("2. Read the context file to understand available tools and rules.\n")
+		sb.WriteString("3. When you need to use a tool, load the relevant guide automatically.\n\n")
+		sb.WriteString("Do not ask the user which guide to load — load them as needed.\n\n")
+	} else {
+		sb.WriteString("Context printed to stdout above.\n")
+		sb.WriteString("When you need to use a tool, load the relevant guide automatically.\n\n")
+		sb.WriteString("Do not ask the user which guide to load — load them as needed.\n\n")
+	}
 
-	sb.WriteString("Triggers:\n")
-	sb.WriteString("- Any question about the codebase, files, or architecture\n")
-	sb.WriteString("- Any request to find, search, or locate code\n")
-	sb.WriteString("- Any question about available brains or commands\n")
-	sb.WriteString("- Any 'gsc ...' command you are about to execute\n")
-	sb.WriteString("- Any time you are unsure which gsc command to use\n\n")
-
-	sb.WriteString("FORBIDDEN (do not attempt):\n")
-	sb.WriteString("- gsc brain ...          (not a valid command)\n")
-	sb.WriteString("- gsc experts list       (not a valid command)\n")
-	sb.WriteString("- go run . experts init  (use the 'gsc' binary, not go run)\n")
-	sb.WriteString("- Guessing command names  (always read the context file first)\n\n")
+	if ctx.RepoPath == "" {
+		sb.WriteString("Scope: personal only (not in a git repository).\n")
+		sb.WriteString("  - Repo scope is unavailable until you change into a git repo.\n")
+		sb.WriteString("  - Use --scope personal for reads, --target personal for writes.\n\n")
+	} else {
+		sb.WriteString("Scope: repo + personal (default --scope all).\n")
+		sb.WriteString("  - Reads default to --scope all (repo + personal).\n")
+		sb.WriteString("  - Writes require --target repo or --target personal.\n\n")
+	}
 
 	sb.WriteString("Active Brains:\n")
 	if len(ctx.Brains) == 0 {
-		sb.WriteString("  - None. Use gsc for command guidance and text search; import a manifest to enable Brain-backed metadata queries.\n")
+		sb.WriteString("  - None. The briefing covers text/search basics; import a manifest to enable metadata queries.\n")
 	} else {
 		for _, b := range ctx.Brains {
 			sb.WriteString(fmt.Sprintf("  - %s: %s\n", b.DisplayName, b.Description))
 		}
 	}
-	sb.WriteString(fmt.Sprintf("\nExpert instructions written to: %s\n\n", relPath))
-	sb.WriteString("ACTION REQUIRED NOW:\n")
-	sb.WriteString(fmt.Sprintf("cat %s\n", relPath))
+	if ctx.HasRules {
+		sb.WriteString(fmt.Sprintf("\nRules Mode: %s\n", ctx.RulesMode))
+	}
+	if wroteToFile {
+		sb.WriteString(fmt.Sprintf("\nExpert instructions written to: %s\n", outputPath))
+	}
 	return sb.String()
 }
 

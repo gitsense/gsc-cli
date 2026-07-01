@@ -1,0 +1,10 @@
+{"type":"session","version":3,"id":"session-001","timestamp":"2026-06-23T00:00:00Z","cwd":"/repo"}
+{"type":"message","id":"entry-1","parentId":null,"timestamp":"2026-06-23T00:01:00Z","message":{"role":"user","content":[{"type":"text","text":"Hello, can you help me?"}]}}
+{"type":"message","id":"entry-2","parentId":"entry-1","timestamp":"2026-06-23T00:01:30Z","message":{"role":"assistant","content":[{"type":"text","text":"Sure, I can help."}]}}
+{"type":"message","id":"entry-3","parentId":"entry-2","timestamp":"2026-06-23T00:02:00Z","message":{"role":"user","content":[{"type":"text","text":"Read the file foo.txt"}]}}
+{"type":"message","id":"entry-4","parentId":"entry-3","timestamp":"2026-06-23T00:02:30Z","message":{"role":"assistant","content":[{"type":"toolCall","id":"call-001","name":"read","arguments":{"path":"foo.txt"}},{"type":"text","text":"Let me read that file."}]}}
+{"type":"message","id":"entry-5","parentId":"entry-4","timestamp":"2026-06-23T00:02:35Z","message":{"role":"toolResult","toolCallId":"call-001","content":[{"type":"text","text":"file contents here"}]}}
+{"type":"message","id":"entry-6","parentId":"entry-5","timestamp":"2026-06-23T00:03:00Z","message":{"role":"user","content":[{"type":"text","text":"Now edit it"}]}}
+{"type":"message","id":"entry-7","parentId":"entry-6","timestamp":"2026-06-23T00:03:30Z","message":{"role":"assistant","content":[{"type":"toolCall","id":"call-002","name":"edit","arguments":{"path":"foo.txt","old_string":"old","new_string":"new"}},{"type":"toolCall","id":"call-003","name":"bash","arguments":{"command":"npm run check"}}]}}
+{"type":"message","id":"entry-8","parentId":"entry-7","timestamp":"2026-06-23T00:03:35Z","message":{"role":"toolResult","toolCallId":"call-002","content":[{"type":"text","text":"Successfully replaced text."}]}}
+{"type":"message","id":"entry-9","parentId":"entry-8","timestamp":"2026-06-23T00:03:40Z","message":{"role":"toolResult","toolCallId":"call-003","isError":true,"content":[{"type":"text","text":"error TS2307: Cannot find module './foo'"}]}}
